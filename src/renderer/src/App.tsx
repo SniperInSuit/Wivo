@@ -1,16 +1,20 @@
 import { useState, useCallback } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
-import { TopBar, type ViewMode } from './components/TopBar'
+import { TopBar } from './components/TopBar'
+import { Sidebar } from './components/Sidebar'
 import { Board } from './components/Board/Board'
 import { TableView } from './components/TableView/TableView'
 import { Dashboard } from './components/Dashboard/Dashboard'
 import { CalendarView } from './components/CalendarView/CalendarView'
+import { PatientsView } from './components/Patients/PatientsView'
+import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { SettingsPanel } from './components/SettingsPanel'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
 import { PipelineProvider } from './context/PipelineContext'
 import type { Job, JobInput, StageKey } from './types/job'
+import type { ViewMode } from './types/view'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,13 +26,16 @@ const queryClient = new QueryClient({
 })
 
 function AppContent() {
-  const [view, setView] = useState<ViewMode>('board')
+  const [view, setView] = useState<ViewMode>('overview')
   const [panelJob, setPanelJob] = useState<Job | null | 'new'>(null)
   const [panelRevisionId, setPanelRevisionId] = useState<string | undefined>()
   const [newJobDate, setNewJobDate] = useState<string | undefined>()
   const [bottomJob, setBottomJob] = useState<Job | null>(null)
   const [bottomRevisionId, setBottomRevisionId] = useState<string | undefined>()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // One search box in the top bar, shared by the views that filter (R7) — each
+  // used to own a duplicate field of its own.
+  const [search, setSearch] = useState('')
 
   const { data: jobs = [], isLoading } = useJobs()
   const createJob = useCreateJob()
@@ -122,41 +129,68 @@ function AppContent() {
   const panelJobOrNull = panelJob === 'new' ? null : (panelJob as Job | null)
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg">
-      <TopBar
-        view={view}
-        onViewChange={setView}
-        onNewJob={openNew}
-        onImportDone={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
-        onSettings={() => setSettingsOpen(true)}
-      />
+    <div className="flex h-screen w-screen overflow-hidden bg-bg">
+      <Sidebar view={view} onViewChange={setView} onSettings={() => setSettingsOpen(true)} />
 
-      <main className="flex-1 overflow-hidden flex flex-col">
-        {view === 'board' && (
-          <Board
-            jobs={jobs}
-            loading={isLoading}
-            onJobClick={openEdit}
-            onStageChange={handleStageChange}
-            onRevisionStageChange={handleRevisionStageChange}
-            onRevisionClick={openEditWithRevision}
-          />
-        )}
-        {view === 'table' && (
-          <TableView
-            jobs={jobs}
-            onJobClick={openEdit}
-            onJobEye={openBottom}
-            onBulkStatusChange={handleBulkStatusChange}
-            onBulkMarkPaid={handleBulkMarkPaid}
-            onBulkDelete={handleBulkDelete}
-          />
-        )}
-        {view === 'calendar' && (
-          <CalendarView jobs={jobs} onJobClick={openBottom} onRevisionClick={openBottomRevision} onNewJobOnDate={openNewOnDate} />
-        )}
-        {view === 'stats' && <Dashboard jobs={jobs} />}
-      </main>
+      {/* Every class here is load-bearing: min-w-0 stops the 1730px-wide board
+          from pushing the sidebar off-screen (R1), flex flex-col preserves the
+          height contract every view is written against (R2), and
+          overflow-hidden is what gives these flex items a 0 minimum size (R3). */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <TopBar
+          search={search}
+          onSearchChange={setSearch}
+          onNewJob={openNew}
+          onImportDone={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
+        />
+
+        <main className="flex-1 overflow-hidden flex flex-col">
+          {view === 'overview' && (
+            <OverviewView
+              jobs={jobs}
+              loading={isLoading}
+              onJobClick={openEdit}
+              onNewJob={openNew}
+              onNavigate={setView}
+            />
+          )}
+          {view === 'board' && (
+            <Board
+              jobs={jobs}
+              loading={isLoading}
+              onJobClick={openEdit}
+              onStageChange={handleStageChange}
+              onRevisionStageChange={handleRevisionStageChange}
+              onRevisionClick={openEditWithRevision}
+            />
+          )}
+          {view === 'table' && (
+            <TableView
+              jobs={jobs}
+              onJobClick={openEdit}
+              onJobEye={openBottom}
+              onBulkStatusChange={handleBulkStatusChange}
+              onBulkMarkPaid={handleBulkMarkPaid}
+              onBulkDelete={handleBulkDelete}
+              search={search}
+              onSearchChange={setSearch}
+            />
+          )}
+          {view === 'calendar' && (
+            <CalendarView jobs={jobs} onJobClick={openBottom} onRevisionClick={openBottomRevision} onNewJobOnDate={openNewOnDate} />
+          )}
+          {view === 'patients' && (
+            <PatientsView
+              jobs={jobs}
+              onJobClick={openEdit}
+              onRevisionClick={openEditWithRevision}
+              search={search}
+              onSearchChange={setSearch}
+            />
+          )}
+          {view === 'stats' && <Dashboard jobs={jobs} />}
+        </main>
+      </div>
 
       <AnimatePresence>
         {isPanelOpen && (

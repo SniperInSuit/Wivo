@@ -1,5 +1,82 @@
 # Changelog
 
+## [1.1.0] — 2026-07-29
+Suur kasutajaliidese uuendus.
+
+**Enne kasutamist sulge Workly ja käivita Supabase SQL-redaktoris kaks eraldi päringut:**
+1. `sql/003_patient_teeth.sql` — uued veerud ja `patient_teeth` tabel. Ilma selleta ei saa patsienti salvestada ega luua (veerg `markused` puudub) ja hambakaart ei tööta.
+2. `sql/004_patient_teeth_realtime.sql` — reaalajas sünkroniseerimine. Vabatahtlik.
+
+Need peavad olema **eraldi päringud**: koos ühes tehingus tekib `40P01: deadlock detected`, sest `ALTER PUBLICATION` vajab lukku, mida hoiab Supabase realtime-protsess, kes omakorda ootab `patients` tabelit, mille sama tehing juba hõivas. Avatud Workly hoiab samu lukke — sulge rakendus enne käivitamist.
+
+**Navigatsioon**
+- **Kompaktne vasak külgriba** (76 px): ikoon peal, silt all — Ülevaade, Tööd, Kalender, Tabel, Patsiendid, Statistika, Seaded. Asendab senise ülemise vahekaardiriba; "Tahvel" kannab nüüd nime "Tööd"
+- **Uus Ülevaade-vaade**: kuu statistika, tähtaega ületanud ja täna tähtajaga tööd, kiirvalikud
+- **Üks otsingukast** ülaribal, mida jagavad Tabel ja Patsiendid — varem oli igal vaatel oma väli
+- Rakenduse versioon on nähtav külgriba jalusel
+
+**Patsientide otsing**
+- **Patsiendinimekiri on nüüd omaette otsinguleht** täislaiuses, mitte kitsas riba profiili kõrval — profiil sai ~300 px juurde
+- **Filtrid**: arst, kliinik, ainult tasumata, ilma töödeta; sorteerimine nime, tööde arvu, viimase töö või tasumata summa järgi
+- **Tulemused tabelina**: patsient, arst/kliinik, tööd, hambad, viimane töö, arveldatud, tasumata
+
+**Patsiendi profiil**
+- **Töölaua paigutus**: identiteet (60%) + ärikokkuvõte (40%) üleval, siis kolm töösuunda kõrvuti — Ravikaart (30%) | Tööde ajalugu (40%) | Hambakaart (30%) — ja all Märkused (50%) | Arved (25%) | Viimati muudetud (25%)
+- **„Kõik patsiendid" tagasinupp** profiili ülaservas
+- **Ravikaardil on nüüd 7 eraldi välja**: kliinilised märkused, allergiad, materjali eelistused, tooni eelistused, **hambumus** ja **lõualiiges** (varem üks ühine väli) ning lisamärkused
+- **Vaatamisrežiim vaikimisi**: profiil avaneb loetavana, muutmine algab nupust "Muuda" — varem oli kogu kaart alati redigeeritav
+- **Paneelipõhine paigutus**: päis, nelja plaadiga statistikariba, ning paneelid Ravikaart, Hambastaatuse kaart, Tööde ajalugu, Arved, Märkused, Viimati muudetud
+- **Uus väli "Värvi eelistused"** ravikaardil (VITA toonid)
+- **Märkused**: kuupäeva ja autoriga märkmed patsiendi kaardil; autor tuleb uuest Seaded → "Sinu nimi" väljast
+- **Arved**: arveldatud / makstud / tasumata kokkuvõte, arvutatud tööde ja muudatuste hindadest
+- **Viimati muudetud**: näitab, millal ja millise kirje kaudu patsiendi andmed viimati muutusid
+- **Tööde ajalugu** on nüüd tabel: tellimus, kuupäev, töö, materjal/värv, hambad, staatus, hind, makstud
+
+**Hambastaatuse kaart (FDI)**
+- Uus patsiendipõhine hambakaart nelja seisundiga: Töödeldud, Ravi olemas, Terve, Puudub
+- **Töödeldud tuletatakse automaatselt** tööde ja muudatuste hambanumbritest; ülejäänud seisundid märgid ise klikkides
+- Käsitsi määratud seisund on alati ülimuslik tuletatud seisundi ees (hammas võib olla vahepeal eemaldatud) ja on kohtspikris eraldi märgitud
+- Uus tabel `patient_teeth` (migratsioonid 003 + 004) koos RLS-poliitika ja realtime-sünkroniseerimisega
+
+**Tellimuse viide**
+- Iga töö kuvatakse patsiendi ajaloos viitega kujul `KM-2026-01` = patsiendi initsiaalid + aasta + selle aasta järjekorranumber
+- **Viide arvutatakse kuvamise hetkel, seda ei salvestata.** Töö kuupäeva muutmine või töö kustutamine nummerdab sama aasta hilisemad tööd ümber — ära kasuta seda raamatupidamises enne, kui number saab päris veeru
+
+**Parandused**
+- **Valge ekraan patsiendivaates parandatud** (kriitiline): kaks komponenti tellisid sama Supabase realtime-kanali (`patients-realtime`) — teine tellija viskas vea `cannot add postgres_changes callbacks after subscribe()`, mis võttis kogu rakenduse maha. Juhtus siis, kui avasid Patsiendid ja seejärel mõne töö või vajutasid „Uus töö". Iga tellimus saab nüüd unikaalse kanali; sama parandus tehti ka tööde ja hammaste kanalitele
+- **Veapiire (ErrorBoundary)**: renderdusviga näitab nüüd veateadet, mitte tühja akent — see rakendus on tühja ekraani taha jäänud kaks korda
+- **Kustutamise kinnitus ei vallandu enam topeltklõpsust**: prügikastinupp läheb 5 sekundi pärast automaatselt tagasi ootele ja topeltklõps ei kustuta patsienti (kustutamisel kaob ravikaart jäädavalt ja tööd kaotavad seose)
+- **Salvestamata muudatuste hoiatus**: teise patsiendi valimine poolelioleva muutmise ajal küsib nüüd kinnitust, varem kadus kirjutatu vaikselt
+- **Perioodifilter kaasab kuu/kvartali/aasta esimese päeva**: varem jäi 1. kuupäevaga töö statistikast täiesti välja, kuigi patsiendilehel oli arvestatud — Ülevaade ja Statistika näitasid tühja kuud
+- **Seadete nimi jõuab kohe märkusteni**: „Sinu nimi" muutmine mõjus varem alles pärast vaate taaslaadimist, mistõttu märkused salvestusid autoriga „Tundmatu"
+- **Sidumine ei tee enam topeltkirjeid**: „Katrin Mägi" ja „katrin mägi" loeti eri patsientideks ja tekitas tühja dublikaadi
+
+- **Statistika hambaarv ühtlustatud patsiendilehega**: imporditud tööde vana `rev_hambad` muudatus loeti seni ainult ühes kohas — nüüd loevad mõlemad ekraanid sama arvu
+- **Inter font on nüüd rakenduse sees**: varem laaditi see käivitamisel Google Fontsist, mistõttu ilma internetita vahetus kiri süsteemifondi vastu ja kogu paigutus nihkus
+- Puuduva andmebaasiveeru viga suunab nüüd õigele migratsioonile (varem osutas vale SQL-faili peale)
+
+## [1.0.47] — 2026-07-29
+- **Fixed: dead buttons on the Patsiendid page** — the `patients` table had row level security enabled with no policy, so reads silently returned zero rows and every insert was rejected with `42501`. New migration `sql/002_patients_rls.sql` adds the same "Allow all for anon" policy the `jobs` table already uses. **Must be run in the Supabase SQL editor.**
+- **Write errors are now visible**: creating, saving, deleting and backfilling patients no longer swallow a rejected request — the failure is shown as a red banner in the patient list, and the patient picker shows it inline. An RLS or missing-table error is translated into the exact SQL file to run
+- **Empty-list hint**: when there are no patients but jobs do have names, the list explains the backfill button and points at `002` if nothing happens
+- **`.env.example` restored**: the README told you to copy it but the file was missing from the repo; a missing `.env` makes the app start to a white screen, because the Supabase client throws at import time
+
+## [1.0.46] — 2026-07-29
+- **Patients are now a real entity**: new `patients` table in Supabase (migration `sql/001_patients.sql`) with name, date of birth, phone, e-mail, referring doctor, clinic, ravikaart, allergies, material preferences, jaw/occlusion notes and general notes
+- **Jobs link to a patient record**: new `jobs.patient_id` foreign key; the free-text `patsient` name is kept alongside it as a display value so existing and imported jobs keep working unchanged
+- **Patient picker on the job form**: the Patsient field is now a combobox — type to search existing patients, pick one to link the job, or create the record inline with "Loo patsient"; a "seotud / sidumata" indicator shows the link state
+- **New "Patsiendid" view**: searchable patient list plus a profile with three tabs — Ülevaade (job count, teeth, invoiced, outstanding + contact fields), Ravikaart (treatment notes, allergies, preferences, jaw notes), Tööd (full job history, click to open the job)
+- **One-click backfill**: "Seo N tööd patsientidega" creates patient records from every distinct existing job name and links the jobs; safe to run repeatedly
+- **Realtime sync for patients**: patient changes propagate live between machines, same as jobs
+- **GDPR**: ravikaart fields are marked as special-category health data in the UI and in the migration file, which also documents the RLS policies to enable before production use
+
+## [1.0.45] — 2026-07-29
+_(entry reconstructed from HANDOFF.md — was missing from this file)_
+- **Top patsiendid sorted by tooth count**: the chart now ranks patients by total teeth produced instead of job count
+- **Hambaid toodetud breakdown inline**: the stat card shows `N originaal · M muudatused` under the total
+- **Removed two standalone cards** from Hammaste analüüs — the same numbers now live in the top card
+- **Chart subtitle**: "Hambad töötüübi järgi" got the subtitle "Kokku toodetud hambad töö liigi kaupa"
+
 ## [1.0.44] — 2026-07-29
 - **Töid kokku includes revisions**: stat card now shows `tööd + muudatused` as the total work count, with the breakdown ("N tööd · M muudatust") in the subtitle
 

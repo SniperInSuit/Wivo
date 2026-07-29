@@ -22,7 +22,8 @@ export interface Job {
   status: StageKey
   // --- Core fields (Estonian UI labels) ---
   kuupaev: string           // Kuupäev — date received (YYYY-MM-DD)
-  patsient: string          // Patsient — patient name/ID (required)
+  patsient: string          // Patsient — patient name (kept denormalised for display + legacy rows)
+  patient_id: string | null // FK → patients.id (null = not linked to a patient record yet)
   too: string | null        // Töö — work type (crown, bridge, veneer…)
   materjal: string | null   // Materjal — resin material (may include shade, e.g. "Ceramic Crown HT A2")
   masina: string | null     // Masin — printer (Pro2, Midas)

@@ -67,6 +67,28 @@ create policy "Allow all for anon" on jobs
 
 ---
 
+## 1b — Run the migrations
+
+Migrations live in [`sql/`](sql/) and are numbered in the order they must be applied.
+Paste each file into the Supabase **SQL Editor** and run it.
+
+| File | Adds | App version |
+|---|---|---|
+| `sql/001_patients.sql` | `patients` table + `jobs.patient_id` | 1.0.46 |
+| `sql/002_patients_rls.sql` | RLS policy for `patients` (required — without it every write is rejected) | 1.0.47 |
+| `sql/003_patient_teeth.sql` | `patient_teeth` table + `patients.varvi_eelistus` / `patients.markused` (required — without it patients cannot be saved) | 1.1.0 |
+| `sql/004_patient_teeth_realtime.sql` | realtime sync for `patient_teeth` (optional) | 1.1.0 |
+
+**Quit the Workly app before running a migration**, and run each file as its own query. An open
+instance holds realtime subscriptions on `patients` and `jobs`; an `ALTER TABLE` and an
+`ALTER PUBLICATION` in the same transaction against those locks deadlocks with `40P01`.
+
+Until `001` is applied, the **Patsiendid** view shows a "table not found" notice and saving
+a job fails on the unknown `patient_id` column. Until `003` is applied, saving or creating a
+patient fails on the unknown `markused` column and the tooth chart cannot store anything.
+
+---
+
 ## 2 — Configure environment variables
 
 ```bash
@@ -120,7 +142,8 @@ npm run dist       # Packaged installer → dist/   (Phase 2)
 | UI (ET) | Column | Notes |
 |---|---|---|
 | Kuupäev | `kuupaev` | Date received |
-| Patsient | `patsient` | Patient name/ID |
+| Patsient | `patsient` | Patient name (display value, kept for legacy/imported rows) |
+| Patsient (seotud) | `patient_id` | FK → `patients.id`, set via the patient picker |
 | Töö | `too` | Work type |
 | Materjal | `materjal` | Resin material |
 | Värv | `varv` | VITA shade |

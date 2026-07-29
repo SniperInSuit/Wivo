@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus } from 'lucide-react'
+import { X, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User } from 'lucide-react'
 import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
 import { useSettings } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
@@ -144,7 +144,7 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { settings, setMaterialPrice, setDesignFee, setDefaultMachine } = useSettings()
+  const { settings, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi } = useSettings()
   const { stages, addStage, removeStage, renameStage, moveStage, resetToDefaults } = usePipeline()
 
   return (
@@ -178,6 +178,25 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+
+              {/* Your name — stamped as the author on every patient note */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <User size={14} className="text-accent" />
+                  <h3 className="text-sm font-semibold text-ink">Sinu nimi</h3>
+                </div>
+                <label className="label" htmlFor="kasutaja-nimi">Nimi märkuste autorina</label>
+                <input
+                  id="kasutaja-nimi"
+                  value={settings.kasutajaNimi}
+                  onChange={e => setKasutajaNimi(e.target.value)}
+                  placeholder="nt Kevin Treial"
+                  className="input py-1.5 text-sm max-w-xs"
+                />
+                <p className="text-xs text-ink-faint mt-2 leading-relaxed">
+                  Lisatakse autorina iga patsiendi märkuse juurde. Kui väli on tühi, kuvatakse "Tundmatu".
+                </p>
+              </section>
 
               {/* Machine default */}
               <section>

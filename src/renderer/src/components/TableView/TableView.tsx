@@ -27,6 +27,8 @@ interface TableViewProps {
   onBulkStatusChange?: (ids: string[], status: StageKey) => Promise<void>
   onBulkMarkPaid?: (ids: string[]) => Promise<void>
   onBulkDelete?: (ids: string[]) => Promise<void>
+  search: string
+  onSearchChange: (v: string) => void
 }
 
 function DeadlineCell({ valmis_aeg }: { valmis_aeg: string | null }) {
@@ -47,9 +49,8 @@ function SortIcon({ field, sortKey, sortDir }: { field: string; sortKey: SortKey
     : <ChevronDown size={12} className="text-accent ml-1 inline" />
 }
 
-export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete }: TableViewProps) {
+export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete, search, onSearchChange }: TableViewProps) {
   const { stages, doneStageKey } = usePipeline()
-  const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('kuupaev')
@@ -192,17 +193,19 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-ink-faint/15 bg-bg-card flex-shrink-0">
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-          <input
-            type="text"
-            placeholder="Otsi patsienti, tööd…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input pl-8 py-1.5 text-sm"
-          />
-        </div>
+        {/* Search — controlled by the top bar so there is only one box (R7).
+            Kept here as a read-only chip so it is obvious what is filtering. */}
+        {search.trim() && (
+          <button
+            onClick={() => onSearchChange('')}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors flex-shrink-0"
+            title="Tühjenda otsing"
+          >
+            <Search size={11} />
+            {search.trim()}
+            <XIcon size={11} />
+          </button>
+        )}
 
         {/* Stage filter pills */}
         <div className="flex items-center gap-1">
@@ -342,7 +345,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   {someSelected && <div className="w-2 h-0.5 bg-accent" />}
                 </div>
               </th>
-              {/* Eye column — opens bottom sheet */}
+              {/* Pencil column — opens the side editor */}
               <th className="w-8 px-1 py-3" />
               <Th label="Staatus"    field="status" />
               <Th label="Kuupäev"   field="kuupaev" />
@@ -381,7 +384,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               return (
                 <tr
                   key={job.id}
-                  onClick={() => onJobClick(job)}
+                  // Row click opens the BOTTOM sheet — the side panel is for
+                  // adding and editing, this is for looking something up.
+                  onClick={() => (onJobEye ?? onJobClick)(job)}
                   className={`border-b border-ink-faint/10 cursor-pointer transition-colors duration-100 group
                     ${job.kiirtoo ? 'border-l-2 border-l-orange-400' : 'border-l-2 border-l-transparent'}
                     ${isSelected
@@ -403,9 +408,13 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                     </div>
                   </td>
 
-                  {/* Eye — opens bottom sheet */}
-                  <td className="px-1 py-3 w-8" onClick={e => { e.stopPropagation(); onJobEye?.(job) }}>
-                    <Eye
+                  {/* Pencil — opens the side panel for editing */}
+                  <td
+                    className="px-1 py-3 w-8"
+                    onClick={e => { e.stopPropagation(); onJobClick(job) }}
+                    title="Muuda"
+                  >
+                    <Edit2
                       size={14}
                       className="text-ink-faint/50 group-hover:text-accent cursor-pointer transition-colors"
                     />
@@ -425,7 +434,11 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-sm text-ink">{job.patsient}</span>
-                      {job.kiirtoo && <Zap size={12} className="text-orange-500 flex-shrink-0" title="Kiirtöö" />}
+                      {job.kiirtoo && (
+                        <span title="Kiirtöö" className="flex-shrink-0 leading-none">
+                          <Zap size={12} className="text-orange-500" />
+                        </span>
+                      )}
                     </div>
                   </td>
 
@@ -534,9 +547,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                     })()}
                   </td>
 
-                  {/* Edit icon */}
+                  {/* Row-hover affordance for the bottom sheet the row opens */}
                   <td className="px-2 py-3">
-                    <Edit2 size={13} className="text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Eye size={13} className="text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
                   </td>
                 </tr>
               )

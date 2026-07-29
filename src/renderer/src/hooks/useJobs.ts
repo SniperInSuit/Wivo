@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Job, JobInput } from '../types/job'
@@ -10,15 +10,18 @@ export function useJobs() {
   const qc = useQueryClient()
 
   // Subscribe to Postgres changes so all connected instances stay in sync
+  // Unique per mount — a shared topic throws on the second subscriber.
+  const channelId = useId()
+
   useEffect(() => {
     const channel = supabase
-      .channel('jobs-realtime')
+      .channel(`jobs-realtime-${channelId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
         qc.invalidateQueries({ queryKey: QUERY_KEY })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [qc])
+  }, [qc, channelId])
 
   return useQuery<Job[]>({
     queryKey: QUERY_KEY,

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { MATERIAL_OPTIONS } from '../types/job'
 
 // Bump key when structure changes so old storage is discarded cleanly
@@ -13,6 +13,7 @@ export interface WorklySettings {
   materialPrices: Record<string, MaterialPricing>
   designFee: number       // € per job when design is included
   defaultMachine: string
+  kasutajaNimi: string    // Sinu nimi — stamped as the author on patient notes
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -25,6 +26,7 @@ function defaultSettings(): WorklySettings {
     ),
     designFee: 0,
     defaultMachine: '',
+    kasutajaNimi: '',
   }
 }
 
@@ -34,27 +36,55 @@ function loadSettings(): WorklySettings {
     if (!raw) return defaultSettings()
     const stored = JSON.parse(raw) as Partial<WorklySettings>
     const def = defaultSettings()
-    // Merge: stored values win, but new materials not in storage get the default 15€
+    // Merge: stored values win, but new materials not in storage get the default 15€.
+    // This is also why STORAGE_KEY is NOT bumped for additive fields like
+    // kasutajaNimi — a bump would wipe every material price the user has entered.
     return {
       materialPrices: { ...def.materialPrices, ...(stored.materialPrices ?? {}) },
       designFee: stored.designFee ?? 0,
       defaultMachine: stored.defaultMachine ?? '',
+      kasutajaNimi: stored.kasutajaNimi ?? '',
     }
   } catch {
     return defaultSettings()
   }
 }
 
+// ─── Module-level store ───────────────────────────────────────────────────────
+// Settings are read in several places at once (SettingsPanel, JobDetailPanel,
+// NotesPanel, the price calculator). With per-component useState each consumer
+// snapshotted localStorage at mount and never saw later writes — so a name typed
+// into Seaded while a patient page was open stamped notes as "Tundmatu" until
+// the component happened to remount. One shared snapshot, one subscriber list.
+let snapshot: WorklySettings = loadSettings()
+const listeners = new Set<() => void>()
+
+function subscribe(fn: () => void) {
+  listeners.add(fn)
+  return () => { listeners.delete(fn) }
+}
+
+function getSnapshot(): WorklySettings {
+  return snapshot
+}
+
 function persist(next: WorklySettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  // New object identity every write — useSyncExternalStore compares by reference
+  snapshot = next
+  listeners.forEach(fn => fn())
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState<WorklySettings>(loadSettings)
+  const settings = useSyncExternalStore(subscribe, getSnapshot)
+
+  // Every setter goes through persist(), which is what notifies subscribers.
+  const setSettings = useCallback((fn: (prev: WorklySettings) => WorklySettings) => {
+    persist(fn(snapshot))
+  }, [])
 
   const save = useCallback((next: WorklySettings) => {
     persist(next)
-    setSettings(next)
   }, [])
 
   const setMaterialPrice = useCallback(
@@ -70,7 +100,6 @@ export function useSettings() {
             },
           },
         }
-        persist(next)
         return next
       })
     },
@@ -80,7 +109,6 @@ export function useSettings() {
   const setDesignFee = useCallback((fee: number) => {
     setSettings(prev => {
       const next = { ...prev, designFee: fee }
-      persist(next)
       return next
     })
   }, [])
@@ -88,12 +116,18 @@ export function useSettings() {
   const setDefaultMachine = useCallback((machine: string) => {
     setSettings(prev => {
       const next = { ...prev, defaultMachine: machine }
-      persist(next)
       return next
     })
   }, [])
 
-  return { settings, save, setMaterialPrice, setDesignFee, setDefaultMachine }
+  const setKasutajaNimi = useCallback((nimi: string) => {
+    setSettings(prev => {
+      const next = { ...prev, kasutajaNimi: nimi }
+      return next
+    })
+  }, [])
+
+  return { settings, save, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi }
 }
 
 // ─── Tooth-size helpers ───────────────────────────────────────────────────────

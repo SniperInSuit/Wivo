@@ -9,6 +9,8 @@ import { usePipeline } from '../../context/PipelineContext'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
+import { PatientPicker } from '../Patients/PatientPicker'
+import { JobReadView } from './JobReadView'
 import { StatusPill } from '../ui/StatusPill'
 import { useSettings, calcProduction, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 
@@ -45,6 +47,7 @@ const EMPTY_FORM: JobInput = {
   status: 'disain',
   kuupaev: new Date().toISOString().split('T')[0],
   patsient: '',
+  patient_id: null,
   too: '',
   materjal: '',
   masina: '',
@@ -216,6 +219,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const { stages } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  // Opening an existing job shows it, it does not offer to change it. A new job
+  // has nothing to look at, so it starts in the form.
+  const [editing, setEditing] = useState(job == null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Auto-price mode: on for new jobs OR existing jobs with no price set
@@ -242,6 +248,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         status: job.status,
         kuupaev: job.kuupaev,
         patsient: job.patsient,
+        patient_id: job.patient_id ?? null,
         too: job.too ?? '',
         materjal: job.materjal ?? '',
         masina: job.masina ?? '',
@@ -264,6 +271,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       })
     }
     setDeleteConfirm(false)
+    setEditing(job == null)
   }, [job])
 
   const set = useCallback(<K extends keyof JobInput>(key: K, val: JobInput[K]) => {
@@ -359,7 +367,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         <div className="flex items-center justify-between px-6 py-4 border-b border-ink-faint/20 flex-shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-ink">
-              {job ? 'Muuda tööd' : 'Uus töö'}
+              {!job ? 'Uus töö' : editing ? 'Muuda tööd' : (job.too || 'Töö')}
             </h2>
             {job && <StatusPill status={job.status} />}
           </div>
@@ -393,13 +401,25 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </button>
               )
             )}
+            {job && !editing && (
+              <button type="button" onClick={() => setEditing(true)} className="btn-ghost">
+                <Pencil size={14} />
+                Muuda
+              </button>
+            )}
             <button type="button" onClick={onClose} className="btn-ghost p-2">
               <X size={15} />
             </button>
           </div>
         </div>
 
-        {/* Scrollable form body — grid-cols-1 (side) or grid-cols-2 (bottom) */}
+        {/* Read-only view of an existing job — the form is one click away */}
+        {job && !editing ? (
+          <div className="flex-1 overflow-y-auto">
+            <JobReadView job={job} isBottom={isBottom} highlightRevisionId={highlightRevisionId} />
+          </div>
+        ) : (
+        /* Scrollable form body — grid-cols-1 (side) or grid-cols-2 (bottom) */
         <form id="job-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className={
             isBottom
@@ -459,17 +479,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     className="input"
                   />
                 </div>
-                <div>
-                  <label className="label">Patsient *</label>
-                  <input
-                    type="text"
-                    value={form.patsient}
-                    onChange={e => set('patsient', e.target.value)}
-                    placeholder="Nimi või ID"
-                    required
-                    className="input"
-                  />
-                </div>
+                <PatientPicker
+                  name={form.patsient}
+                  patientId={form.patient_id}
+                  onChange={(nimi, pid) => setForm(f => ({ ...f, patsient: nimi, patient_id: pid }))}
+                  required
+                />
               </div>
 
               {/* Töö */}
@@ -683,6 +698,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
           </div>
         </form>
+        )}
 
         {/* Footer */}
         <div className="flex flex-col gap-2 px-6 py-4 border-t border-ink-faint/20 flex-shrink-0 bg-bg-card">
@@ -690,22 +706,42 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
           )}
           <div className="flex items-center justify-between">
-            <button type="button" onClick={onClose} className="btn-ghost">
-              Tühista
-            </button>
-            <button
-              type="submit"
-              form="job-form"
-              disabled={saving || !form.patsient}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Save size={14} />
-              )}
-              {job ? 'Salvesta' : 'Loo töö'}
-            </button>
+            {job && !editing ? (
+              <>
+                <button type="button" onClick={onClose} className="btn-ghost">
+                  Sulge
+                </button>
+                <button type="button" onClick={() => setEditing(true)} className="btn-primary">
+                  <Pencil size={14} />
+                  Muuda
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  // Editing an existing job returns to its view; a new job has
+                  // nothing to return to, so it closes the panel.
+                  onClick={() => (job ? setEditing(false) : onClose())}
+                  className="btn-ghost"
+                >
+                  Tühista
+                </button>
+                <button
+                  type="submit"
+                  form="job-form"
+                  disabled={saving || !form.patsient}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Save size={14} />
+                  )}
+                  {job ? 'Salvesta' : 'Loo töö'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </motion.aside>

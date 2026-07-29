@@ -16,8 +16,10 @@ function periodStart(p: Period): Date | null {
 function filterByPeriod(jobs: Job[], period: Period): Job[] {
   const start = periodStart(period)
   if (!start) return jobs
-  // Use kuupaev (the actual received date) — not created_at which is the import timestamp
-  return jobs.filter((j) => j.kuupaev && isAfter(parseISO(j.kuupaev), start))
+  // Use kuupaev (the actual received date) — not created_at which is the import timestamp.
+  // Inclusive of the first day: a strict isAfter dropped every job dated 1. of the
+  // month/quarter/year from the stats entirely, while the patient page counted it.
+  return jobs.filter((j) => j.kuupaev && !isBefore(parseISO(j.kuupaev), start))
 }
 
 // Parse comma-sep tooth string → count
@@ -44,10 +46,17 @@ export function useDashboardStats(jobs: Job[], period: Period) {
     const withRevision = filtered.filter((j) => (j.revisions?.length ?? 0) > 0 || !!j.muudatused)
     const totalRevisions = filtered.reduce((sum, j) => sum + (j.revisions?.length ?? 0), 0)
     const totalWork = filtered.length + totalRevisions
-    const totalTeeth = filtered.reduce((sum, j) => {
-      const revTeeth = (j.revisions ?? []).reduce((s, r) => s + toothCount(r.hambad ?? null), 0)
-      return sum + toothCount(j.hambad) + revTeeth
-    }, 0)
+    // Revision teeth. A CSV-imported job that has never been opened+saved still
+    // carries its revision in the legacy rev_hambad field with revisions = [],
+    // so count that instead — otherwise the dashboard undercounts exactly the
+    // rows the patient page counts, and the two screens disagree.
+    const revTeethOf = (j: Job) => {
+      const revs = j.revisions ?? []
+      return revs.length === 0
+        ? toothCount(j.rev_hambad ?? null)
+        : revs.reduce((s, r) => s + toothCount(r.hambad ?? null), 0)
+    }
+    const totalTeeth = filtered.reduce((sum, j) => sum + toothCount(j.hambad) + revTeethOf(j), 0)
     const avgTeethPerJob = filtered.length > 0 ? totalTeeth / filtered.length : 0
     const revisionRate = filtered.length > 0 ? (withRevision.length / filtered.length) * 100 : 0
 
@@ -69,7 +78,7 @@ export function useDashboardStats(jobs: Job[], period: Period) {
     const patientTeeth: Record<string, number> = {}
     filtered.forEach((j) => {
       const p = j.patsient || 'Tundmatu'
-      const teeth = toothCount(j.hambad) + (j.revisions ?? []).reduce((s, r) => s + toothCount(r.hambad ?? null), 0)
+      const teeth = toothCount(j.hambad) + revTeethOf(j)
       patientTeeth[p] = (patientTeeth[p] ?? 0) + teeth
     })
     const topPatients = Object.entries(patientTeeth)
@@ -172,9 +181,7 @@ export function useDashboardStats(jobs: Job[], period: Period) {
 
     // Original vs revision teeth
     const originalTeeth = filtered.reduce((sum, j) => sum + toothCount(j.hambad), 0)
-    const revisionTeeth = filtered.reduce((sum, j) => {
-      return sum + (j.revisions ?? []).reduce((s, r) => s + toothCount(r.hambad ?? null), 0)
-    }, 0)
+    const revisionTeeth = filtered.reduce((sum, j) => sum + revTeethOf(j), 0)
 
     return {
       filtered,
