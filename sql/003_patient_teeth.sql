@@ -14,7 +14,6 @@
 --
 -- WHAT THIS ADDS
 --   1. patients.varvi_eelistus  — VITA shade preferences (health data, Art. 9)
---   1b. patients.lougaliiges   — TMJ notes, split out from the occlusion field
 --   2. patients.markused        — timestamped notes with an author (JSONB array,
 --                                 same shape idiom as jobs.revisions)
 --   3. patient_teeth            — the user's MANUAL tooth statuses
@@ -43,11 +42,6 @@ set lock_timeout = '10s';
 -- public.patients with an "Allow all for anon" policy that covers all columns.
 alter table public.patients
   add column if not exists varvi_eelistus text;                 -- Värvi eelistused
-
-alter table public.patients
-  add column if not exists lougaliiges text;                     -- Lõualiiges (TMJ)
--- `lougad` (from 001) now means Hambumus/occlusion only; the joint gets its own
--- field because they are separate clinical observations.
 
 alter table public.patients
   add column if not exists markused jsonb not null default '[]'::jsonb;
@@ -93,7 +87,7 @@ create policy "Allow all for anon" on public.patient_teeth
 -- select relname, relrowsecurity from pg_class where relname = 'patient_teeth';
 -- select policyname, cmd from pg_policies where tablename = 'patient_teeth';
 -- select column_name from information_schema.columns
---   where table_name = 'patients' and column_name in ('varvi_eelistus','lougaliiges','markused');
+--   where table_name = 'patients' and column_name in ('varvi_eelistus','markused');
 
 -- ─── NEXT: run 004_patient_teeth_realtime.sql, as its own separate query ────
 

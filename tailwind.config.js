@@ -4,34 +4,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        // SprintRay-inspired teal/cyan accent
+        // Every token is `rgb(var(--x) / <alpha-value>)` so the opacity
+        // modifiers used all over the app keep working while the theme swaps the
+        // underlying channels. See styles/index.css for the theme definitions.
         accent: {
-          DEFAULT: '#0AB6C4',
-          hover: '#0899A6',
-          light: '#E6F7F9',
-          dark: '#077080'
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
+          light: 'rgb(var(--c-accent-light) / <alpha-value>)',
+          dark: 'rgb(var(--c-accent-dark) / <alpha-value>)'
         },
-        // App background & surface
         bg: {
-          DEFAULT: '#F7F9FA',
-          card: '#FFFFFF',
-          sidebar: '#F0F4F6'
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          card: 'rgb(var(--c-bg-card) / <alpha-value>)',
+          sidebar: 'rgb(var(--c-bg-sidebar) / <alpha-value>)'
         },
-        // Text
         ink: {
-          DEFAULT: '#0E1116',
-          soft: '#1F2933',
-          muted: '#637381',
-          faint: '#A8B4BE'
+          DEFAULT: 'rgb(var(--c-ink) / <alpha-value>)',
+          soft: 'rgb(var(--c-ink-soft) / <alpha-value>)',
+          muted: 'rgb(var(--c-ink-muted) / <alpha-value>)',
+          faint: 'rgb(var(--c-ink-faint) / <alpha-value>)'
         },
-        // Pipeline stage accent colors (muted, distinct)
+        // Sidebar foreground. Separate from `ink` because in Navy Cloud the nav
+        // sits on navy (needs light text) while cards stay light (need dark).
+        nav: {
+          DEFAULT: 'rgb(var(--c-nav) / <alpha-value>)',
+          muted: 'rgb(var(--c-nav-muted) / <alpha-value>)',
+          // The sidebar chrome itself. Distinct from bg-sidebar, which doubles as
+          // the recessed surface for inputs inside cards and must stay light.
+          bg: 'rgb(var(--c-nav-bg) / <alpha-value>)'
+        },
+        // Pipeline stage accent colors (muted, distinct) — not themed
         stage: {
-          disain: '#6366F1',    // indigo — design
-          print: '#F59E0B',     // amber — printing
-          poleeri: '#10B981',   // emerald — polishing
-          puhasta: '#3B82F6',   // blue — cleaning
-          varvi: '#EC4899',     // pink — paint/characterize
-          valmis: '#22C55E'     // green — done
+          disain: '#6366F1',
+          print: '#F59E0B',
+          poleeri: '#10B981',
+          puhasta: '#3B82F6',
+          varvi: '#EC4899',
+          valmis: '#22C55E'
         }
       },
       borderRadius: {

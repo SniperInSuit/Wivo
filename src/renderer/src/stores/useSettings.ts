@@ -9,11 +9,64 @@ export interface MaterialPricing {
   large: number   // €/tooth for positions 6–8 (molars)
 }
 
+export type ThemeKey = 'hele' | 'navy-cloud' | 'cloudy-navy'
+
+export interface ThemeOption {
+  key: ThemeKey
+  label: string
+  hint: string
+  // Swatches for the settings preview — mirrors --app-bg / --c-bg-card in
+  // styles/index.css. Kept in sync by hand; they are decoration, not the source.
+  preview: { bg: string; card: string }
+}
+
+export const THEMES: ThemeOption[] = [
+  {
+    key: 'hele',
+    label: 'Hele',
+    hint: 'Vaikimisi, valge',
+    preview: { bg: '#F7F9FA', card: '#FFFFFF' }
+  },
+  {
+    key: 'navy-cloud',
+    label: 'Navy Cloud',
+    hint: '#16284B → #0F1D3A, heledad kastid',
+    preview: {
+      bg: 'linear-gradient(135deg,#16284B 0%,#142443 45%,#0F1D3A 100%)',
+      card: '#F8FBFD'
+    }
+  },
+  {
+    key: 'cloudy-navy',
+    label: 'Cloudy Navy',
+    hint: 'Hele taust, tumedad kastid',
+    preview: {
+      bg: 'linear-gradient(135deg,#f4f8fc 0%,#e6edf6 45%,#cfdae9 78%,#b9c8dc 100%)',
+      card: '#16233F'
+    }
+  }
+]
+
 export interface WorklySettings {
   materialPrices: Record<string, MaterialPricing>
   designFee: number       // € per job when design is included
   defaultMachine: string
   kasutajaNimi: string    // Sinu nimi — stamped as the author on patient notes
+  teema: ThemeKey         // Teema — see THEMES / styles/index.css
+  ribaLaiendatud: boolean // Külgriba laiendatud (sildid ikoonide kõrval) või kompaktne
+  // ─── Kalender ──────────────────────────────────────────────────────────────
+  // Every one of these replaced a constant hardcoded in a component, which meant
+  // the app assumed one particular lab's working day and pricing.
+  ajajoonAlgus: number    // Horisontaalse ajajoone algustund (Ülevaade, Kombineeritud)
+  ajajoonLopp: number     // …ja lõputund
+  nadalAlgus: number      // Nädalavaate ruudustiku algustund
+  nadalLopp: number       // …ja lõputund
+  ajaSamm: number         // Lohistamise samm minutites
+  visiidiKestus: number   // Uue visiidi vaikimisi kestus minutites
+  // ─── Hinnastamine ──────────────────────────────────────────────────────────
+  hambaHind: number       // Vaikimisi €/hammas, kui materjalil hinda pole
+  muudatusHambaHind: number // €/hammas muudatuse puhul
+  kiirtooKordaja: number  // Kiirtöö hinnakordaja
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -27,6 +80,17 @@ function defaultSettings(): WorklySettings {
     designFee: 0,
     defaultMachine: '',
     kasutajaNimi: '',
+    teema: 'hele',
+    ribaLaiendatud: true,
+    ajajoonAlgus: 7,
+    ajajoonLopp: 19,
+    nadalAlgus: 9,
+    nadalLopp: 18,
+    ajaSamm: 15,
+    visiidiKestus: 30,
+    hambaHind: 15,
+    muudatusHambaHind: 8,
+    kiirtooKordaja: 2,
   }
 }
 
@@ -44,6 +108,17 @@ function loadSettings(): WorklySettings {
       designFee: stored.designFee ?? 0,
       defaultMachine: stored.defaultMachine ?? '',
       kasutajaNimi: stored.kasutajaNimi ?? '',
+      teema: stored.teema ?? 'hele',
+      ribaLaiendatud: stored.ribaLaiendatud ?? true,
+      ajajoonAlgus: stored.ajajoonAlgus ?? 7,
+      ajajoonLopp: stored.ajajoonLopp ?? 19,
+      nadalAlgus: stored.nadalAlgus ?? 9,
+      nadalLopp: stored.nadalLopp ?? 18,
+      ajaSamm: stored.ajaSamm ?? 15,
+      visiidiKestus: stored.visiidiKestus ?? 30,
+      hambaHind: stored.hambaHind ?? 15,
+      muudatusHambaHind: stored.muudatusHambaHind ?? 8,
+      kiirtooKordaja: stored.kiirtooKordaja ?? 2,
     }
   } catch {
     return defaultSettings()
@@ -57,6 +132,7 @@ function loadSettings(): WorklySettings {
 // into Seaded while a patient page was open stamped notes as "Tundmatu" until
 // the component happened to remount. One shared snapshot, one subscriber list.
 let snapshot: WorklySettings = loadSettings()
+applyTheme(snapshot.teema)
 const listeners = new Set<() => void>()
 
 function subscribe(fn: () => void) {
@@ -68,8 +144,15 @@ function getSnapshot(): WorklySettings {
   return snapshot
 }
 
+// The stylesheet keys off <html data-theme>, so applying is a one-liner. Done
+// here rather than in a component effect so the theme is right before first paint.
+function applyTheme(theme: ThemeKey) {
+  document.documentElement.dataset.theme = theme
+}
+
 function persist(next: WorklySettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  applyTheme(next.teema)
   // New object identity every write — useSyncExternalStore compares by reference
   snapshot = next
   listeners.forEach(fn => fn())
@@ -120,6 +203,20 @@ export function useSettings() {
     })
   }, [])
 
+  const setTeema = useCallback((teema: ThemeKey) => {
+    setSettings(prev => ({ ...prev, teema }))
+  }, [setSettings])
+
+  const toggleRiba = useCallback(() => {
+    setSettings(prev => ({ ...prev, ribaLaiendatud: !prev.ribaLaiendatud }))
+  }, [setSettings])
+
+  // Generic numeric setter for the calendar/pricing fields — one function beats
+  // ten near-identical ones, and every write still goes through persist().
+  const setNumber = useCallback(<K extends keyof WorklySettings>(key: K, value: number) => {
+    setSettings(prev => ({ ...prev, [key]: value } as WorklySettings))
+  }, [setSettings])
+
   const setKasutajaNimi = useCallback((nimi: string) => {
     setSettings(prev => {
       const next = { ...prev, kasutajaNimi: nimi }
@@ -127,7 +224,7 @@ export function useSettings() {
     })
   }, [])
 
-  return { settings, save, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi }
+  return { settings, save, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi, setTeema, toggleRiba, setNumber }
 }
 
 // ─── Tooth-size helpers ───────────────────────────────────────────────────────

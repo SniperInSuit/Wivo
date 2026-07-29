@@ -6,6 +6,8 @@ import { MATERIAL_OPTIONS, MATERIAL_SHADES } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
+import { useSettings } from '../../stores/useSettings'
+import { stageChipStyle } from '../../config/pipeline'
 
 interface RevisionBlockProps {
   value: Revision[]
@@ -366,6 +368,7 @@ function RevisionForm({
   isEdit?: boolean
 }) {
   const { stages } = usePipeline()
+  const { settings } = useSettings()
   // Auto-price: on for new revisions, or when editing a revision that has no price yet
   const [priceIsAuto, setPriceIsAuto] = useState(!isEdit || draft.price === '')
 
@@ -373,9 +376,10 @@ function RevisionForm({
     if (!priceIsAuto) return
     const toothCount = (draft.hambad ?? '').split(',').filter(t => t.trim()).length
     if (toothCount === 0) return
-    setDraft(d => ({ ...d, price: (toothCount * 8).toFixed(2) }))
+    // €/tooth for a revision — Seaded → Hinnad
+    setDraft(d => ({ ...d, price: (toothCount * settings.muudatusHambaHind).toFixed(2) }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.hambad, priceIsAuto])
+  }, [draft.hambad, priceIsAuto, settings.muudatusHambaHind])
 
   return (
     <div className="px-4 py-4 space-y-3 bg-slate-900/80 border-b border-slate-700/50">
@@ -400,9 +404,12 @@ function RevisionForm({
               key={s.key}
               type="button"
               onClick={() => setDraft(d => ({ ...d, status: s.key }))}
+              // Selected pill coloured from stage.hex so a recoloured stage shows
+              // its own colour here too
+              style={draft.status === s.key ? stageChipStyle(s.hex) : undefined}
               className={`text-xs px-2.5 py-1 rounded-lg border transition-all duration-100 font-medium ${
                 draft.status === s.key
-                  ? `${s.bg} ${s.color} border-current`
+                  ? 'border-current'
                   : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
               }`}
             >

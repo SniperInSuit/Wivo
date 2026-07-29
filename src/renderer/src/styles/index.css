@@ -18,6 +18,96 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* ─── Themes ────────────────────────────────────────────────────────────────
+   Every colour token is an RGB channel triple so Tailwind's alpha modifiers
+   (border-ink-faint/15, bg-accent/10 …) keep working — the codebase leans on
+   those heavily. `--app-bg` is a full background shorthand instead, because two
+   of the themes need a gradient rather than a flat colour.
+   ------------------------------------------------------------------------- */
+:root,
+:root[data-theme='hele'] {
+  --c-accent: 10 182 196;
+  --c-accent-hover: 8 153 166;
+  --c-accent-light: 230 247 249;
+  --c-accent-dark: 7 112 128;
+
+  --c-bg: 247 249 250;
+  --c-bg-card: 255 255 255;
+  --c-bg-sidebar: 240 244 246;
+
+  --c-ink: 14 17 22;
+  --c-ink-soft: 31 41 51;
+  --c-ink-muted: 99 115 129;
+  --c-ink-faint: 168 180 190;
+
+  --c-nav: 14 17 22;
+  --c-nav-muted: 99 115 129;
+  --c-nav-bg: 240 244 246;
+
+  --app-bg: rgb(247 249 250);
+  --card-blur: none;
+}
+
+/* Navy Cloud — navy gradient deepening toward the bottom-right, cloudy light
+   boxes floating on it. Card interiors stay light, so ink stays dark. */
+:root[data-theme='navy-cloud'] {
+  --c-accent: 34 211 226;
+  --c-accent-hover: 12 182 196;
+  --c-accent-light: 226 245 248;
+  --c-accent-dark: 6 95 109;
+
+  --c-bg: 15 29 58;
+  --c-bg-card: 248 251 253;
+  --c-bg-sidebar: 236 242 248;
+
+  --c-ink: 12 18 30;
+  --c-ink-soft: 30 41 59;
+  --c-ink-muted: 92 110 133;
+  --c-ink-faint: 156 172 190;
+
+  /* Sidebar sits directly on the navy, so nav text is light — separate tokens
+     from `ink`, which has to stay dark for the cloudy cards. */
+  --c-nav: 236 244 252;
+  --c-nav-muted: 160 180 205;
+  --c-nav-bg: 12 24 48;
+
+  /* Brief colours: #16284B at the top-left, deepening to #0F1D3A bottom-right.
+     The two soft radials are the "cloud" — kept outside the cards, never inside. */
+  --app-bg:
+    radial-gradient(1100px 560px at 10% 2%, rgba(255, 255, 255, 0.07), transparent 60%),
+    radial-gradient(900px 520px at 82% 30%, rgba(120, 190, 220, 0.07), transparent 62%),
+    linear-gradient(135deg, #16284B 0%, #142443 45%, #0F1D3A 100%);
+  --card-blur: none;
+}
+
+/* Cloudy Navy — the inverse: soft cloud gradient behind, navy boxes on top.
+   Ink flips light because the card interiors are dark. */
+:root[data-theme='cloudy-navy'] {
+  --c-accent: 34 211 226;
+  --c-accent-hover: 90 226 238;
+  --c-accent-light: 22 41 66;
+  --c-accent-dark: 150 240 248;
+
+  --c-bg: 233 239 246;
+  --c-bg-card: 22 35 63;
+  --c-bg-sidebar: 15 25 47;
+
+  --c-ink: 240 246 252;
+  --c-ink-soft: 214 226 240;
+  --c-ink-muted: 156 176 200;
+  --c-ink-faint: 108 130 158;
+
+  --c-nav: 236 244 252;
+  --c-nav-muted: 160 180 205;
+  --c-nav-bg: 13 22 42;
+
+  --app-bg:
+    radial-gradient(900px 500px at 18% 8%, rgba(255, 255, 255, 0.85), transparent 62%),
+    radial-gradient(1000px 620px at 82% 88%, rgba(176, 196, 222, 0.55), transparent 60%),
+    linear-gradient(135deg, #f4f8fc 0%, #e6edf6 45%, #cfdae9 78%, #b9c8dc 100%);
+  --card-blur: none;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -51,6 +141,13 @@
 }
 
 @layer components {
+  /* Root shell surface — carries the theme's gradient. A plain bg-* utility
+     cannot express a gradient, hence the custom property. */
+  .app-surface {
+    background: var(--app-bg);
+    background-attachment: fixed;
+  }
+
   .card {
     @apply bg-bg-card rounded-card shadow-card;
   }

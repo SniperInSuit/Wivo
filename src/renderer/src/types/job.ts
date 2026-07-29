@@ -16,6 +16,15 @@ export interface Revision {
   print_id?: string   // SprintRay job number for this revision's print
 }
 
+// A dated note on a job. Same shape as PatientNote — kept as its own type so the
+// two can diverge (a job note may later carry a stage, a patient note will not).
+export interface JobNote {
+  id: string      // crypto.randomUUID()
+  ts: string      // ISO datetime
+  autor: string   // author name, from useSettings().kasutajaNimi
+  tekst: string
+}
+
 // Full Job record matching the Supabase `jobs` table
 export interface Job {
   id: string
@@ -34,6 +43,8 @@ export interface Job {
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
   // --- Revision list ---
   revisions: Revision[]     // Multiple revision entries (stored as JSONB)
+  // --- Notes (migration 005) ---
+  markused: JobNote[]       // Märkused — timestamped notes with an author (JSONB)
   // --- Legacy single-revision fields (kept for backward compat, no longer written) ---
   muudatused?: string | null
   rev_hambad?: string | null
@@ -49,8 +60,10 @@ export interface Job {
   updated_at: string
 }
 
-// Partial type for create/edit forms (id and timestamps are server-generated)
-export type JobInput = Omit<Job, 'id' | 'created_at' | 'updated_at'>
+// Partial type for create/edit forms (id and timestamps are server-generated).
+// `markused` is omitted deliberately: notes are written by their own panel while
+// the job is open, so a form save must never carry a stale snapshot of them back.
+export type JobInput = Omit<Job, 'id' | 'created_at' | 'updated_at' | 'markused'>
 
 // Material quick-picks
 export const MATERIAL_OPTIONS = [

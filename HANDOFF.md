@@ -1,7 +1,12 @@
 # Workly — Handoff Notes
 
-## Current version: 1.1.0
+## Current version: 1.6.0
 
+> **Migration rule:** never edit a migration that has already been run — an applied
+> migration is history, and editing it changes nothing in the database. Add a new numbered
+> file instead. This was learned the hard way in 1.1.4: a column added to an already-applied
+> `003` silently broke every Ravikaart save.
+>
 > **Process rule:** every change ships as a new version — bump `package.json` **and** add a
 > `CHANGELOG.md` entry. The changelog is the audit trail we show authorities to prove what the
 > software does and when it changed. No silent edits.

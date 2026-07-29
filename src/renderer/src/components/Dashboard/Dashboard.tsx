@@ -3,9 +3,13 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend
 } from 'recharts'
-import { TrendingUp, Users, Clock, AlertCircle, Euro, CheckCircle, Package, Layers, Zap, Cpu, Timer } from 'lucide-react'
+import { TrendingUp, Users, Clock, AlertCircle, Euro, CheckCircle, Package, Layers, Zap, Cpu, Timer, CalendarClock, UserX, UserPlus, Stethoscope, Repeat } from 'lucide-react'
 import type { Job } from '../../types/job'
 import { type Period, useDashboardStats } from './useDashboardStats'
+import { useVisits } from '../../hooks/useVisits'
+import { usePatients } from '../../hooks/usePatients'
+import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
+import { workTypeHex } from '../../config/workTypes'
 
 const CHART_COLORS = ['#0AB6C4', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#3B82F6']
 
@@ -56,6 +60,15 @@ function StatCard({
   )
 }
 
+// Shared Recharts tooltip chrome — matches the card surface in every theme
+const TOOLTIP_STYLE = {
+  background: 'rgb(var(--c-bg-card))',
+  border: '1px solid rgb(var(--c-ink-faint) / 0.25)',
+  borderRadius: 12,
+  fontSize: 12,
+  color: 'rgb(var(--c-ink))'
+} as const
+
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'month', label: 'See kuu' },
   { key: 'quarter', label: 'See kvartal' },
@@ -69,7 +82,11 @@ interface DashboardProps {
 
 export function Dashboard({ jobs }: DashboardProps) {
   const [period, setPeriod] = useState<Period>('month')
-  const stats = useDashboardStats(jobs, period)
+  // Visits and patients may not exist yet (migrations 001/007) — the hook takes
+  // empty arrays and simply reports zeroes rather than breaking the page.
+  const { data: visits = [] } = useVisits()
+  const { data: patients = [] } = usePatients()
+  const stats = useDashboardStats(jobs, period, visits, patients)
 
   const paidPct =
     stats.totalRevenue > 0
@@ -498,6 +515,158 @@ export function Dashboard({ jobs }: DashboardProps) {
       </section>
 
       <div className="h-4" /> {/* bottom spacer */}
+
+      {/* ─── Visiidid ─── */}
+      <section>
+        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+          Visiidid
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard
+            icon={CalendarClock}
+            label="Visiite kokku"
+            value={stats.visitStats.total}
+            sub={`${stats.visitStats.planeeritud} planeeritud · ${stats.visitStats.toimunud} toimunud`}
+          />
+          <StatCard
+            icon={UserX}
+            label="Ei tulnud"
+            value={`${stats.visitStats.noShowRate.toFixed(0)}%`}
+            sub={`${stats.visitStats.eiTulnud} visiiti · tühistamised välja arvatud`}
+          />
+          <StatCard
+            icon={Timer}
+            label="Ø visiidi kestus"
+            value={`${stats.visitStats.avgKestus.toFixed(0)} min`}
+          />
+          <StatCard
+            icon={AlertCircle}
+            label="Tühistatud"
+            value={stats.visitStats.tuhistatud}
+            sub="ette teatatud"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3">
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink mb-3">Visiidid nädalapäeva järgi</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={stats.visitsByWeekday}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8EC" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="count" name="Visiite" fill="#0AB6C4" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink mb-3">Visiitide seis</p>
+            <div className="space-y-2">
+              {(['planeeritud', 'saabunud', 'toimunud', 'ei_tulnud', 'tuhistatud'] as const).map(st => {
+                const map = {
+                  planeeritud: stats.visitStats.planeeritud,
+                  saabunud: stats.visitStats.saabunud,
+                  toimunud: stats.visitStats.toimunud,
+                  ei_tulnud: stats.visitStats.eiTulnud,
+                  tuhistatud: stats.visitStats.tuhistatud
+                }
+                const count = map[st]
+                const pctOf = stats.visitStats.total > 0 ? (count / stats.visitStats.total) * 100 : 0
+                return (
+                  <div key={st}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="flex items-center gap-1.5 text-ink-muted">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: VISIT_STATUS_HEX[st] }} />
+                        {VISIT_STATUS_LABEL[st]}
+                      </span>
+                      <span className="font-semibold text-ink tabular-nums">{count}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-bg-sidebar overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pctOf}%`, backgroundColor: VISIT_STATUS_HEX[st] }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Kust töö tuleb ─── */}
+      <section>
+        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+          Kust töö tuleb
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink">Top suunavad arstid</p>
+            <p className="text-[11px] text-ink-muted mb-3">Käive patsiendi kaardil oleva arsti järgi</p>
+            {stats.byDoctor.length === 0 ? (
+              <p className="text-sm text-ink-muted">Andmed puuduvad.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(160, stats.byDoctor.length * 30)}>
+                <BarChart data={stats.byDoctor} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8EC" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    type="category" dataKey="name" width={110}
+                    tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(2)} €`, 'Käive']} />
+                  <Bar dataKey="revenue" fill="#0AB6C4" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink">Käive töö liigi järgi</p>
+            <p className="text-[11px] text-ink-muted mb-3">Sama liigitus, mida kalender kasutab</p>
+            {stats.byWorkType.length === 0 ? (
+              <p className="text-sm text-ink-muted">Andmed puuduvad.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {stats.byWorkType.slice(0, 8).map(t => (
+                  <div key={t.name} className="flex items-center gap-2 text-xs">
+                    <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: workTypeHex(t.name) }} />
+                    <span className="text-ink-muted truncate flex-1">{t.name}</span>
+                    <span className="text-ink-faint tabular-nums">{t.count}×</span>
+                    <span className="text-ink-faint tabular-nums w-16 text-right">Ø {t.avgPrice.toFixed(0)} €</span>
+                    <span className="font-semibold text-ink tabular-nums w-20 text-right">{t.revenue.toFixed(2)} €</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Patsiendid ─── */}
+      <section>
+        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+          Patsiendid
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard icon={Users} label="Patsiente kokku" value={stats.patientSummary.total} />
+          <StatCard
+            icon={UserPlus} label="Uusi patsiente" value={stats.patientSummary.newPatients}
+            sub="valitud perioodil lisatud"
+          />
+          <StatCard
+            icon={Repeat} label="Korduvad patsiendid" value={stats.patientSummary.repeatPatients}
+            sub={`${stats.patientSummary.repeatRate.toFixed(0)}% neist, kellel on töid`}
+          />
+          <StatCard
+            icon={Stethoscope} label="Suunavaid arste" value={stats.byDoctor.length}
+            sub="käibe järgi top 8"
+          />
+        </div>
+      </section>
     </div>
   )
 }

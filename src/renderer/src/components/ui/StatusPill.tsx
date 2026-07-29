@@ -1,5 +1,6 @@
 import type { StageKey } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { stageChipStyle } from '../../config/pipeline'
 
 interface StatusPillProps {
   status: StageKey
@@ -13,7 +14,10 @@ export function StatusPill({ status, size = 'sm' }: StatusPillProps) {
 
   return (
     <span
-      className={`inline-flex items-center font-medium rounded-full ${stage.bg} ${stage.color} ${
+      // Coloured from stage.hex so a recoloured stage (Seaded → Töö etapid)
+      // shows its own colour everywhere the pill appears.
+      style={stageChipStyle(stage.hex)}
+      className={`inline-flex items-center font-medium rounded-full ${
         size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1'
       }`}
     >

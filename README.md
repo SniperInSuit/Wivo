@@ -78,6 +78,11 @@ Paste each file into the Supabase **SQL Editor** and run it.
 | `sql/002_patients_rls.sql` | RLS policy for `patients` (required — without it every write is rejected) | 1.0.47 |
 | `sql/003_patient_teeth.sql` | `patient_teeth` table + `patients.varvi_eelistus` / `patients.markused` (required — without it patients cannot be saved) | 1.1.0 |
 | `sql/004_patient_teeth_realtime.sql` | realtime sync for `patient_teeth` (optional) | 1.1.0 |
+| `sql/005_job_notes.sql` | `jobs.markused` — notes on a job (required for the Märkused box) | 1.1.3 |
+| `sql/006_patient_tmj.sql` | `patients.lougaliiges` — TMJ field (required, or saving a patient fails) | 1.1.4 |
+| `sql/007_visits.sql` | `visits` table — patient appointments (required for the Visiidid calendar) | 1.3.0 |
+| `sql/008_visits_realtime.sql` | realtime sync for `visits` (optional) | 1.3.0 |
+| `sql/009_visit_status.sql` | two more visit states — `saabunud`, `ei_tulnud` (required for the quick-action buttons) | 1.4.0 |
 
 **Quit the Workly app before running a migration**, and run each file as its own query. An open
 instance holds realtime subscriptions on `patients` and `jobs`; an `ALTER TABLE` and an

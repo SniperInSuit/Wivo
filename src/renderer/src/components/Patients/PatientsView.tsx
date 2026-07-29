@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import type { Job } from '../../types/job'
 import { EMPTY_PATIENT } from '../../types/patient'
@@ -11,6 +11,12 @@ interface PatientsViewProps {
   jobs: Job[]
   onJobClick: (job: Job) => void
   onRevisionClick?: (job: Job, revisionId: string) => void
+  onJobNoteClick?: (job: Job, noteId: string) => void
+  // Set when another view asked to open a specific patient (a visit, a job).
+  // Cleared through onFocusHandled so returning to Patsiendid later does not
+  // force the same patient open again.
+  focusPatientId?: string | null
+  onFocusHandled?: () => void
   search: string
   onSearchChange: (v: string) => void
 }
@@ -23,7 +29,10 @@ interface PatientsViewProps {
  * The old side-by-side list cost ~300px of every profile for a list the user had
  * already finished using — they picked a patient, so the page belongs to them.
  */
-export function PatientsView({ jobs, onJobClick, onRevisionClick, search, onSearchChange }: PatientsViewProps) {
+export function PatientsView({
+  jobs, onJobClick, onRevisionClick, onJobNoteClick, search, onSearchChange,
+  focusPatientId, onFocusHandled
+}: PatientsViewProps) {
   const { data: patients = [], isLoading, isError, error } = usePatients()
   const createPatient = useCreatePatient()
   const backfill = useBackfillPatients()
@@ -62,6 +71,13 @@ export function PatientsView({ jobs, onJobClick, onRevisionClick, search, onSear
     const res = await backfill.mutateAsync()
     setBackfillMsg(`${res.created} patsienti loodud · ${res.linked} tööd seotud`)
   })
+
+  useEffect(() => {
+    if (!focusPatientId) return
+    setSelectedId(focusPatientId)
+    setProfileDirty(false)
+    onFocusHandled?.()
+  }, [focusPatientId, onFocusHandled])
 
   const goBack = useCallback(() => {
     if (profileDirty && !window.confirm('Salvestamata muudatused lähevad kaotsi. Kas jätkata?')) return
@@ -117,6 +133,7 @@ export function PatientsView({ jobs, onJobClick, onRevisionClick, search, onSear
       jobs={jobs}
       onJobClick={onJobClick}
       onRevisionClick={onRevisionClick}
+      onJobNoteClick={onJobNoteClick}
       onBack={goBack}
       onDeleted={() => { setProfileDirty(false); setSelectedId(null) }}
       onError={err => setActionError(describeError(err))}

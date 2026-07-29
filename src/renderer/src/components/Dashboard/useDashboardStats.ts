@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
 import type { Job } from '../../types/job'
+import type { Visit } from '../../types/visit'
+import type { Patient } from '../../types/patient'
+import { workTypeLabel } from '../../config/workTypes'
 import { usePipeline } from '../../context/PipelineContext'
 
 export type Period = 'month' | 'quarter' | 'year' | 'all'
@@ -28,7 +31,14 @@ function toothCount(s: string | null): number {
   return s.split(',').filter((t) => t.trim()).length
 }
 
-export function useDashboardStats(jobs: Job[], period: Period) {
+// Visits, patients and referring doctors are optional: the hook is also used by
+// the Ülevaade with jobs only, and the visits table may not exist yet.
+export function useDashboardStats(
+  jobs: Job[],
+  period: Period,
+  visits: Visit[] = [],
+  patients: Patient[] = []
+) {
   const { stages, doneStageKey } = usePipeline()
 
   return useMemo(() => {
@@ -157,6 +167,102 @@ export function useDashboardStats(jobs: Job[], period: Period) {
         count
       }))
 
+    // ─── Visits ───────────────────────────────────────────────────────────
+    const start = periodStart(period)
+    const visitsIn = start
+      ? visits.filter(v => v.algus && !isBefore(parseISO(v.algus), start))
+      : visits
+    const byStatus = (st: string) => visitsIn.filter(v => v.staatus === st).length
+    const visitStats = {
+      total: visitsIn.length,
+      planeeritud: byStatus('planeeritud'),
+      saabunud: byStatus('saabunud'),
+      toimunud: byStatus('toimunud'),
+      eiTulnud: byStatus('ei_tulnud'),
+      tuhistatud: byStatus('tuhistatud'),
+      // Share of visits that were expected to happen and did not. Cancellations
+      // are excluded from the denominator: a cancelled visit was called off, a
+      // no-show wasted the slot.
+      noShowRate: 0,
+      avgKestus: visitsIn.length > 0
+        ? visitsIn.reduce((n, v) => n + v.kestus_min, 0) / visitsIn.length
+        : 0
+    }
+    const attended = visitStats.saabunud + visitStats.toimunud
+    const noShowBase = attended + visitStats.eiTulnud
+    visitStats.noShowRate = noShowBase > 0 ? (visitStats.eiTulnud / noShowBase) * 100 : 0
+
+    // Visits per weekday — when the lab is actually busy. 1 = Monday.
+    const dayNames = ['P', 'E', 'T', 'K', 'N', 'R', 'L']
+    const weekdayBuckets = Array.from({ length: 7 }, (_, i) => ({ name: dayNames[i], count: 0 }))
+    visitsIn.forEach(v => {
+      const d = parseISO(v.algus)
+      weekdayBuckets[d.getDay()].count++
+    })
+    // Re-ordered Mon…Sun, which is how the week reads here
+    const visitsByWeekday = [...weekdayBuckets.slice(1), weekdayBuckets[0]]
+
+    // ─── Referring doctors ────────────────────────────────────────────────
+    // Who actually sends the work. Resolved through the patient record, since
+    // the doctor lives there and not on the job.
+    const patientById = new Map(patients.map(p => [p.id, p]))
+    const patientByName = new Map(patients.map(p => [p.nimi.trim().toLowerCase(), p]))
+    const doctorOf = (j: Job): string => {
+      const p = (j.patient_id ? patientById.get(j.patient_id) : undefined)
+        ?? patientByName.get((j.patsient ?? '').trim().toLowerCase())
+      return p?.arst?.trim() || p?.kliinik?.trim() || 'Määramata'
+    }
+    const doctorBuckets = new Map<string, { jobs: number; revenue: number }>()
+    filtered.forEach(j => {
+      const key = doctorOf(j)
+      const cur = doctorBuckets.get(key) ?? { jobs: 0, revenue: 0 }
+      cur.jobs++
+      cur.revenue += jobTotal(j)
+      doctorBuckets.set(key, cur)
+    })
+    const byDoctor = [...doctorBuckets.entries()]
+      .map(([name, v]) => ({ name, ...v, revenue: Math.round(v.revenue * 100) / 100 }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 8)
+
+    // ─── Work types ───────────────────────────────────────────────────────
+    // Proper classification, not the old "first word of the too field" split.
+    const typeBuckets = new Map<string, { count: number; teeth: number; revenue: number }>()
+    filtered.forEach(j => {
+      const key = workTypeLabel(j.too)
+      const cur = typeBuckets.get(key) ?? { count: 0, teeth: 0, revenue: 0 }
+      cur.count++
+      cur.teeth += toothCount(j.hambad) + revTeethOf(j)
+      cur.revenue += jobTotal(j)
+      typeBuckets.set(key, cur)
+    })
+    const byWorkType = [...typeBuckets.entries()]
+      .map(([name, v]) => ({
+        name, ...v,
+        revenue: Math.round(v.revenue * 100) / 100,
+        avgPrice: v.count > 0 ? Math.round((v.revenue / v.count) * 100) / 100 : 0
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+
+    // ─── Patients ─────────────────────────────────────────────────────────
+    const newPatients = start
+      ? patients.filter(p => p.created_at && !isBefore(parseISO(p.created_at), start)).length
+      : patients.length
+    const jobCountByPatient = new Map<string, number>()
+    filtered.forEach(j => {
+      const k = (j.patsient ?? '').trim().toLowerCase()
+      if (k) jobCountByPatient.set(k, (jobCountByPatient.get(k) ?? 0) + 1)
+    })
+    const repeatPatients = [...jobCountByPatient.values()].filter(n => n > 1).length
+    const patientStatsSummary = {
+      total: patients.length,
+      newPatients,
+      repeatPatients,
+      repeatRate: jobCountByPatient.size > 0
+        ? (repeatPatients / jobCountByPatient.size) * 100
+        : 0
+    }
+
     // Current WIP by stage
     const wipByStage = stages.map((s) => ({
       name: s.label,
@@ -212,7 +318,12 @@ export function useDashboardStats(jobs: Job[], period: Period) {
       weakestTeeth,
       strongestTeeth,
       originalTeeth,
-      revisionTeeth
+      revisionTeeth,
+      visitStats,
+      visitsByWeekday,
+      byDoctor,
+      byWorkType,
+      patientSummary: patientStatsSummary
     }
-  }, [jobs, period, stages, doneStageKey])
+  }, [jobs, period, stages, doneStageKey, visits, patients])
 }

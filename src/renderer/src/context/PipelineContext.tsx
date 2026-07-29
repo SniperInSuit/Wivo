@@ -50,6 +50,7 @@ interface PipelineContextValue {
   addStage: (label: string) => void
   removeStage: (key: string) => void
   renameStage: (key: string, newLabel: string) => void
+  recolorStage: (key: string, hex: string) => void
   moveStage: (key: string, direction: 'up' | 'down') => void
   resetToDefaults: () => void
 }
@@ -97,6 +98,17 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Only `hex` is stored. The Tailwind class fields on PipelineStage are legacy —
+  // a user-picked colour can never be a Tailwind class, so every consumer now
+  // renders from hex via inline styles (see StatusPill).
+  const recolorStage = useCallback((key: string, hex: string) => {
+    setStages(prev => {
+      const next = prev.map(s => (s.key === key ? { ...s, hex } : s))
+      saveStages(next)
+      return next
+    })
+  }, [])
+
   const moveStage = useCallback((key: string, direction: 'up' | 'down') => {
     setStages(prev => {
       const idx = prev.findIndex(s => s.key === key)
@@ -121,8 +133,8 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
   const doneStageKey = stages[stages.length - 1]?.key ?? 'valmis'
 
   const value = useMemo<PipelineContextValue>(
-    () => ({ stages, stageMap, doneStageKey, addStage, removeStage, renameStage, moveStage, resetToDefaults }),
-    [stages, stageMap, doneStageKey, addStage, removeStage, renameStage, moveStage, resetToDefaults]
+    () => ({ stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults }),
+    [stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults]
   )
 
   return <PipelineContext.Provider value={value}>{children}</PipelineContext.Provider>

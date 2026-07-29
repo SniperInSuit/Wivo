@@ -61,6 +61,12 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
   const lines = buildLines(jobs)
   const revisionCount = lines.filter(l => l.revision).length
 
+  // Distinct stages appearing in these rows, in pipeline order
+  const usedStages = (() => {
+    const keys = new Set(lines.map(l => (l.revision?.status ?? l.job.status)))
+    return [...keys].map(k => stageMap[k]).filter(Boolean)
+  })()
+
   return (
     <PanelCard
       title="TÖÖDE AJALUGU"
@@ -81,11 +87,9 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
             <thead>
               <tr className="border-b border-ink-faint/15">
                 <Th>Tellimus</Th>
-                <Th>Kuupäev</Th>
                 <Th>Töö</Th>
                 <Th>Materjal / Värv</Th>
                 <Th>Hambad</Th>
-                <Th>Staatus</Th>
                 <Th align="right">Hind</Th>
                 <Th>Makstud</Th>
               </tr>
@@ -114,16 +118,21 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                       isRev ? 'bg-bg-sidebar/40 hover:bg-bg-sidebar' : 'hover:bg-bg-sidebar'
                     }`}
                   >
-                    <td className="py-2 pr-3 font-mono text-[11px] text-ink-muted whitespace-nowrap">
-                      {isRev ? (
-                        <span className="flex items-center gap-1 pl-3">
-                          <CornerDownRight size={10} className="text-ink-faint" />
-                          {ref}-M{index}
-                        </span>
-                      ) : ref}
-                    </td>
-                    <td className="py-2 pr-3 text-ink-soft whitespace-nowrap">
-                      {d && isValid(d) ? format(d, 'dd.MM.yyyy') : '—'}
+                    {/* Stage is the coloured edge, not a text column — an inset
+                        shadow so it costs no layout width. Legend is below the
+                        table. */}
+                    <td
+                      className="py-1.5 pl-2.5 pr-3 whitespace-nowrap"
+                      style={{ boxShadow: `inset 3px 0 0 ${stageMap[status]?.hex ?? '#A8B4BE'}` }}
+                      title={stageMap[status]?.label ?? status}
+                    >
+                      <span className={`flex items-center gap-1 font-mono text-[11px] text-ink-muted ${isRev ? 'pl-2' : ''}`}>
+                        {isRev && <CornerDownRight size={10} className="text-ink-faint flex-shrink-0" />}
+                        {isRev ? `${ref}-M${index}` : ref}
+                      </span>
+                      <span className={`block text-[10px] text-ink-faint ${isRev ? 'pl-5' : ''}`}>
+                        {d && isValid(d) ? format(d, 'dd.MM.yyyy') : '—'}
+                      </span>
                     </td>
                     <td className={`py-2 pr-3 ${isRev ? 'text-ink-soft' : 'text-ink font-medium'}`}>
                       <span className="flex items-center gap-1.5">
@@ -144,12 +153,6 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                     <td className="py-2 pr-3">
                       <ToothBadges hambad={teeth} max={4} />
                     </td>
-                    <td className="py-2 pr-3 text-ink-soft whitespace-nowrap">
-                      {/* Plain label, not <StatusPill> — the pill renders nothing
-                          for a stage deleted from the user's pipeline, which
-                          would blank the column. */}
-                      {stageMap[status]?.label ?? status}
-                    </td>
                     <td className="py-2 pr-3 text-right font-semibold text-ink whitespace-nowrap">
                       {price.toFixed(2)} €
                     </td>
@@ -169,11 +172,23 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
             </tbody>
           </table>
 
-          {revisionCount > 0 && (
-            <p className="text-[10px] text-ink-faint mt-2">
-              Taandega read on muudatused, mis kuuluvad ülal oleva töö juurde.
-              Tööde ja muudatuste hinnad kokku: {jobs.reduce((s, j) => s + jobTotal(j), 0).toFixed(2)} €
-            </p>
+          {/* Colour key for the row edges — only the stages actually present, so
+              it stays a single quiet line rather than the whole pipeline. */}
+          {usedStages.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2.5 pt-2 border-t border-ink-faint/10">
+              {usedStages.map(st => (
+                <span key={st.key} className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+                  <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: st.hex }} />
+                  {st.label}
+                </span>
+              ))}
+              {revisionCount > 0 && (
+                <span className="flex items-center gap-1 text-[10px] text-ink-faint ml-auto">
+                  <CornerDownRight size={9} />
+                  taane = muudatus · kokku {jobs.reduce((s, j) => s + jobTotal(j), 0).toFixed(2)} €
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}

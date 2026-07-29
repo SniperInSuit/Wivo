@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { ArrowLeft, ShieldAlert } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import type { Job } from '../../types/job'
 import type { Patient, PatientInput } from '../../types/patient'
 import { useUpdatePatient, useDeletePatient } from '../../hooks/usePatients'
@@ -12,12 +13,16 @@ import { JobHistoryPanel } from './JobHistoryPanel'
 import { InvoicesPanel } from './InvoicesPanel'
 import { NotesPanel } from './NotesPanel'
 import { LastModifiedPanel } from './LastModifiedPanel'
+import { VisitsPanel } from './VisitsPanel'
+import { VisitForm } from '../CalendarView/VisitForm'
+import type { Visit } from '../../types/visit'
 
 interface PatientProfileProps {
   patient: Patient
   jobs: Job[]
   onJobClick: (job: Job) => void
   onRevisionClick?: (job: Job, revisionId: string) => void
+  onJobNoteClick?: (job: Job, noteId: string) => void
   onDeleted: () => void
   onError: (err: unknown) => void
   // Reported upward so switching patients mid-edit can warn instead of silently
@@ -66,7 +71,7 @@ function formFromPatient(p: Patient): PatientInput {
  * re-seeding on that echo would wipe whatever the user was typing.
  */
 export function PatientProfile({
-  patient, jobs, onJobClick, onRevisionClick, onDeleted, onError, onDirtyChange, onBack,
+  patient, jobs, onJobClick, onRevisionClick, onJobNoteClick, onDeleted, onError, onDirtyChange, onBack,
   actionError, onDismissError
 }: PatientProfileProps) {
   const updatePatient = useUpdatePatient()
@@ -76,6 +81,9 @@ export function PatientProfile({
   const [form, setForm] = useState<PatientInput>(() => formFromPatient(patient))
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [armedAt, setArmedAt] = useState<number | null>(null)
+  // Visits are edited through the same side panel the calendar uses — one form,
+  // one place the validation lives.
+  const [visitForm, setVisitForm] = useState<{ visit: Visit | null } | null>(null)
 
   // Disarm the delete confirm after a few seconds. Without this the trash button
   // stays armed for as long as the profile is mounted, so a click now and an
@@ -216,12 +224,31 @@ export function PatientProfile({
         {/* Bottom row 50 / 25 / 25 */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           <div className="lg:col-span-2">
-            <NotesPanel patient={patient} onError={onError} />
+            <NotesPanel
+              patient={patient}
+              patientJobs={patientJobs}
+              orderRefs={orderRefs}
+              onError={onError}
+              onOpenJobNote={onJobNoteClick}
+            />
           </div>
           <InvoicesPanel stats={stats} />
           <LastModifiedPanel patient={patient} patientJobs={patientJobs} />
         </div>
       </div>
+
+      <AnimatePresence>
+        {visitForm && (
+          <VisitForm
+            key={visitForm.visit?.id ?? 'new'}
+            visit={visitForm.visit}
+            // A new visit from the profile is pre-filled with this patient, so the
+            // link is never left dangling.
+            prefillPatient={visitForm.visit ? undefined : { id: patient.id, nimi: patient.nimi, arst: patient.arst }}
+            onClose={() => setVisitForm(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

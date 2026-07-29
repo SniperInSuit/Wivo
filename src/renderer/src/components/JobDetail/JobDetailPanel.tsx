@@ -6,11 +6,13 @@ import {
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
 import { MATERIAL_OPTIONS, MATERIAL_SHADES, MACHINE_OPTIONS } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { stageChipStyle } from '../../config/pipeline'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
+import { JobTimeline } from './JobTimeline'
 import { StatusPill } from '../ui/StatusPill'
 import { useSettings, calcProduction, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 
@@ -41,6 +43,8 @@ interface JobDetailPanelProps {
   position?: 'side' | 'bottom'  // default: side
   initialDate?: string           // pre-fill valmis_aeg for new jobs (ISO or datetime-local)
   highlightRevisionId?: string   // auto-expand + scroll to this revision on open
+  highlightNoteId?: string       // scroll to + highlight this note on open
+  onOpenPatient?: (patientId: string) => void
 }
 
 const EMPTY_FORM: JobInput = {
@@ -125,7 +129,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           )}
           {(prodPrice > 0 || form.disain_hind != null) && (() => {
             const base = prodPrice + (form.disain_hind ?? 0)
-            const total = form.kiirtoo ? base * 2 : base
+            const total = form.kiirtoo ? base * settings.kiirtooKordaja : base
             return (
               <>
                 <div className="border-t border-ink-faint/20 pt-1.5 flex items-center justify-between">
@@ -213,7 +217,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
   )
 }
 
-export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId }: JobDetailPanelProps) {
+export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId, highlightNoteId, onOpenPatient }: JobDetailPanelProps) {
   const isBottom = position === 'bottom'
   const { settings } = useSettings()
   const { stages } = usePipeline()
@@ -222,6 +226,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
   const [editing, setEditing] = useState(job == null)
+  // Which variant the read view is showing: null = the original job, otherwise a
+  // revision id. Seeded from the row that was clicked, so opening a "-M1" line
+  // from the patient history lands on that revision instead of the original.
+  const [activeRevId, setActiveRevId] = useState<string | null>(highlightRevisionId ?? null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Auto-price mode: on for new jobs OR existing jobs with no price set
@@ -272,7 +280,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     }
     setDeleteConfirm(false)
     setEditing(job == null)
-  }, [job])
+    setActiveRevId(highlightRevisionId ?? null)
+  // Keyed on the job ID, not the object: adding a note refetches `jobs` and hands
+  // us a new object for the same job. Re-running on that would reset the variant
+  // selection and, mid-edit, overwrite the form with server values.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.id, highlightRevisionId])
 
   const set = useCallback(<K extends keyof JobInput>(key: K, val: JobInput[K]) => {
     setForm(f => ({ ...f, [key]: val }))
@@ -287,13 +300,20 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     const p = form.materjal
       ? calcProduction(h, form.materjal, settings.materialPrices)
       : 0
-    const base = p > 0 ? p : toothCount * 15
-    const total = form.kiirtoo ? base * 2 : base
+    // Fallback €/tooth when the material has no price set — Seaded → Hinnad
+    const base = p > 0 ? p : toothCount * settings.hambaHind
+    const total = form.kiirtoo ? base * settings.kiirtooKordaja : base
     set('hind', parseFloat(total.toFixed(2)))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.hambad, form.materjal, form.kiirtoo])
 
   // Auto-calculate: small teeth + large teeth from settings, plus design fee
+  // The revision currently being viewed, if any — drives both the timeline and
+  // the read view so they never disagree about what is on screen.
+  const activeRev = job && activeRevId
+    ? (job.revisions ?? []).find(r => r.id === activeRevId) ?? null
+    : null
+
   const hambad = form.hambad ?? ''
   const smallCount = countSmallTeeth(hambad)
   const largeCount = countLargeTeeth(hambad)
@@ -365,11 +385,37 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
         {/* Panel header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ink-faint/20 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base font-semibold text-ink">
-              {!job ? 'Uus töö' : editing ? 'Muuda tööd' : (job.too || 'Töö')}
-            </h2>
-            {job && <StatusPill status={job.status} />}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <h2 className="text-base font-semibold text-ink truncate">
+                {!job ? 'Uus töö' : editing ? 'Muuda tööd' : (job.too || 'Töö')}
+                {job && !editing && !activeRev && job.print_id && (
+                  <span className="text-ink-muted font-normal"> · {job.print_id}</span>
+                )}
+                {activeRev && !editing && (
+                  <span className="text-accent font-normal">
+                    {' '}· muudatus {(job?.revisions ?? []).findIndex(r => r.id === activeRev.id) + 1}
+                  </span>
+                )}
+              </h2>
+              {job && <StatusPill status={activeRev?.status ?? job.status} />}
+            </div>
+            {/* Identity line: who, what, when — the three things you check first */}
+            {job && !editing && (
+              <div className="flex items-center gap-3 mt-1 text-xs text-ink-muted min-w-0">
+                <span className="truncate">{job.patsient}</span>
+                {(() => {
+                  const t = (activeRev ? activeRev.hambad : job.hambad) ?? ''
+                  const n = t.split(',').filter(x => x.trim()).length
+                  return n > 0 ? <span className="whitespace-nowrap">{n} hammast</span> : null
+                })()}
+                <span className="whitespace-nowrap">
+                  {activeRev
+                    ? (activeRev.ts ?? '').slice(0, 10).split('-').reverse().join('.')
+                    : (job.kuupaev ? job.kuupaev.split('-').reverse().join('.') : '')}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {job && onDelete && (
@@ -415,9 +461,29 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
         {/* Read-only view of an existing job — the form is one click away */}
         {job && !editing ? (
-          <div className="flex-1 overflow-y-auto">
-            <JobReadView job={job} isBottom={isBottom} highlightRevisionId={highlightRevisionId} />
-          </div>
+          <>
+            <JobTimeline
+              job={job}
+              status={activeRev?.status ?? job.status}
+              finishedAt={activeRev ? (activeRev.deadline ?? null) : undefined}
+            />
+            <div className="flex-1 overflow-y-auto">
+              <JobReadView
+                job={job}
+                isBottom={isBottom}
+                activeRevisionId={activeRevId}
+                onSelectVariant={setActiveRevId}
+                highlightNoteId={highlightNoteId}
+                onOpenPatient={onOpenPatient}
+                onMarkPaid={() => {
+                  // Reuses the normal save path, so it closes the panel like any
+                  // other save — the list behind it shows the new state.
+                  const today = new Date().toISOString().split('T')[0]
+                  void onSave({ ...form, makstud: true, makse_kuupaev: today } as JobInput)
+                }}
+              />
+            </div>
+          </>
         ) : (
         /* Scrollable form body — grid-cols-1 (side) or grid-cols-2 (bottom) */
         <form id="job-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
@@ -439,9 +505,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       key={s.key}
                       type="button"
                       onClick={() => set('status', s.key as StageKey)}
+                      // Selected state comes from the stage's hex, so a recoloured
+                      // stage reads the same here as on the board and in the pills.
+                      style={form.status === s.key ? stageChipStyle(s.hex) : undefined}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all duration-100 ${
                         form.status === s.key
-                          ? `${s.bg} ${s.color} border-current`
+                          ? 'border-current'
                           : 'bg-bg-sidebar text-ink-muted border-transparent hover:border-ink-faint/40'
                       }`}
                     >
@@ -691,7 +760,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* Muudatused */}
               <RevisionBlock
                 value={form.revisions}
-                autoExpandId={highlightRevisionId}
+                // Whichever variant was on screen in view mode — so pressing
+                // Muuda while looking at a revision opens that revision expanded.
+                autoExpandId={activeRevId ?? highlightRevisionId}
                 onChange={revs => set('revisions', revs)}
               />
             </div>

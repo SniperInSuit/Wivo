@@ -52,7 +52,13 @@ export function BoardColumn({
   return (
     <div className={`flex flex-col flex-shrink-0 ${wide ? 'min-w-[500px] w-[500px]' : 'min-w-[240px] w-[240px]'}`}>
       {/* ── Column header ── */}
-      <div className={`flex items-center justify-between px-3 py-2 rounded-t-card border-t-2 bg-bg-card mb-0.5 ${stage.border}`}>
+      {/* Accent bar from stage.hex, not the legacy Tailwind border class — a
+          user-picked colour can never be a class, so the class field goes stale
+          the moment a stage is recoloured in Seaded. */}
+      <div
+        className="flex items-center justify-between px-3 py-2 rounded-t-card border-t-2 bg-bg-card mb-0.5"
+        style={{ borderTopColor: stage.hex }}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stage.hex }} />
           <div className="flex flex-col leading-tight min-w-0">

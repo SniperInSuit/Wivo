@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { MessageSquare, Loader2, Plus, Trash2, X } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { MessageSquare, Loader2, Plus, Trash2, X, ExternalLink } from 'lucide-react'
+import { format, parseISO, isValid } from 'date-fns'
+import type { Job, JobNote } from '../../types/job'
 import type { Patient, PatientNote } from '../../types/patient'
 import { useUpdatePatient } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
@@ -8,10 +9,20 @@ import { PanelCard } from './PanelCard'
 
 interface NotesPanelProps {
   patient: Patient
+  patientJobs: Job[]
+  orderRefs: Map<string, string>
   onError: (err: unknown) => void
+  onOpenJobNote?: (job: Job, noteId: string) => void
 }
 
-export function NotesPanel({ patient, onError }: NotesPanelProps) {
+// One line in the merged list. Job notes are MIRRORED here, not copied: the note
+// lives on the job and is only read from it, so there is a single source of truth
+// and no risk of the two drifting apart.
+type Entry =
+  | { kind: 'patient'; note: PatientNote }
+  | { kind: 'job'; note: JobNote; job: Job; ref: string }
+
+export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJobNote }: NotesPanelProps) {
   const updatePatient = useUpdatePatient()
   const { settings } = useSettings()
   const [draft, setDraft] = useState('')
@@ -21,7 +32,20 @@ export function NotesPanel({ patient, onError }: NotesPanelProps) {
   // `markused` only exists once sql/003_patient_teeth.sql has run — every row
   // fetched before that returns undefined, not [] (risk R18).
   const notes = patient.markused ?? []
-  const sorted = [...notes].sort((a, b) => b.ts.localeCompare(a.ts))
+
+  const entries: Entry[] = [
+    ...notes.map(note => ({ kind: 'patient' as const, note })),
+    ...patientJobs.flatMap(job =>
+      (job.markused ?? []).map(note => ({
+        kind: 'job' as const,
+        note,
+        job,
+        ref: orderRefs.get(job.id) ?? job.too ?? 'töö'
+      }))
+    )
+  ].sort((a, b) => (b.note.ts ?? '').localeCompare(a.note.ts ?? ''))
+
+  const jobNoteCount = entries.filter(e => e.kind === 'job').length
 
   async function addNote() {
     const tekst = draft.trim()
@@ -52,47 +76,76 @@ export function NotesPanel({ patient, onError }: NotesPanelProps) {
   }
 
   return (
-    <PanelCard title="MÄRKUSED" icon={MessageSquare}>
+    <PanelCard
+      title="MÄRKUSED"
+      icon={MessageSquare}
+      action={
+        jobNoteCount > 0
+          ? <span className="text-[11px] text-ink-muted">{jobNoteCount} tööde märkust</span>
+          : undefined
+      }
+    >
       <div className="space-y-3">
-        {sorted.length === 0 && <p className="text-sm text-ink-muted">Märkusi pole.</p>}
-        {sorted.map(n => (
-          <div key={n.id} className="space-y-0.5 group">
-            <div className="flex items-baseline gap-2">
-              <span className="text-xs font-semibold text-ink">{n.autor}</span>
-              <span className="text-[10px] text-ink-faint">
-                {format(parseISO(n.ts), 'dd.MM.yy HH:mm')}
-              </span>
+        {entries.length === 0 && <p className="text-sm text-ink-muted">Märkusi pole.</p>}
 
-              {confirmId === n.id ? (
-                <span className="ml-auto flex items-center gap-1.5">
+        {entries.map(entry => {
+          const n = entry.note
+          const d = n.ts ? parseISO(n.ts) : null
+          const isJob = entry.kind === 'job'
+
+          return (
+            <div key={`${entry.kind}:${n.id}`} className="space-y-0.5 group">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                {isJob && (
+                  // The work tag: which job this note came from. Clicking opens
+                  // that job with this note highlighted.
                   <button
-                    onClick={() => removeNote(n.id)}
-                    disabled={updatePatient.isPending}
-                    className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-40"
+                    type="button"
+                    onClick={() => onOpenJobNote?.(entry.job, n.id)}
+                    disabled={!onOpenJobNote}
+                    title={`Ava ${entry.job.too ?? 'töö'}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-mono font-medium bg-accent-light text-accent-dark rounded px-1.5 py-0.5 hover:bg-accent hover:text-white transition-colors disabled:hover:bg-accent-light disabled:hover:text-accent-dark"
                   >
-                    Kustuta
+                    {entry.ref}
+                    <ExternalLink size={9} />
                   </button>
-                  <button
-                    onClick={() => setConfirmId(null)}
-                    className="text-ink-faint hover:text-ink"
-                    title="Tühista"
-                  >
-                    <X size={11} />
-                  </button>
+                )}
+                <span className="text-xs font-semibold text-ink">{n.autor}</span>
+                <span className="text-[10px] text-ink-faint">
+                  {d && isValid(d) ? format(d, 'dd.MM.yy HH:mm') : '—'}
                 </span>
-              ) : (
-                <button
-                  onClick={() => setConfirmId(n.id)}
-                  title="Kustuta märkus"
-                  className="ml-auto text-ink-faint hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={11} />
-                </button>
-              )}
+
+                {/* Only patient notes are deletable here — a job note belongs to
+                    its job, and deleting it from two places invites confusion. */}
+                {!isJob && (
+                  confirmId === n.id ? (
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <button
+                        onClick={() => removeNote(n.id)}
+                        disabled={updatePatient.isPending}
+                        className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-40"
+                      >
+                        Kustuta
+                      </button>
+                      <button onClick={() => setConfirmId(null)} className="text-ink-faint hover:text-ink" title="Tühista">
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmId(n.id)}
+                      title="Kustuta märkus"
+                      className="ml-auto text-ink-faint hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )
+                )}
+              </div>
+              <p className="text-sm text-ink-soft whitespace-pre-wrap">{n.tekst}</p>
             </div>
-            <p className="text-sm text-ink-soft whitespace-pre-wrap">{n.tekst}</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="space-y-2 pt-1">
@@ -100,7 +153,7 @@ export function NotesPanel({ patient, onError }: NotesPanelProps) {
           value={draft}
           onChange={e => setDraft(e.target.value)}
           rows={3}
-          placeholder="Uus märkus…"
+          placeholder="Uus märkus patsiendi kohta…"
           className="input resize-none"
         />
         <button
@@ -111,6 +164,11 @@ export function NotesPanel({ patient, onError }: NotesPanelProps) {
           {updatePatient.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           Lisa märkus
         </button>
+        {jobNoteCount > 0 && (
+          <p className="text-[10px] text-ink-faint">
+            Sildiga read on tööde märkused — neid muudetakse ja kustutatakse töö kaardil.
+          </p>
+        )}
       </div>
     </PanelCard>
   )

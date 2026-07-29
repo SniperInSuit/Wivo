@@ -6,6 +6,7 @@ import {
 } from 'date-fns'
 import type { Job, StageKey } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { stageChipStyle } from '../../config/pipeline'
 import { StatusPill } from '../ui/StatusPill'
 import { ShadeChip } from '../ui/ShadeChip'
 
@@ -224,10 +225,11 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               <button
                 key={s.key}
                 onClick={() => setStageFilter(s.key)}
+                // From stage.hex, not the legacy class pair — the class fields go
+                // stale as soon as a stage is recoloured in Seaded.
+                style={stageFilter === s.key ? stageChipStyle(s.hex) : undefined}
                 className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                  stageFilter === s.key
-                    ? `${s.bg} ${s.color}`
-                    : 'text-ink-muted hover:text-ink bg-bg-sidebar'
+                  stageFilter === s.key ? '' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
                 }`}
               >
                 {s.label} ({count})
@@ -271,7 +273,8 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                 key={s.key}
                 disabled={bulkWorking}
                 onClick={() => handleBulkStatus(s.key as StageKey)}
-                className={`text-xs px-2.5 py-1 rounded-lg font-medium border transition-all duration-100 disabled:opacity-50 ${s.bg} ${s.color} border-transparent hover:opacity-80`}
+                style={stageChipStyle(s.hex)}
+                className="text-xs px-2.5 py-1 rounded-lg font-medium border border-transparent transition-all duration-100 disabled:opacity-50 hover:opacity-80"
               >
                 {s.label}
               </button>

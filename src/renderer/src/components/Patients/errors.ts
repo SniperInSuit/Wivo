@@ -9,7 +9,7 @@ export function describeError(err: unknown): string {
   // fix is a different migration. Happens when 003 has not been run yet and the
   // app writes patients.markused / patients.varvi_eelistus.
   if (e?.code === 'PGRST204' || e?.code === '42703' || /column .* does not exist/i.test(e?.message ?? '')) {
-    return 'Andmebaasis puudub veerg. Käivita sql/003_patient_teeth.sql Supabase SQL-redaktoris.'
+    return 'Andmebaasis puudub veerg. Käivita sql/003_patient_teeth.sql ja sql/005_job_notes.sql Supabase SQL-redaktoris.'
   }
   if (e?.code === '42P01' || /does not exist/i.test(e?.message ?? '')) {
     return 'Patsientide tabelit pole. Käivita sql/001_patients.sql, sql/002_patients_rls.sql ja sql/003_patient_teeth.sql.'

@@ -1,5 +1,242 @@
 # Changelog
 
+## [1.6.0] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Statistika — kolm uut plokki andmete kohta, mida seni ei mõõdetud**
+- **Visiidid**: visiite kokku, **ei tulnud %**, keskmine visiidi kestus, tühistatud. Ei-tulnud protsent arvutatakse ainult nendest visiitidest, mida oodati — tühistatud on nimetajast välja jäetud, sest tühistatud aeg oli teada, ilmumata jäetud aeg läks raisku
+- **Visiidid nädalapäeva järgi** (tulpdiagramm) — millal on päriselt kiire
+- **Visiitide seis** ribadena: planeeritud / saabunud / toimunud / ei tulnud / tühistatud
+- **Kust töö tuleb**: top suunavad arstid käibe järgi. Arst tuleb patsiendi kaardilt, sest seal seda hoitakse — see näitab, kes sulle päriselt tööd saadab
+- **Käive töö liigi järgi** koos keskmise hinnaga liigi kohta. Kasutab sama liigitust, mida kalender — mitte enam `too` välja esimest sõna
+- **Patsiendid**: patsiente kokku, uusi perioodil, korduvad patsiendid ja korduvuse protsent
+
+**Seaded — üheksa uut valikut, mis kõik olid varem koodis kinni**
+- **Kalender**: nädalavaate algus- ja lõputund (oli 09–18 fikseeritud), ajajoone algus- ja lõputund (oli 07–19), lohistamise samm (oli 15 min), visiidi vaikimisi kestus (oli 30 min)
+- **Hinnad → Automaatarvutus**: vaikimisi hind hamba kohta (oli 15 €), muudatuse hind hamba kohta (oli 8 €), kiirtöö kordaja (oli ×2)
+- Need ei olnud seadistatavad, mis tähendas, et rakendus eeldas ühe kindla labori tööpäeva ja hinnakirja
+
+## [1.5.1] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- **Nädalavaate ruudustikul on nüüd üleval ja all ruumi** (16 px / 20 px). Varem olid 09:00 ja 18:00 sildid ruudustiku täpsel serval ja lõikusid pooleks, ning 09:00 visiit istus vastu päisejoont
+- Kogu paigutus — sildid, tunnijooned, visiitide plokid, kellaajajoon ja lohistamise eelvaade — arvutatakse ühest funktsioonist, nii et nihe kehtib kõigile korraga ja miski ei jää teistest maha
+- **Klõpsu ja lohistamise kellaaeg arvutatakse ikka ruudustiku enda piires**, mitte polsterduse sees: ülemisse serva klõps annab 09:00, mitte 08:45
+- **Pikk visiit lõpeb 18:00 juures**, mitte ei ulatu alumisse polsterdusse
+
+## [1.5.0] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade visiitidele**
+- Kalendri **Visiidid** vaates on nüüd lüliti **Kuu / Nädal**. Kuu on nagu varem; nädal on uus
+- **Nädalavaade on vertikaalne ajaruudustik** 09:00–18:00, seitse päevaveergu kõrvuti. Visiit on plokk, mille kõrgus vastab kestusele — nii on kohe näha, kes tuleb kelle järel ja kui tihe päev on
+- **Lohistamine muudab aega ja päeva**: võta visiit ja vii teise kellaaega või teise päeva. Kukkumiskoht näitab kellaaega ette, aeg klapsub 15 minuti sammu. Kestus jääb samaks
+- **Topeltklõps tühjal alal** lisab visiidi sellele kellaajale
+- **Kattuvad visiidid jagavad veeru laiust** — kaks 09:00 saabujat seisavad kõrvuti, mitte üksteise peal
+- Punane joon näitab praegust kellaaega tänase päeva veerus
+- Nädalate vahel liikumine noolte või „Jooksev nädal" nupuga — mugav, kui on vaja mõni visiit ümber tõsta
+- Legend vahetub koos vaatega: nädalavaates näitab see visiidi seise, mitte tootmisetappe, sest tootmine ei ole seal ekraanil
+
+**Miks lüliti on ainult Visiidid vaates:** Kombineeritud vaates on juba horisontaalne ajajoon, mis vastab samale küsimusele tänase päeva kohta. Sama asja kaks korda samal lehel ei aita
+
+## [1.4.2] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- **Patsiendi profiilil on nüüd VISIIDID paneel** — kogu selle patsiendi visiitide ajalugu, uuemad ees: kuupäev, kellaaeg, suunav arst, kestus, märkus ja staatus
+- **Järgmine planeeritud visiit on eraldi esile tõstetud** paneeli ülaosas — see on ainus rida, mida on vaja enne kui ülejäänud ajalugu lugema hakkad
+- **„N× ei tulnud kohale"** hoiatus, kui patsiendil on ilmumata jätmisi — see on muster, mida tasub näha enne järgmise aja kokkuleppimist
+- Visiidi klõps avab sama paremalt libiseva vormi, mida kalender kasutab — üks vorm, üks koht kus valideerimine elab
+- **„Lisa visiit" profiililt täidab patsiendi ette ära** (koos suunava arstiga tema kaardilt), nii et profiililt loodud visiit ei saa jääda sidumata ega sattuda vale inimese alla
+- Visiidid leitakse `patient_id` järgi või nime järgi neil, mis on kirja pandud enne sidumist — sama vaste, mida tööde ajalugu juba kasutab
+- Kui `sql/007_visits.sql` pole käivitatud, näitab paneel seda, mitte tühja kohta
+
+## [1.4.1] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- **„Lisa visiit" avaneb nüüd paremalt libiseva paneelina**, mitte keskele hüppava aknana. Keskele tsentreeritud aken jooksis väiksema akna korral ekraanilt välja; nüüd on see sama käitumine nagu töödel
+- **Patsiendi profiili saab avada visiidi ja töö juurest**:
+  - visiidi paneelis nupp „Ava patsiendi profiil" patsiendivälja all
+  - kalendri paremas paneelis väike nool visiidi patsiendi nime kõrval
+  - töö kaardil (vaatamisrežiimis) „Ava profiil" patsiendi all
+- Profiili avamine sulgeb enne avatud paneelid — need on ekraani külge kinnitatud ja kataksid muidu just avatud lehe
+- Töö puhul, mis on imporditud ja millel `patient_id` puudub, leitakse patsient nime järgi — sama vaste, mille alusel tema tööde ajalugu juba koostatakse
+- Kui visiit või töö ei ole ühegi patsiendikaardiga seotud, siis nuppu ei kuvata, vaid seisab selgitus „Vali nimekirjast patsient, et profiili avada" — sidumata nimel ei ole profiili, mida avada
+
+## [1.4.0] — 2026-07-30
+**Käivita `sql/009_visit_status.sql`** Supabase SQL-redaktoris (Workly kinni). Olemasolevad visiidid jäävad puutumata — kõik kolm senist staatust kehtivad edasi.
+
+**Visiidil on nüüd viis staatust ja üheklõpsu nupud**
+- Uued staatused: **Saabunud** (patsient on kohal praegu) ja **Ei tulnud** (ei ilmunud)
+- **„Ei tulnud" ja „Tühistatud" on teadlikult eraldi.** Mõlemad tähendavad „ei toimunud", aga ilmumata jätmise korral seisab valmis töö endiselt pingil ja ootab kedagi, tühistamise korral on pink vaba. Ainult üks neist nõuab sinult järgmist sammu
+- **Kontekstuaalsed nupud** paremas paneelis, mitte viit nuppu korraga: planeeritud → *Saabus · Ei tulnud · Tühista*; saabunud → *Üle antud · Tühista*; lõpetatud olekust → *Taasta*
+- Iga staatus on värviga: planeeritud hall, saabunud türkiissinine, toimunud roheline, **ei tulnud kollane** (mitte punane — see ei ole tühistamine, vaid lahtine asi), tühistatud punane
+- Staatus on nähtav kolmes kohas: paneeli kaardil sildina, kuu ruudustikus rea vasakul serval, ajajoonel täpi värvina ja hover-kaardil
+- **Saabunud visiit loeb ajajoonel alati „praeguseks"**, sõltumata kellaajast — kui inimene on kohal, siis ta on kohal
+- Päeva kokkuvõte näitab nüüd ka „Saabunud / üle antud" ja „Ei tulnud" arvu
+- Nupuvajutuse viga kuvatakse paneelis, mitte ei kao vaikselt ära
+
+**Miks mitte rohkem staatusi:** „Kinnitatud" jäeti välja, sest see on registratuuri mõiste — üksi töötav tehnik ei uuenda seda kunagi. „Ümber tõstetud" jäeti välja, sest kuupäeva muutmine ütleb seda juba ise.
+
+## [1.3.2] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Parandus: etapi värvi muutmine ei jõudnud kõikjale.** Alates 1.1.7-st sai etapi värvi muuta, aga neli kohta joonistasid endiselt vanast Tailwindi klassist, mis jäi külmunud vana värvi peale:
+- **Tahvli veeru pealkirjariba** (see, mille sa üles leidsid — täpp muutus, riba mitte)
+- Tabeli etapifiltri nupud
+- Tabeli hulgimuutmise etapinupud
+- Muudatuse vormi staatusenupud
+
+Kõik neli joonistavad nüüd etapi hex-värvist. Muudetud värv rakendub kohe kogu rakenduses.
+
+**Ennetus**: `PipelineStage` tüübis on `color`, `bg` ja `border` nüüd selgelt märgitud pärandväljadeks koos põhjendusega, miks neist joonistamine katki läheb. Need on alles ainult selleks, et enne 1.1.7 salvestatud töövoog localStorage'is edasi loeks — ainus tõene värv on `hex`
+
+## [1.3.1] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- **Kalendri töökaardil on nüüd kaks eraldi värvikanalit**: vasak serv näitab **etappi** (kui kaugel töö on), pehme täidis näitab **töö liiki** (mis tööd see on). Varem kandsid mõlemad etapi värvi, mistõttu valmis kuu oli ühtlane roheline sein ja Krooni ei olnud Sildade seast võimalik eristada
+- **Töö liik on nüüd kaardi esimene rida** ja patsient teine — nii leiab konkreetse töö kiiremini üles
+- Töö liigi värvid: Kroon, Implantkroon, Sild, Viniir, Laminaat, Inlay, Onlay, Täidis, Proteez, All-on-X, Kaitse/splint, Retainer, IBT, Kirurgiline, Muu. Tuvastamine käib `too` välja sisu järgi, sest see on vabatekst — „Allon4 ülemine" ja „Abutmendile kroon" lähevad õigesse rühma
+- **Legend on nüüd kahel real** ja ütleb, mida kumbki kanal tähendab: „Serv = etapp" ja „Täidis = töö". Liikide real on ainult need liigid, mis sellel kuul päriselt esinevad
+- **Tähtaja ületamine muudab ainult serva punaseks**, täidis jääb töö liigi omaks — nii ei kaota hilinenud töö oma liigi märgistust
+- Parema paneeli töö real on nüüd sama liigivärvi täpp, nii et paneel ja ruudustik on omavahel loetavad
+
+## [1.3.0] — 2026-07-30
+Kalendri ümberkujundus ja **uus olem: visiidid**.
+
+**Enne kasutamist käivita Supabase SQL-redaktoris (Workly kinni), kaks eraldi päringut:**
+1. `sql/007_visits.sql` — tabel `visits` koos RLS-poliitikaga
+2. `sql/008_visits_realtime.sql` — reaalajas sünkroniseerimine (vabatahtlik)
+
+Ilma 007-ta töötab kalender edasi, aga visiitide osa näitab veateadet ja „Lisa visiit" ei salvesta.
+
+**Visiidid — uus olem**
+- Visiit on patsiendi saabumine: algusaeg, kestus minutites, suunav arst, märkus ja staatus (planeeritud / toimunud / tühistatud)
+- Seni sai kalender näidata ainult tööde tähtaegu — visiiti ei olnud kuskil, nii et „Visiidid" ei olnud filtreeritav, loendatav ega lisatav
+- Visiit ei kuulu tööde külge: mõlemad on seotud **patsiendi kaudu**, nii et tühistatud visiit ei puuduta kunagi tootmisandmeid
+- Patsiendi valimisel täidetakse suunav arst tema kaardilt, aga jääb visiidi kaupa muudetavaks
+
+**Kalender**
+- **Vaate lüliti**: Tööd · Visiidid · Kombineeritud (vaikimisi kombineeritud)
+- **Visiitide ajajoon** kuu vaate kohal: horisontaalne rööbas 07:00–19:00, hõljuvad kaardid, liikuv türkiissinine kellaajajoon. Hover näitab patsienti, kestust ja linki töödele
+- **Kuu ruudustik**: igal päeval visiitide ja tööde loendur; visiidid alati üleval, tootmine allpool, katkendjoon vahel
+- **Tööd on värvitud etapi järgi**, mitte töö tüübi järgi — ja etapi värvid tulevad sinu enda töövoost (Seaded → Töö etapid), nii et brief'i värvikaart on asendatud sinu omaga
+- **Parem detailipaneel** (320 px): valitud päeva visiidid (kellaaeg, arst, patsient, kestus, „Vaata töödele"), tööd (etapp, tähtaeg, masin), päeva kokkuvõte ja nupud „Lisa visiit" / „Lisa töö". Päeva valimata olekus sõbralik tühiolek
+- **Päeva klõps** uuendab paremat paneeli, modaali ei ava. **Topeltklõps** tööl avab töö, visiidil visiidi
+- **Tühjad päevad**: „0 visiiti · 0 tööd", hoveril „+ Lisa visiit" ja „+ Lisa töö"
+- **Legend** all: etapid sinu värvidega, punane „Tähtaeg möödas", hall „Visiit"
+
+## [1.2.0] — 2026-07-30
+Ülevaate (dashboard) täielik ümberkujundus. Andmebaasi muudatusi ei ole.
+
+**Päeva ajajoon — uus keskne element**
+- Horisontaalne päevavaade 07:00–19:00 ühel rööpal, vertikaalset kalendrit ega tunniridu ei ole
+- Iga ajahetk on rööpa küljes hõljuv kaart: kellaaeg, suunav arst, tööde arv. Kaardid vahelduvad kahes reas, nii et lähestikku olevad ajad ei kattu
+- **Praegune kellaaeg** on türkiissinine vertikaaljoon koos kellaaja sildiga; rööbas on kulunud osa ulatuses värvitud. Uueneb iga minut, nii et joon liigub päeva jooksul päriselt edasi
+- Kaardi seisund: valmis → hall, järgmine tulemas → türkiissinine äär, tähtaja ületanud → punane toon
+- Hover näitab patsientide nimed, tööd ja etapid; klõps avab töö
+- Nooltega saab liikuda eelmisele/järgmisele päevale
+
+**KPI-rida**: Tööd kokku, Tähtaeg täna, Hambaid toodetud, Arveldamata — kahel esimesel ja kolmandal nädalane muutus (võrdlus eelmise nädalaga)
+
+**Kolm kaarti**: Tööde seis (sõõrdiagramm etappide kaupa, etapi enda värvidega), Täna tähtsad tööd, Viimased tegevused
+
+**Alumine olekuriba**: masinad pooleliolevate tööde kaupa, materjalide arv hinnakirjas, tootmises olevate tööde arv, tänased tähtajad ja versioon
+
+**Külgriba**
+- Külgriba saab nüüd laiendada (sildid ikoonide kõrval) või minimeerida (ikoon peal, silt all) — nupp „Minimeeri" all servas, valik salvestub
+- Ülaribale lisandus tehniku nimi ja initsiaalid Seadetest
+
+**Teema**
+- Navy Cloud kasutab nüüd täpselt brief'i värve: **#16284B → #0F1D3A**, gradient tumeneb paremale alla
+
+## [1.1.7] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- **Töövoo etapi värvi saab nüüd muuta**, mitte ainult nime: Seaded → Töö etapid, klõpsa etapi ees olevat värvitäppi. 18 valmisvärvi pluss „Oma värv" vabaks valikuks
+- Uus värv rakendub kohe kõikjal: staatuse siltidel, töö kaardi staatusevalikul, tootmise ajajoonel, tahvli veergudel ja patsiendi tööde ajaloo ridade värvilisel serval
+- Valik salvestub localStorage'i koos ülejäänud töövooga
+
+**Tehniline**
+- Staatuse silt joonistatakse nüüd etapi hex-värvist (taust ~12% toon, tekst sama värv), mitte Tailwindi klassipaarist — kasutaja valitud värv ei saa kunagi olla Tailwindi klass, nii et klassidele tuginemine oli see, mis vabalt valitavat värvi takistas
+
+## [1.1.6] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Seaded on nüüd omaette leht**
+- Seaded avaneb külgriba nupust täisleheks, mitte enam paremalt sisse libisevaks paneeliks
+- Lehel on vasakul jaotiste menüü (Üldine: Profiil, Kasutajaliides · Töö ja tootmine: Töö etapid, Masinad, Hinnad) ja paremal kaardid kahes veerus
+- Menüüs on ainult päriselt olemasolevad jaotised — tühja lingi taha ei ole midagi pandud
+
+**Kaks uut teemat**
+- **Navy Cloud** — tume mereväesinine gradient, mis tumeneb paremale alla, ja heledad „pilvised" kastid selle peal
+- **Cloudy Navy** — vastupidine: hele pilvine gradient taustal, tumedad mereväesinised kastid
+- **Hele** jääb vaikimisi teemaks. Vali Seaded → Kasutajaliides, eelvaade näitab tausta ja kasti kohe
+- Valik salvestub localStorage'i ja rakendub enne esimest joonistamist, nii et käivitamisel ei vilgu vale teema
+
+**Tehniline**
+- Kõik värvitokenid on nüüd CSS-muutujad RGB-kanalitena, nii et olemasolevad läbipaistvuse klassid (`border-ink-faint/15`, `bg-accent/10`) töötavad teemat vahetades edasi
+- Külgribal on oma värvitokenid (`nav`, `nav-bg`), sest Navy Cloudis on riba tume, aga kaardid heledad — sama token ei saa mõlemat teenindada
+
+## [1.1.5] — 2026-07-30
+Andmebaasi muudatusi ei ole — uusi migratsioone ei ole vaja.
+
+- **Tööde märkused peegelduvad patsiendi Märkuste kastis**, koos töö sildiga (nt `NK-2026-01`). Sildile klõpsates avaneb see töö ja märkus tõstetakse esile ning keritakse vaatesse
+- Loend on ühtne ajajoon: patsiendi enda märkused ja tööde märkused segamini, uuemad ees
+- **Peegeldus käib lugemise teel, mitte kopeerimise teel**: märkus jääb töö juurde ja seda loetakse sealt. Nii ei saa kaks koopiat lahku minna
+- Patsiendilehel saab kustutada ainult patsiendi enda märkusi — töö märkust muudetakse ja kustutatakse töö kaardil, kus see asub. Sellest on ka väike selgitus kasti all
+
+## [1.1.4] — 2026-07-30
+Kaks parandust. **Käivita `sql/006_patient_tmj.sql`** (Workly kinni enne) — ilma selleta ei salvestu ravikaart.
+
+**Ravikaart ei salvestunud**
+- Puudus veerg `patients.lougaliiges`. Väli „Lõualiiges" eraldati „Hambumusest" versioonis 1.1.1 ja veerg lisati faili `sql/003`, mis oli juba käivitatud — käivitatud migratsiooni muutmine ei tee andmebaasis midagi. Seetõttu saatis salvestamine tundmatu veeru, Postgres lükkas päringu tagasi (42703) ja **kogu ravikaardi salvestus ebaõnnestus**, mitte ainult see üks väli
+- Uus migratsioon `sql/006_patient_tmj.sql` lisab veeru. `sql/003` on taastatud sellisena, nagu see käivitati
+- Reegel edaspidi: iga muudatus saab uue migratsioonifaili, juba käivitatud faili ei muudeta kunagi
+
+**Töö märkused ei paistnud salvestuvat**
+- Märkus salvestus tegelikult andmebaasi korrektselt, aga paneel kuvas vana koopiat: paneel hoidis töö objekti sellisena, nagu see klõpsamise hetkel oli, ega lugenud värskeid andmeid
+- Paneel loeb nüüd alati värsket seisu. See parandab ühtlasi olukorra, kus teises arvutis tehtud muudatus ei jõudnud avatud paneelini
+
+## [1.1.3] — 2026-07-30
+**Käivita `sql/005_job_notes.sql` Supabase SQL-redaktoris** (sulge Workly enne). Ilma selleta ei saa töö märkusi salvestada — kast ütleb seda ka ise.
+
+- **Märkuste kast töö kaardil**, Tootmise andmete all: lisa märkus autori ja ajatempliga, kustuta kaheastmelise kinnitusega. Autor tuleb Seaded → „Sinu nimi"
+- Märkused kuuluvad tervele tööle, mitte valitud variandile — need püsivad, kui vahetad originaali ja muudatuste vahel
+- Märkuse lisamine ei sulge paneeli ega salvesta ülejäänud vormi: kirjutab oma päringuga. `markused` on vormi andmetest teadlikult välja jäetud, nii et vormi salvestamine ei kirjuta vahepeal lisatud märkusi üle
+- **Parandus**: paneel ei lähtesta end enam iga andmete värskenduse peale — varem viis märkuse lisamine variandi valiku tagasi algusesse ja muutmisrežiimis oleks üle kirjutanud vormi serveri väärtustega
+
+## [1.1.2] — 2026-07-30
+**Parandus: muudatuse avamine näitas originaali andmeid.** Patsiendi tööde ajaloos `-M1` rea avamine avas küll õige töö, aga paneel kuvas alati originaaltöö andmeid — muudatuse enda hambaid, materjali, tooni, hinda ja tähtaega ei olnud kuidagi näha.
+
+- **Muudatuse avamisel näidatakse nüüd muudatuse andmeid**: kaardi pealkiri on „MUUDATUSE ANDMED", väljadel on muudatuse enda hambad, materjal, VITA toon, Print ID, aeg ja tähtaeg
+- **Variandi valija** kaardi ülaservas: `Originaal | Muudatus 1 | Muudatus 2` — saab käigu pealt võrrelda, ilma paneeli sulgemata
+- **Ajajoon järgib valitud varianti**: muudatusel on oma töövoo etapp, nii et ajajoon ja päise staatus näitavad nüüd seda, mitte originaali oma
+- **Päis kirjeldab, mida ekraanil näidatakse**: „töö · muudatus 2", koos selle variandi hammaste arvu ja kuupäevaga
+- **Tühi väli tähendab „muutmata"**: muudatus ei peri enam vaikselt originaali väärtusi — just see tekitas segaduse, et kõik read näevad ühesugused välja
+- **TÖÖ AJALUGU read on klõpsatavad** — vii kursor sündmusele ja vajuta, et sama variant avada
+- **Hinnad on selgelt eristatud**: muudatuse hind eraldi, töö hind kõrval hallilt, „Kokku tööl" alati kogusumma. Makse märgitakse endiselt kogu töö kohta, mitte muudatuse kaupa — see on nüüd ka kirjas
+- **„Muuda" avab õige muudatuse** laiendatuna, mitte töö algusest
+
+## [1.1.1] — 2026-07-30
+Kasutajaliidese täpsustused 1.1.0 peale. Andmebaasi muudatusi ei ole — kehtivad samad migratsioonid `sql/003` ja `sql/004`.
+
+**Töö kaart (avamine kalendrist, tabelist, patsiendilehelt)**
+- **Töö avaneb nüüd vaatamisrežiimis**, mitte kohe muutmisvormina — varem pakkus iga avamine kõiki välju muutmiseks. Muutmine algab nupust „Muuda" paremal ülal; „Tühista" viib tagasi vaatesse, mitte ei sulge akent. Uus töö avaneb endiselt kohe vormina
+- **Tootmise ajajoon on alati nähtav**, ka pärast valmimist: kõik töövoo etapid linnukestega, praegune etapp esile tõstetud, all valmimise kellaaeg. Etapid tulevad kasutaja enda töövoost (Seaded → Töövoog)
+- **Uus paigutus**: päises töö identiteet (töö · Print ID, patsient, hammaste arv, kuupäev), siis ajajoon, siis kaks veergu — vasakul TÖÖ ANDMED ja TOOTMISE ANDMED, paremal HIND JA MAKSMINE ning TÖÖ AJALUGU
+- **„Märgi makstuks"** otse töö kaardilt, kui arve on tasumata
+- **TÖÖ AJALUGU** näitab muudatusi versioonidena koos loomise ja viimase muutmise ajaga
+
+**Patsiendileht**
+- **Tööde ajalugu kompaktsem**: tellimuse number ja kuupäev on nüüd üksteise all ühes veerus
+- **Staatus on rea värviline serv**, mitte tekstiveerg — värvide selgitus on tabeli alumisel serval ja näitab ainult neid etappe, mis selles ajaloos esinevad
+- **Märkusi saab nüüd ka kustutada** (kaheastmeline kinnitus), mitte ainult lisada
+- **Hambakaardi muutmise saab tühistada**: klõpsud kogutakse kokku ja kirjutatakse alles „Salvesta" peale, „Tühista" viskab need ära. Varem läks iga klõps kohe andmebaasi ja eksliku klõpsu tagasivõtmiseks polnud võimalust
+- **Muudatused on tööde ajaloos eraldi read**, taandega ja viitega `KM-2026-01-M1` — muudatus on omaette töö oma hambaste, hinna, tähtaja ja etapiga. Ka vanad imporditud muudatused on nüüd nähtavad
+
+**Tabel**
+- **Rea klõps avab alumise paneeli** (vaatamiseks), pliiats vasakus servas avab külgpaneeli (muutmiseks)
+
 ## [1.1.0] — 2026-07-29
 Suur kasutajaliidese uuendus.
 
