@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-faint rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-muted;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-card rounded-card shadow-card;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white font-medium px-4 py-2 rounded-lg
+           transition-colors duration-150 flex items-center gap-2 text-sm;
+  }
+
+  .btn-ghost {
+    @apply text-ink-muted hover:text-ink hover:bg-bg-sidebar font-medium px-3 py-2 rounded-lg
+           transition-colors duration-150 flex items-center gap-2 text-sm;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-bg-sidebar border border-ink-faint/30 rounded-lg text-sm
+           focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent
+           placeholder:text-ink-faint transition-colors duration-150;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-ink-muted mb-1;
+  }
+}
