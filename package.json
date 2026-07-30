@@ -1,8 +1,8 @@
 {
-  "name": "workly",
-  "version": "1.6.0",
+  "name": "wivo",
+  "version": "1.7.9",
   "description": "SprintRay Dental Production Tracker",
-  "author": "Workly",
+  "author": "Wivo",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -40,8 +40,8 @@
     "vite": "^5.4.6"
   },
   "build": {
-    "appId": "com.workly.dental",
-    "productName": "Workly",
+    "appId": "com.wivo.dental",
+    "productName": "Wivo",
     "directories": {
       "output": "dist"
     },
@@ -49,10 +49,12 @@
       "out/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.png"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.png"
     }
   }
 }

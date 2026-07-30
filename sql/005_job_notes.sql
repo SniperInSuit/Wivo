@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 005: notes on a job
+-- Wivo — migration 005: notes on a job
 -- Introduced in app version 1.1.3
 -- Run this in the Supabase SQL editor. It can be run on its own at any time.
 -- ============================================================================
@@ -14,7 +14,7 @@
 -- jobs table is already in supabase_realtime, and adding a column does not
 -- touch the publication.
 --
--- QUIT THE WORKLY APP FIRST anyway — an open instance holds a realtime
+-- QUIT THE WIVO APP FIRST anyway — an open instance holds a realtime
 -- subscription on `jobs`, and ALTER TABLE needs an exclusive lock on it.
 -- ============================================================================
 

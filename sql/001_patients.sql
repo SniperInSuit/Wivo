@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 001: patients table + jobs.patient_id
+-- Wivo — migration 001: patients table + jobs.patient_id
 -- Introduced in app version 1.0.46
 -- Run this in the Supabase SQL editor BEFORE using the "Patsiendid" view.
 -- ============================================================================

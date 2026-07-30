@@ -66,6 +66,7 @@ export function JobReadView({
         shade: rev.varv ?? null,
         machine: null as string | null,
         printId: rev.print_id ?? null,
+        designId: null as string | null,
         date: rev.ts,
         deadline: rev.deadline ?? null,
         price: rev.price ?? 0,
@@ -78,6 +79,7 @@ export function JobReadView({
         shade: job.varv,
         machine: job.masina,
         printId: job.print_id,
+        designId: job.disain_id,
         date: job.kuupaev,
         deadline: job.valmis_aeg,
         price: job.hind ?? 0,
@@ -100,7 +102,7 @@ export function JobReadView({
             </Chip>
           ))}
           {rev && (
-            <span className="text-[10px] text-ink-faint ml-1">
+            <span className="text-[10px] text-nav-muted ml-1">
               Näidatud on muudatuse andmed, mitte originaali
             </span>
           )}
@@ -136,6 +138,12 @@ export function JobReadView({
                   {v.rush && <Zap size={11} className="inline ml-1 text-orange-500 fill-orange-400" />}
                 </p>
               </div>
+              {!rev && job.kirjeldus && (
+                <div className="col-span-2 min-w-0">
+                  <Label>Kirjeldus</Label>
+                  <p className="text-sm text-ink-soft whitespace-pre-wrap break-words">{job.kirjeldus}</p>
+                </div>
+              )}
               <div>
                 <Label>Hambad (FDI)</Label>
                 {teeth > 0
@@ -147,12 +155,14 @@ export function JobReadView({
                 label={rev ? 'Muudatuse aeg' : 'Töö kuupäev'}
                 value={fmt(v.date, rev ? 'dd.MM.yyyy HH:mm' : 'dd.MM.yyyy')}
               />
-              <Cell
-                label="Tähtaeg"
-                value={v.deadline
-                  ? `${fmt(v.deadline, 'dd.MM.yyyy')} kell ${fmt(v.deadline, 'HH:mm')}`
-                  : '—'}
-              />
+              <div className="min-w-0">
+                <Label>Tähtaeg</Label>
+                <p className="text-sm text-ink-soft">
+                  {v.deadline
+                    ? <>{fmt(v.deadline, 'dd.MM.yyyy')}{' '}<span className="text-ink-muted">{fmt(v.deadline, 'HH:mm')}</span></>
+                    : '—'}
+                </p>
+              </div>
               {rev && (
                 <Cell label="Kuulub töö juurde" value={job.too || '—'} />
               )}
@@ -168,6 +178,7 @@ export function JobReadView({
               </div>
               <Cell label="Masin" value={v.machine || (rev ? 'sama kui tööl' : '—')} strong />
               <Cell label="Print ID" value={v.printId || '—'} mono />
+              <Cell label="Disain ID" value={v.designId || '—'} mono />
             </div>
           </Card>
 
@@ -276,7 +287,7 @@ function Chip({ active, onClick, children }: {
       className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
         active
           ? 'bg-accent text-white border-accent'
-          : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/50 hover:text-ink'
+          : 'bg-nav/10 text-nav-muted border-nav/20 hover:border-accent/50 hover:text-nav'
       }`}
     >
       {children}
@@ -290,7 +301,7 @@ function Card({ title, icon: Icon, children }: {
   children: React.ReactNode
 }) {
   return (
-    <section className="border border-ink-faint/20 rounded-xl px-3.5 py-3">
+    <section className="bg-bg-card border border-ink-faint/20 rounded-xl px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-2.5">
         <Icon size={12} className="text-accent" />
         <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">{title}</h3>

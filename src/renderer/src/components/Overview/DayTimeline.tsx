@@ -21,7 +21,7 @@ interface DayTimelineProps {
 }
 
 // A slot is one point on the rail: everything due at the same time for the same
-// referring doctor. There is no appointment entity in Workly, so the rail is
+// referring doctor. There is no appointment entity in Wivo, so the rail is
 // built from job DEADLINES (valmis_aeg) — the real, recorded times work is due.
 interface Slot {
   key: string

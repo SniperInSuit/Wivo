@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
+import { supabase, getActiveClinicId } from '../lib/supabase'
 import type { Job, JobInput } from '../types/job'
 
 const QUERY_KEY = ['jobs']
@@ -41,7 +41,7 @@ export function useCreateJob() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: JobInput) => {
-      const { data, error } = await supabase.from('jobs').insert(input).select().single()
+      const { data, error } = await supabase.from('jobs').insert({ ...input, clinic_id: getActiveClinicId() }).select().single()
       if (error) throw error
       return data as Job
     },

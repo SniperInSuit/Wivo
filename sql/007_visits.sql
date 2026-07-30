@@ -1,10 +1,10 @@
 -- ============================================================================
--- Workly — migration 007: visits (Visiidid)
+-- Wivo — migration 007: visits (Visiidid)
 -- Introduced in app version 1.3.0
 -- Run this in the Supabase SQL editor, then 008_visits_realtime.sql SEPARATELY.
 -- ============================================================================
 --
--- QUIT THE WORKLY APP FIRST — an open instance holds realtime subscriptions, and
+-- QUIT THE WIVO APP FIRST — an open instance holds realtime subscriptions, and
 -- creating a table that references `patients` needs a lock on it.
 --
 -- WHY THIS TABLE EXISTS

@@ -84,15 +84,17 @@ export function useDashboardStats(
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
 
-    // Top patients by total tooth count (original + revision teeth)
-    const patientTeeth: Record<string, number> = {}
+    // Top patients by total tooth count (original + revision teeth split)
+    const patientTeeth: Record<string, { original: number; revision: number }> = {}
     filtered.forEach((j) => {
       const p = j.patsient || 'Tundmatu'
-      const teeth = toothCount(j.hambad) + revTeethOf(j)
-      patientTeeth[p] = (patientTeeth[p] ?? 0) + teeth
+      const cur = patientTeeth[p] ?? { original: 0, revision: 0 }
+      cur.original += toothCount(j.hambad)
+      cur.revision += revTeethOf(j)
+      patientTeeth[p] = cur
     })
     const topPatients = Object.entries(patientTeeth)
-      .map(([name, count]) => ({ name, count }))
+      .map(([name, v]) => ({ name, original: v.original, revision: v.revision, count: v.original + v.revision }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8)
 
@@ -105,15 +107,18 @@ export function useDashboardStats(
         }, 0) / completedWithDates.length
       : 0
 
-    // Teeth by work type
-    const teethByType: Record<string, number> = {}
+    // Teeth by work type — original + revision teeth
+    const teethByType: Record<string, { original: number; revision: number }> = {}
     filtered.forEach((j) => {
-      if (!j.too || !j.hambad) return
-      const type = j.too.split(' ')[0]
-      teethByType[type] = (teethByType[type] ?? 0) + toothCount(j.hambad)
+      const type = workTypeLabel(j.too)
+      const cur = teethByType[type] ?? { original: 0, revision: 0 }
+      cur.original += toothCount(j.hambad)
+      cur.revision += revTeethOf(j)
+      teethByType[type] = cur
     })
     const teethByWorkType = Object.entries(teethByType)
-      .map(([name, teeth]) => ({ name, teeth }))
+      .map(([name, v]) => ({ name, original: v.original, revision: v.revision, teeth: v.original + v.revision }))
+      .filter(t => t.teeth > 0)
       .sort((a, b) => b.teeth - a.teeth)
       .slice(0, 8)
 
@@ -227,11 +232,12 @@ export function useDashboardStats(
 
     // ─── Work types ───────────────────────────────────────────────────────
     // Proper classification, not the old "first word of the too field" split.
-    const typeBuckets = new Map<string, { count: number; teeth: number; revenue: number }>()
+    const typeBuckets = new Map<string, { count: number; revisions: number; teeth: number; revenue: number }>()
     filtered.forEach(j => {
       const key = workTypeLabel(j.too)
-      const cur = typeBuckets.get(key) ?? { count: 0, teeth: 0, revenue: 0 }
+      const cur = typeBuckets.get(key) ?? { count: 0, revisions: 0, teeth: 0, revenue: 0 }
       cur.count++
+      cur.revisions += (j.revisions ?? []).length
       cur.teeth += toothCount(j.hambad) + revTeethOf(j)
       cur.revenue += jobTotal(j)
       typeBuckets.set(key, cur)
@@ -243,6 +249,18 @@ export function useDashboardStats(
         avgPrice: v.count > 0 ? Math.round((v.revenue / v.count) * 100) / 100 : 0
       }))
       .sort((a, b) => b.revenue - a.revenue)
+
+    // ─── Revision reasons ─────────────────────────────────────────────────
+    const reasonBuckets = new Map<string, number>()
+    filtered.forEach(j => {
+      ;(j.revisions ?? []).forEach(r => {
+        const reason = r.reason?.trim() || 'Määramata'
+        reasonBuckets.set(reason, (reasonBuckets.get(reason) ?? 0) + 1)
+      })
+    })
+    const revisionReasons = [...reasonBuckets.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
 
     // ─── Patients ─────────────────────────────────────────────────────────
     const newPatients = start
@@ -323,6 +341,7 @@ export function useDashboardStats(
       visitsByWeekday,
       byDoctor,
       byWorkType,
+      revisionReasons,
       patientSummary: patientStatsSummary
     }
   }, [jobs, period, stages, doneStageKey, visits, patients])

@@ -5,6 +5,7 @@ import type { Job, JobNote } from '../../types/job'
 import type { Patient, PatientNote } from '../../types/patient'
 import { useUpdatePatient } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
+import { useAuth } from '../../context/AuthContext'
 import { PanelCard } from './PanelCard'
 
 interface NotesPanelProps {
@@ -25,6 +26,7 @@ type Entry =
 export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJobNote }: NotesPanelProps) {
   const updatePatient = useUpdatePatient()
   const { settings } = useSettings()
+  const { displayName } = useAuth()
   const [draft, setDraft] = useState('')
   // Two-step delete, per note — a note can be clinical context and there is no undo
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -53,7 +55,7 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
     const note: PatientNote = {
       id: crypto.randomUUID(),
       ts: new Date().toISOString(),
-      autor: settings.kasutajaNimi || 'Tundmatu',
+      autor: displayName,
       tekst
     }
     try {

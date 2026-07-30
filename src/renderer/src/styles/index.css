@@ -44,6 +44,12 @@
   --c-nav-muted: 99 115 129;
   --c-nav-bg: 240 244 246;
 
+  /* Chrome — header bars sitting on the page background */
+  --c-chrome: 255 255 255;
+  --c-chrome-text: 14 17 22;
+  --c-chrome-muted: 99 115 129;
+  --c-chrome-faint: 168 180 190;
+
   --app-bg: rgb(247 249 250);
   --card-blur: none;
 }
@@ -67,16 +73,18 @@
 
   /* Sidebar sits directly on the navy, so nav text is light — separate tokens
      from `ink`, which has to stay dark for the cloudy cards. */
-  --c-nav: 236 244 252;
-  --c-nav-muted: 160 180 205;
+  --c-nav: 255 255 255;
+  --c-nav-muted: 200 215 235;
   --c-nav-bg: 12 24 48;
 
-  /* Brief colours: #16284B at the top-left, deepening to #0F1D3A bottom-right.
-     The two soft radials are the "cloud" — kept outside the cards, never inside. */
-  --app-bg:
-    radial-gradient(1100px 560px at 10% 2%, rgba(255, 255, 255, 0.07), transparent 60%),
-    radial-gradient(900px 520px at 82% 30%, rgba(120, 190, 220, 0.07), transparent 62%),
-    linear-gradient(135deg, #16284B 0%, #142443 45%, #0F1D3A 100%);
+  /* Chrome — header bars match the sidebar navy so the top reads as one strip */
+  --c-chrome: 12 24 48;
+  --c-chrome-text: 255 255 255;
+  --c-chrome-muted: 200 215 235;
+  --c-chrome-faint: 120 140 170;
+
+  /* Flat navy matching the sidebar — no gradient, one solid surface. */
+  --app-bg: rgb(12 24 48);
   --card-blur: none;
 }
 
@@ -100,6 +108,12 @@
   --c-nav: 236 244 252;
   --c-nav-muted: 160 180 205;
   --c-nav-bg: 13 22 42;
+
+  /* Chrome — bg is light in this theme, so chrome text stays dark */
+  --c-chrome: 233 239 246;
+  --c-chrome-text: 30 41 59;
+  --c-chrome-muted: 92 110 133;
+  --c-chrome-faint: 140 155 175;
 
   --app-bg:
     radial-gradient(900px 500px at 18% 8%, rgba(255, 255, 255, 0.85), transparent 62%),

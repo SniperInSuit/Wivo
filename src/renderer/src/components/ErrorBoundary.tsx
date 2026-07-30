@@ -22,7 +22,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // Keep the stack reachable in devtools even though the UI shows a summary
-    console.error('Workly crashed:', error, info.componentStack)
+    console.error('Wivo crashed:', error, info.componentStack)
   }
 
   render() {
@@ -33,7 +33,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         <div className="card p-6 max-w-xl space-y-3">
           <p className="font-semibold text-ink">Rakenduses tekkis viga</p>
           <p className="text-sm text-ink-muted">
-            Workly ei suutnud seda vaadet kuvada. Proovi rakendus taaskäivitada. Kui viga kordub,
+            Wivo ei suutnud seda vaadet kuvada. Proovi rakendus taaskäivitada. Kui viga kordub,
             saada see tekst edasi.
           </p>
           <pre className="text-[11px] text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">

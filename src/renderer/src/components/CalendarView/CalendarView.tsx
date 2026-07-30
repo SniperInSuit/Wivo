@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Plus, Zap, User, Clock, Cpu, CalendarDays,
-  CheckCircle2, AlertTriangle, X, UserCheck, UserX, ArrowUpRight
+  CheckCircle2, AlertTriangle, X, UserCheck, UserX, ArrowUpRight, Filter, XCircle
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
   isSameMonth, isSameDay, isToday, parseISO, isValid, addMonths, subMonths,
-  isBefore, startOfDay
+  addWeeks, differenceInWeeks, differenceInMonths, isBefore, startOfDay
 } from 'date-fns'
 import { et } from 'date-fns/locale'
 import type { LucideIcon } from 'lucide-react'
@@ -47,7 +47,7 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   const [mode, setMode] = useState<Mode>('kombineeritud')
   const [selected, setSelected] = useState<Date | null>(() => startOfDay(new Date()))
   const [timelineDay, setTimelineDay] = useState(() => startOfDay(new Date()))
-  const [visitForm, setVisitForm] = useState<{ visit: Visit | null; date?: Date } | null>(null)
+  const [visitForm, setVisitForm] = useState<{ visit: Visit | null; date?: Date; durationMin?: number } | null>(null)
   // Month vs week. Only offered in Visiidid — the week grid is a visit schedule,
   // and the Kombineeritud view already answers "who is coming today" with the
   // horizontal rail.
@@ -64,15 +64,100 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   const showJobs = mode !== 'visiidid'
   const showVisits = mode !== 'tood'
 
+  // ── Calendar filters ──────────────────────────────────────────────
+  const [filterPatients, setFilterPatients] = useState<Set<string>>(new Set())
+  const [filterWorkTypes, setFilterWorkTypes] = useState<Set<string>>(new Set())
+  const [filterDoctors, setFilterDoctors] = useState<Set<string>>(new Set())
+  const hasFilters = filterPatients.size > 0 || filterWorkTypes.size > 0 || filterDoctors.size > 0
+
+  // Unique values for filter options
+  const uniquePatients = useMemo(() =>
+    [...new Set(jobs.map(j => j.patsient).filter(Boolean))].sort()
+  , [jobs])
+  const uniqueWorkTypes = useMemo(() =>
+    [...new Set(jobs.map(j => j.too).filter(Boolean) as string[])].sort()
+  , [jobs])
+  const uniqueDoctors = useMemo(() =>
+    [...new Set(visits.map(v => v.arst).filter(Boolean) as string[])].sort()
+  , [visits])
+
+  // Apply filters
+  const filteredJobs = useMemo(() => {
+    if (!hasFilters) return jobs
+    return jobs.filter(j => {
+      if (filterPatients.size > 0 && !filterPatients.has(j.patsient)) return false
+      if (filterWorkTypes.size > 0 && !filterWorkTypes.has(j.too ?? '')) return false
+      return true
+    })
+  }, [jobs, filterPatients, filterWorkTypes, hasFilters])
+
+  const filteredVisits = useMemo(() => {
+    if (!hasFilters) return visits
+    return visits.filter(v => {
+      if (filterPatients.size > 0 && !filterPatients.has(v.patsient)) return false
+      if (filterDoctors.size > 0 && !filterDoctors.has(v.arst ?? '')) return false
+      return true
+    })
+  }, [visits, filterPatients, filterDoctors, hasFilters])
+
+  // Single-month days (used by header arrows to know which month is shown)
   const days = useMemo(() => eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 })
   }), [month])
 
+  // Continuous strip: ±3 months of weeks for smooth scrolling
+  const stripDays = useMemo(() => eachDayOfInterval({
+    start: startOfWeek(startOfMonth(addMonths(new Date(), -3)), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(addMonths(new Date(), 3)), { weekStartsOn: 1 })
+  }), [])
+  const stripWeeks = useMemo(() => {
+    const weeks: Date[][] = []
+    for (let i = 0; i < stripDays.length; i += 7) {
+      weeks.push(stripDays.slice(i, i + 7))
+    }
+    return weeks
+  }, [stripDays])
+
+  // Scroll container ref + slider sync
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [sliderValue, setSliderValue] = useState(50)
+  const isSliderDragging = useRef(false)
+
+  // Scroll the container to match slider position
+  const syncScrollFromSlider = useCallback((pct: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollHeight - el.clientHeight
+    el.scrollTop = (pct / 100) * maxScroll
+  }, [])
+
+  // Update slider when user scrolls naturally
+  const handleCalendarScroll = useCallback(() => {
+    if (isSliderDragging.current) return
+    const el = scrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollHeight - el.clientHeight
+    if (maxScroll <= 0) return
+    setSliderValue((el.scrollTop / maxScroll) * 100)
+  }, [])
+
+  // On mount, scroll to "today" row
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const todayIdx = stripWeeks.findIndex(w => w.some(d => isToday(d)))
+    if (todayIdx < 0) return
+    const ROW_H = 124 // approximate row height
+    el.scrollTop = todayIdx * ROW_H - el.clientHeight / 3
+    handleCalendarScroll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Jobs are placed on their DEADLINE — that is the date the work matters on.
   const jobsByDay = useMemo(() => {
     const map = new Map<string, Job[]>()
-    for (const j of jobs) {
+    for (const j of filteredJobs) {
       const raw = j.valmis_aeg ?? j.kuupaev
       if (!raw) continue
       const d = parseISO(raw)
@@ -81,11 +166,11 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
       map.set(k, [...(map.get(k) ?? []), j])
     }
     return map
-  }, [jobs])
+  }, [filteredJobs])
 
   const visitsByDay = useMemo(() => {
     const map = new Map<string, Visit[]>()
-    for (const v of visits) {
+    for (const v of filteredVisits) {
       const d = parseISO(v.algus)
       if (!isValid(d)) continue
       const k = format(d, 'yyyy-MM-dd')
@@ -93,13 +178,13 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
     }
     for (const list of map.values()) list.sort((a, b) => a.algus.localeCompare(b.algus))
     return map
-  }, [visits])
+  }, [filteredVisits])
 
   // A visit's jobs are that patient's jobs — the two are linked through the
   // patient, not directly, so a cancelled visit never touches production.
   const jobsForVisit = (v: Visit): Job[] => {
     const key = v.patsient.trim().toLowerCase()
-    return jobs.filter(j =>
+    return filteredJobs.filter(j =>
       (v.patient_id && j.patient_id === v.patient_id) ||
       (j.patsient ?? '').trim().toLowerCase() === key)
   }
@@ -147,14 +232,13 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   const selJobs = selKey ? jobsByDay.get(selKey) ?? [] : []
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {/* ─── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-ink-faint/15 bg-bg-card flex-shrink-0 flex-wrap">
-          <h1 className="text-base font-bold text-ink">Kalender</h1>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ─── Header — full width above the content + sidebar ─────────── */}
+      <div className="flex items-center gap-3 px-5 py-3 bg-nav-bg flex-shrink-0 flex-wrap">
+          <h1 className="text-base font-bold text-nav">Kalender</h1>
 
           {/* View switcher */}
-          <div className="flex items-center gap-1 bg-bg-sidebar rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1">
             {([
               { key: 'tood', label: 'Tööd' },
               { key: 'visiidid', label: 'Visiidid' },
@@ -164,7 +248,7 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                 key={key}
                 onClick={() => setMode(key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  mode === key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
+                  mode === key ? 'bg-accent text-white' : 'text-nav hover:text-nav'
                 }`}
               >
                 {label}
@@ -173,7 +257,7 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
           </div>
 
           {mode === 'visiidid' && (
-            <div className="flex items-center gap-1 bg-bg-sidebar rounded-xl p-1">
+            <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1">
               {([
                 { key: 'kuu', label: 'Kuu' },
                 { key: 'nadal', label: 'Nädal' }
@@ -182,7 +266,7 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                   key={key}
                   onClick={() => setScale(key)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                    scale === key ? 'bg-bg-card text-ink shadow-card' : 'text-ink-muted hover:text-ink'
+                    scale === key ? 'bg-bg-card text-ink shadow-card' : 'text-nav hover:text-nav'
                   }`}
                 >
                   {label}
@@ -198,24 +282,27 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                 setMonth(startOfMonth(today)); setSelected(today); setTimelineDay(today)
                 setWeekStart(startOfWeek(today, { weekStartsOn: 1 }))
               }}
-              className="btn-ghost text-sm border border-ink-faint/25"
+              className="text-nav hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm border border-nav/30"
             >
               Täna
             </button>
-            <button onClick={() => setMonth(m => subMonths(m, 1))} className="btn-ghost p-2">
+            <button onClick={() => setMonth(m => subMonths(m, 1))} className="text-nav hover:text-nav p-2 rounded-lg transition-colors">
               <ChevronLeft size={15} />
             </button>
-            <span className="text-sm font-semibold text-ink min-w-[110px] text-center first-letter:uppercase">
+            <span className="text-sm font-semibold text-nav min-w-[110px] text-center first-letter:uppercase">
               {format(month, 'LLLL yyyy', { locale: et })}
             </span>
-            <button onClick={() => setMonth(m => addMonths(m, 1))} className="btn-ghost p-2">
+            <button onClick={() => setMonth(m => addMonths(m, 1))} className="text-nav hover:text-nav p-2 rounded-lg transition-colors">
               <ChevronRight size={15} />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      {/* ─── Content row: scrollable left + right sidebar ──────────── */}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden pl-5 pb-4 space-y-4 flex flex-col">
           {isError && (
+            <div className="pr-5">
             <div className="card p-4 flex items-start gap-2">
               <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
               <div>
@@ -228,12 +315,13 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                 <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
               </div>
             </div>
+            </div>
           )}
 
           {/* ─── Visit timeline ─────────────────────────────────────────── */}
           {showVisits && !isError && !weekMode && (
             <VisitTimeline
-              visits={visits}
+              visits={filteredVisits}
               jobsFor={jobsForVisit}
               day={timelineDay}
               now={now}
@@ -246,170 +334,229 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
             />
           )}
 
+          {/* ─── Filter bar ──────────────────────────────────────────────── */}
+          <div className="pr-5 flex items-center gap-2 flex-wrap flex-shrink-0">
+            <Filter size={13} className="text-nav-muted flex-shrink-0" />
+
+            {/* Patient filter */}
+            <FilterDropdown
+              label="Patsient"
+              options={uniquePatients}
+              selected={filterPatients}
+              onChange={setFilterPatients}
+            />
+
+            {/* Work type filter */}
+            {showJobs && (
+              <FilterDropdown
+                label="Töö tüüp"
+                options={uniqueWorkTypes}
+                selected={filterWorkTypes}
+                onChange={setFilterWorkTypes}
+              />
+            )}
+
+            {/* Doctor filter */}
+            {showVisits && uniqueDoctors.length > 0 && (
+              <FilterDropdown
+                label="Arst"
+                options={uniqueDoctors}
+                selected={filterDoctors}
+                onChange={setFilterDoctors}
+              />
+            )}
+
+            {hasFilters && (
+              <button
+                onClick={() => { setFilterPatients(new Set()); setFilterWorkTypes(new Set()); setFilterDoctors(new Set()) }}
+                className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 font-medium transition-colors"
+              >
+                <XCircle size={12} />
+                Tühjenda
+              </button>
+            )}
+          </div>
+
           {/* ─── Week grid (Visiidid only) ──────────────────────────────── */}
           {weekMode && !isError && (
+            <div className="pr-5">
             <VisitWeekGrid
-              visits={visits}
+              visits={filteredVisits}
               weekStart={weekStart}
               now={now}
               onWeekChange={setWeekStart}
               selected={selected}
               onDaySelect={d => { setSelected(d); setMonth(startOfMonth(d)) }}
               onVisitOpen={v => setVisitForm({ visit: v })}
-              onSlotClick={start => setVisitForm({ visit: null, date: start })}
+              onSlotClick={(start, dur) => setVisitForm({ visit: null, date: start, durationMin: dur })}
               onMove={moveVisit}
             />
+            </div>
           )}
 
-          {/* ─── Month grid ─────────────────────────────────────────────── */}
+          {/* ─── Continuous scrollable calendar grid ──────────────────────── */}
           {!weekMode && (
-          <div className="card overflow-hidden">
-            <div className="grid grid-cols-7 border-b border-ink-faint/15">
+          <div className="pr-5 flex-1 min-h-0 flex flex-col">
+          <div className="rounded-xl overflow-hidden bg-ink-faint/10 p-[3px] flex flex-col flex-1 min-h-0">
+            {/* Sticky weekday headers */}
+            <div className="grid grid-cols-7 gap-[3px] mb-[3px] flex-shrink-0">
               {WEEKDAYS.map(d => (
-                <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-ink-muted">
+                <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-nav/80">
                   {d}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7">
-              {days.map(day => {
-                const key = format(day, 'yyyy-MM-dd')
-                const dayJobs = showJobs ? jobsByDay.get(key) ?? [] : []
-                const dayVisits = showVisits ? visitsByDay.get(key) ?? [] : []
-                const outside = !isSameMonth(day, month)
-                const isSel = selected != null && isSameDay(day, selected)
-
+            {/* Scrollable week rows */}
+            <div
+              ref={scrollRef}
+              onScroll={handleCalendarScroll}
+              className="overflow-y-auto flex-1 min-h-0"
+            >
+              {stripWeeks.map((week, wi) => {
+                // Month label on the first week that contains the 1st of a month
+                const firstOfMonth = week.find(d => d.getDate() === 1)
                 return (
-                  <div
-                    key={key}
-                    onClick={() => { setSelected(day); if (isSameMonth(day, month)) setTimelineDay(day) }}
-                    className={`group relative min-h-[118px] border-b border-r border-ink-faint/10 p-1.5 cursor-pointer transition-colors ${
-                      outside ? 'bg-bg/40' : 'hover:bg-bg-sidebar/50'
-                    } ${isSel ? 'ring-2 ring-inset ring-accent' : ''}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-semibold tabular-nums ${
-                        isToday(day)
-                          ? 'bg-accent text-white rounded-md px-1.5'
-                          : outside ? 'text-ink-faint' : 'text-ink'
-                      }`}>
-                        {format(day, 'd')}
-                      </span>
-                      {/* Unobtrusive counters: visits and jobs */}
-                      <span className="flex items-center gap-1.5 text-[10px] text-ink-faint tabular-nums">
-                        {showVisits && <span className="flex items-center gap-0.5"><User size={9} />{dayVisits.length}</span>}
-                        {showJobs && <span className="flex items-center gap-0.5"><Zap size={9} />{dayJobs.length}</span>}
-                      </span>
-                    </div>
+                  <div key={wi}>
+                    {firstOfMonth && (
+                      <div className="px-2 py-1.5 text-[11px] font-bold text-nav/80 uppercase tracking-wider first-letter:uppercase">
+                        {format(firstOfMonth, 'LLLL yyyy', { locale: et })}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-7 gap-[3px] mb-[3px]">
+                      {week.map(day => {
+                        const key = format(day, 'yyyy-MM-dd')
+                        const dayJobs = showJobs ? jobsByDay.get(key) ?? [] : []
+                        const dayVisits = showVisits ? visitsByDay.get(key) ?? [] : []
+                        const isSel = selected != null && isSameDay(day, selected)
 
-                    {/* Visits always occupy the top section */}
-                    <div className="space-y-1">
-                      {dayVisits.slice(0, 2).map(v => {
-                        const d = parseISO(v.algus)
-                        const cancelled = v.staatus === 'tuhistatud'
                         return (
                           <div
-                            key={v.id}
-                            onDoubleClick={e => { e.stopPropagation(); setVisitForm({ visit: v }) }}
-                            title={`${v.patsient}${v.arst ? ` · ${v.arst}` : ''} · ${v.kestus_min} min · ${VISIT_STATUS_LABEL[v.staatus]}`}
-                            className={`rounded-md px-1.5 py-0.5 border-l-2 bg-bg-sidebar ${
-                              cancelled ? 'line-through opacity-70' : ''
+                            key={key}
+                            onClick={() => { setSelected(day); setTimelineDay(day); setMonth(startOfMonth(day)) }}
+                            className={`group relative min-h-[118px] rounded-lg p-1.5 cursor-pointer transition-colors bg-bg-card hover:bg-bg-sidebar/80 ${
+                              isSel ? 'ring-2 ring-inset ring-accent' : ''
                             }`}
-                            style={{ borderLeftColor: VISIT_STATUS_HEX[v.staatus] }}
                           >
-                            <p className="text-[10px] font-semibold text-ink truncate tabular-nums">
-                              {isValid(d) ? format(d, 'HH:mm') : '—'} {v.patsient}
-                            </p>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-xs font-semibold tabular-nums ${
+                                isToday(day)
+                                  ? 'bg-accent text-white rounded-md px-1.5'
+                                  : 'text-ink'
+                              }`}>
+                                {format(day, 'd')}
+                                {day.getDate() === 1 && <span className="text-ink-muted font-normal">.{format(day, 'MM')}</span>}
+                              </span>
+                              <span className="flex items-center gap-1.5 text-[10px] text-ink-faint tabular-nums">
+                                {showVisits && <span className="flex items-center gap-0.5"><User size={9} />{dayVisits.length}</span>}
+                                {showJobs && <span className="flex items-center gap-0.5"><Zap size={9} />{dayJobs.length}</span>}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              {dayVisits.slice(0, 2).map(v => {
+                                const d = parseISO(v.algus)
+                                const cancelled = v.staatus === 'tuhistatud'
+                                return (
+                                  <div
+                                    key={v.id}
+                                    onDoubleClick={e => { e.stopPropagation(); setVisitForm({ visit: v }) }}
+                                    title={`${v.patsient}${v.arst ? ` · ${v.arst}` : ''} · ${v.kestus_min} min · ${VISIT_STATUS_LABEL[v.staatus]}`}
+                                    className={`rounded-md px-1.5 py-0.5 border-l-2 bg-bg-sidebar ${
+                                      cancelled ? 'line-through opacity-70' : ''
+                                    }`}
+                                    style={{ borderLeftColor: VISIT_STATUS_HEX[v.staatus] }}
+                                  >
+                                    <p className="text-[10px] font-semibold text-ink truncate tabular-nums">
+                                      {isValid(d) ? format(d, 'HH:mm') : '—'} {v.patsient}
+                                    </p>
+                                  </div>
+                                )
+                              })}
+                              {dayVisits.length > 2 && (
+                                <p className="text-[9px] text-ink-faint pl-1">+{dayVisits.length - 2} visiit(i)</p>
+                              )}
+
+                              {dayVisits.length > 0 && dayJobs.length > 0 && (
+                                <div className="border-t border-dashed border-ink-faint/25 my-1" />
+                              )}
+
+                              {dayJobs.slice(0, 3).map(j => {
+                                const late = isOverdue(j)
+                                const st = stageMap[j.status]
+                                return (
+                                  <div
+                                    key={j.id}
+                                    onDoubleClick={e => { e.stopPropagation(); onJobClick(j) }}
+                                    title={`${j.too ?? 'Määramata'} (${workTypeLabel(j.too)}) · ${j.patsient} · ${st?.label ?? j.status}`}
+                                    className="rounded-md px-1.5 py-0.5 border-l-[3px]"
+                                    style={{
+                                      backgroundColor: `${workTypeHex(j.too)}1f`,
+                                      borderLeftColor: late ? '#EF4444' : st?.hex ?? '#A8B4BE'
+                                    }}
+                                  >
+                                    <p className="text-[10px] font-semibold text-ink truncate">
+                                      {j.too ?? 'Määramata'}
+                                    </p>
+                                    <p className="text-[9px] text-ink-muted truncate">
+                                      {j.patsient}{late && ' · üle tähtaja'}
+                                    </p>
+                                  </div>
+                                )
+                              })}
+                              {dayJobs.length > 3 && (
+                                <p className="text-[9px] text-ink-faint pl-1">+{dayJobs.length - 3} tööd</p>
+                              )}
+
+                              {dayVisits.length === 0 && dayJobs.length === 0 && (
+                                <>
+                                  <p className="text-[9px] text-ink-faint/70 group-hover:hidden pl-1">
+                                    0 visiiti · 0 tööd
+                                  </p>
+                                  <div className="hidden group-hover:flex flex-col gap-0.5">
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setVisitForm({ visit: null, date: day }) }}
+                                      className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
+                                    >
+                                      + Lisa visiit
+                                    </button>
+                                    <button
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        onNewJobOnDate(format(day, "yyyy-MM-dd'T'09:00"))
+                                      }}
+                                      className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
+                                    >
+                                      + Lisa töö
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
                         )
                       })}
-                      {dayVisits.length > 2 && (
-                        <p className="text-[9px] text-ink-faint pl-1">+{dayVisits.length - 2} visiit(i)</p>
-                      )}
-
-                      {/* Divider only when both halves have content */}
-                      {dayVisits.length > 0 && dayJobs.length > 0 && (
-                        <div className="border-t border-dashed border-ink-faint/25 my-1" />
-                      )}
-
-                      {/* Production below, coloured BY STAGE */}
-                      {dayJobs.slice(0, 3).map(j => {
-                        const late = isOverdue(j)
-                        const st = stageMap[j.status]
-                        return (
-                          <div
-                            key={j.id}
-                            onDoubleClick={e => { e.stopPropagation(); onJobClick(j) }}
-                            title={`${j.too ?? 'Määramata'} (${workTypeLabel(j.too)}) · ${j.patsient} · ${st?.label ?? j.status}`}
-                            className="rounded-md px-1.5 py-0.5 border-l-[3px]"
-                            // Fill = work type (what kind of job), left edge =
-                            // production stage (how far along). Two questions,
-                            // two channels — overdue only overrides the edge, so
-                            // the type stays readable.
-                            style={{
-                              backgroundColor: `${workTypeHex(j.too)}1f`,
-                              borderLeftColor: late ? '#EF4444' : st?.hex ?? '#A8B4BE'
-                            }}
-                          >
-                            <p className="text-[10px] font-semibold text-ink truncate">
-                              {j.too ?? 'Määramata'}
-                            </p>
-                            <p className="text-[9px] text-ink-muted truncate">
-                              {j.patsient}{late && ' · üle tähtaja'}
-                            </p>
-                          </div>
-                        )
-                      })}
-                      {dayJobs.length > 3 && (
-                        <p className="text-[9px] text-ink-faint pl-1">+{dayJobs.length - 3} tööd</p>
-                      )}
-
-                      {/* Empty day: quiet on rest, actionable on hover */}
-                      {dayVisits.length === 0 && dayJobs.length === 0 && !outside && (
-                        <>
-                          <p className="text-[9px] text-ink-faint/70 group-hover:hidden pl-1">
-                            0 visiiti · 0 tööd
-                          </p>
-                          <div className="hidden group-hover:flex flex-col gap-0.5">
-                            <button
-                              onClick={e => { e.stopPropagation(); setVisitForm({ visit: null, date: day }) }}
-                              className="text-[10px] text-accent hover:underline text-left pl-1"
-                            >
-                              + Lisa visiit
-                            </button>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation()
-                                onNewJobOnDate(format(day, "yyyy-MM-dd'T'09:00"))
-                              }}
-                              className="text-[10px] text-accent hover:underline text-left pl-1"
-                            >
-                              + Lisa töö
-                            </button>
-                          </div>
-                        </>
-                      )}
                     </div>
                   </div>
                 )
               })}
             </div>
           </div>
+          </div>
 
           )}
 
           {/* ─── Legend: one row per channel ────────────────────────────── */}
-          <div className="space-y-1.5 px-1">
+          <div className="pr-5 space-y-1.5 px-1 flex-shrink-0 pt-2">
             {weekMode ? (
               // Week grid shows visits only, so the stage/type key would explain
               // nothing that is on screen
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider w-[86px]">
+                <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
                   Visiidi seis
                 </span>
                 {(Object.keys(VISIT_STATUS_LABEL) as VisitStatus[]).map(st => (
-                  <span key={st} className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+                  <span key={st} className="flex items-center gap-1.5 text-[10px] text-nav">
                     <span className="w-0.5 h-3 rounded-sm" style={{ backgroundColor: VISIT_STATUS_HEX[st] }} />
                     {VISIT_STATUS_LABEL[st]}
                   </span>
@@ -417,33 +564,33 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
               </div>
             ) : (
             <><div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-              <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider w-[86px]">
+              <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
                 Serv = etapp
               </span>
               {stages.map(s => (
-                <span key={s.key} className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+                <span key={s.key} className="flex items-center gap-1.5 text-[10px] text-nav">
                   <span className="w-0.5 h-3 rounded-sm" style={{ backgroundColor: s.hex }} />
                   {s.label}
                 </span>
               ))}
-              <span className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+              <span className="flex items-center gap-1.5 text-[10px] text-nav">
                 <span className="w-0.5 h-3 rounded-sm bg-red-500" />
                 Tähtaeg möödas
               </span>
             </div>
             {visibleTypes.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider w-[86px]">
+                <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
                   Täidis = töö
                 </span>
                 {visibleTypes.map(t => (
-                  <span key={t.label} className="flex items-center gap-1.5 text-[10px] text-ink-muted">
+                  <span key={t.label} className="flex items-center gap-1.5 text-[10px] text-nav">
                     <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: `${t.hex}1f`, boxShadow: `inset 0 0 0 1px ${t.hex}66` }} />
                     {t.label}
                   </span>
                 ))}
-                <span className="flex items-center gap-1.5 text-[10px] text-ink-muted">
-                  <span className="w-2.5 h-2.5 rounded bg-bg-sidebar ring-1 ring-inset ring-ink-faint" />
+                <span className="flex items-center gap-1.5 text-[10px] text-nav">
+                  <span className="w-2.5 h-2.5 rounded bg-bg-sidebar ring-1 ring-inset ring-white/30" />
                   Visiit
                 </span>
               </div>
@@ -451,9 +598,8 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
             )}
           </div>
         </div>
-      </div>
 
-      {/* ─── Right details panel ──────────────────────────────────────────── */}
+        {/* ─── Right details panel ──────────────────────────────────────────── */}
       <aside className="w-[320px] flex-shrink-0 border-l border-ink-faint/15 bg-bg-card overflow-y-auto">
         {!selected ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-2">
@@ -658,6 +804,7 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
           </div>
         )}
       </aside>
+      </div>
 
       <AnimatePresence>
         {visitForm && (
@@ -665,11 +812,83 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
             key={visitForm.visit?.id ?? 'new'}
             visit={visitForm.visit}
             initialDate={visitForm.date}
+            initialDuration={visitForm.durationMin}
             onClose={() => setVisitForm(null)}
             onOpenPatient={onOpenPatient}
           />
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Filter dropdown ──────────────────────────────────────────────────────────
+
+function FilterDropdown({ label, options, selected, onChange }: {
+  label: string
+  options: string[]
+  selected: Set<string>
+  onChange: (v: Set<string>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const toggle = (item: string) => {
+    const next = new Set(selected)
+    next.has(item) ? next.delete(item) : next.add(item)
+    onChange(next)
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+          selected.size > 0
+            ? 'bg-accent/15 text-accent border-accent/30'
+            : 'bg-bg-card text-ink-muted border-ink-faint/20 hover:border-ink-faint/40'
+        }`}
+      >
+        {label}
+        {selected.size > 0 && (
+          <span className="bg-accent text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
+            {selected.size}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 bg-bg-card border border-ink-faint/20 rounded-xl shadow-panel w-56 max-h-64 overflow-y-auto py-1">
+          {options.length === 0 ? (
+            <p className="text-xs text-ink-faint px-3 py-2">Andmed puuduvad</p>
+          ) : options.map(opt => (
+            <button
+              key={opt}
+              onClick={() => toggle(opt)}
+              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                selected.has(opt) ? 'bg-accent/10 text-accent font-medium' : 'text-ink-muted hover:bg-bg-sidebar'
+              }`}
+            >
+              <span className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                selected.has(opt) ? 'bg-accent border-accent' : 'border-ink-faint'
+              }`}>
+                {selected.has(opt) && <CheckCircle2 size={8} className="text-white" />}
+              </span>
+              <span className="truncate">{opt}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

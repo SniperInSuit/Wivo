@@ -37,7 +37,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.workly.dental')
+  electronApp.setAppUserModelId('com.wivo.dental')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

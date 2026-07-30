@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro } from 'lucide-react'
+import { Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2 } from 'lucide-react'
 import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
 import { useSettings, THEMES } from '../stores/useSettings'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
+import { useAuth, type Clinic } from '../context/AuthContext'
+import { supabase, updateProfile } from '../lib/supabase'
 import type { PipelineStage } from '../config/pipeline'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
@@ -14,7 +16,7 @@ const STAGE_PALETTE = [
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#0E1116'
 ]
 
-type GroupKey = 'profiil' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender'
+type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender'
 
 // Only real, working groups are listed. The rest of a typical settings sidebar
 // (team, notifications, templates, integrations) has nothing behind it yet.
@@ -23,6 +25,7 @@ const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: 
     title: 'Üldine',
     items: [
       { key: 'profiil', label: 'Profiil', icon: User },
+      { key: 'kliinik', label: 'Kliinik', icon: Building2 },
       { key: 'kasutajaliides', label: 'Kasutajaliides', icon: Palette },
     ]
   },
@@ -247,11 +250,170 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
   )
 }
 
+// ─── Profile settings sub-component ───────────────────────────────────────────
+
+function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
+  const [name, setName] = useState(auth.profile?.full_name ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const dirty = name.trim() !== (auth.profile?.full_name ?? '')
+
+  async function handleSave() {
+    if (!auth.user || !dirty) return
+    setSaving(true)
+    try {
+      await updateProfile(auth.user.id, { full_name: name.trim() })
+      await auth.refreshProfile()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-3">
+        <User size={14} className="text-accent" />
+        <h3 className="text-sm font-semibold text-ink">Sinu profiil</h3>
+        {saved && <span className="text-[10px] text-emerald-600 font-medium">Salvestatud ✓</span>}
+      </div>
+      <label className="label" htmlFor="kasutaja-nimi">Nimi märkuste autorina</label>
+      <input
+        id="kasutaja-nimi"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="nt Kevin Treial"
+        className="input py-1.5 text-sm max-w-xs"
+      />
+      <p className="text-xs text-ink-faint mt-2 leading-relaxed">
+        Lisatakse autorina iga patsiendi märkuse juurde. Salvestatakse sinu kontole.
+      </p>
+      {auth.user?.email && (
+        <p className="text-xs text-ink-muted mt-1">
+          E-post: {auth.user.email} · Roll: {auth.profile?.role ?? '—'}
+        </p>
+      )}
+      {dirty && (
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary mt-3 disabled:opacity-50"
+        >
+          {saving ? 'Salvestab…' : 'Salvesta'}
+        </button>
+      )}
+    </section>
+  )
+}
+
+// ─── Clinic settings sub-component ────────────────────────────────────────────
+
+function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
+  clinic: Clinic; onUpdate: () => Promise<void>; isOwner: boolean
+}) {
+  const [form, setForm] = useState({
+    name: clinic.name ?? '',
+    address: clinic.address ?? '',
+    city: clinic.city ?? '',
+    postal_code: clinic.postal_code ?? '',
+    phone: clinic.phone ?? '',
+    email: clinic.email ?? '',
+    reg_code: clinic.reg_code ?? '',
+    vat_number: clinic.vat_number ?? '',
+    bank_name: clinic.bank_name ?? '',
+    bank_account: clinic.bank_account ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const dirty = Object.entries(form).some(([k, v]) => v !== (clinic[k as keyof Clinic] ?? ''))
+
+  async function handleSave() {
+    if (!isOwner || !dirty) return
+    setSaving(true)
+    setError(null)
+    try {
+      const updates: Record<string, string | null> = {}
+      for (const [k, v] of Object.entries(form)) {
+        updates[k] = v.trim() || null
+      }
+      updates.updated_at = new Date().toISOString()
+      const { error: err } = await supabase.from('clinics').update(updates).eq('id', clinic.id)
+      if (err) throw err
+      await onUpdate()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: unknown) {
+      setError((err as Error)?.message ?? 'Salvestamine ebaõnnestus')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
+
+  const Field = ({ label, field, placeholder, colSpan }: {
+    label: string; field: string; placeholder: string; colSpan?: boolean
+  }) => (
+    <div className={colSpan ? 'col-span-2' : ''}>
+      <label className="label">{label}</label>
+      <input
+        value={form[field as keyof typeof form]}
+        onChange={e => set(field, e.target.value)}
+        placeholder={placeholder}
+        className="input py-1.5 text-sm"
+        disabled={!isOwner}
+      />
+    </div>
+  )
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <Building2 size={14} className="text-accent" />
+        <h3 className="text-sm font-semibold text-ink">Kliiniku andmed</h3>
+        {saved && <span className="text-[10px] text-emerald-600 font-medium">Salvestatud ✓</span>}
+      </div>
+      {!isOwner && (
+        <p className="text-xs text-ink-faint">Ainult kliiniku omanik saab neid andmeid muuta.</p>
+      )}
+      <div className="grid grid-cols-2 gap-3 max-w-lg">
+        <Field label="Kliiniku nimi" field="name" placeholder="Nimi" colSpan />
+        <Field label="Aadress" field="address" placeholder="Tänav, maja" colSpan />
+        <Field label="Linn" field="city" placeholder="Tallinn" />
+        <Field label="Postiindeks" field="postal_code" placeholder="10111" />
+        <Field label="Telefon" field="phone" placeholder="+372 5123 4567" />
+        <Field label="E-post" field="email" placeholder="info@kliinik.ee" />
+        <Field label="Registrikood" field="reg_code" placeholder="12345678" />
+        <Field label="KMKR number" field="vat_number" placeholder="EE123456789" />
+        <Field label="Pank" field="bank_name" placeholder="LHV, SEB…" />
+        <Field label="IBAN" field="bank_account" placeholder="EE00 1234 5678 9012 3456" />
+      </div>
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+      )}
+      {isOwner && dirty && (
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary disabled:opacity-50"
+        >
+          {saving ? 'Salvestab…' : 'Salvesta'}
+        </button>
+      )}
+    </section>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
-  const { settings, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi, setTeema, setNumber } = useSettings()
+  const { settings, setMaterialPrice, setDesignFee, setDefaultMachine, setTeema, setNumber } = useSettings()
   const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults } = usePipeline()
+  const auth = useAuth()
 
   const [group, setGroup] = useState<GroupKey>('profiil')
 
@@ -382,23 +544,12 @@ export function SettingsPage() {
 
           {/* Your name — stamped as the author on every patient note */}
           {group === 'profiil' && (
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <User size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Sinu nimi</h3>
-            </div>
-            <label className="label" htmlFor="kasutaja-nimi">Nimi märkuste autorina</label>
-            <input
-              id="kasutaja-nimi"
-              value={settings.kasutajaNimi}
-              onChange={e => setKasutajaNimi(e.target.value)}
-              placeholder="nt Kevin Treial"
-              className="input py-1.5 text-sm max-w-xs"
-            />
-            <p className="text-xs text-ink-faint mt-2 leading-relaxed">
-              Lisatakse autorina iga patsiendi märkuse juurde. Kui väli on tühi, kuvatakse "Tundmatu".
-            </p>
-          </section>
+          <ProfileSection auth={auth} />
+          )}
+
+          {/* Clinic settings — owner only */}
+          {group === 'kliinik' && auth.clinic && (
+          <ClinicSettingsSection clinic={auth.clinic} onUpdate={auth.refreshProfile} isOwner={auth.role === 'owner'} />
           )}
 
           {/* Machine default */}

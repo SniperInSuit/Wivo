@@ -53,9 +53,11 @@ const EMPTY_FORM: JobInput = {
   patsient: '',
   patient_id: null,
   too: '',
+  kirjeldus: '',
   materjal: '',
   masina: '',
   print_id: '',
+  disain_id: '',
   varv: '',
   hambad: '',
   valmis_aeg: '',
@@ -258,9 +260,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         patsient: job.patsient,
         patient_id: job.patient_id ?? null,
         too: job.too ?? '',
+        kirjeldus: job.kirjeldus ?? '',
         materjal: job.materjal ?? '',
         masina: job.masina ?? '',
         print_id: job.print_id ?? '',
+        disain_id: job.disain_id ?? '',
         varv: job.varv ?? '',
         hambad: job.hambad ?? '',
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
@@ -328,9 +332,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     const cleaned: JobInput = {
       ...form,
       too: form.too || null,
+      kirjeldus: form.kirjeldus || null,
       materjal: form.materjal || null,
       masina: form.masina || null,
       print_id: form.print_id || null,
+      disain_id: form.disain_id || null,
       varv: form.varv || null,
       hambad: form.hambad || null,
       valmis_aeg: form.valmis_aeg ? new Date(form.valmis_aeg).toISOString() : null,
@@ -462,12 +468,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         {/* Read-only view of an existing job — the form is one click away */}
         {job && !editing ? (
           <>
-            <JobTimeline
-              job={job}
-              status={activeRev?.status ?? job.status}
-              finishedAt={activeRev ? (activeRev.deadline ?? null) : undefined}
-            />
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-nav-bg">
+              <JobTimeline
+                job={job}
+                status={activeRev?.status ?? job.status}
+                finishedAt={activeRev ? (activeRev.deadline ?? null) : undefined}
+              />
               <JobReadView
                 job={job}
                 isBottom={isBottom}
@@ -599,6 +605,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 })()}
               </div>
 
+              {/* Kirjeldus */}
+              <div>
+                <label className="label">Kirjeldus</label>
+                <textarea
+                  value={form.kirjeldus ?? ''}
+                  onChange={e => set('kirjeldus', e.target.value)}
+                  placeholder="Töö kirjeldus…"
+                  rows={2}
+                  className="input resize-none"
+                />
+              </div>
+
               {/* Materjal */}
               <div>
                 <label className="label">Materjal</label>
@@ -687,16 +705,28 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
               </div>
 
-              {/* Print ID */}
-              <div>
-                <label className="label">Print ID</label>
-                <input
-                  type="text"
-                  value={form.print_id ?? ''}
-                  onChange={e => set('print_id', e.target.value)}
-                  placeholder="SprintRay töö number…"
-                  className="input"
-                />
+              {/* Print ID + Disain ID */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Print ID</label>
+                  <input
+                    type="text"
+                    value={form.print_id ?? ''}
+                    onChange={e => set('print_id', e.target.value)}
+                    placeholder="SprintRay töö nr…"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Disain ID</label>
+                  <input
+                    type="text"
+                    value={form.disain_id ?? ''}
+                    onChange={e => set('disain_id', e.target.value)}
+                    placeholder="Disaini viide…"
+                    className="input"
+                  />
+                </div>
               </div>
 
               {/* Värv */}
@@ -772,21 +802,15 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         )}
 
         {/* Footer */}
-        <div className="flex flex-col gap-2 px-6 py-4 border-t border-ink-faint/20 flex-shrink-0 bg-bg-card">
+        <div className="flex flex-col gap-2 px-6 py-4 border-t border-nav/10 flex-shrink-0 bg-nav-bg">
           {saveError && (
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
           )}
           <div className="flex items-center justify-between">
             {job && !editing ? (
-              <>
-                <button type="button" onClick={onClose} className="btn-ghost">
-                  Sulge
-                </button>
-                <button type="button" onClick={() => setEditing(true)} className="btn-primary">
-                  <Pencil size={14} />
-                  Muuda
-                </button>
-              </>
+              <button type="button" onClick={onClose} className="text-nav-muted hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm ml-auto">
+                Sulge
+              </button>
             ) : (
               <>
                 <button

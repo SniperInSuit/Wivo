@@ -412,7 +412,8 @@ export function Dashboard({ jobs }: DashboardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Top patients */}
           <div className="card p-4">
-            <p className="text-sm font-semibold text-ink mb-3">Top patsiendid (hambad)</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">Top patsiendid (hambad)</p>
+            <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad patsiendi kaupa</p>
             {stats.topPatients.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart
@@ -422,8 +423,9 @@ export function Dashboard({ jobs }: DashboardProps) {
                 >
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={78} />
-                  <Tooltip formatter={(v: number) => [v, 'Hambad']} />
-                  <Bar dataKey="count" fill="#6366F1" radius={[0, 4, 4, 0]} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${v} hammast`, name === 'original' ? 'Originaal' : 'Muudatused']} />
+                  <Bar dataKey="original" stackId="teeth" fill="#6366F1" radius={[0, 0, 0, 0]} name="original" />
+                  <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -434,7 +436,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           {/* Teeth by work type */}
           <div className="card p-4">
             <p className="text-sm font-semibold text-ink mb-0.5">Hambad töötüübi järgi</p>
-            <p className="text-xs text-ink-faint mb-3">Kokku toodetud hambad töö liigi kaupa</p>
+            <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad töö liigi kaupa</p>
             {stats.teethByWorkType.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart
@@ -444,16 +446,77 @@ export function Dashboard({ jobs }: DashboardProps) {
                 >
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={68} />
-                  <Tooltip />
-                  <Bar dataKey="teeth" radius={[0, 4, 4, 0]}>
-                    {stats.teethByWorkType.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${v} hammast`, name === 'original' ? 'Originaal' : 'Muudatused']} />
+                  <Bar dataKey="original" stackId="teeth" fill="#0AB6C4" radius={[0, 0, 0, 0]} name="original" />
+                  <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <p className="text-sm text-ink-faint text-center py-6">Andmed puuduvad</p>
+            )}
+          </div>
+
+          {/* Revision rate by work type */}
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink mb-0.5">Muudatuste määr töötüübi järgi</p>
+            <p className="text-xs text-ink-faint mb-3">Mitu muudatust 100 töö kohta</p>
+            {stats.byWorkType.length > 0 ? (
+              <div className="space-y-2">
+                {stats.byWorkType.filter(t => t.count > 0).map(t => {
+                  const rate = t.count > 0 ? (t.revisions / t.count) * 100 : 0
+                  const maxRate = Math.max(100, ...stats.byWorkType.map(x => x.count > 0 ? (x.revisions / x.count) * 100 : 0))
+                  return (
+                    <div key={t.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: workTypeHex(t.name) }} />
+                      <span className="text-ink-muted truncate w-24 flex-shrink-0">{t.name}</span>
+                      <div className="flex-1 h-4 bg-bg-sidebar rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${(rate / maxRate) * 100}%`,
+                            backgroundColor: rate > 50 ? '#EF4444' : rate > 25 ? '#F59E0B' : '#10B981'
+                          }}
+                        />
+                      </div>
+                      <span className="tabular-nums font-semibold text-ink w-14 text-right">{rate.toFixed(0)}%</span>
+                      <span className="tabular-nums text-ink-faint w-16 text-right">{t.revisions}/{t.count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-faint text-center py-6">Andmed puuduvad</p>
+            )}
+          </div>
+
+          {/* Revision reasons breakdown */}
+          <div className="card p-4">
+            <p className="text-sm font-semibold text-ink mb-0.5">Muudatuste põhjused</p>
+            <p className="text-xs text-ink-faint mb-3">Miks muudatusi tehakse</p>
+            {stats.revisionReasons.length > 0 ? (
+              <div className="space-y-2">
+                {stats.revisionReasons.map((r, i) => {
+                  const total = stats.revisionReasons.reduce((s, x) => s + x.count, 0)
+                  const pct = total > 0 ? (r.count / total) * 100 : 0
+                  const REASON_COLORS = ['#EF4444', '#F59E0B', '#6366F1', '#EC4899', '#10B981', '#3B82F6', '#8B5CF6', '#14B8A6', '#F97316']
+                  return (
+                    <div key={r.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: REASON_COLORS[i % REASON_COLORS.length] }} />
+                      <span className="text-ink-muted truncate flex-1">{r.name}</span>
+                      <div className="w-24 h-4 bg-bg-sidebar rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: REASON_COLORS[i % REASON_COLORS.length] }}
+                        />
+                      </div>
+                      <span className="tabular-nums font-semibold text-ink w-8 text-right">{r.count}</span>
+                      <span className="tabular-nums text-ink-faint w-10 text-right">{pct.toFixed(0)}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-faint text-center py-6">Muudatusi pole</p>
             )}
           </div>
         </div>
@@ -635,7 +698,9 @@ export function Dashboard({ jobs }: DashboardProps) {
                   <div key={t.name} className="flex items-center gap-2 text-xs">
                     <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: workTypeHex(t.name) }} />
                     <span className="text-ink-muted truncate flex-1">{t.name}</span>
-                    <span className="text-ink-faint tabular-nums">{t.count}×</span>
+                    <span className="text-ink-faint tabular-nums w-20 text-right">
+                      {t.count}× <span className="text-ink-faint/60">+ {t.revisions}m</span>
+                    </span>
                     <span className="text-ink-faint tabular-nums w-16 text-right">Ø {t.avgPrice.toFixed(0)} €</span>
                     <span className="font-semibold text-ink tabular-nums w-20 text-right">{t.revenue.toFixed(2)} €</span>
                   </div>

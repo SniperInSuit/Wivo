@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 004: realtime sync for patient_teeth
+-- Wivo — migration 004: realtime sync for patient_teeth
 -- Introduced in app version 1.1.0
 -- Run this ON ITS OWN, in a separate Supabase SQL editor query, AFTER 003.
 -- ============================================================================
@@ -20,7 +20,7 @@
 -- THIS STEP IS OPTIONAL. Skip it and everything still works; tooth changes
 -- made on another machine just will not appear until the app is reopened.
 --
--- IF IT DEADLOCKS AGAIN: quit the Workly app on every computer first (each open
+-- IF IT DEADLOCKS AGAIN: quit the Wivo app on every computer first (each open
 -- instance holds a realtime subscription), then re-run. You can also do the
 -- same thing from the dashboard: Database → Replication → supabase_realtime →
 -- enable `patient_teeth`.

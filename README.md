@@ -1,4 +1,4 @@
-# Workly — Dental Production Tracker
+# Wivo — Dental Production Tracker
 
 A local Electron desktop app for tracking dental restoration jobs through a six-stage
 production pipeline. Data persists to **Supabase** (hosted Postgres) so it's backed up
@@ -84,7 +84,7 @@ Paste each file into the Supabase **SQL Editor** and run it.
 | `sql/008_visits_realtime.sql` | realtime sync for `visits` (optional) | 1.3.0 |
 | `sql/009_visit_status.sql` | two more visit states — `saabunud`, `ei_tulnud` (required for the quick-action buttons) | 1.4.0 |
 
-**Quit the Workly app before running a migration**, and run each file as its own query. An open
+**Quit the Wivo app before running a migration**, and run each file as its own query. An open
 instance holds realtime subscriptions on `patients` and `jobs`; an `ALTER TABLE` and an
 `ALTER PUBLICATION` in the same transaction against those locks deadlocks with `40P01`.
 

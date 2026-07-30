@@ -11,8 +11,11 @@ import { PatientsView } from './components/Patients/PatientsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { SettingsPage } from './components/SettingsPage'
+import { WorkersPage } from './components/Workers/WorkersPage'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
 import { PipelineProvider } from './context/PipelineContext'
+import { AuthProvider } from './context/AuthContext'
+import { AuthGuard } from './components/Auth/AuthGuard'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
 
@@ -224,6 +227,7 @@ function AppContent() {
           )}
           {view === 'stats' && <Dashboard jobs={jobs} />}
           {view === 'settings' && <SettingsPage />}
+          {view === 'workers' && <WorkersPage />}
         </main>
       </div>
 
@@ -264,9 +268,13 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <PipelineProvider>
-        <AppContent />
-      </PipelineProvider>
+      <AuthProvider>
+        <AuthGuard>
+          <PipelineProvider>
+            <AppContent />
+          </PipelineProvider>
+        </AuthGuard>
+      </AuthProvider>
     </QueryClientProvider>
   )
 }

@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useMemo } from 'react
 import type { ReactNode } from 'react'
 import { PIPELINE_STAGES, type PipelineStage } from '../config/pipeline'
 
-const STORAGE_KEY = 'workly_pipeline_v1'
+const STORAGE_KEY = 'wivo_pipeline_v1'
 
 // Palette for auto-assigned custom stage colours
 const EXTRA_COLORS = [

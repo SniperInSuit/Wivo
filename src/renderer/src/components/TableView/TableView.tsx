@@ -394,7 +394,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                     ${job.kiirtoo ? 'border-l-2 border-l-orange-400' : 'border-l-2 border-l-transparent'}
                     ${isSelected
                       ? 'bg-accent/[0.07]'
-                      : idx % 2 === 0 ? 'bg-bg-card' : 'bg-bg/50'
+                      : idx % 2 === 0 ? 'bg-bg-card' : 'bg-[#f0f4f6]'
                     }
                     hover:bg-accent-light`}
                 >

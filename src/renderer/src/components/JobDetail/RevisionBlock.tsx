@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import type { Revision, StageKey } from '../../types/job'
-import { MATERIAL_OPTIONS, MATERIAL_SHADES } from '../../types/job'
+import { MATERIAL_OPTIONS, MATERIAL_SHADES, REVISION_REASONS } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
@@ -18,6 +18,7 @@ interface RevisionBlockProps {
 
 const EMPTY_DRAFT = {
   note: '',
+  reason: '' as string,
   hambad: '',
   varv: '' as string | null,
   materjal: '' as string,
@@ -55,6 +56,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
       id: crypto.randomUUID(),
       ts: new Date().toISOString(),
       note: draft.note.trim(),
+      reason: draft.reason || undefined,
       hambad: draft.hambad || undefined,
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
@@ -73,6 +75,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
     setEditingId(rev.id)
     setEditDraft({
       note: rev.note,
+      reason: rev.reason ?? '',
       hambad: rev.hambad ? rev.hambad.split(',').map(t => t.trim()).filter(Boolean).join(',') : '',
       varv: rev.varv ?? null,
       materjal: rev.materjal ?? '',
@@ -91,6 +94,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
     onChange(value.map(r => r.id !== revId ? r : {
       ...r,
       note: d.note.trim() || r.note,
+      reason: d.reason || undefined,
       hambad: d.hambad || undefined,
       varv: d.varv || undefined,
       materjal: d.materjal || undefined,
@@ -217,6 +221,11 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
                   {rev.materjal && (
                     <span className="text-[10px] bg-slate-500 text-white px-1.5 py-0.5 rounded font-medium">
                       {rev.materjal}
+                    </span>
+                  )}
+                  {rev.reason && (
+                    <span className="text-[10px] bg-pink-500/30 text-pink-200 px-1.5 py-0.5 rounded font-medium">
+                      {rev.reason}
                     </span>
                   )}
                   {rev.deadline && (
@@ -360,7 +369,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
 function RevisionForm({
   draft, setDraft, onSubmit, onCancel, submitLabel, isEdit = false,
 }: {
-  draft: { note: string; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
+  draft: { note: string; reason: string; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
   setDraft: React.Dispatch<React.SetStateAction<typeof draft>>
   onSubmit: () => void
   onCancel: () => void
@@ -393,6 +402,27 @@ function RevisionForm({
           autoFocus
           className="input resize-none bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
         />
+      </div>
+
+      {/* Reason */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">Põhjus</label>
+        <div className="flex flex-wrap gap-1.5">
+          {REVISION_REASONS.map(r => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setDraft(d => ({ ...d, reason: d.reason === r ? '' : r }))}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-all duration-100 font-medium ${
+                draft.reason === r
+                  ? 'bg-pink-500 text-white border-pink-500'
+                  : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Status */}

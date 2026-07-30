@@ -1,11 +1,11 @@
 -- ============================================================================
--- Workly — migration 003: manual per-tooth status + patient card extensions
+-- Wivo — migration 003: manual per-tooth status + patient card extensions
 -- Introduced in app version 1.1.0
 -- Run this in the Supabase SQL editor AFTER 001_patients.sql and
 -- 002_patients_rls.sql, and BEFORE 004_patient_teeth_realtime.sql.
 -- ============================================================================
 --
--- !!  QUIT THE WORKLY APP BEFORE RUNNING THIS.
+-- !!  QUIT THE WIVO APP BEFORE RUNNING THIS.
 --     A running instance holds realtime subscriptions on `patients` and `jobs`.
 --     The ALTER TABLE below needs an AccessExclusiveLock on `patients`, so an
 --     open app makes this wait. Combined with a publication change in the SAME

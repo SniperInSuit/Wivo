@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 002: row level security policy for patients
+-- Wivo — migration 002: row level security policy for patients
 -- Introduced in app version 1.0.47
 -- Run this in the Supabase SQL editor after 001_patients.sql.
 -- ============================================================================

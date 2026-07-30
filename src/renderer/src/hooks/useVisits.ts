@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
+import { supabase, getActiveClinicId } from '../lib/supabase'
 import type { Visit, VisitInput } from '../types/visit'
 
 const QUERY_KEY = ['visits']
@@ -41,7 +41,7 @@ export function useCreateVisit() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: VisitInput) => {
-      const { data, error } = await supabase.from('visits').insert(input).select().single()
+      const { data, error } = await supabase.from('visits').insert({ ...input, clinic_id: getActiveClinicId() }).select().single()
       if (error) throw error
       return data as Visit
     },

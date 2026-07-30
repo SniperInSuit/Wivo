@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 006: patients.lougaliiges (Lõualiiges / TMJ)
+-- Wivo — migration 006: patients.lougaliiges (Lõualiiges / TMJ)
 -- Introduced in app version 1.1.4
 -- Run this in the Supabase SQL editor. Safe to run on its own, any time.
 -- ============================================================================
@@ -19,7 +19,7 @@
 -- (Art. 9), same as the rest of the ravikaart. No RLS change needed — 002
 -- already covers every column on public.patients.
 --
--- QUIT THE WORKLY APP FIRST — an open instance holds a realtime subscription on
+-- QUIT THE WIVO APP FIRST — an open instance holds a realtime subscription on
 -- `patients`, and ALTER TABLE needs an exclusive lock on it.
 -- ============================================================================
 

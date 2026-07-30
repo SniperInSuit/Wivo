@@ -33,6 +33,14 @@ export default {
           // the recessed surface for inputs inside cards and must stay light.
           bg: 'rgb(var(--c-nav-bg) / <alpha-value>)'
         },
+        // Chrome — header bars sitting on the page background. In Navy Cloud
+        // the headers are navy with light text; in Hele they stay white.
+        chrome: {
+          DEFAULT: 'rgb(var(--c-chrome) / <alpha-value>)',
+          text: 'rgb(var(--c-chrome-text) / <alpha-value>)',
+          muted: 'rgb(var(--c-chrome-muted) / <alpha-value>)',
+          faint: 'rgb(var(--c-chrome-faint) / <alpha-value>)'
+        },
         // Pipeline stage accent colors (muted, distinct) — not themed
         stage: {
           disain: '#6366F1',

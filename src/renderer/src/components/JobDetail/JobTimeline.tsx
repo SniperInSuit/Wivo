@@ -33,7 +33,7 @@ export function JobTimeline({ job, status, finishedAt: finishedAtProp }: JobTime
   const finishedAt = raw ? parseISO(raw) : null
 
   return (
-    <div className="px-6 py-4 border-b border-ink-faint/15 flex-shrink-0">
+    <div className="mx-5 mt-4 px-5 py-4 bg-bg-card rounded-xl flex-shrink-0">
       <div className="flex items-start">
         {stages.map((s, i) => {
           const done = reached(i)

@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { MATERIAL_OPTIONS } from '../types/job'
 
 // Bump key when structure changes so old storage is discarded cleanly
-const STORAGE_KEY = 'workly_settings_v2'
+const STORAGE_KEY = 'wivo_settings_v2'
 
 export interface MaterialPricing {
   small: number   // €/tooth for positions 1–5 (incisors, canines, premolars)
@@ -47,7 +47,7 @@ export const THEMES: ThemeOption[] = [
   }
 ]
 
-export interface WorklySettings {
+export interface WivoSettings {
   materialPrices: Record<string, MaterialPricing>
   designFee: number       // € per job when design is included
   defaultMachine: string
@@ -72,7 +72,7 @@ export interface WorklySettings {
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
 const DEFAULT_MATERIAL: MaterialPricing = { small: 15, large: 15 }
 
-function defaultSettings(): WorklySettings {
+function defaultSettings(): WivoSettings {
   return {
     materialPrices: Object.fromEntries(
       MATERIAL_OPTIONS.map(m => [m, { ...DEFAULT_MATERIAL }])
@@ -94,11 +94,11 @@ function defaultSettings(): WorklySettings {
   }
 }
 
-function loadSettings(): WorklySettings {
+function loadSettings(): WivoSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultSettings()
-    const stored = JSON.parse(raw) as Partial<WorklySettings>
+    const stored = JSON.parse(raw) as Partial<WivoSettings>
     const def = defaultSettings()
     // Merge: stored values win, but new materials not in storage get the default 15€.
     // This is also why STORAGE_KEY is NOT bumped for additive fields like
@@ -131,7 +131,7 @@ function loadSettings(): WorklySettings {
 // snapshotted localStorage at mount and never saw later writes — so a name typed
 // into Seaded while a patient page was open stamped notes as "Tundmatu" until
 // the component happened to remount. One shared snapshot, one subscriber list.
-let snapshot: WorklySettings = loadSettings()
+let snapshot: WivoSettings = loadSettings()
 applyTheme(snapshot.teema)
 const listeners = new Set<() => void>()
 
@@ -140,7 +140,7 @@ function subscribe(fn: () => void) {
   return () => { listeners.delete(fn) }
 }
 
-function getSnapshot(): WorklySettings {
+function getSnapshot(): WivoSettings {
   return snapshot
 }
 
@@ -150,7 +150,7 @@ function applyTheme(theme: ThemeKey) {
   document.documentElement.dataset.theme = theme
 }
 
-function persist(next: WorklySettings) {
+function persist(next: WivoSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   applyTheme(next.teema)
   // New object identity every write — useSyncExternalStore compares by reference
@@ -162,18 +162,18 @@ export function useSettings() {
   const settings = useSyncExternalStore(subscribe, getSnapshot)
 
   // Every setter goes through persist(), which is what notifies subscribers.
-  const setSettings = useCallback((fn: (prev: WorklySettings) => WorklySettings) => {
+  const setSettings = useCallback((fn: (prev: WivoSettings) => WivoSettings) => {
     persist(fn(snapshot))
   }, [])
 
-  const save = useCallback((next: WorklySettings) => {
+  const save = useCallback((next: WivoSettings) => {
     persist(next)
   }, [])
 
   const setMaterialPrice = useCallback(
     (material: string, field: keyof MaterialPricing, value: number) => {
       setSettings(prev => {
-        const next: WorklySettings = {
+        const next: WivoSettings = {
           ...prev,
           materialPrices: {
             ...prev.materialPrices,
@@ -213,8 +213,8 @@ export function useSettings() {
 
   // Generic numeric setter for the calendar/pricing fields — one function beats
   // ten near-identical ones, and every write still goes through persist().
-  const setNumber = useCallback(<K extends keyof WorklySettings>(key: K, value: number) => {
-    setSettings(prev => ({ ...prev, [key]: value } as WorklySettings))
+  const setNumber = useCallback(<K extends keyof WivoSettings>(key: K, value: number) => {
+    setSettings(prev => ({ ...prev, [key]: value } as WivoSettings))
   }, [setSettings])
 
   const setKasutajaNimi = useCallback((nimi: string) => {

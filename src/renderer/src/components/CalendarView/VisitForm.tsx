@@ -13,6 +13,7 @@ import { describeError } from '../Patients/errors'
 interface VisitFormProps {
   visit: Visit | null      // null = create
   initialDate?: Date       // pre-fill the day when creating from a calendar cell
+  initialDuration?: number // pre-fill duration from drag-select (minutes)
   onClose: () => void
   // Jumps to the patient's profile. Only offered when the visit is linked to a
   // patient record — a free-typed name has no profile to open.
@@ -25,7 +26,7 @@ interface VisitFormProps {
 // datetime-local wants "YYYY-MM-DDTHH:mm" with no timezone suffix
 const toLocalInput = (iso: string) => (iso ? iso.replace('Z', '').slice(0, 16) : '')
 
-export function VisitForm({ visit, initialDate, onClose, onOpenPatient, prefillPatient }: VisitFormProps) {
+export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpenPatient, prefillPatient }: VisitFormProps) {
   const createVisit = useCreateVisit()
   const updateVisit = useUpdateVisit()
   const deleteVisit = useDeleteVisit()
@@ -45,7 +46,7 @@ export function VisitForm({ visit, initialDate, onClose, onOpenPatient, prefillP
         }
       : {
           ...EMPTY_VISIT,
-          kestus_min: settings.visiidiKestus,
+          kestus_min: initialDuration ?? settings.visiidiKestus,
           patient_id: prefillPatient?.id ?? null,
           patsient: prefillPatient?.nimi ?? '',
           arst: prefillPatient?.arst ?? null,

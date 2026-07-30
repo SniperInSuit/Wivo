@@ -1,5 +1,303 @@
 # Changelog
 
+## [1.7.1] — 2026-07-30
+**Käivita järjekorras:** `sql/012_profiles.sql`, `sql/013_auth_rls.sql`, `sql/014_clinics.sql`, `sql/015_add_clinic_id.sql`, `sql/016_clinic_rls.sql` (Wivo kinni enne).
+
+**Autentimine — rakendus nõuab nüüd sisselogimist**
+- E-posti + parooli põhine registreerimine ja sisselogimine
+- Esimene kasutaja saab automaatselt `owner` rolli, järgnevad `worker`
+- Profiili nimi salvestatakse andmebaasi (mitte enam localStorage)
+- Märkuste autorid tulevad nüüd autenditud profiilist
+- Väljalogimine TopBar-ist (LogOut nupp)
+- Parooli silma ikoon registreerimisel
+- Seadete leht näitab profiili nime, e-posti ja rolli
+
+**Kliiniku seadistus — omaniku esimene sisselogimine avab häälestusviisardi**
+- Kliiniku nimi, aadress, linn, postiindeks
+- Telefon, e-post
+- Registrikood, KMKR number
+- Pank ja IBAN
+- Kõik olemasolevad tööd, patsiendid ja visiidid seotakse automaatselt kliiniku külge
+
+**Andmete isoleerimine — iga kliinik näeb ainult oma andmeid**
+- `clinic_id` lisatud tööde, patsientide ja visiitide tabelitele
+- RLS poliitikad filtreerivad kõik päringud `clinic_id` järgi
+- `my_clinic_id()` abifunktsioon Postgresis
+- Kõik loomispäringud lisavad automaatselt `clinic_id`
+
+---
+
+## [1.7.0] — 2026-07-30
+**Käivita:** `sql/012_profiles.sql`, `sql/013_auth_rls.sql` (Wivo kinni enne).
+
+Autentimise alus. Rakendus nõuab sisselogimist; anonüümne ligipääs ei tööta enam.
+
+---
+
+## [1.6.30] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Muudatuste põhjused**
+- Iga muudatus (revision) saab nüüd `reason` välja — 9 valmis valikut: Vale disain, Vale värv, Vale materjal, Vale hammas, Halb passivus, Purunemine, Patsiendi soov, Arsti soov, Muu
+- Põhjuse valik muudatuse vormis (roosad nupud)
+- Põhjuse badge kokkusurutud muudatuse real
+- **Statistika**: "Muudatuste põhjused" kaart koos tulpdiagrammiga
+
+---
+
+## [1.6.29] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Muudatuste määr töötüübi järgi** — uus statistika kaart
+- Horisontaalsed progressi ribad: roheline (<25%), kollane (25-50%), punane (>50%)
+- Protsent ja suhtarv (nt 2/8)
+
+---
+
+## [1.6.28] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Top patsiendid — kaks värvi**
+- Violetne = originaal hambad, roosa = muudatuste hambad
+- Tooltip näitab jagunemist
+
+---
+
+## [1.6.27] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Hambad töötüübi järgi — kaks värvi**
+- Tsüaan = originaal hambad, roosa = muudatuste hambad (stacked bars)
+- Töötüübi nimed kasutavad nüüd `workTypeLabel()` (mitte enam `too.split(' ')[0]`)
+- Tooltip näitab originaal vs muudatuste arvu
+
+---
+
+## [1.6.26] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Käive töö liigi järgi — originaal + muudatused**
+- Näitab nüüd `8× + 2m` (8 originaaltööd + 2 muudatust)
+
+---
+
+## [1.6.25] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Eemaldatud duplikaat "Uus töö" nupp ülevaatest (TopBar-il on juba üks)
+
+---
+
+## [1.6.24] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — fikseeritud kellaajad + vahed nädalate vahel**
+- Kellaajad jäävad vasakule kohale horisontaalselt kerides
+- 6px vahe nädalate vahel
+
+---
+
+## [1.6.23] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — sujuv kerimine ilma hüpeteta**
+- Eemaldatud CSS snap mis põhjustas hüppamist
+- `onWeekChange` debounce (150ms) et vältida tagasiside tsüklit
+
+---
+
+## [1.6.22] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Nädalavaate libistaja feedback-tsükli parandus
+
+---
+
+## [1.6.21] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — libistaja tagasi**
+- Horisontaalne libistaja mis sünkroniseerib kerimisega
+
+---
+
+## [1.6.20] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — pidev horisontaalne kerimine**
+- 27 nädalat (±13) renderdatakse kõrvuti
+- Keritav peidetud scrollbar-iga
+- Noolenupud ja "Jooksev nädal" animeerivad sujuvalt
+
+---
+
+## [1.6.19] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Eemaldatud välimine scrollbar kuuvaates — legend on alati nähtav
+
+---
+
+## [1.6.18] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Nädalavaate libistaja 364 sammu (päeva kaupa, mitte nädala kaupa)
+
+---
+
+## [1.6.17] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Kuukalender — pidev kerimine**
+- Kuuvaade renderdab nüüd ±3 kuud keritava ribana (mitte üks kuu korraga)
+- Kuude nimed ilmuvad inline päistena
+- Automaatne kerimine tänaseni laadimisel
+- Vertikaalne libistaja eemaldatud (kerimine piisab)
+
+---
+
+## [1.6.16] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Kuuvaate vertikaalne libistaja — nüüd nädala kaupa (mitte kuu kaupa)
+
+---
+
+## [1.6.15] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Kuuvaate libistaja sujuvam (600 positsiooni)
+
+---
+
+## [1.6.14] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Kuuvaate libistaja vertikaalseks (paremal küljel), 360px pikk
+
+---
+
+## [1.6.13] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Kuuvaate alla libistaja ±3 kuud
+
+---
+
+## [1.6.12] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — libistaja + drag-select kestus + kuupäev**
+- Horisontaalne libistaja nädala vahetamiseks (±26 nädalat)
+- Ajavahemiku lohistamine annab õige kestuse visiidi vormile
+- Päeva numbri järel kuunumber (nt 30.07)
+
+---
+
+## [1.6.11] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Nädalavaade — lohistades visiidi loomine**
+- Klõpsa ja lohista ajavahemiku valimiseks
+- Tsüaan overlay näitab valitud vahemikku ajatemplidega
+- Hiire vabastamisel avaneb visiidi vorm eeltäidetud alguse ja kestusega
+
+---
+
+## [1.6.10] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Visiitide ajajoon — uuendatud**
+- Visiitide kaardid vasakule joondatud (mitte keskele) — vasakserv = algusaeg
+- Hilinenud visiidid (5+ min pärast algust, saabumata) kuvatakse punaselt märkega "hilines"
+
+---
+
+## [1.6.9] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Visiitide ajajoon — uus disain**
+- Tunnimärgid punktide ja katkendjoontega
+- Visiidi algus- ja lõpupunktid rööpal
+- Praegune aeg vertikaalne joon kogu kõrguses
+- Ühendusjooned rööpast kaartideni
+
+---
+
+## [1.6.8] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Projekti ümbernimetamine: Workly → Wivo**
+- Nimi, ikoon ja branding muudetud kõikjal
+- Uus logo `src/renderer/src/assets/Wivo Logo.png`
+- Sidebar kasutab päris logo pilti
+- `package.json`: nimi `wivo`, appId `com.wivo.dental`, productName `Wivo`
+- Electron build icon `build/icon.png`
+- localStorage võtmed uuendatud
+
+---
+
+## [1.6.7] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Versiooninumber parandatud (vahepealsed muudatused polnud versioonitud)
+
+---
+
+## [1.6.6] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Tabel: vahelduvad read `#f0f4f6` (mitte läbipaistev)
+
+---
+
+## [1.6.5] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Töö detailvaade — navy taust**
+- Lugemisvaate keritav ala nüüd `bg-nav-bg`
+- Kõik kaardid (TÖÖ ANDMED, TOOTMISE ANDMED jne) `bg-bg-card`
+- Ajajoon liigutatud keritava ala sisse ümardatud kaardina
+- Jalus navy taustaga
+- Variandi vahetaja valge/läbipaistev navy-l
+
+---
+
+## [1.6.4] — 2026-07-30
+**Käivita:** `sql/011_job_disain_id.sql`
+
+- Disain ID väli tööle (Print ID kõrval)
+
+---
+
+## [1.6.3] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Navy Cloud teema uuendused**
+- TopBar ja kalendri päis navy taustaga, valge tekst
+- Kalendri päis täislaiuses (sidebar paremal pool allpool)
+- Ajajoon ühendatud parempaneeli ülaservaga
+- Taust staatiline (sama värv kui navigatsioonibaar)
+- Legend ja nupud valge tekstiga
+
+---
+
+## [1.6.2] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+- Eemaldatud duplikaat "Muuda" nupp töö detailvaate jalast
+- Tähtaeg näitab nüüd kellaaega (mitte enam kärbitult)
+
+---
+
+## [1.6.1] — 2026-07-30
+**Käivita:** `sql/010_job_kirjeldus.sql`
+
+- Kirjeldus (description) väli originaaltööle (muudatustel oli juba)
+- CSV import toetab kirjelduse veergu
+
+---
+
 ## [1.6.0] — 2026-07-30
 Andmebaasi muudatusi ei ole.
 
@@ -63,7 +361,7 @@ Andmebaasi muudatusi ei ole.
 - Kui visiit või töö ei ole ühegi patsiendikaardiga seotud, siis nuppu ei kuvata, vaid seisab selgitus „Vali nimekirjast patsient, et profiili avada" — sidumata nimel ei ole profiili, mida avada
 
 ## [1.4.0] — 2026-07-30
-**Käivita `sql/009_visit_status.sql`** Supabase SQL-redaktoris (Workly kinni). Olemasolevad visiidid jäävad puutumata — kõik kolm senist staatust kehtivad edasi.
+**Käivita `sql/009_visit_status.sql`** Supabase SQL-redaktoris (Wivo kinni). Olemasolevad visiidid jäävad puutumata — kõik kolm senist staatust kehtivad edasi.
 
 **Visiidil on nüüd viis staatust ja üheklõpsu nupud**
 - Uued staatused: **Saabunud** (patsient on kohal praegu) ja **Ei tulnud** (ei ilmunud)
@@ -103,7 +401,7 @@ Andmebaasi muudatusi ei ole.
 ## [1.3.0] — 2026-07-30
 Kalendri ümberkujundus ja **uus olem: visiidid**.
 
-**Enne kasutamist käivita Supabase SQL-redaktoris (Workly kinni), kaks eraldi päringut:**
+**Enne kasutamist käivita Supabase SQL-redaktoris (Wivo kinni), kaks eraldi päringut:**
 1. `sql/007_visits.sql` — tabel `visits` koos RLS-poliitikaga
 2. `sql/008_visits_realtime.sql` — reaalajas sünkroniseerimine (vabatahtlik)
 
@@ -186,7 +484,7 @@ Andmebaasi muudatusi ei ole — uusi migratsioone ei ole vaja.
 - Patsiendilehel saab kustutada ainult patsiendi enda märkusi — töö märkust muudetakse ja kustutatakse töö kaardil, kus see asub. Sellest on ka väike selgitus kasti all
 
 ## [1.1.4] — 2026-07-30
-Kaks parandust. **Käivita `sql/006_patient_tmj.sql`** (Workly kinni enne) — ilma selleta ei salvestu ravikaart.
+Kaks parandust. **Käivita `sql/006_patient_tmj.sql`** (Wivo kinni enne) — ilma selleta ei salvestu ravikaart.
 
 **Ravikaart ei salvestunud**
 - Puudus veerg `patients.lougaliiges`. Väli „Lõualiiges" eraldati „Hambumusest" versioonis 1.1.1 ja veerg lisati faili `sql/003`, mis oli juba käivitatud — käivitatud migratsiooni muutmine ei tee andmebaasis midagi. Seetõttu saatis salvestamine tundmatu veeru, Postgres lükkas päringu tagasi (42703) ja **kogu ravikaardi salvestus ebaõnnestus**, mitte ainult see üks väli
@@ -198,7 +496,7 @@ Kaks parandust. **Käivita `sql/006_patient_tmj.sql`** (Workly kinni enne) — i
 - Paneel loeb nüüd alati värsket seisu. See parandab ühtlasi olukorra, kus teises arvutis tehtud muudatus ei jõudnud avatud paneelini
 
 ## [1.1.3] — 2026-07-30
-**Käivita `sql/005_job_notes.sql` Supabase SQL-redaktoris** (sulge Workly enne). Ilma selleta ei saa töö märkusi salvestada — kast ütleb seda ka ise.
+**Käivita `sql/005_job_notes.sql` Supabase SQL-redaktoris** (sulge Wivo enne). Ilma selleta ei saa töö märkusi salvestada — kast ütleb seda ka ise.
 
 - **Märkuste kast töö kaardil**, Tootmise andmete all: lisa märkus autori ja ajatempliga, kustuta kaheastmelise kinnitusega. Autor tuleb Seaded → „Sinu nimi"
 - Märkused kuuluvad tervele tööle, mitte valitud variandile — need püsivad, kui vahetad originaali ja muudatuste vahel
@@ -240,11 +538,11 @@ Kasutajaliidese täpsustused 1.1.0 peale. Andmebaasi muudatusi ei ole — kehtiv
 ## [1.1.0] — 2026-07-29
 Suur kasutajaliidese uuendus.
 
-**Enne kasutamist sulge Workly ja käivita Supabase SQL-redaktoris kaks eraldi päringut:**
+**Enne kasutamist sulge Wivo ja käivita Supabase SQL-redaktoris kaks eraldi päringut:**
 1. `sql/003_patient_teeth.sql` — uued veerud ja `patient_teeth` tabel. Ilma selleta ei saa patsienti salvestada ega luua (veerg `markused` puudub) ja hambakaart ei tööta.
 2. `sql/004_patient_teeth_realtime.sql` — reaalajas sünkroniseerimine. Vabatahtlik.
 
-Need peavad olema **eraldi päringud**: koos ühes tehingus tekib `40P01: deadlock detected`, sest `ALTER PUBLICATION` vajab lukku, mida hoiab Supabase realtime-protsess, kes omakorda ootab `patients` tabelit, mille sama tehing juba hõivas. Avatud Workly hoiab samu lukke — sulge rakendus enne käivitamist.
+Need peavad olema **eraldi päringud**: koos ühes tehingus tekib `40P01: deadlock detected`, sest `ALTER PUBLICATION` vajab lukku, mida hoiab Supabase realtime-protsess, kes omakorda ootab `patients` tabelit, mille sama tehing juba hõivas. Avatud Wivo hoiab samu lukke — sulge rakendus enne käivitamist.
 
 **Navigatsioon**
 - **Kompaktne vasak külgriba** (76 px): ikoon peal, silt all — Ülevaade, Tööd, Kalender, Tabel, Patsiendid, Statistika, Seaded. Asendab senise ülemise vahekaardiriba; "Tahvel" kannab nüüd nime "Tööd"
@@ -518,7 +816,7 @@ _(entry reconstructed from HANDOFF.md — was missing from this file)_
 - Fixed CSV import counting 997 rows instead of ~33 — Google Sheets exports semicolons as the delimiter in Estonian/European locales; the parser now auto-detects `,` vs `;` vs `\t` and also strips the UTF-8 BOM that some exports include
 
 
-All notable changes to Workly are documented here.
+All notable changes to Wivo are documented here.
 Format: `[version] — date — summary`
 
 ---

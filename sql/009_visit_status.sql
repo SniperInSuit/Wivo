@@ -1,7 +1,7 @@
 -- ============================================================================
--- Workly — migration 009: two more visit states
+-- Wivo — migration 009: two more visit states
 -- Introduced in app version 1.4.0
--- Run this in the Supabase SQL editor (Workly closed). Safe on its own.
+-- Run this in the Supabase SQL editor (Wivo closed). Safe on its own.
 -- ============================================================================
 --
 -- 007 allowed three states: planeeritud / toimunud / tuhistatud. Two were missing

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight, ArrowUp, ArrowDown, Cpu, Euro, FileText, Activity, Clock,
-  Package, Plus, Smile, CalendarCheck
+  Package, Smile, CalendarCheck
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -14,6 +14,7 @@ import type { ViewMode } from '../../types/view'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
+import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
 
@@ -136,7 +137,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       .slice(0, 6)
   }, [jobs, doneStageKey, stageMap])
 
-  // Machine load — real counts of open jobs per printer. Workly has no printer
+  // Machine load — real counts of open jobs per printer. Wivo has no printer
   // connection, so there is no online state or resin level to report.
   const machines = useMemo(() => {
     const counts = new Map<string, number>()
@@ -147,7 +148,8 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [jobs, doneStageKey])
 
-  const name = settings.kasutajaNimi.trim().split(/\s+/)[0]
+  const { displayName } = useAuth()
+  const name = displayName.split(/\s+/)[0]
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
@@ -161,10 +163,6 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
             {format(now, 'EEEE, d. MMMM yyyy', { locale: et })}
           </p>
         </div>
-        <button onClick={onNewJob} className="btn-primary flex-shrink-0">
-          <Plus size={14} />
-          Uus töö
-        </button>
       </div>
 
       {/* ─── KPI row ──────────────────────────────────────────────────────── */}
@@ -344,7 +342,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
         <Status
           icon={CalendarCheck} label="Tänased tähtajad"
           value={`${stats.dueToday.length} tööd`}
-          sub={`Workly v${__APP_VERSION__}`}
+          sub={`Wivo v${__APP_VERSION__}`}
         />
       </div>
     </div>

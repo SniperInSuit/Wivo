@@ -82,6 +82,8 @@ const HEADER_ALIASES: Record<string, string[]> = {
   kuupaev:       ['kuupäev','kuupaev','kuupã¤ev','date','received'],
   patsient:      ['patsient','patient','nimi','name'],
   too:           ['töö','too','tã¶ã¶','work','type'],
+  kirjeldus:     ['kirjeldus','description','desc'],
+  disain_id:     ['disain id','disain_id','design id','design_id'],
   materjal:      ['materjal','material'],
   varv:          ['värv','varv','vã¤rv','shade'],
   hambad:        ['x ham','hambad','teeth','ham'],
@@ -195,6 +197,8 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
         kuupaev:       parseDate(cell(row, 'kuupaev')) ?? new Date().toISOString().slice(0, 10),
         patsient:      cell(row, 'patsient'),
         too:           cell(row, 'too') || null,
+        kirjeldus:     cell(row, 'kirjeldus') || null,
+        disain_id:     cell(row, 'disain_id') || null,
         materjal:      cell(row, 'materjal') || null,
         varv:          cell(row, 'varv') || null,
         hambad:        cell(row, 'hambad') || null,
@@ -262,7 +266,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
     <>
       <input type="file" accept=".csv" ref={fileRef} onChange={handleFile} className="hidden" />
 
-      <button onClick={() => fileRef.current?.click()} className="btn-ghost" title="Impordi CSV">
+      <button onClick={() => fileRef.current?.click()} className="text-nav hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm" title="Impordi CSV">
         <Upload size={14} />
         Import CSV
       </button>

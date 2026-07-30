@@ -4,6 +4,7 @@ import { format, parseISO, isValid } from 'date-fns'
 import type { Job, JobNote } from '../../types/job'
 import { useUpdateJob } from '../../hooks/useJobs'
 import { useSettings } from '../../stores/useSettings'
+import { useAuth } from '../../context/AuthContext'
 
 interface JobNotesPanelProps {
   job: Job
@@ -30,6 +31,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
 
   const updateJob = useUpdateJob()
   const { settings } = useSettings()
+  const { displayName } = useAuth()
   const [draft, setDraft] = useState('')
   const [adding, setAdding] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -61,14 +63,14 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
     const note: JobNote = {
       id: crypto.randomUUID(),
       ts: new Date().toISOString(),
-      autor: settings.kasutajaNimi || 'Tundmatu',
+      autor: displayName,
       tekst
     }
     await write([...notes, note], () => { setDraft(''); setAdding(false) })
   }
 
   return (
-    <section className="border border-ink-faint/20 rounded-xl px-3.5 py-3">
+    <section className="bg-bg-card border border-ink-faint/20 rounded-xl px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-2.5">
         <MessageSquare size={12} className="text-accent" />
         <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">Märkused</h3>

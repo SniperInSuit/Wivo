@@ -14,7 +14,21 @@ export interface Revision {
   kiirtoo?: boolean   // fast/rush revision — price × 2
   status?: StageKey   // pipeline stage for this revision (default: 'disain')
   print_id?: string   // SprintRay job number for this revision's print
+  reason?: string     // why the revision was needed (vale disain, vale värv, etc.)
 }
+
+// Pre-defined revision reasons — free text is also allowed
+export const REVISION_REASONS = [
+  'Vale disain',
+  'Vale värv',
+  'Vale materjal',
+  'Vale hammas',
+  'Halb passivus',
+  'Purunemine',
+  'Patsiendi soov',
+  'Arsti soov',
+  'Muu',
+] as const
 
 // A dated note on a job. Same shape as PatientNote — kept as its own type so the
 // two can diverge (a job note may later carry a stage, a patient note will not).
@@ -37,8 +51,10 @@ export interface Job {
   materjal: string | null   // Materjal — resin material (may include shade, e.g. "Ceramic Crown HT A2")
   masina: string | null     // Masin — printer (Pro2, Midas)
   print_id: string | null   // Print ID — SprintRay job number for lookup
+  disain_id: string | null  // Disain ID — design file or job reference
   varv: string | null       // Värv — VITA shade
   hambad: string | null     // Ham — FDI tooth numbers, e.g. "11,21"
+  kirjeldus: string | null  // Kirjeldus — free-text description of the work
   valmis_aeg: string | null // Valmis aeg — deadline (ISO timestamp)
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
   // --- Revision list ---

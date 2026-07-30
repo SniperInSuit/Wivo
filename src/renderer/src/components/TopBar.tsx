@@ -1,5 +1,6 @@
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, LogOut } from 'lucide-react'
 import { useSettings } from '../stores/useSettings'
+import { useAuth } from '../context/AuthContext'
 import { ImportCSVButton } from './ImportCSVButton'
 
 interface TopBarProps {
@@ -14,20 +15,21 @@ interface TopBarProps {
 // height contract is measured against it.
 export function TopBar({ search, onSearchChange, onNewJob, onImportDone }: TopBarProps) {
   const { settings } = useSettings()
-  const nimi = settings.kasutajaNimi.trim()
+  const { displayName, signOut } = useAuth()
+  const nimi = displayName
   const initials = nimi
     ? nimi.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
     : null
 
   return (
-    <header className="flex items-center gap-3 px-5 py-3 bg-bg-card border-b border-ink-faint/15 flex-shrink-0 h-[56px]">
+    <header className="flex items-center gap-3 px-5 py-3 bg-nav-bg flex-shrink-0 h-[56px]">
       <div className="relative w-full max-w-sm">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-nav" />
         <input
           value={search}
           onChange={e => onSearchChange(e.target.value)}
           placeholder="Otsi patsienti, tööd…"
-          className="input pl-8 py-1.5 text-sm"
+          className="w-full pl-8 px-3 py-1.5 text-sm bg-nav/10 border border-nav/20 rounded-lg text-nav placeholder:text-nav/60 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors duration-150"
         />
       </div>
 
@@ -38,14 +40,19 @@ export function TopBar({ search, onSearchChange, onNewJob, onImportDone }: TopBa
           Uus töö
         </button>
 
-        {/* Technician chip. Real data from Seaded → Sinu nimi, not an account —
-            there is no login, so an avatar menu would be decoration. */}
         {initials && (
-          <div className="flex items-center gap-2 pl-2 ml-1 border-l border-ink-faint/20" title="Seaded → Sinu nimi">
-            <span className="w-7 h-7 rounded-full bg-accent-light text-accent-dark flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+          <div className="flex items-center gap-2 pl-2 ml-1 border-l border-nav/20">
+            <span className="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">
               {initials}
             </span>
-            <span className="text-xs font-medium text-ink truncate max-w-[130px]">{nimi}</span>
+            <span className="text-xs font-medium text-nav truncate max-w-[130px]">{nimi}</span>
+            <button
+              onClick={signOut}
+              title="Logi välja"
+              className="p-1.5 text-nav/50 hover:text-nav transition-colors rounded-lg"
+            >
+              <LogOut size={14} />
+            </button>
           </div>
         )}
       </div>

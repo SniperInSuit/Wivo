@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workly — migration 008: realtime sync for visits
+-- Wivo — migration 008: realtime sync for visits
 -- Introduced in app version 1.3.0
 -- Run this ON ITS OWN, in a separate query, AFTER 007_visits.sql.
 -- ============================================================================

@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Clock, Plus, Stethoscope } from 'lucide-react'
 import {
-  format, parseISO, isValid, isSameDay, isToday, startOfWeek, addDays, addWeeks
+  format, parseISO, isValid, isSameDay, isToday, startOfWeek, addDays, addWeeks,
+  differenceInCalendarDays, differenceInWeeks
 } from 'date-fns'
 import { et } from 'date-fns/locale'
 import type { Visit } from '../../types/visit'
@@ -28,7 +29,7 @@ interface VisitWeekGridProps {
   now: Date
   onWeekChange: (d: Date) => void
   onVisitOpen: (v: Visit) => void
-  onSlotClick: (start: Date) => void
+  onSlotClick: (start: Date, durationMin?: number) => void
   onMove: (visit: Visit, newStart: Date) => void
   onDaySelect: (d: Date) => void
   selected: Date | null
@@ -92,10 +93,77 @@ export function VisitWeekGrid({
   const bodyRef = useRef<HTMLDivElement>(null)
   const [dragOver, setDragOver] = useState<{ day: string; minutes: number } | null>(null)
 
+  // Click-drag to select a time range and create a visit
+  const [slotDrag, setSlotDrag] = useState<{
+    day: Date; startMin: number; currentMin: number
+  } | null>(null)
+  const slotDragRef = useRef(slotDrag)
+  slotDragRef.current = slotDrag
+
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart]
   )
+
+  // ── Continuous horizontal strip: ±13 weeks ────────────────────────
+  const WEEKS_RANGE = 13
+  const allWeeks = useMemo(() => {
+    const base = startOfWeek(new Date(), { weekStartsOn: 1 })
+    return Array.from({ length: WEEKS_RANGE * 2 + 1 }, (_, i) =>
+      addWeeks(base, i - WEEKS_RANGE)
+    )
+  }, [])
+
+  const hScrollRef = useRef<HTMLDivElement>(null)
+  const [scrollPct, setScrollPct] = useState(50)
+  // Track whether the scroll is coming from user interaction (slider/swipe)
+  // vs programmatic (arrow buttons). Only arrows trigger smooth scrollTo.
+  const scrollSource = useRef<'user' | 'button'>('user')
+
+  // Arrow/button navigation — smooth scroll to that week
+  useEffect(() => {
+    if (scrollSource.current !== 'button') return
+    const el = hScrollRef.current
+    if (!el) return
+    const base = startOfWeek(new Date(), { weekStartsOn: 1 })
+    const idx = Math.round(differenceInCalendarDays(weekStart, base) / 7) + WEEKS_RANGE
+    const pageW = el.clientWidth
+    el.scrollTo({ left: idx * pageW, behavior: 'smooth' })
+    scrollSource.current = 'user'
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart])
+
+  // On mount, jump to current week (no animation)
+  useEffect(() => {
+    const el = hScrollRef.current
+    if (!el) return
+    const pageW = el.clientWidth
+    el.scrollLeft = WEEKS_RANGE * pageW
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sync slider + header from scroll — debounced to avoid feedback loop
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleHScroll = useCallback(() => {
+    const el = hScrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (maxScroll > 0) setScrollPct((el.scrollLeft / maxScroll) * 100)
+    // Debounce the weekStart update so it doesn't fight the scroll
+    if (scrollTimer.current) clearTimeout(scrollTimer.current)
+    scrollTimer.current = setTimeout(() => {
+      const el2 = hScrollRef.current
+      if (!el2) return
+      const pageW = el2.clientWidth
+      if (pageW <= 0) return
+      const idx = Math.round(el2.scrollLeft / pageW)
+      const base = startOfWeek(new Date(), { weekStartsOn: 1 })
+      const newWeek = addWeeks(base, idx - WEEKS_RANGE)
+      if (differenceInCalendarDays(newWeek, weekStart) !== 0) {
+        onWeekChange(newWeek)
+      }
+    }, 150)
+  }, [weekStart, onWeekChange])
   const hours = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i)
 
   const byDay = useMemo(() => {
@@ -142,19 +210,19 @@ export function VisitWeekGrid({
         </h2>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onWeekChange(addWeeks(weekStart, -1))}
+            onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, -1)) }}
             className="btn-ghost p-1.5" title="Eelmine nädal"
           >
             <ChevronLeft size={14} />
           </button>
           <button
-            onClick={() => onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+            onClick={() => { scrollSource.current = 'button'; onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 })) }}
             className="btn-ghost text-xs"
           >
             Jooksev nädal
           </button>
           <button
-            onClick={() => onWeekChange(addWeeks(weekStart, 1))}
+            onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, 1)) }}
             className="btn-ghost p-1.5" title="Järgmine nädal"
           >
             <ChevronRight size={14} />
@@ -162,114 +230,181 @@ export function VisitWeekGrid({
         </div>
       </div>
 
-      {/* Day headers, aligned with the columns below via the same 48px gutter */}
-      <div className="flex border-b border-ink-faint/15">
-        <div className="w-12 flex-shrink-0" />
-        {days.map(day => {
-          const isSel = selected != null && isSameDay(day, selected)
-          return (
-            <button
-              key={day.toISOString()}
-              onClick={() => onDaySelect(day)}
-              className={`flex-1 min-w-0 px-1 py-1.5 text-center border-l border-ink-faint/10 transition-colors ${
-                isSel ? 'bg-accent/10' : 'hover:bg-bg-sidebar/60'
-              }`}
-            >
-              <p className="text-[10px] text-ink-muted first-letter:uppercase truncate">
-                {format(day, 'EEEEEE', { locale: et })}
-              </p>
-              <p className={`text-sm font-semibold tabular-nums ${
-                isToday(day) ? 'text-accent' : 'text-ink'
-              }`}>
-                {format(day, 'd')}
-              </p>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Scrollable body */}
-      <div className="overflow-y-auto max-h-[560px]">
-        <div className="flex" ref={bodyRef}>
-          {/* Hour gutter */}
-          <div className="w-12 flex-shrink-0 relative" style={{ height: GRID_H }}>
-            {hours.map(h => (
-              <span
-                key={h}
-                className="absolute right-1.5 -translate-y-1/2 text-[10px] text-ink-faint tabular-nums"
-                style={{ top: yFor(h * 60) }}
-              >
-                {String(h).padStart(2, '0')}:00
-              </span>
-            ))}
+      {/* ── Fixed hour gutter + horizontally scrollable weeks ─────────── */}
+      <div className="flex">
+        {/* Fixed hour gutter on the left */}
+        <div className="flex-shrink-0 w-12">
+          {/* Spacer matching day headers height */}
+          <div className="h-[52px] border-b border-ink-faint/15" />
+          <div className="overflow-hidden" style={{ height: GRID_H }}>
+            <div className="relative" style={{ height: GRID_H }}>
+              {hours.map(h => (
+                <span
+                  key={h}
+                  className="absolute right-1.5 -translate-y-1/2 text-[10px] text-ink-faint tabular-nums"
+                  style={{ top: yFor(h * 60) }}
+                >
+                  {String(h).padStart(2, '0')}:00
+                </span>
+              ))}
+            </div>
           </div>
+        </div>
 
-          {days.map(day => {
-            const key = format(day, 'yyyy-MM-dd')
-            const placed = byDay.get(key) ?? []
-            const isDragTarget = dragOver?.day === key
+        {/* Scrollable week strip */}
+        <div
+          ref={hScrollRef}
+          onScroll={handleHScroll}
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          <div className="flex gap-[6px]" style={{ width: `calc(${allWeeks.length} * (100% + 6px) - 6px)` }}>
+            {allWeeks.map((wk, wi) => {
+              const wDays = Array.from({ length: 7 }, (_, i) => addDays(wk, i))
+              const wByDay = new Map<string, Placed[]>()
+              for (const d of wDays) {
+                const k = format(d, 'yyyy-MM-dd')
+                wByDay.set(k, place(visits.filter(v => {
+                  const vd = parseISO(v.algus)
+                  return isValid(vd) && isSameDay(vd, d)
+                })))
+              }
+              return (
+                <div key={wi} className="flex-shrink-0" style={{ width: `calc(100% / ${allWeeks.length})` }}>
+                  {/* Day headers */}
+                  <div className="flex border-b border-ink-faint/15">
+                    {wDays.map(day => {
+                      const isSel = selected != null && isSameDay(day, selected)
+                      return (
+                        <button
+                          key={day.toISOString()}
+                          onClick={() => onDaySelect(day)}
+                          className={`flex-1 min-w-0 px-1 py-1.5 text-center border-l border-ink-faint/10 transition-colors ${
+                            isSel ? 'bg-accent/10' : 'hover:bg-bg-sidebar/60'
+                          }`}
+                        >
+                          <p className="text-[10px] text-ink-muted first-letter:uppercase truncate">
+                            {format(day, 'EEEEEE', { locale: et })}
+                          </p>
+                          <p className={`text-sm font-semibold tabular-nums ${
+                            isToday(day) ? 'text-accent' : 'text-ink'
+                          }`}>
+                            {format(day, 'd')}<span className="text-ink-muted font-normal">.{format(day, 'MM')}</span>
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
 
-            return (
-              <div
-                key={key}
-                className={`flex-1 min-w-0 relative border-l border-ink-faint/10 ${
-                  isDragTarget ? 'bg-accent/5' : ''
-                }`}
-                style={{ height: GRID_H }}
-                onDragOver={e => {
-                  e.preventDefault()
-                  setDragOver({ day: key, minutes: minutesFromEvent(e, e.currentTarget) })
-                }}
-                onDragLeave={() => setDragOver(d => (d?.day === key ? null : d))}
-                onDrop={e => handleDrop(e, day)}
-                onDoubleClick={e => {
-                  const minutes = minutesFromEvent(e, e.currentTarget)
-                  const start = new Date(day)
-                  start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
-                  onSlotClick(start)
-                }}
-                title="Topeltklõps lisab visiidi"
-              >
-                {/* Hour lines; the half-hour is fainter */}
-                {hours.map(h => (
-                  <span key={h}>
-                    <span
-                      className="absolute inset-x-0 border-t border-ink-faint/15"
-                      style={{ top: yFor(h * 60) }}
-                    />
-                    {h < HOUR_END && (
-                      <span
-                        className="absolute inset-x-0 border-t border-dashed border-ink-faint/10"
-                        style={{ top: yFor(h * 60 + 30) }}
-                      />
-                    )}
-                  </span>
-                ))}
+                  {/* Week body */}
+                  <div className="overflow-y-auto max-h-[560px]">
+                    <div className="flex" ref={wi === WEEKS_RANGE ? bodyRef : undefined}>
+                      {wDays.map(day => {
+                      const key = format(day, 'yyyy-MM-dd')
+                      const placed = wByDay.get(key) ?? []
+                      const isDragTarget = dragOver?.day === key
 
-                {/* Current-time line, only on today */}
-                {isToday(day) && minutesOf(now) >= HOUR_START * 60 && minutesOf(now) <= HOUR_END * 60 && (
-                  <span
-                    className="absolute inset-x-0 h-[2px] bg-accent z-20 pointer-events-none"
-                    style={{ top: yFor(minutesOf(now)) }}
-                  >
-                    <span className="absolute -left-0.5 -top-[3px] w-2 h-2 rounded-full bg-accent" />
-                  </span>
-                )}
+                      return (
+                        <div
+                          key={key}
+                          className={`flex-1 min-w-0 relative border-l border-ink-faint/10 ${
+                            isDragTarget ? 'bg-accent/5' : ''
+                          }`}
+                          style={{ height: GRID_H }}
+                          onDragOver={e => {
+                            e.preventDefault()
+                            setDragOver({ day: key, minutes: minutesFromEvent(e, e.currentTarget) })
+                          }}
+                          onDragLeave={() => setDragOver(d => (d?.day === key ? null : d))}
+                          onDrop={e => handleDrop(e, day)}
+                          onMouseDown={e => {
+                            if (e.button !== 0 || (e.target as HTMLElement).closest('button[draggable]')) return
+                            const minutes = minutesFromEvent(e, e.currentTarget)
+                            setSlotDrag({ day, startMin: minutes, currentMin: minutes })
+                            const col = e.currentTarget
+                            const onMove = (ev: MouseEvent) => {
+                              const m = minutesFromEvent(ev as unknown as React.MouseEvent, col)
+                              setSlotDrag(prev => prev ? { ...prev, currentMin: m } : null)
+                            }
+                            const onUp = () => {
+                              window.removeEventListener('mousemove', onMove)
+                              window.removeEventListener('mouseup', onUp)
+                              const drag = slotDragRef.current
+                              if (!drag) return
+                              const from = Math.min(drag.startMin, drag.currentMin)
+                              const to = Math.max(drag.startMin, drag.currentMin)
+                              const duration = Math.max(SNAP_MIN, to - from)
+                              const start = new Date(drag.day)
+                              start.setHours(Math.floor(from / 60), from % 60, 0, 0)
+                              setSlotDrag(null)
+                              onSlotClick(start, duration)
+                            }
+                            window.addEventListener('mousemove', onMove)
+                            window.addEventListener('mouseup', onUp)
+                          }}
+                          onDoubleClick={e => {
+                            const minutes = minutesFromEvent(e, e.currentTarget)
+                            const start = new Date(day)
+                            start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+                            onSlotClick(start)
+                          }}
+                          title="Klõpsa ja lohista ajavahemiku valimiseks"
+                        >
+                          {hours.map(h => (
+                            <span key={h}>
+                              <span
+                                className="absolute inset-x-0 border-t border-ink-faint/15"
+                                style={{ top: yFor(h * 60) }}
+                              />
+                              {h < HOUR_END && (
+                                <span
+                                  className="absolute inset-x-0 border-t border-dashed border-ink-faint/10"
+                                  style={{ top: yFor(h * 60 + 30) }}
+                                />
+                              )}
+                            </span>
+                          ))}
 
-                {/* Drop preview */}
-                {isDragTarget && dragOver && (
-                  <span
-                    className="absolute inset-x-1 h-[2px] bg-accent/70 z-30 pointer-events-none"
-                    style={{ top: yFor(dragOver.minutes) }}
-                  >
-                    <span className="absolute -top-4 left-0 text-[10px] font-semibold text-accent bg-bg-card rounded px-1 tabular-nums">
-                      {String(Math.floor(dragOver.minutes / 60)).padStart(2, '0')}:
-                      {String(dragOver.minutes % 60).padStart(2, '0')}
-                    </span>
-                  </span>
-                )}
+                          {isToday(day) && minutesOf(now) >= HOUR_START * 60 && minutesOf(now) <= HOUR_END * 60 && (
+                            <span
+                              className="absolute inset-x-0 h-[2px] bg-accent z-20 pointer-events-none"
+                              style={{ top: yFor(minutesOf(now)) }}
+                            >
+                              <span className="absolute -left-0.5 -top-[3px] w-2 h-2 rounded-full bg-accent" />
+                            </span>
+                          )}
 
-                {placed.map(({ visit: v, start, col, cols }) => {
+                          {isDragTarget && dragOver && (
+                            <span
+                              className="absolute inset-x-1 h-[2px] bg-accent/70 z-30 pointer-events-none"
+                              style={{ top: yFor(dragOver.minutes) }}
+                            >
+                              <span className="absolute -top-4 left-0 text-[10px] font-semibold text-accent bg-bg-card rounded px-1 tabular-nums">
+                                {String(Math.floor(dragOver.minutes / 60)).padStart(2, '0')}:
+                                {String(dragOver.minutes % 60).padStart(2, '0')}
+                              </span>
+                            </span>
+                          )}
+
+                          {slotDrag && isSameDay(slotDrag.day, day) && (() => {
+                            const from = Math.min(slotDrag.startMin, slotDrag.currentMin)
+                            const to = Math.max(slotDrag.startMin, slotDrag.currentMin)
+                            const top = yFor(from)
+                            const height = Math.max(4, yFor(to) - top)
+                            return (
+                              <div
+                                className="absolute inset-x-1 bg-accent/15 border border-accent/40 rounded-md z-30 pointer-events-none"
+                                style={{ top, height }}
+                              >
+                                <span className="absolute -top-4 left-1 text-[10px] font-semibold text-accent bg-bg-card rounded px-1 tabular-nums">
+                                  {String(Math.floor(from / 60)).padStart(2, '0')}:{String(from % 60).padStart(2, '0')}
+                                  {' – '}
+                                  {String(Math.floor(to / 60)).padStart(2, '0')}:{String(to % 60).padStart(2, '0')}
+                                </span>
+                              </div>
+                            )
+                          })()}
+
+                          {placed.map(({ visit: v, start, col, cols }) => {
                   const hex = VISIT_STATUS_HEX[v.staatus]
                   const cancelled = v.staatus === 'tuhistatud'
                   // Clamp so a long visit stops at 18:00 instead of spilling into
@@ -317,12 +452,41 @@ export function VisitWeekGrid({
               </div>
             )
           })}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      <p className="flex items-center gap-1.5 px-4 py-2 border-t border-ink-faint/15 text-[10px] text-ink-faint">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-ink-faint/15">
+        <span className="text-[10px] text-ink-faint tabular-nums whitespace-nowrap w-16">
+          {format(weekStart, 'dd.MM', { locale: et })}
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={1000}
+          step={1}
+          value={scrollPct * 10}
+          onChange={e => {
+            const el = hScrollRef.current
+            if (!el) return
+            const maxScroll = el.scrollWidth - el.clientWidth
+            el.scrollLeft = (parseInt(e.target.value) / 1000) * maxScroll
+          }}
+          className="flex-1 h-1 accent-accent cursor-pointer"
+          title="Libista sujuvalt"
+        />
+        <span className="text-[10px] text-ink-faint tabular-nums whitespace-nowrap w-16 text-right">
+          {format(addDays(weekStart, 6), 'dd.MM', { locale: et })}
+        </span>
+      </div>
+      <p className="flex items-center gap-1.5 px-4 py-1.5 text-[10px] text-ink-faint">
         <Plus size={10} />
-        Topeltklõps tühjal alal lisab visiidi · lohista visiiti, et aega või päeva muuta
+        Klõpsa ja lohista ajavahemiku valimiseks
       </p>
     </section>
   )

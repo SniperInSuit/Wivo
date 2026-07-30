@@ -6,8 +6,6 @@ import type { Visit } from '../../types/visit'
 import { useSettings } from '../../stores/useSettings'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
 
-// Rail hours come from Seaded → Kalender; they used to be constants here.
-
 interface VisitTimelineProps {
   visits: Visit[]
   jobsFor: (v: Visit) => Job[]
@@ -18,10 +16,15 @@ interface VisitTimelineProps {
   onOpenJobs: (v: Visit) => void
 }
 
-/**
- * Today's visits on a horizontal rail. One of Workly's signature elements — the
- * whole day readable in a single glance, no vertical calendar, no hour rows.
+/*
+ * Layout (top to bottom):
+ *   0–14px   — current-time badge (floats above everything)
+ *  18px      — hour tick dots + dotted stems going up to labels
+ *  18–30px   — hour labels row
+ *  34px      — the rail (horizontal line)
+ *  38px+     — visit cards in two staggered rows
  */
+
 export function VisitTimeline({
   visits, jobsFor, day, now, onDayChange, onVisitOpen, onOpenJobs
 }: VisitTimelineProps) {
@@ -32,7 +35,6 @@ export function VisitTimeline({
   const SPAN = (END_HOUR - START_HOUR) * 60
   const pct = (minutes: number) =>
     Math.min(100, Math.max(0, ((minutes - START_HOUR * 60) / SPAN) * 100))
-
 
   const dayVisits = visits
     .filter(v => {
@@ -46,7 +48,6 @@ export function VisitTimeline({
   const showNow = isToday && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60
   const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i)
 
-  // "Current" = the visit whose window contains now; otherwise the next one up
   const currentId = isToday
     ? dayVisits.find(v => {
         const d = parseISO(v.algus)
@@ -58,8 +59,17 @@ export function VisitTimeline({
       })?.id ?? null
     : null
 
+  // Vertical positions
+  const LABEL_TOP = 6     // hour labels
+  const RAIL_TOP = 28     // the main horizontal rail
+  const DOT_TOP = RAIL_TOP - 3  // dots sit centred on the rail
+  const STEM_TOP = LABEL_TOP + 14  // dotted stem from label down to rail
+  const CARD_ROW_0 = 42   // first card row
+  const CARD_ROW_1 = 68   // second (staggered) card row
+  const TOTAL_H = 136
+
   return (
-    <section className="card p-4">
+    <section className="card p-4 rounded-r-none">
       <div className="flex items-center justify-between mb-3">
         <h2 className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted uppercase tracking-wider">
           <User size={12} />
@@ -77,43 +87,98 @@ export function VisitTimeline({
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="relative h-[126px]">
-            {/* Hour ticks */}
-            <div className="absolute inset-x-0 top-0 h-4">
-              {hours.map(h => (
-                <span
-                  key={h}
-                  className="absolute -translate-x-1/2 text-[10px] text-ink-faint tabular-nums"
-                  style={{ left: `${pct(h * 60)}%` }}
-                >
-                  {String(h).padStart(2, '0')}:00
-                </span>
-              ))}
-            </div>
+          <div className="relative" style={{ height: TOTAL_H }}>
 
-            {/* Rail, with the elapsed part in accent so the day reads as spent vs ahead */}
-            <div className="absolute inset-x-0 top-[24px] h-[2px] bg-ink-faint/25 rounded-full" />
+            {/* ── Hour labels + dots + dotted stems ───────────────── */}
+            {hours.map(h => {
+              const x = pct(h * 60)
+              return (
+                <div key={h} className="absolute -translate-x-1/2" style={{ left: `${x}%`, top: 0, bottom: 0 }}>
+                  {/* Label */}
+                  <span
+                    className="absolute -translate-x-1/2 text-[10px] text-ink-faint tabular-nums whitespace-nowrap"
+                    style={{ left: '50%', top: LABEL_TOP }}
+                  >
+                    {String(h).padStart(2, '0')}:00
+                  </span>
+                  {/* Dotted stem from label to rail */}
+                  <span
+                    className="absolute left-1/2 -translate-x-1/2 border-l border-dashed border-ink-faint/30"
+                    style={{ top: STEM_TOP, height: RAIL_TOP - STEM_TOP }}
+                  />
+                  {/* Dot on the rail */}
+                  <span
+                    className="absolute left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full bg-ink-faint/40"
+                    style={{ top: DOT_TOP }}
+                  />
+                </div>
+              )
+            })}
+
+            {/* ── Main rail ───────────────────────────────────────── */}
+            <div
+              className="absolute inset-x-0 h-[2px] bg-ink-faint/25 rounded-full"
+              style={{ top: RAIL_TOP }}
+            />
+            {/* Elapsed portion */}
             {showNow && (
               <div
-                className="absolute top-[24px] h-[2px] bg-accent rounded-full"
-                style={{ left: 0, width: `${pct(nowMinutes)}%` }}
+                className="absolute h-[2px] bg-accent rounded-full"
+                style={{ top: RAIL_TOP, left: 0, width: `${pct(nowMinutes)}%` }}
               />
             )}
 
-            {/* Current-time indicator: label above, line crossing the rail and
-                extending below it */}
+            {/* ── Visit start dots on the rail ────────────────────── */}
+            {dayVisits.map(v => {
+              const d = parseISO(v.algus)
+              const startMin = d.getHours() * 60 + d.getMinutes()
+              const endMin = startMin + v.kestus_min
+              return (
+                <div key={`dots-${v.id}`}>
+                  {/* Start dot */}
+                  <span
+                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-1/2 border-2 border-bg-card z-[5]"
+                    style={{
+                      left: `${pct(startMin)}%`,
+                      top: RAIL_TOP - 4,
+                      backgroundColor: VISIT_STATUS_HEX[v.staatus]
+                    }}
+                  />
+                  {/* End dot (smaller, hollow) */}
+                  <span
+                    className="absolute w-[7px] h-[7px] rounded-full -translate-x-1/2 border-[1.5px] bg-bg-card z-[4]"
+                    style={{
+                      left: `${pct(endMin)}%`,
+                      top: RAIL_TOP - 2.5,
+                      borderColor: VISIT_STATUS_HEX[v.staatus]
+                    }}
+                  />
+                </div>
+              )
+            })}
+
+            {/* ── Current-time indicator ──────────────────────────── */}
             {showNow && (
               <div
-                className="absolute top-0 bottom-0 -translate-x-1/2 pointer-events-none z-10"
-                style={{ left: `${pct(nowMinutes)}%` }}
+                className="absolute -translate-x-1/2 pointer-events-none z-10"
+                style={{ left: `${pct(nowMinutes)}%`, top: 0, bottom: 0 }}
               >
-                <span className="absolute -top-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white bg-accent rounded px-1.5 py-0.5 tabular-nums whitespace-nowrap">
+                {/* Badge above everything */}
+                <span
+                  className="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white bg-accent rounded-md px-1.5 py-0.5 tabular-nums whitespace-nowrap"
+                  style={{ top: -4 }}
+                >
                   {format(now, 'HH:mm')}
                 </span>
-                <span className="absolute top-[18px] bottom-1 left-1/2 -translate-x-1/2 w-[2px] bg-accent/70" />
+                {/* Vertical line from below badge to bottom */}
+                <span
+                  className="absolute left-1/2 -translate-x-1/2 w-[2px] bg-accent/60"
+                  style={{ top: LABEL_TOP + 12, bottom: 0 }}
+                />
               </div>
             )}
 
+            {/* ── Visit cards ─────────────────────────────────────── */}
             {dayVisits.map((v, i) => {
               const d = parseISO(v.algus)
               const minutes = d.getHours() * 60 + d.getMinutes()
@@ -122,24 +187,19 @@ export function VisitTimeline({
               const cancelled = v.staatus === 'tuhistatud' || v.staatus === 'ei_tulnud'
               const done = v.staatus === 'toimunud'
                 || (v.staatus === 'planeeritud' && isToday && nowMinutes >= minutes + v.kestus_min)
-              // "Saabunud" always reads as the live one, whatever the clock says
               const isCurrent = v.staatus === 'saabunud'
                 || (v.id === currentId && !cancelled && !done)
+              // Client is late: past start time, not arrived, not done, not cancelled
+              const isLate = isToday && nowMinutes > minutes + 5
+                && v.staatus === 'planeeritud' && !done && !cancelled
               const row = i % 2
 
               return (
                 <div key={v.id}>
-                  <span
-                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-1/2 border-2 border-bg-card z-[5]"
-                    style={{
-                      left: `${left}%`,
-                      top: '19px',
-                      backgroundColor: VISIT_STATUS_HEX[v.staatus]
-                    }}
-                  />
+                  {/* Connector line from rail down to card */}
                   <span
                     className="absolute w-[1px] bg-ink-faint/30"
-                    style={{ left: `${left}%`, top: '29px', height: row === 0 ? '8px' : '34px' }}
+                    style={{ left: `${left}%`, top: RAIL_TOP + 4, height: (row === 0 ? CARD_ROW_0 : CARD_ROW_1) - RAIL_TOP - 4 }}
                   />
                   <button
                     onMouseEnter={() => setOpenId(v.id)}
@@ -147,24 +207,27 @@ export function VisitTimeline({
                     onDoubleClick={() => onVisitOpen(v)}
                     onClick={() => onVisitOpen(v)}
                     title="Ava visiit"
-                    className={`absolute -translate-x-1/2 w-[146px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
+                    className={`absolute w-[146px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
                       v.staatus === 'ei_tulnud'
                         ? 'bg-amber-50 border-amber-200 hover:border-amber-300'
                         : cancelled
                         ? 'bg-red-50 border-red-200 hover:border-red-300'
                         : done
                           ? 'bg-bg-sidebar border-ink-faint/20 opacity-80 hover:opacity-100'
-                          : isCurrent
-                            ? 'bg-bg-card border-accent shadow-card'
-                            : 'bg-bg-card border-ink-faint/25 hover:border-accent/50'
+                          : isLate
+                            ? 'bg-red-50 border-red-300 hover:border-red-400'
+                            : isCurrent
+                              ? 'bg-bg-card border-accent shadow-card'
+                              : 'bg-bg-card border-ink-faint/25 hover:border-accent/50'
                     }`}
-                    style={{ left: `${left}%`, top: row === 0 ? '39px' : '65px', zIndex: openId === v.id ? 30 : 6 }}
+                    style={{ left: `${left}%`, top: row === 0 ? CARD_ROW_0 : CARD_ROW_1, zIndex: openId === v.id ? 30 : 6 }}
                   >
                     <span className="flex items-center gap-1 text-[10px] text-ink-muted tabular-nums">
                       <Clock size={9} />
                       {format(d, 'HH:mm')}
                       {done && !cancelled && <Check size={9} className="text-emerald-600" />}
                       {cancelled && <X size={9} style={{ color: VISIT_STATUS_HEX[v.staatus] }} />}
+                      {isLate && <span className="text-[9px] font-semibold text-red-500">hilines</span>}
                     </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-ink truncate">
                       <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />
@@ -174,7 +237,7 @@ export function VisitTimeline({
                       {jobs.length} {jobs.length === 1 ? 'töö' : 'tööd'}
                     </span>
 
-                    {/* Hover detail: patient, duration, and a way into the jobs */}
+                    {/* Hover detail */}
                     {openId === v.id && (
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-[220px] card p-2.5 space-y-1.5 block text-left z-40">
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink">
@@ -213,7 +276,7 @@ export function VisitTimeline({
             })}
 
             {dayVisits.length === 0 && (
-              <p className="absolute inset-x-0 top-[52px] text-center text-sm text-ink-faint">
+              <p className="absolute inset-x-0 text-center text-sm text-ink-faint" style={{ top: CARD_ROW_0 + 10 }}>
                 Sellel päeval visiite ei ole.
               </p>
             )}

@@ -1,104 +1,128 @@
-# Workly — Handoff Notes
+# Wivo — Handoff Notes
 
-## Current version: 1.6.0
+## Current version: 1.7.9
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
-> file instead. This was learned the hard way in 1.1.4: a column added to an already-applied
-> `003` silently broke every Ravikaart save.
+> file instead.
 >
 > **Process rule:** every change ships as a new version — bump `package.json` **and** add a
-> `CHANGELOG.md` entry. The changelog is the audit trail we show authorities to prove what the
-> software does and when it changed. No silent edits.
+> `CHANGELOG.md` entry. The changelog is the audit trail.
 
 ---
 
-## What was just finished (this session)
+## What was done this session (v1.6.1 → v1.7.9)
 
-**Patient profiles + ravikaart (roadmap item 1 — done).**
-- `sql/001_patients.sql` — `patients` table + `jobs.patient_id` FK + realtime publication.
-- `sql/003_patient_teeth.sql` + `sql/004_patient_teeth_realtime.sql` — tooth statuses, new patient
-  columns, realtime. Run as **separate queries with the app closed** — together they deadlock (40P01).
-- `sql/002_patients_rls.sql` — RLS policy for `patients`. **Both must be run in the Supabase SQL
-  editor.** Without 002 the page loads but every write is rejected (RLS `42501`) and reads return
-  zero rows — that is what made the buttons look dead in 1.0.46.
-- `types/patient.ts`, `hooks/usePatients.ts` (CRUD + realtime + backfill mutation)
-- `PatientPicker` combobox replaces the plain Patsient text input on the job form
-- New **Patsiendid** view: list + profile with Ülevaade / Ravikaart / Tööd tabs
-- Backfill button links every existing job to a generated patient record
-- 1.0.45 changelog entry was missing and has been reconstructed from these notes
+### Rename: Workly → Wivo
+- All code, configs, SQL comments, docs renamed
+- New logo `src/renderer/src/assets/Wivo Logo.png` used in sidebar + login
+- `package.json`: name `wivo`, appId `com.wivo.dental`, productName `Wivo`
+- Build icon at `build/icon.png`
 
-**Design decision:** `jobs.patsient` (free-text name) is *kept* next to `patient_id` as a
-denormalised display value. Every board/table/calendar/stats view still reads it, so nothing
-had to be rewritten and imported rows keep working while unlinked.
+### Navy Cloud theme polish
+- TopBar + calendar header use `bg-nav-bg` with `text-nav` tokens (theme-aware, works on all themes)
+- Calendar grid: rounded day cards with gaps (lifted effect)
+- Job detail panel: navy background with white cards
+- Timeline: hour dots, dotted stems, visit start/end dots, vertical current-time line
+- Table zebra: `#f0f4f6` instead of transparent
+- All hardcoded `text-white` replaced with `text-nav` (readable on both hele and navy themes)
 
-### Not yet done in this area
-- Attachments on the patient profile (photos, files) — needs Supabase Storage
-- Stats view still groups by `patsient` string, not `patient_id` (duplicate spellings stay separate)
-- CSV import does not auto-create patient records — run the backfill button after importing
+### Calendar improvements
+- Continuous scrollable month grid (±3 months, no pagination)
+- Continuous scrollable week grid (±13 weeks horizontal)
+- Smooth sliders for both views
+- Click-drag to select time range in week view → creates visit with correct duration
+- Filter bar: multi-select dropdowns for Patient, Work type, Doctor
+- Visit cards left-aligned to start time (not centered)
+- Late visit detection (5+ min past start, red card + "hilines")
+- Month numbers on day headers (e.g. 30.07)
 
----
+### New fields
+- `kirjeldus` — description field on original job (migration 010)
+- `disain_id` — design reference ID next to Print ID (migration 011)
+- `reason` — revision change reason with 9 presets (on Revision type, no migration needed — JSONB)
 
-## Roadmap — agreed next steps
+### Dashboard additions
+- Stacked bars: original vs revision teeth (both by work type and by patient)
+- Revision rate per work type (color-coded progress bars)
+- Revision reasons breakdown chart
+- Original + revision count on revenue table (e.g. "8× + 2m")
+- Removed duplicate "Uus töö" button from overview
 
-### 1. Invoices / PDF export (needed for accounting)
-- Per-job invoice: patient name, teeth, work type, price, date, lab details
-- Monthly summary PDF: all jobs in period, totals, paid vs outstanding
-- Library to use: `@react-pdf/renderer` or just `window.print()` with a styled print layout
+### Auth system (Phase 1 — v1.7.0)
+- Supabase Auth with email/password login
+- `profiles` table with roles (owner/worker/patient)
+- First user = owner automatically
+- Login page, AuthGuard, AuthContext
+- Profile name saves to DB (not localStorage)
+- Logout button in TopBar
+- Password visibility toggle on login
 
----
+### Clinic entity (Phase 2 — v1.7.1)
+- `clinics` table with full business details (name, address, reg code, KMKR, bank, IBAN)
+- `clinic_id` on jobs, patients, visits
+- RLS isolation via `my_clinic_id()` function
+- First-run wizard for clinic setup
+- Clinic settings editable in Seaded → Kliinik
+- Existing data auto-backfilled to clinic on setup
 
-### 2. Price templates
-- Define: "Allon4 → 320 €", "Kroon → 95 €", "Implantkroon → 150 €" etc.
-- When creating a job and picking work type, price auto-fills from template
-- Stored in Supabase (settings table) or localStorage
-- Note: the 320 € example was made up — user defines their own prices
-
----
-
-### 3. Global search (Cmd+K)
-- Search across patient names, job types, FDI numbers, notes
-- Quick keyboard shortcut overlay
-- Results show job card with status + click to open detail
-
----
-
-### 4. Dark mode / configurable themes
-- Tailwind CSS variables already in place — relatively quick to add
-- Toggle in settings, persisted to localStorage
-- Optional: a few preset color themes (accent color picker)
-
----
-
-### 5. Deadline alerts
-- Visual urgency on board cards: yellow ring = due tomorrow, red = due today/overdue
-- Optional: system notification (Electron supports this natively)
-
----
-
-## Legal / compliance notes
-
-- **Ravikaart / patient health data** = GDPR Article 9 (special category). Need: privacy policy, data processing register, DPA with any clients if software is sold.
-- **Photos of dental work** (models, crowns) = NOT personal data. Fine to store.
-- **Medical device (MDR)** = does NOT apply to production tracking / invoicing software. No CE marking needed.
-- **Selling the software** = add: T&Cs, privacy policy, DPA template. No medical license needed.
-- **RLS is ON** for `jobs`, `patients` and `patient_teeth`, but every one of them uses an open `Allow all for anon` policy — anyone holding the anon key can read every ravikaart. That is acceptable only while this is a single-user local tool with the key kept private. Authenticated-only replacements are commented at the bottom of `sql/002_patients_rls.sql` and `sql/003_patient_teeth.sql`; enable them together with auth before real patient health data goes in.
-- **Every release is recorded in `CHANGELOG.md`** — this is the change-history evidence for any authority review. Keep it complete.
+### Permissions (Phase 3 — v1.7.7)
+- `worker_permissions` table with 11 permission keys
+- `usePermissions()` hook with `can('jobs.read')` API
+- Meeskond page: list workers, toggle permissions per worker
+- Owner creates worker accounts with password (no email verification for workers)
+- Sidebar items hidden based on permissions
+- Owner can update worker profiles (migration 018)
 
 ---
 
-## Future / bigger picture
+## Migrations to run (in order)
 
-**Path A** (solo lab tool — current direction): patients, invoices, PDF, search, themes. Weeks of work.
+If starting from v1.6.0, run ALL of these in Supabase SQL editor (Wivo closed):
 
-**Path B** (multi-tenant SaaS for clinics): multi-user auth, role-based access (supervisor/technician), org isolation, billing. Supabase handles the auth/RLS side. Months of work — do this after Path A is solid.
+1. `sql/010_job_kirjeldus.sql`
+2. `sql/011_job_disain_id.sql`
+3. `sql/012_profiles.sql` — enable Email provider in Supabase Auth first
+4. `sql/013_auth_rls.sql` — locks out anon access, login required after this
+5. `sql/014_clinics.sql`
+6. `sql/015_add_clinic_id.sql`
+7. `sql/016_clinic_rls.sql`
+8. `sql/017_permissions.sql`
+9. `sql/018_profiles_owner_update.sql`
 
+**Supabase Auth settings:**
+- Enable Email provider (Authentication → Providers → Email)
+- Disable "Confirm email" for smoother worker onboarding
+- Site URL: set to your Supabase project URL (not localhost)
 
+---
 
+## What's next
 
-THIS WAS NEEDED TO DO BEFORE THE CLAUDE SERVER CRASH:
-Patient page. Can we move Tellimus and Kuupäev be on top of eachother to get more space and compact. Also the Status could just be a color infront of the box, like the side is colored and the colors are explained little on the bottom edge of the Tööde ajalugu box.
+### Phase 4: Invoicing + Payments
+- `invoices` table (number, status, dates, totals, tax)
+- `invoice_lines` (job_id, description, qty, price)
+- `payments` table (amount, method, reference, recorded_by)
+- `worker_earnings` table + `jobs.assigned_to`
+- Invoice PDF generation
+- Migrate `jobs.makstud` boolean → proper payment records
+- New sidebar item "Arved"
 
-Btw dont forget to upgrade the version of the software from every change, 1.1.1 or whatever it is already
+### Phase 5: Settings Migration
+- Move material prices, pipeline stages, calendar config from localStorage to DB
+- Split `useSettings` into clinic settings (DB) + user prefs (localStorage)
 
-Redesign the job details modal to feel like a professional production record rather than a CRUD form. The production timeline should always be visible—even after completion—and act as the visual backbone of the page. The header should establish the job identity, followed by the timeline, then a two-column layout where the left side contains grouped technical production data (job details, manufacturing details, files) and the right side contains payment and invoice information. Use compact, information-dense cards with clear hierarchy, reduce unnecessary whitespace by roughly 20%, and make the interface feel closer to Linear or Stripe than a typical business form. Every section should have a clear purpose, subtle icon, and consistent spacing. The modal should tell the complete story of how the restoration was produced, from creation through every production stage, revisions, and completion, while remaining calm, clinical and premium.(added imag)
+### Backlog
+- Customize Supabase email templates (branding, Estonian, custom SMTP)
+- Calendar filter persistence
+- Global search (Cmd+K)
+- Deadline alerts / notifications
+
+---
+
+## Legal / compliance
+
+- **Patient portal: REMOVED** — giving patients access to health data would classify as Medical Device under EU MDR. Software stays staff-only.
+- **GDPR Art. 9** — ravikaart, allergiad, etc. are special category data. Auth + RLS now protects them.
+- **RLS is active** — all tables use clinic-based isolation. Anon key can no longer read data.
+- **MDR does NOT apply** — production tracking + invoicing for clinic staff is not a medical device.
