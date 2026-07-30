@@ -36,7 +36,7 @@ export function LoginPage() {
       if (msg.includes('Invalid login credentials')) setError('Vale e-post või parool')
       else if (msg.includes('already registered')) setError('See e-post on juba registreeritud')
       else if (msg.includes('Password should be')) setError('Parool peab olema vähemalt 6 tähemärki')
-      else if (msg.includes('valid email')) setError('Sisesta kehtiv e-posti aadress')
+      else if (msg.includes('valid email')) setError('Sisesta kehtiv kasutajanimi või e-posti aadress')
       else setError(msg)
     } finally {
       setLoading(false)
@@ -94,16 +94,22 @@ export function LoginPage() {
           )}
 
           <div>
-            <label className="label">E-post</label>
+            {/* Sign-up still needs a real address — the person creating the
+                clinic is the one who may need a password reset, and a reset
+                needs somewhere to arrive. Workers created inside the app use a
+                username and have their password reset by the owner. */}
+            <label className="label">{mode === 'login' ? 'Kasutajanimi või e-post' : 'E-post'}</label>
             <div className="relative">
               <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
-                type="email"
+                type={mode === 'login' ? 'text' : 'email'}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="nimi@kliinik.ee"
+                placeholder={mode === 'login' ? 'tehnik või nimi@kliinik.ee' : 'nimi@kliinik.ee'}
                 className="input pl-9"
                 required
+                autoCapitalize="none"
+                autoCorrect="off"
                 autoFocus={mode === 'login'}
               />
             </div>

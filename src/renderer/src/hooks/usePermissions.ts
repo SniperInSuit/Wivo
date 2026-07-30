@@ -10,6 +10,7 @@ export type PermissionKey =
   | 'payments.read' | 'payments.write'
   | 'settings.read'
   | 'pipeline.write'
+  | 'payroll.manage'
 
 // Human-readable labels for the permissions UI
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
@@ -24,6 +25,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   'payments.write':  { label: 'Makseid hallata',        description: 'Saab märkida makstuks, luua arveid' },
   'settings.read':   { label: 'Seadeid vaadata',        description: 'Näeb kliiniku seadeid (ei saa muuta)' },
   'pipeline.write':  { label: 'Etappe muuta',           description: 'Saab lisada, eemaldada ja ümber nimetada töö etappe' },
+  'payroll.manage':  { label: 'Töötasusid hallata',     description: 'Näeb kõigi tasumäärasid ja tunde, saab kinnitada ja tühistada väljamakseid' },
 }
 
 export const ALL_PERMISSIONS = Object.keys(PERMISSION_LABELS) as PermissionKey[]

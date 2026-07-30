@@ -9,7 +9,8 @@ import { type Period, useDashboardStats } from './useDashboardStats'
 import { useVisits } from '../../hooks/useVisits'
 import { usePatients } from '../../hooks/usePatients'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
-import { workTypeHex } from '../../config/workTypes'
+import { FinanceView } from './FinanceView'
+import { useWorkTypes } from '../../stores/useSettings'
 
 const CHART_COLORS = ['#0AB6C4', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#3B82F6']
 
@@ -69,6 +70,22 @@ const TOOLTIP_STYLE = {
   color: 'rgb(var(--c-ink))'
 } as const
 
+// ─── Horizontal bar chart sizing ──────────────────────────────────────────────
+// Recharts' default category-axis `interval` is "preserveEnd", which silently
+// DROPS labels that do not fit — at a fixed 180px with 8 rows that meant the
+// top bar (the biggest patient) rendered with no name at all. interval={0}
+// forces every label, so the height has to grow with the row count instead.
+const ROW_HEIGHT = 26
+const rowChartHeight = (rows: number) => Math.max(120, rows * ROW_HEIGHT)
+
+// The axis reserves this much for names; anything longer is clipped with an
+// ellipsis rather than being drawn over the bars. Kept in one place so the two
+// charts that use it cannot drift out of alignment with each other.
+const NAME_AXIS_WIDTH = 118
+const NAME_MAX_CHARS = 17
+const truncateName = (v: string): string =>
+  v.length > NAME_MAX_CHARS ? `${v.slice(0, NAME_MAX_CHARS - 1)}…` : v
+
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'month', label: 'See kuu' },
   { key: 'quarter', label: 'See kvartal' },
@@ -82,11 +99,13 @@ interface DashboardProps {
 
 export function Dashboard({ jobs }: DashboardProps) {
   const [period, setPeriod] = useState<Period>('month')
+  const [tab, setTab] = useState<'tootmine' | 'rahandus'>('tootmine')
   // Visits and patients may not exist yet (migrations 001/007) — the hook takes
   // empty arrays and simply reports zeroes rather than breaking the page.
   const { data: visits = [] } = useVisits()
   const { data: patients = [] } = usePatients()
   const stats = useDashboardStats(jobs, period, visits, patients)
+  const wt = useWorkTypes()
 
   const paidPct =
     stats.totalRevenue > 0
@@ -95,6 +114,26 @@ export function Dashboard({ jobs }: DashboardProps) {
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+      {/* Tabs. Production and money answer different questions and the page was
+          already long; splitting them beats one scroll that mixes tooth counts
+          with margins. */}
+      <div className="flex items-center gap-1 bg-bg-sidebar rounded-xl p-1 w-fit">
+        {([
+          { key: 'tootmine', label: 'Tootmine' },
+          { key: 'rahandus', label: 'Rahandus' },
+        ] as const).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              tab === t.key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Period filter */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-ink-muted mr-1">Periood:</span>
@@ -113,6 +152,9 @@ export function Dashboard({ jobs }: DashboardProps) {
         ))}
       </div>
 
+      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} />}
+
+      {tab === 'tootmine' && (<>
       {/* ─── Summary cards ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
@@ -415,14 +457,17 @@ export function Dashboard({ jobs }: DashboardProps) {
             <p className="text-sm font-semibold text-ink mb-0.5">Top patsiendid (hambad)</p>
             <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad patsiendi kaupa</p>
             {stats.topPatients.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={rowChartHeight(stats.topPatients.length)}>
                 <BarChart
                   data={stats.topPatients}
                   layout="vertical"
-                  margin={{ top: 0, right: 8, left: 80, bottom: 0 }}
+                  margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
                 >
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={78} />
+                  <YAxis
+                    type="category" dataKey="name" tick={{ fontSize: 11 }}
+                    width={NAME_AXIS_WIDTH} interval={0} tickFormatter={truncateName}
+                  />
                   <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${v} hammast`, name === 'original' ? 'Originaal' : 'Muudatused']} />
                   <Bar dataKey="original" stackId="teeth" fill="#6366F1" radius={[0, 0, 0, 0]} name="original" />
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
@@ -433,20 +478,23 @@ export function Dashboard({ jobs }: DashboardProps) {
             )}
           </div>
 
-          {/* Teeth by work type */}
+          {/* Work by work type — jobs, not teeth */}
           <div className="card p-4">
-            <p className="text-sm font-semibold text-ink mb-0.5">Hambad töötüübi järgi</p>
-            <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad töö liigi kaupa</p>
-            {stats.teethByWorkType.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
+            <p className="text-sm font-semibold text-ink mb-0.5">Tööd töötüübi järgi</p>
+            <p className="text-xs text-ink-faint mb-3">Tööde arv töö liigi kaupa (originaal + muudatused)</p>
+            {stats.workByType.length > 0 ? (
+              <ResponsiveContainer width="100%" height={rowChartHeight(stats.workByType.length)}>
                 <BarChart
-                  data={stats.teethByWorkType}
+                  data={stats.workByType}
                   layout="vertical"
-                  margin={{ top: 0, right: 8, left: 70, bottom: 0 }}
+                  margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
                 >
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={68} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${v} hammast`, name === 'original' ? 'Originaal' : 'Muudatused']} />
+                  <YAxis
+                    type="category" dataKey="name" tick={{ fontSize: 11 }}
+                    width={NAME_AXIS_WIDTH} interval={0} tickFormatter={truncateName}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${v} tööd`, name === 'original' ? 'Originaal' : 'Muudatused']} />
                   <Bar dataKey="original" stackId="teeth" fill="#0AB6C4" radius={[0, 0, 0, 0]} name="original" />
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
@@ -467,7 +515,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                   const maxRate = Math.max(100, ...stats.byWorkType.map(x => x.count > 0 ? (x.revisions / x.count) * 100 : 0))
                   return (
                     <div key={t.name} className="flex items-center gap-2 text-xs">
-                      <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: workTypeHex(t.name) }} />
+                      <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(t.name) }} />
                       <span className="text-ink-muted truncate w-24 flex-shrink-0">{t.name}</span>
                       <div className="flex-1 h-4 bg-bg-sidebar rounded-full overflow-hidden">
                         <div
@@ -696,7 +744,7 @@ export function Dashboard({ jobs }: DashboardProps) {
               <div className="space-y-1.5">
                 {stats.byWorkType.slice(0, 8).map(t => (
                   <div key={t.name} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: workTypeHex(t.name) }} />
+                    <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(t.name) }} />
                     <span className="text-ink-muted truncate flex-1">{t.name}</span>
                     <span className="text-ink-faint tabular-nums w-20 text-right">
                       {t.count}× <span className="text-ink-faint/60">+ {t.revisions}m</span>
@@ -732,6 +780,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           />
         </div>
       </section>
+      </>)}
     </div>
   )
 }

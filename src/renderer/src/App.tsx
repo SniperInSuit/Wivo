@@ -6,16 +6,22 @@ import { Sidebar } from './components/Sidebar'
 import { Board } from './components/Board/Board'
 import { TableView } from './components/TableView/TableView'
 import { Dashboard } from './components/Dashboard/Dashboard'
-import { CalendarView } from './components/CalendarView/CalendarView'
+import { CalendarView, type CalendarMode, type CalendarScale } from './components/CalendarView/CalendarView'
+import { CalendarTopControls } from './components/CalendarView/CalendarTopControls'
 import { PatientsView } from './components/Patients/PatientsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { SettingsPage } from './components/SettingsPage'
+import { InvoicesView } from './components/Invoices/InvoicesView'
+import { PayrollView } from './components/Workers/PayrollView'
 import { WorkersPage } from './components/Workers/WorkersPage'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
-import { PipelineProvider } from './context/PipelineContext'
+import { useMarkJobsPaid } from './hooks/useInvoices'
+import type { PaidDetails } from './components/JobDetail/MarkPaidDialog'
+import { PipelineProvider, usePipeline } from './context/PipelineContext'
 import { AuthProvider } from './context/AuthContext'
 import { AuthGuard } from './components/Auth/AuthGuard'
+import { ClinicSettingsSync } from './components/ClinicSettingsSync'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
 
@@ -41,11 +47,17 @@ function AppContent() {
   const [search, setSearch] = useState('')
   // Set when another view asks to open a patient profile (from a job or a visit).
   const [focusPatientId, setFocusPatientId] = useState<string | null>(null)
+  // Calendar controls live in the TopBar, so their state is lifted here.
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>('kombineeritud')
+  const [calendarScale, setCalendarScale] = useState<CalendarScale>('kuu')
+  const [todaySignal, setTodaySignal] = useState(0)
 
   const { data: jobs = [], isLoading } = useJobs()
+  const { doneStageKey } = usePipeline()
   const createJob = useCreateJob()
   const updateJob = useUpdateJob()
   const deleteJob = useDeleteJob()
+  const markJobsPaid = useMarkJobsPaid()
 
   const openNew = useCallback(() => { setNewJobDate(undefined); setPanelJob('new'); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
   const openEdit = useCallback((job: Job) => { setPanelJob(job); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
@@ -74,35 +86,61 @@ function AppContent() {
     setView('patients')
   }, [])
 
+  // Moving a job into the done stage is the moment it was finished, and that
+  // date is what payroll pays against — the deadline is only ever a plan.
+  // Stamped once: dragging a finished job around must not keep rewriting it.
   const handleStageChange = useCallback(
     async (jobId: string, stage: StageKey) => {
-      await updateJob.mutateAsync({ id: jobId, status: stage })
+      const job = jobs.find(j => j.id === jobId)
+      const becomingDone = stage === doneStageKey && job?.valmis_kuupaev == null
+      await updateJob.mutateAsync({
+        id: jobId,
+        status: stage,
+        ...(becomingDone ? { valmis_kuupaev: new Date().toISOString().slice(0, 10) } : {}),
+      })
     },
-    [updateJob]
+    [updateJob, jobs, doneStageKey]
   )
 
   const handleRevisionStageChange = useCallback(
     async (jobId: string, revId: string, stage: StageKey) => {
       const job = jobs.find(j => j.id === jobId)
       if (!job) return
+      const today = new Date().toISOString().slice(0, 10)
       const updatedRevisions = (job.revisions ?? []).map(r =>
-        r.id === revId ? { ...r, status: stage } : r
+        r.id === revId
+          ? {
+              ...r,
+              status: stage,
+              // Stamped once, on the way into the done stage — same rule as jobs.
+              ...(stage === doneStageKey && !r.valmis_kuupaev ? { valmis_kuupaev: today } : {}),
+            }
+          : r
       )
       await updateJob.mutateAsync({ id: jobId, revisions: updatedRevisions })
     },
-    [jobs, updateJob]
+    [jobs, updateJob, doneStageKey]
   )
+
+  // Same stamp when the status is changed from inside the form rather than by
+  // dragging on the board.
+  const withCompletionDate = useCallback((input: JobInput): JobInput => (
+    input.status === doneStageKey && !input.valmis_kuupaev
+      ? { ...input, valmis_kuupaev: new Date().toISOString().slice(0, 10) }
+      : input
+  ), [doneStageKey])
 
   const handleSave = useCallback(
     async (input: JobInput) => {
+      const payload = withCompletionDate(input)
       if (panelJob === 'new') {
-        await createJob.mutateAsync(input)
+        await createJob.mutateAsync(payload)
       } else if (panelJob) {
-        await updateJob.mutateAsync({ id: (panelJob as Job).id, ...input })
+        await updateJob.mutateAsync({ id: (panelJob as Job).id, ...payload })
       }
       closePanel()
     },
-    [panelJob, createJob, updateJob, closePanel]
+    [panelJob, createJob, updateJob, closePanel, withCompletionDate]
   )
 
   const handleDelete = useCallback(
@@ -115,19 +153,40 @@ function AppContent() {
 
   const handleBulkStatusChange = useCallback(
     async (ids: string[], status: StageKey) => {
-      await Promise.all(ids.map(id => updateJob.mutateAsync({ id, status })))
+      const stamp = status === doneStageKey ? new Date().toISOString().slice(0, 10) : null
+      await Promise.all(ids.map(id => {
+        const job = jobs.find(j => j.id === id)
+        return updateJob.mutateAsync({
+          id, status,
+          ...(stamp && job?.valmis_kuupaev == null ? { valmis_kuupaev: stamp } : {}),
+        })
+      }))
     },
-    [updateJob]
+    [updateJob, jobs, doneStageKey]
   )
 
   const handleBottomSave = useCallback(
     async (input: JobInput) => {
       if (bottomJob) {
-        await updateJob.mutateAsync({ id: bottomJob.id, ...input })
+        await updateJob.mutateAsync({ id: bottomJob.id, ...withCompletionDate(input) })
       }
       closeBottom()
     },
-    [bottomJob, updateJob, closeBottom]
+    [bottomJob, updateJob, closeBottom, withCompletionDate]
+  )
+
+  // Bulk assignment. Chunked for the same reason the reprice is: a few hundred
+  // simultaneous updates is how a bulk action dies half way through.
+  const handleBulkAssign = useCallback(
+    async (ids: string[], patch: { assigned_to?: string | null; designed_by?: string | null }) => {
+      const CHUNK = 15
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        await Promise.all(
+          ids.slice(i, i + CHUNK).map(id => updateJob.mutateAsync({ id, ...patch }))
+        )
+      }
+    },
+    [updateJob]
   )
 
   const handleBulkDelete = useCallback(
@@ -137,12 +196,22 @@ function AppContent() {
     [deleteJob]
   )
 
+  // Goes through useMarkJobsPaid so a payment row is written with the method —
+  // a bare `makstud = true` cannot answer "in what form", which is the whole
+  // point of asking.
   const handleBulkMarkPaid = useCallback(
-    async (ids: string[]) => {
-      const today = new Date().toISOString().split('T')[0]
-      await Promise.all(ids.map(id => updateJob.mutateAsync({ id, makstud: true, makse_kuupaev: today })))
+    async (ids: string[], details: PaidDetails) => {
+      await markJobsPaid.mutateAsync({
+        jobs: ids.map(id => {
+          const job = jobs.find(j => j.id === id)
+          const amount = Number(job?.hind ?? 0) + Number(job?.disain_hind ?? 0)
+            + (job?.revisions ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0)
+          return { id, amount, total: amount }
+        }),
+        ...details,
+      })
     },
-    [updateJob]
+    [markJobsPaid, jobs]
   )
 
   const isPanelOpen = panelJob !== null
@@ -157,7 +226,10 @@ function AppContent() {
   const bottomJobLive = live(bottomJob)
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden app-surface">
+    // h-full/w-full, not h-screen/w-screen: #root already measures exactly one
+    // viewport and compensates for the UI scale (styles/index.css). Viewport
+    // units here would ignore that compensation and overflow when scaled up.
+    <div className="flex h-full w-full overflow-hidden app-surface">
       <Sidebar view={view} onViewChange={setView} />
 
       {/* Every class here is load-bearing: min-w-0 stops the 1730px-wide board
@@ -170,6 +242,15 @@ function AppContent() {
           onSearchChange={setSearch}
           onNewJob={openNew}
           onImportDone={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
+          centerSlot={view === 'calendar' ? (
+            <CalendarTopControls
+              mode={calendarMode}
+              onModeChange={setCalendarMode}
+              scale={calendarScale}
+              onScaleChange={setCalendarScale}
+              onToday={() => setTodaySignal(n => n + 1)}
+            />
+          ) : undefined}
         />
 
         <main className="flex-1 overflow-hidden flex flex-col">
@@ -200,6 +281,7 @@ function AppContent() {
               onBulkStatusChange={handleBulkStatusChange}
               onBulkMarkPaid={handleBulkMarkPaid}
               onBulkDelete={handleBulkDelete}
+              onBulkAssign={handleBulkAssign}
               search={search}
               onSearchChange={setSearch}
             />
@@ -211,6 +293,9 @@ function AppContent() {
               onRevisionClick={openBottomRevision}
               onNewJobOnDate={openNewOnDate}
               onOpenPatient={openPatient}
+              mode={calendarMode}
+              scale={calendarScale}
+              todaySignal={todaySignal}
             />
           )}
           {view === 'patients' && (
@@ -225,6 +310,8 @@ function AppContent() {
               onFocusHandled={() => setFocusPatientId(null)}
             />
           )}
+          {view === 'arved' && <InvoicesView jobs={jobs} />}
+          {view === 'tootasud' && <PayrollView jobs={jobs} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
           {view === 'settings' && <SettingsPage />}
           {view === 'workers' && <WorkersPage />}
@@ -271,6 +358,9 @@ export default function App() {
       <AuthProvider>
         <AuthGuard>
           <PipelineProvider>
+            {/* Renders nothing; pulls the clinic-owned settings down and pushes
+                local edits back. Inside AuthGuard because it needs the clinic. */}
+            <ClinicSettingsSync />
             <AppContent />
           </PipelineProvider>
         </AuthGuard>

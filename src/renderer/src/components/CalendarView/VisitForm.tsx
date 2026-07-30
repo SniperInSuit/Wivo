@@ -118,7 +118,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed right-0 top-0 bottom-0 w-[440px] max-w-[92vw] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden"
+        className="fixed right-0 top-0 bottom-0 w-[440px] max-w-dialog bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-ink-faint/20 flex-shrink-0">

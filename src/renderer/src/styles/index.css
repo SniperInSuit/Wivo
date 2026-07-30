@@ -131,11 +131,32 @@
     box-sizing: border-box;
   }
 
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+  }
+
   body {
     @apply bg-bg text-ink font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
+  }
+
+  /* ─── UI scale (Seaded → Kasutajaliides → Teksti suurus) ──────────────────
+     `zoom` scales every length — including the hard pixel text sizes the app
+     uses in ~200 places, which a font-size scale would miss entirely.
+     The width/height division cancels the zoom on the shell itself: at 125%,
+     #root is laid out at 80% of the viewport and painted 1.25× larger, so it
+     still covers exactly one viewport and never grows scrollbars.
+     Anything sized in vh/vw INSIDE this element must divide by --ui-scale the
+     same way — see .max-h-panel / .max-w-dialog below. */
+  #root {
+    zoom: var(--ui-scale, 1);
+    width: calc(100% / var(--ui-scale, 1));
+    height: calc(100% / var(--ui-scale, 1));
   }
 
   /* Custom scrollbar */
@@ -155,6 +176,16 @@
 }
 
 @layer components {
+  /* Viewport-relative sizes for elements inside the zoomed #root. A bare 70vh
+     would be measured against the unzoomed viewport and then painted 1.25×
+     larger, so a panel sized at 70vh would spill past the window at 125%. */
+  .h-panel {
+    height: calc(70vh / var(--ui-scale, 1));
+  }
+  .max-w-dialog {
+    max-width: calc(92vw / var(--ui-scale, 1));
+  }
+
   /* Root shell surface — carries the theme's gradient. A plain bg-* utility
      cannot express a gradient, hence the custom property. */
   .app-surface {
@@ -184,5 +215,29 @@
 
   .label {
     @apply block text-xs font-medium text-ink-muted mb-1;
+  }
+}
+
+/* ─── Print ─────────────────────────────────────────────────────────────────
+   Only the invoice document survives a print. Everything else in the app is a
+   screen tool and would otherwise come out as pages of sidebar. The UI scale is
+   reset to 1 as well: a 125% screen preference must not silently rescale a
+   document whose page size is fixed in millimetres.
+   ------------------------------------------------------------------------- */
+@media print {
+  #root {
+    zoom: 1;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  html, body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  @page {
+    size: A4;
+    margin: 16mm;
   }
 }

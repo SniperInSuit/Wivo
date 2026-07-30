@@ -4,6 +4,9 @@ import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
+import { usePayments } from '../../hooks/useInvoices'
+import { jobPaymentState } from '../../lib/jobPayments'
+import { PAYMENT_METHOD_LABEL } from '../../types/invoice'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
@@ -47,6 +50,9 @@ export function JobReadView({
     ?? null
   const { stageMap } = usePipeline()
   const revisions = job.revisions ?? []
+  const { data: allPayments = [] } = usePayments()
+  const jobPayments = allPayments.filter(p => p.job_id === job.id)
+  const pay = jobPaymentState(job, allPayments)
   const rev: Revision | null = activeRevisionId
     ? revisions.find(r => r.id === activeRevisionId) ?? null
     : null
@@ -214,31 +220,67 @@ export function JobReadView({
               </div>
             </div>
 
-            <div
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 mt-2.5 ${
-                job.makstud ? 'bg-emerald-50' : 'bg-red-50'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${job.makstud ? 'bg-emerald-500' : 'bg-red-500'}`} />
-              <span className={`text-sm font-medium ${job.makstud ? 'text-emerald-700' : 'text-red-700'}`}>
-                {job.makstud ? 'Makstud' : 'Maksmata'}
-              </span>
-              {job.makstud && job.makse_kuupaev && (
-                <span className="ml-auto text-[11px] text-emerald-700">
-                  {fmt(job.makse_kuupaev, 'dd.MM.yyyy')}
+            {/* Part payments mean the flag alone no longer tells the story: a job
+                can read "maksmata" and still have money against it. */}
+            {pay.partial ? (
+              <div className="rounded-lg px-3 py-2 mt-2.5 bg-orange-50 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-500" />
+                  <span className="text-sm font-medium text-orange-800">Osaliselt makstud</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-orange-800">
+                  <span>Laekunud</span>
+                  <span className="tabular-nums font-semibold">{pay.paid.toFixed(2)} €</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-orange-900">
+                  <span className="font-medium">Jääk</span>
+                  <span className="tabular-nums font-bold">{pay.outstanding.toFixed(2)} €</span>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 mt-2.5 ${
+                  pay.settled ? 'bg-emerald-50' : 'bg-red-50'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${pay.settled ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <span className={`text-sm font-medium ${pay.settled ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {pay.settled ? 'Makstud' : 'Maksmata'}
                 </span>
-              )}
-            </div>
+                {pay.settled && job.makse_kuupaev && (
+                  <span className="ml-auto text-[11px] text-emerald-700">
+                    {fmt(job.makse_kuupaev, 'dd.MM.yyyy')}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Individual receipts, so a part payment can be checked rather than
+                just believed. */}
+            {jobPayments.length > 0 && (
+              <div className="mt-1.5 space-y-0.5">
+                {jobPayments.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 text-[11px] text-ink-muted">
+                    <span className="tabular-nums">{fmt(p.paid_at, 'dd.MM.yyyy')}</span>
+                    <span>{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
+                    {p.reference && <span className="truncate text-ink-faint">{p.reference}</span>}
+                    <span className="ml-auto tabular-nums font-medium text-ink">
+                      {Number(p.amount).toFixed(2)} €
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Payment lives on the job, so it is stated once and never per revision */}
             <p className="text-[11px] text-ink-muted mt-1.5">
-              {job.makstud
+              {pay.settled
                 ? 'Makse käib kogu töö kohta, koos muudatustega.'
-                : 'Arvet ei ole veel tasutuks märgitud. Makse käib kogu töö kohta.'}
+                : 'Makse käib kogu töö kohta, koos muudatustega.'}
             </p>
-            {!job.makstud && onMarkPaid && (
+            {!pay.settled && onMarkPaid && (
               <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/30 mt-1.5">
-                Märgi makstuks
+                {pay.partial ? 'Lisa makse' : 'Märgi makstuks'}
               </button>
             )}
           </Card>

@@ -1,5 +1,13 @@
 import { useCallback, useSyncExternalStore } from 'react'
-import { MATERIAL_OPTIONS } from '../types/job'
+import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
+import {
+  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType,
+  workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
+} from '../config/workTypes'
+import {
+  CLINIC_COLUMNS, COLUMN_OF, toRow as toClinicRow,
+  type ClinicColumn, type ClinicPatch, type ClinicSettingsRow
+} from '../lib/clinicSettings'
 
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
@@ -47,13 +55,49 @@ export const THEMES: ThemeOption[] = [
   }
 ]
 
+// ─── Text size ────────────────────────────────────────────────────────────────
+// Applied as Electron frame zoom, not a font-size — see applyTextScale().
+export interface TextSizeOption {
+  key: string
+  label: string
+  hint: string
+  value: number
+}
+
+export const TEXT_SIZES: TextSizeOption[] = [
+  { key: 'vaike',    label: 'Väike',      hint: '90%',  value: 0.9 },
+  { key: 'tavaline', label: 'Tavaline',   hint: '100%', value: 1 },
+  { key: 'suur',     label: 'Suur',       hint: '110%', value: 1.1 },
+  { key: 'suurem',   label: 'Suurem',     hint: '125%', value: 1.25 },
+  { key: 'suurim',   label: 'Väga suur',  hint: '140%', value: 1.4 },
+]
+
+export const TEXT_SCALE_MIN = 0.8
+export const TEXT_SCALE_MAX = 1.6
+
 export interface WivoSettings {
   materialPrices: Record<string, MaterialPricing>
+  // What the material COSTS the lab, as opposed to what it sells for. Empty
+  // means unknown — the finance view counts what it could not cost rather than
+  // assuming zero and reporting a margin that is too good.
+  materialCosts: Record<string, MaterialPricing>
   designFee: number       // € per job when design is included
   defaultMachine: string
   kasutajaNimi: string    // Sinu nimi — stamped as the author on patient notes
   teema: ThemeKey         // Teema — see THEMES / styles/index.css
   ribaLaiendatud: boolean // Külgriba laiendatud (sildid ikoonide kõrval) või kompaktne
+  tekstiSuurus: number    // Teksti/kuva suurus, 1 = 100%
+  // ─── Kohandatavad valikud ──────────────────────────────────────────────────
+  // These were hardcoded constants, which meant a lab with a third printer or a
+  // material outside the SprintRay range had to type it free-hand every time.
+  masinad: string[]       // Masinad — printer buttons on the job form
+  materjalid: string[]    // Materjalid — material buttons + the price table rows
+  // Töö tüübid — suggestions on the job form's Töö field AND the colour key for
+  // every calendar fill, dashboard swatch and legend row.
+  tooTuubid: WorkType[]
+  // Internal bookkeeping, not a user setting: marks that the 1.7.13 colour
+  // repair has already run, so it cannot re-run and overwrite a deliberate pick.
+  tooVarvidParandatud: boolean
   // ─── Kalender ──────────────────────────────────────────────────────────────
   // Every one of these replaced a constant hardcoded in a component, which meant
   // the app assumed one particular lab's working day and pricing.
@@ -64,9 +108,19 @@ export interface WivoSettings {
   ajaSamm: number         // Lohistamise samm minutites
   visiidiKestus: number   // Uue visiidi vaikimisi kestus minutites
   // ─── Hinnastamine ──────────────────────────────────────────────────────────
+  // Per-job prices live on the work type itself (`tooTuubid[].hind`), not in a
+  // map beside it — see the WorkType comment in config/workTypes.ts.
   hambaHind: number       // Vaikimisi €/hammas, kui materjalil hinda pole
   muudatusHambaHind: number // €/hammas muudatuse puhul
   kiirtooKordaja: number  // Kiirtöö hinnakordaja
+  // ─── Arved ─────────────────────────────────────────────────────────────────
+  // Default only. Each invoice stores the rate it was issued with, so changing
+  // this never restates a document that has already gone out.
+  kmMaar: number          // Käibemaksumäär %
+  makseTahtaegPaevades: number  // Maksetähtaeg päevades
+  // Tööandja maksude määr brutopalgalt, %. Vaikimisi 0 — vale maksumäär, mille
+  // rakendus ise välja mõtles, on halvem kui ilmselgelt puuduv.
+  tooandjaMaksudProtsent: number
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -77,11 +131,17 @@ function defaultSettings(): WivoSettings {
     materialPrices: Object.fromEntries(
       MATERIAL_OPTIONS.map(m => [m, { ...DEFAULT_MATERIAL }])
     ),
+    materialCosts: {},
     designFee: 0,
     defaultMachine: '',
     kasutajaNimi: '',
     teema: 'hele',
     ribaLaiendatud: true,
+    tekstiSuurus: 1,
+    masinad: [...MACHINE_OPTIONS],
+    materjalid: [...MATERIAL_OPTIONS],
+    tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
+    tooVarvidParandatud: true,
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
     nadalAlgus: 9,
@@ -91,7 +151,112 @@ function defaultSettings(): WivoSettings {
     hambaHind: 15,
     muudatusHambaHind: 8,
     kiirtooKordaja: 2,
+    // 0 by default on purpose: a clinic that is not VAT-registered must not
+    // start issuing invoices with tax on them because the app guessed a rate.
+    // Set it in Seaded → Hinnad once, and confirm the rate that applies to you.
+    kmMaar: 0,
+    makseTahtaegPaevades: 14,
+    tooandjaMaksudProtsent: 0,
   }
+}
+
+// An empty list is a legitimate choice (a lab with no printers), so only a
+// missing or malformed value falls back to the defaults.
+function strList(v: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(v)) return fallback
+  return v.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+}
+
+// A name inherits the colour of the built-in type it MEANS, not the one it is
+// spelled exactly like. An exact-name lookup left "Allon4" (from the 1.7.12
+// string list) grey, because the built-in is called "All-on-X" — the synonym
+// table is what knows those are the same thing.
+function seedHex(nimi: string): string {
+  const exact = DEFAULT_WORK_TYPES.find(d => d.nimi.toLowerCase() === nimi.toLowerCase())
+  return exact?.hex ?? resolveWorkType(nimi, DEFAULT_WORK_TYPES).hex
+}
+
+// Work types were a plain string[] in 1.7.12 and gained colours in 1.7.13.
+// Both shapes are read here rather than bumping STORAGE_KEY, which would also
+// discard every material price the user has entered.
+function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean): WorkType[] {
+  if (!Array.isArray(v)) return fallback
+  return v.flatMap((x): WorkType[] => {
+    if (typeof x === 'string' && x.trim()) {
+      return [{ nimi: x.trim(), hex: seedHex(x.trim()) }]
+    }
+    if (x && typeof x === 'object' && typeof (x as WorkType).nimi === 'string') {
+      const t = x as WorkType
+      if (!t.nimi.trim()) return []
+      const stored = typeof t.hex === 'string' && t.hex ? t.hex : null
+      // One-time repair for lists already written by the broken exact-match
+      // seeding: a named type left on the unknown-grey gets its real colour
+      // back. Gated on the migration flag so it runs once and never overrides
+      // grey that the user picked deliberately afterwards.
+      const needsRepair = repairColours && stored === UNKNOWN_WORK_TYPE.hex
+
+      // SPREAD, never rebuild field by field. This function used to construct a
+      // fresh object from nimi/hex/match only, which silently DELETED every
+      // field added to WorkType afterwards — hind, soodushind, hinnaTyyp, pilt,
+      // kulud — on every single load. Prices survived the session and vanished
+      // on restart. Anything added to WorkType from here on is carried through
+      // automatically; only the fields that need normalising are named below.
+      return [{
+        ...t,
+        nimi: t.nimi.trim(),
+        hex: needsRepair || !stored ? seedHex(t.nimi) : stored,
+        hind: numOrUndef(t.hind),
+        soodushind: numOrUndef(t.soodushind),
+        hinnaTyyp: t.hinnaTyyp === 'hammas' ? 'hammas' : t.hinnaTyyp === 'too' ? 'too' : undefined,
+        pilt: typeof t.pilt === 'string' && t.pilt.trim() ? t.pilt.trim() : undefined,
+        kulud: Array.isArray(t.kulud)
+          ? t.kulud
+              .filter(k => k && typeof k === 'object')
+              .map(k => ({
+                nimi: typeof k.nimi === 'string' ? k.nimi : '',
+                summa: numOrUndef(k.summa) ?? 0,
+                tyyp: k.tyyp === 'hammas' ? 'hammas' as const : 'too' as const,
+              }))
+          : undefined,
+        ...(Array.isArray(t.match) ? { match: t.match } : {}),
+      }]
+    }
+    return []
+  })
+}
+
+/** A finite, non-negative number, or undefined. Keeps a corrupted value from
+ *  becoming NaN and poisoning every total downstream. */
+function numOrUndef(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined
+}
+
+// 1.7.13 briefly stored per-job prices in their own `tooHinnad` map before they
+// moved onto the work type. Folds any such prices back onto the matching type,
+// and keeps an unmatched key as a new type rather than dropping a price someone
+// typed. Runs off the presence of the old field, so it stops mattering as soon
+// as the settings are written once.
+function mergeLegacyPrices(types: WorkType[], legacy: unknown): WorkType[] {
+  if (!legacy || typeof legacy !== 'object') return types
+  const entries = Object.entries(legacy as Record<string, unknown>)
+    .filter((e): e is [string, number] => typeof e[1] === 'number' && e[1] > 0)
+  if (entries.length === 0) return types
+
+  const out = types.map(t => ({ ...t }))
+  for (const [name, price] of entries) {
+    const hit = out.find(t => t.nimi.toLowerCase() === name.trim().toLowerCase())
+    if (hit) {
+      if (hit.hind == null) hit.hind = price
+    } else {
+      out.push({ nimi: name.trim(), hex: seedHex(name.trim()), hind: price })
+    }
+  }
+  return out
+}
+
+export function clampTextScale(n: unknown): number {
+  const v = typeof n === 'number' && Number.isFinite(n) ? n : 1
+  return Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, v))
 }
 
 function loadSettings(): WivoSettings {
@@ -105,11 +270,22 @@ function loadSettings(): WivoSettings {
     // kasutajaNimi — a bump would wipe every material price the user has entered.
     return {
       materialPrices: { ...def.materialPrices, ...(stored.materialPrices ?? {}) },
+      materialCosts: stored.materialCosts ?? {},
       designFee: stored.designFee ?? 0,
       defaultMachine: stored.defaultMachine ?? '',
       kasutajaNimi: stored.kasutajaNimi ?? '',
       teema: stored.teema ?? 'hele',
       ribaLaiendatud: stored.ribaLaiendatud ?? true,
+      // Clamped: a corrupted value here would otherwise render the UI unusable
+      // at a size from which the settings page could not be reached again.
+      tekstiSuurus: clampTextScale(stored.tekstiSuurus),
+      masinad: strList(stored.masinad, def.masinad),
+      materjalid: strList(stored.materjalid, def.materjalid),
+      tooTuubid: mergeLegacyPrices(
+        workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
+        (stored as { tooHinnad?: unknown }).tooHinnad
+      ),
+      tooVarvidParandatud: true,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
       nadalAlgus: stored.nadalAlgus ?? 9,
@@ -119,6 +295,9 @@ function loadSettings(): WivoSettings {
       hambaHind: stored.hambaHind ?? 15,
       muudatusHambaHind: stored.muudatusHambaHind ?? 8,
       kiirtooKordaja: stored.kiirtooKordaja ?? 2,
+      kmMaar: stored.kmMaar ?? 0,
+      makseTahtaegPaevades: stored.makseTahtaegPaevades ?? 14,
+      tooandjaMaksudProtsent: stored.tooandjaMaksudProtsent ?? 0,
     }
   } catch {
     return defaultSettings()
@@ -133,6 +312,7 @@ function loadSettings(): WivoSettings {
 // the component happened to remount. One shared snapshot, one subscriber list.
 let snapshot: WivoSettings = loadSettings()
 applyTheme(snapshot.teema)
+applyTextScale(snapshot.tekstiSuurus)
 const listeners = new Set<() => void>()
 
 function subscribe(fn: () => void) {
@@ -144,30 +324,107 @@ function getSnapshot(): WivoSettings {
   return snapshot
 }
 
+/** Non-hook read, for the sync layer which runs outside React's render. */
+export function getSettingsSnapshot(): WivoSettings {
+  return snapshot
+}
+
 // The stylesheet keys off <html data-theme>, so applying is a one-liner. Done
 // here rather than in a component effect so the theme is right before first paint.
 function applyTheme(theme: ThemeKey) {
   document.documentElement.dataset.theme = theme
 }
 
-function persist(next: WivoSettings) {
+// Drives `#root { zoom: var(--ui-scale) }` in styles/index.css.
+//
+// Deliberately NOT a root font-size: the UI sets ~200 text sizes in hard pixels
+// (text-[10px] and friends), which a font-size scale leaves untouched — half the
+// app would grow and the dense half, the half people actually complain about,
+// would not.
+//
+// Also deliberately not Electron's webFrame zoom, which was the first attempt:
+// it needs a preload bridge, and a bridge that is missing (stale preload, app
+// opened in a browser tab during dev) fails silently, so the setting looks dead.
+// A CSS variable is applied by the same document that renders the UI — it cannot
+// be half-installed. #root compensates its own width/height for the zoom so the
+// shell still measures exactly one viewport.
+function applyTextScale(scale: number) {
+  document.documentElement.style.setProperty('--ui-scale', String(clampTextScale(scale)))
+}
+
+// ─── Clinic sync ──────────────────────────────────────────────────────────────
+// The clinic-owned half of these settings lives in Postgres (migration 019).
+// localStorage stays as a cache so the app renders real values on the very first
+// paint and keeps working offline; the DB is the authority once it answers.
+//
+// The push side is registered by ClinicSettingsSync rather than imported, so
+// this store keeps working — writing to localStorage only — before login, in
+// the setup wizard, and if the settings table has not been migrated yet.
+type ClinicPusher = (patch: ClinicPatch) => void
+let clinicPusher: ClinicPusher | null = null
+
+export function setClinicPusher(fn: ClinicPusher | null): void {
+  clinicPusher = fn
+}
+
+/** DB → local. Applies remote clinic config without echoing it back as a write. */
+export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
+  const prev = snapshot
+  const next: WivoSettings = {
+    ...prev,
+    ...(row.work_types ? { tooTuubid: workTypeList(row.work_types, prev.tooTuubid, false) } : {}),
+    ...(row.materials ? { materjalid: strList(row.materials, prev.materjalid) } : {}),
+    ...(row.material_prices ? { materialPrices: row.material_prices } : {}),
+    ...(row.material_costs ? { materialCosts: row.material_costs } : {}),
+    ...(row.machines ? { masinad: strList(row.machines, prev.masinad) } : {}),
+    ...(row.pricing ?? {}),
+    ...(row.payroll ?? {}),
+    ...(row.calendar ?? {}),
+  }
+  persistLocal(next)
+}
+
+/** The clinic-owned columns as they currently stand locally. */
+export function clinicSliceOf(s: WivoSettings = snapshot): Omit<ClinicSettingsRow, 'clinic_id' | 'pipeline_stages'> {
+  const { pipeline_stages: _ignored, ...rest } = toClinicRow(s, [])
+  return rest
+}
+
+function persistLocal(next: WivoSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   applyTheme(next.teema)
+  applyTextScale(next.tekstiSuurus)
   // New object identity every write — useSyncExternalStore compares by reference
   snapshot = next
   listeners.forEach(fn => fn())
 }
 
+function persist(next: WivoSettings, columns?: ClinicColumn[]) {
+  persistLocal(next)
+  if (!clinicPusher || !columns?.length) return
+  // Only the sections that changed. Sending the whole row would make the person
+  // editing calendar hours overwrite a price a colleague changed a second ago
+  // with their own stale copy of it.
+  const full = toClinicRow(next, [])
+  const patch: ClinicPatch = {}
+  for (const c of columns) {
+    if (c === 'pipeline_stages') continue   // owned by the pipeline store
+    Object.assign(patch, { [c]: full[c] })
+  }
+  clinicPusher(patch)
+}
+
 export function useSettings() {
   const settings = useSyncExternalStore(subscribe, getSnapshot)
 
-  // Every setter goes through persist(), which is what notifies subscribers.
-  const setSettings = useCallback((fn: (prev: WivoSettings) => WivoSettings) => {
-    persist(fn(snapshot))
+  // Every setter goes through persist(), which is what notifies subscribers and
+  // what forwards the clinic-owned columns to the database.
+  const setSettings = useCallback((fn: (prev: WivoSettings) => WivoSettings, columns?: ClinicColumn[]) => {
+    persist(fn(snapshot), columns)
   }, [])
 
   const save = useCallback((next: WivoSettings) => {
-    persist(next)
+    persist(next, [...CLINIC_COLUMNS])
   }, [])
 
   const setMaterialPrice = useCallback(
@@ -184,24 +441,31 @@ export function useSettings() {
           },
         }
         return next
-      })
+      }, ['material_prices'])
     },
-    []
+    [setSettings]
+  )
+
+  const setMaterialCost = useCallback(
+    (material: string, field: keyof MaterialPricing, value: number) => {
+      setSettings(prev => ({
+        ...prev,
+        materialCosts: {
+          ...prev.materialCosts,
+          [material]: { ...(prev.materialCosts[material] ?? EMPTY_MATERIAL), [field]: value },
+        },
+      }), ['material_costs'])
+    },
+    [setSettings]
   )
 
   const setDesignFee = useCallback((fee: number) => {
-    setSettings(prev => {
-      const next = { ...prev, designFee: fee }
-      return next
-    })
-  }, [])
+    setSettings(prev => ({ ...prev, designFee: fee }), ['pricing'])
+  }, [setSettings])
 
   const setDefaultMachine = useCallback((machine: string) => {
-    setSettings(prev => {
-      const next = { ...prev, defaultMachine: machine }
-      return next
-    })
-  }, [])
+    setSettings(prev => ({ ...prev, defaultMachine: machine }), ['pricing'])
+  }, [setSettings])
 
   const setTeema = useCallback((teema: ThemeKey) => {
     setSettings(prev => ({ ...prev, teema }))
@@ -211,10 +475,102 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, ribaLaiendatud: !prev.ribaLaiendatud }))
   }, [setSettings])
 
+  const setTekstiSuurus = useCallback((scale: number) => {
+    setSettings(prev => ({ ...prev, tekstiSuurus: clampTextScale(scale) }))
+  }, [setSettings])
+
+  // ── Editable option lists ──────────────────────────────────────────────────
+  // Trimmed and de-duplicated case-insensitively: "Pro2" and "pro2 " as two
+  // separate buttons would look like a bug, not a choice.
+  type ListKey = 'masinad' | 'materjalid'
+
+  const addOption = useCallback((key: ListKey, value: string) => {
+    const v = value.trim()
+    if (!v) return
+    setSettings(prev => {
+      const exists = prev[key].some(x => x.toLowerCase() === v.toLowerCase())
+      return exists ? prev : { ...prev, [key]: [...prev[key], v] }
+    }, [COLUMN_OF[key]])
+  }, [setSettings])
+
+  const removeOption = useCallback((key: ListKey, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: prev[key].filter(x => x !== value) }), [COLUMN_OF[key]])
+  }, [setSettings])
+
+  const renameOption = useCallback((key: ListKey, from: string, to: string) => {
+    const v = to.trim()
+    if (!v || v === from) return
+    setSettings(prev => ({ ...prev, [key]: prev[key].map(x => (x === from ? v : x)) }), [COLUMN_OF[key]])
+  }, [setSettings])
+
+  const resetOptions = useCallback((key: ListKey) => {
+    const def = defaultSettings()
+    setSettings(prev => ({ ...prev, [key]: def[key] }), [COLUMN_OF[key]])
+  }, [setSettings])
+
   // Generic numeric setter for the calendar/pricing fields — one function beats
   // ten near-identical ones, and every write still goes through persist().
   const setNumber = useCallback(<K extends keyof WivoSettings>(key: K, value: number) => {
-    setSettings(prev => ({ ...prev, [key]: value } as WivoSettings))
+    const col = COLUMN_OF[key as string]
+    setSettings(prev => ({ ...prev, [key]: value } as WivoSettings), col ? [col] : undefined)
+  }, [setSettings])
+
+  // ── Work types (name + colour) ─────────────────────────────────────────────
+  // Separate from the string lists above because a type carries a colour, and
+  // that colour is what every calendar fill and legend swatch is keyed on.
+  const addWorkType = useCallback((nimi: string, hex: string) => {
+    const n = nimi.trim()
+    if (!n) return
+    setSettings(prev => {
+      const exists = prev.tooTuubid.some(t => t.nimi.toLowerCase() === n.toLowerCase())
+      return exists ? prev : { ...prev, tooTuubid: [...prev.tooTuubid, { nimi: n, hex }] }
+    }, ['work_types'])
+  }, [setSettings])
+
+  const removeWorkType = useCallback((nimi: string) => {
+    setSettings(prev => ({ ...prev, tooTuubid: prev.tooTuubid.filter(t => t.nimi !== nimi) }), ['work_types'])
+  }, [setSettings])
+
+  const updateWorkType = useCallback((nimi: string, patch: Partial<WorkType>) => {
+    setSettings(prev => ({
+      ...prev,
+      tooTuubid: prev.tooTuubid.map(t => {
+        if (t.nimi !== nimi) return t
+        const next = { ...t, ...patch }
+        return { ...next, nimi: next.nimi.trim() || t.nimi }
+      })
+    }), ['work_types'])
+  }, [setSettings])
+
+  // Order is the match order — "Implantkroon" must stay above "Kroon" or every
+  // implant crown resolves to the plain crown colour.
+  const moveWorkType = useCallback((nimi: string, dir: 'up' | 'down') => {
+    setSettings(prev => {
+      const i = prev.tooTuubid.findIndex(t => t.nimi === nimi)
+      const j = dir === 'up' ? i - 1 : i + 1
+      if (i < 0 || j < 0 || j >= prev.tooTuubid.length) return prev
+      const next = [...prev.tooTuubid]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return { ...prev, tooTuubid: next }
+    }, ['work_types'])
+  }, [setSettings])
+
+  const resetWorkTypes = useCallback(() => {
+    setSettings(prev => ({ ...prev, tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })) }), ['work_types'])
+  }, [setSettings])
+
+  // Price is just another field on the type — 0 or blank clears it back to
+  // per-tooth pricing rather than storing a zero-euro job.
+  const setTooHind = useCallback((nimi: string, price: number | null) => {
+    setSettings(prev => ({
+      ...prev,
+      tooTuubid: prev.tooTuubid.map(t =>
+        t.nimi === nimi
+          ? (price == null || price <= 0
+              ? { ...t, hind: undefined }
+              : { ...t, hind: price })
+          : t)
+    }), ['work_types'])
   }, [setSettings])
 
   const setKasutajaNimi = useCallback((nimi: string) => {
@@ -224,7 +580,32 @@ export function useSettings() {
     })
   }, [])
 
-  return { settings, save, setMaterialPrice, setDesignFee, setDefaultMachine, setKasutajaNimi, setTeema, toggleRiba, setNumber }
+  return {
+    settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
+    setTeema, toggleRiba, setNumber, setTekstiSuurus,
+    addOption, removeOption, renameOption, resetOptions,
+    addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
+    setTooHind,
+  }
+}
+
+// ─── Work-type colour helpers, bound to the live settings ─────────────────────
+// Components must read colours through this hook rather than importing the
+// config directly: the hook subscribes to the settings store, so a recoloured
+// type repaints the calendar and its legend in the same render. That is exactly
+// what went wrong before 1.7.13 — the legend was drawn from hardcoded rules and
+// disagreed with what the user had configured.
+export function useWorkTypes() {
+  const settings = useSyncExternalStore(subscribe, getSnapshot)
+  const types = settings.tooTuubid
+
+  return {
+    types,
+    resolve: (too: string | null | undefined) => resolveWorkType(too, types),
+    hex: (too: string | null | undefined) => workTypeHexIn(too, types),
+    label: (too: string | null | undefined) => workTypeLabelIn(too, types),
+    present: (toos: (string | null | undefined)[]) => workTypesPresentIn(toos, types),
+  }
 }
 
 // ─── Tooth-size helpers ───────────────────────────────────────────────────────
@@ -241,6 +622,64 @@ export function countLargeTeeth(hambad: string): number {
     const pos = parseInt(t.trim()) % 10
     return pos >= 6
   }).length
+}
+
+// ─── Work-type price lookup ───────────────────────────────────────────────────
+// Resolves through exactly the same matcher that picks the calendar colour, so
+// a job priced as an Allon4 is also coloured as one. `too` is free text
+// ("Allon4 ülemine", "D14 abutmendile kroon"), and that matcher is what knows
+// those belong to a configured type at all.
+export interface WorkTypePriceResult {
+  /** Final € for this job — already multiplied out for per-tooth types. */
+  amount: number
+  /** The configured unit price, before any multiplication. */
+  unit: number
+  mode: PriceMode
+  discounted: boolean
+  /** Whether a discount price exists at all, so the UI can offer the choice. */
+  hasDiscount: boolean
+}
+
+/**
+ * What a work type costs for this particular job.
+ *
+ * Per-tooth types multiply by the tooth count: a bridge cannot have one price,
+ * because its cost is entirely a function of how many units it spans. Per-job
+ * types ignore the tooth count entirely — that is the point of them.
+ */
+export function workTypePriceFor(
+  too: string | null | undefined,
+  types: WorkType[],
+  teeth: number,
+  useDiscount = false
+): WorkTypePriceResult | null {
+  const t = resolveWorkType(too, types)
+  const full = typeof t.hind === 'number' && t.hind > 0 ? t.hind : null
+  const discount = typeof t.soodushind === 'number' && t.soodushind > 0 ? t.soodushind : null
+  const unit = useDiscount && discount != null ? discount : full
+  if (unit == null) return null
+
+  const mode: PriceMode = t.hinnaTyyp ?? 'too'
+  // A per-tooth price with no teeth picked yet is not zero — it is "not known
+  // yet", and returning 0 would stamp a free job onto the form.
+  if (mode === 'hammas' && teeth <= 0) return null
+
+  return {
+    amount: Math.round((mode === 'hammas' ? unit * teeth : unit) * 100) / 100,
+    unit,
+    mode,
+    discounted: useDiscount && discount != null,
+    hasDiscount: discount != null,
+  }
+}
+
+/** Back-compat single number, used where the breakdown is not needed. */
+export function workTypePrice(
+  too: string | null | undefined,
+  types: WorkType[],
+  teeth = 0
+): number | null {
+  return workTypePriceFor(too, types, teeth)?.amount ?? null
 }
 
 export function calcProduction(

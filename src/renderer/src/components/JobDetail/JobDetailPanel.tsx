@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap
+  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
-import { MATERIAL_OPTIONS, MATERIAL_SHADES, MACHINE_OPTIONS } from '../../types/job'
+import { MATERIAL_SHADES } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { OdontogramPicker } from './OdontogramPicker'
@@ -14,25 +14,13 @@ import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
 import { JobTimeline } from './JobTimeline'
 import { StatusPill } from '../ui/StatusPill'
-import { useSettings, calcProduction, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
+import { useSettings, useWorkTypes, calcProduction, countSmallTeeth, countLargeTeeth, workTypePriceFor } from '../../stores/useSettings'
 
-function getJobTypeBg(too: string | null | undefined): string {
-  if (!too) return 'bg-slate-300'
-  const t = too.toLowerCase()
-  if (t.includes('kroon')  || t.includes('crown'))   return 'bg-blue-300'
-  if (t.includes('sild')   || t.includes('bridge'))  return 'bg-violet-300'
-  if (t.includes('viniir') || t.includes('veneer'))  return 'bg-emerald-300'
-  if (t.includes('laminaat'))                         return 'bg-lime-300'
-  if (t.includes('inlay'))                            return 'bg-amber-300'
-  if (t.includes('onlay'))                            return 'bg-orange-300'
-  if (t.includes('täidis') || t.includes('taidis'))  return 'bg-yellow-300'
-  if (t.includes('proteez')|| t.includes('denture')) return 'bg-rose-300'
-  if (t.includes('splint') || t.includes('splaad'))  return 'bg-cyan-300'
-  if (t.includes('ibt'))                              return 'bg-indigo-300'
-  if (t.includes('kirur')  || t.includes('surgic'))  return 'bg-teal-300'
-  if (t.includes('allon')  || t.includes('all-on'))  return 'bg-pink-300'
-  return 'bg-slate-300'
-}
+const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
+import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
+import { MarkPaidDialog } from './MarkPaidDialog'
+import { workTypeImage } from '../../lib/workTypeImages'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -61,16 +49,48 @@ const EMPTY_FORM: JobInput = {
   varv: '',
   hambad: '',
   valmis_aeg: '',
+  valmis_kuupaev: null,
   kiirtoo: false,
   revisions: [],
   hind: null,
   disain_hind: null,
   makstud: false,
-  makse_kuupaev: ''
+  makse_kuupaev: '',
+  assigned_to: null,
+  designed_by: null
+}
+
+// ─── Worker select ────────────────────────────────────────────────────────────
+// Reads the clinic's profiles. Empty is a real answer — plenty of work is done
+// by someone who is not in the system, or outsourced, and forcing a name would
+// put fictional people on payroll reports.
+function WorkerSelect({ label, value, onChange }: {
+  label: string
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  const { data: workers = [] } = useClinicProfiles()
+  return (
+    <div>
+      <label className="label flex items-center gap-1.5">
+        <UserRound size={11} /> {label}
+      </label>
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+        className="input"
+      >
+        <option value="">—</option>
+        {workers.map(w => (
+          <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
+        ))}
+      </select>
+    </div>
+  )
 }
 
 // ─── Pricing sub-component (shared between side + bottom layouts) ─────────────
-function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, hasCalc, onHindChange }: {
+function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, hasCalc, onHindChange, useDiscount, onDiscountChange, onRequestMarkPaid, paidSoFar }: {
   form: JobInput
   set: <K extends keyof JobInput>(key: K, val: JobInput[K]) => void
   settings: ReturnType<typeof useSettings>['settings']
@@ -79,7 +99,18 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
   prodPrice: number
   hasCalc: boolean
   onHindChange: (v: number | null) => void
+  useDiscount: boolean
+  onDiscountChange: (v: boolean) => void
+  onRequestMarkPaid?: () => void
+  paidSoFar: number
 }) {
+  // Recomputed here rather than threaded in: this block is rendered by two
+  // layouts, and a prop the two callers could set differently is a way for the
+  // side panel and the bottom panel to disagree about the same job's price.
+  const teeth = toothCountOf(form.hambad ?? '')
+  const info = workTypePriceFor(form.too, settings.tooTuubid, teeth, useDiscount)
+  const typePrice = info?.amount ?? null
+
   return (
     <div className="border border-ink-faint/20 rounded-xl p-4 space-y-4">
       <p className="text-sm font-semibold text-ink flex items-center gap-2">
@@ -90,7 +121,42 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
       {hasCalc && (
         <div className="bg-bg-sidebar rounded-xl p-3 space-y-1.5">
           <p className="text-xs font-semibold text-ink-muted mb-2">Autoarvutus</p>
-          {prodPrice > 0 && form.materjal && (
+          {/* A work-type price replaces the per-tooth rows rather than adding to
+              them — showing both would read as if they were summed. */}
+          {typePrice != null && info ? (
+            <>
+              <div className="flex justify-between text-xs text-ink-muted">
+                <span>
+                  {info.mode === 'hammas'
+                    ? `${teeth} × ${info.unit.toFixed(2)} € / hammas`
+                    : `1 × ${form.too?.trim() || 'töö'} (hind töö kohta)`}
+                </span>
+                <span className="font-medium text-ink">{typePrice.toFixed(2)} €</span>
+              </div>
+              {info.hasDiscount && (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onDiscountChange(false)}
+                    className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors ${
+                      !useDiscount ? 'bg-accent text-white' : 'bg-ink-faint/20 text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    Täishind
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDiscountChange(true)}
+                    className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors ${
+                      useDiscount ? 'bg-accent text-white' : 'bg-ink-faint/20 text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    Soodushind
+                  </button>
+                </div>
+              )}
+            </>
+          ) : prodPrice > 0 && form.materjal && (
             <>
               {smallCount > 0 && (
                 <div className="flex justify-between text-xs text-ink-muted">
@@ -186,7 +252,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         <label className="label">Makstud</label>
         <button
           type="button"
-          onClick={() => set('makstud', !form.makstud)}
+          onClick={() => {
+            // Turning it ON asks for the method; turning it OFF is just a
+            // correction and needs nothing.
+            if (form.makstud) { set('makstud', false); set('makse_kuupaev', '') }
+            else onRequestMarkPaid?.()
+          }}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-150 ${
             form.makstud
               ? 'bg-green-50 border-green-400 text-green-700'
@@ -200,6 +271,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           </span>
           {form.makstud ? 'Makstud' : 'Maksmata'}
         </button>
+        {/* A job can be unpaid by the flag and still have money against it. */}
+        {paidSoFar > 0 && !form.makstud && (
+          <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">
+            Osaliselt makstud: laekunud {paidSoFar.toFixed(2)} €
+          </p>
+        )}
       </div>
 
       {form.makstud && (
@@ -222,6 +299,14 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId, highlightNoteId, onOpenPatient }: JobDetailPanelProps) {
   const isBottom = position === 'bottom'
   const { settings } = useSettings()
+  const wt = useWorkTypes()
+  // Full price vs the type's discount price. Per job, not a setting: the person
+  // filling the form is the one who knows whether this case is discounted.
+  const [useDiscount, setUseDiscount] = useState(false)
+  // Marking paid always asks HOW — see MarkPaidDialog.
+  const [paidDialog, setPaidDialog] = useState(false)
+  const markPaid = useMarkJobsPaid()
+  const { data: jobPayments = [] } = usePayments()
   const { stages } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -268,10 +353,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         varv: job.varv ?? '',
         hambad: job.hambad ?? '',
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
+        valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
         revisions,
         hind: job.hind,
         disain_hind: job.disain_hind ?? null,
+        assigned_to: job.assigned_to ?? null,
+        designed_by: job.designed_by ?? null,
         makstud: job.makstud,
         makse_kuupaev: job.makse_kuupaev ?? ''
       })
@@ -295,21 +383,25 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     setForm(f => ({ ...f, [key]: val }))
   }, [])
 
-  // Live auto-price: fires when teeth, material, or kiirtöö change (new jobs only)
+  // Live auto-price: fires when work type, teeth, material, or kiirtöö change
+  // (new jobs only)
   useEffect(() => {
     if (!hindAutoRef.current) return
+    // A work-type price is per job, so it applies even before any tooth is
+    // picked — that is the whole point of quoting a case rather than a tooth.
     const h = form.hambad ?? ''
     const toothCount = h.split(',').filter(Boolean).length
-    if (toothCount === 0) return
+    const typePrice = workTypePriceFor(form.too, settings.tooTuubid, toothCount, useDiscount)?.amount ?? null
+    if (typePrice == null && toothCount === 0) return
     const p = form.materjal
       ? calcProduction(h, form.materjal, settings.materialPrices)
       : 0
     // Fallback €/tooth when the material has no price set — Seaded → Hinnad
-    const base = p > 0 ? p : toothCount * settings.hambaHind
+    const base = typePrice ?? (p > 0 ? p : toothCount * settings.hambaHind)
     const total = form.kiirtoo ? base * settings.kiirtooKordaja : base
     set('hind', parseFloat(total.toFixed(2)))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.hambad, form.materjal, form.kiirtoo])
+  }, [form.too, form.hambad, form.materjal, form.kiirtoo, useDiscount])
 
   // Auto-calculate: small teeth + large teeth from settings, plus design fee
   // The revision currently being viewed, if any — drives both the timeline and
@@ -321,9 +413,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const hambad = form.hambad ?? ''
   const smallCount = countSmallTeeth(hambad)
   const largeCount = countLargeTeeth(hambad)
-  const prodPrice = form.materjal
+  const typePriceInfo = workTypePriceFor(form.too, settings.tooTuubid, toothCountOf(hambad), useDiscount)
+  const prodPrice = typePriceInfo?.amount ?? (form.materjal
     ? calcProduction(hambad, form.materjal, settings.materialPrices)
-    : 0
+    : 0)
   const hasCalc = prodPrice > 0 || settings.designFee > 0
 
   async function handleSubmit(e: React.FormEvent) {
@@ -379,14 +472,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className={
           isBottom
-            ? 'fixed left-0 right-0 bottom-0 h-[70vh] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
+            ? 'fixed left-0 right-0 bottom-0 h-panel bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
             : 'fixed right-0 top-0 bottom-0 w-[540px] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden'
         }
         onClick={e => e.stopPropagation()}
       >
-        {/* Work-type color strip — bottom panel only */}
+        {/* Work-type colour strip — bottom panel only. Colour comes from
+            Seaded → Valikud, same source as the calendar and the legend. */}
         {isBottom && (
-          <div className={`h-1.5 flex-shrink-0 rounded-t-2xl ${getJobTypeBg(job?.too ?? form.too)}`} />
+          <div
+            className="h-1.5 flex-shrink-0 rounded-t-2xl"
+            style={{ backgroundColor: wt.hex(job?.too ?? form.too) }}
+          />
         )}
 
         {/* Panel header */}
@@ -481,12 +578,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 onSelectVariant={setActiveRevId}
                 highlightNoteId={highlightNoteId}
                 onOpenPatient={onOpenPatient}
-                onMarkPaid={() => {
-                  // Reuses the normal save path, so it closes the panel like any
-                  // other save — the list behind it shows the new state.
-                  const today = new Date().toISOString().split('T')[0]
-                  void onSave({ ...form, makstud: true, makse_kuupaev: today } as JobInput)
-                }}
+                onMarkPaid={() => setPaidDialog(true)}
               />
             </div>
           </>
@@ -565,19 +657,57 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* Töö */}
               <div>
                 <label className="label">Töö</label>
+                {/* Picked from the configured types rather than typed. Free text
+                    was how "D14 abutmendile kroon" and "all-on5" became their own
+                    de-facto categories, which then priced and coloured wrong.
+                    The field below still accepts anything for the cases the list
+                    does not cover. */}
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                  {settings.tooTuubid.map(t => {
+                    const active = (form.too ?? '').trim().toLowerCase() === t.nimi.toLowerCase()
+                      || (form.too ?? '').toLowerCase().startsWith(t.nimi.toLowerCase() + ' ')
+                    const img = workTypeImage(t.nimi, t.pilt)
+                    return (
+                      <button
+                        key={t.nimi}
+                        type="button"
+                        onClick={() => set('too', active ? '' : t.nimi)}
+                        title={t.hind != null
+                          ? `${t.hind.toFixed(2)} € ${t.hinnaTyyp === 'hammas' ? '/ hammas' : '/ töö'}`
+                          : t.nimi}
+                        className={`relative rounded-lg border-2 overflow-hidden text-left transition-all duration-100 ${
+                          active ? 'border-accent shadow-card' : 'border-ink-faint/25 hover:border-accent/40'
+                        }`}
+                      >
+                        <span
+                          className="flex h-10 items-center justify-center"
+                          style={{ backgroundColor: `${t.hex}1f` }}
+                        >
+                          {img
+                            ? <img src={img} alt="" className="h-full w-full object-cover" />
+                            : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.hex }} />}
+                        </span>
+                        <span className={`block px-1.5 py-1 text-[11px] font-medium truncate ${
+                          active ? 'text-accent' : 'text-ink'
+                        }`}>
+                          {t.nimi}
+                        </span>
+                        {t.hind != null && (
+                          <span className="absolute top-0.5 right-0.5 text-[9px] font-bold px-1 rounded bg-bg-card/90 text-ink-muted tabular-nums">
+                            {t.hind.toFixed(0)}€{t.hinnaTyyp === 'hammas' ? '/h' : ''}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
                 <input
                   type="text"
                   value={form.too ?? ''}
                   onChange={e => set('too', e.target.value)}
-                  placeholder="Kroon, sild, viniir…"
-                  list="too-suggestions"
+                  placeholder="Või kirjuta vabalt…"
                   className="input"
                 />
-                <datalist id="too-suggestions">
-                  {['Kroon', 'Abutmendile kroon', 'Implantkroon', 'Sild', 'Viniir', 'Laminaat', 'Inlay', 'Onlay', 'Täidis', 'Proteez', 'Allon4', 'Allon5', 'Allon6', 'Nightguard', 'Retainer', 'Splint'].map(v => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
                 {/* Jaw picker — shown when work type starts with Allon */}
                 {/^allon/i.test(form.too ?? '') && (() => {
                   const base = (form.too ?? '').replace(/\s+(ülemine|alumine)$/i, '').trim()
@@ -622,7 +752,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 <label className="label">Materjal</label>
                 {(() => {
                   // Sort longest-first so "Ceramic Crown HT" always wins over "Ceramic Crown"
-                  const baseMat = ([...MATERIAL_OPTIONS] as string[])
+                  const baseMat = [...settings.materjalid]
                     .sort((a, b) => b.length - a.length)
                     .find(m => form.materjal === m || (form.materjal ?? '').startsWith(m + ' ')) ?? null
                   const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
@@ -632,7 +762,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   return (
                     <>
                       <div className="flex gap-2 mb-2 flex-wrap">
-                        {MATERIAL_OPTIONS.map(m => {
+                        {settings.materjalid.map(m => {
                           const active = baseMat === m
                           return (
                             <button
@@ -687,8 +817,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 <label className="label flex items-center gap-1.5">
                   <Cpu size={11} /> Masin
                 </label>
-                <div className="flex gap-2">
-                  {MACHINE_OPTIONS.map(m => (
+                <div className="flex gap-2 flex-wrap">
+                  {settings.masinad.map(m => (
                     <button
                       key={m}
                       type="button"
@@ -703,6 +833,22 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Teostaja + Disainija — what worker pay is calculated from.
+                  Two fields because design is compensated separately: often the
+                  same person, sometimes not, sometimes outsourced (leave empty). */}
+              <div className="grid grid-cols-2 gap-4">
+                <WorkerSelect
+                  label="Teostaja"
+                  value={form.assigned_to}
+                  onChange={v => set('assigned_to', v)}
+                />
+                <WorkerSelect
+                  label="Disainija"
+                  value={form.designed_by}
+                  onChange={v => set('designed_by', v)}
+                />
               </div>
 
               {/* Print ID + Disain ID */}
@@ -785,6 +931,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 smallCount={smallCount} largeCount={largeCount}
                 prodPrice={prodPrice} hasCalc={hasCalc}
                 onHindChange={v => { hindAutoRef.current = false; set('hind', v) }}
+                useDiscount={useDiscount} onDiscountChange={setUseDiscount}
+                onRequestMarkPaid={job ? () => setPaidDialog(true) : undefined}
+                paidSoFar={job ? jobPayments.filter(p => p.job_id === job.id)
+                  .reduce((s, p) => s + Number(p.amount), 0) : 0}
               />
 
               {/* Muudatused */}
@@ -840,6 +990,39 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
           </div>
         </div>
       </motion.aside>
+
+      {/* Marking paid always records HOW — never a bare boolean flip. */}
+      {paidDialog && job && (() => {
+        const total = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
+          + (job.revisions ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0)
+        const already = jobPayments
+          .filter(p => p.job_id === job.id)
+          .reduce((s, p) => s + Number(p.amount), 0)
+        return (
+          <MarkPaidDialog
+            title={`Märgi makstuks · ${job.too ?? 'Töö'}`}
+            amount={total}
+            alreadyPaid={already}
+            busy={markPaid.isPending}
+            onClose={() => setPaidDialog(false)}
+            onConfirm={async details => {
+              const paying = details.amount ?? Math.max(0, total - already)
+              await markPaid.mutateAsync({
+                jobs: [{ id: job.id, amount: paying, total: Math.max(0, total - already) }],
+                method: details.method,
+                paid_at: details.paid_at,
+                reference: details.reference,
+              })
+              // Only reflect "paid" in the form when it actually is.
+              if (paying >= Math.max(0, total - already) - 0.005) {
+                set('makstud', true)
+                set('makse_kuupaev', details.paid_at)
+              }
+              setPaidDialog(false)
+            }}
+          />
+        )
+      })()}
     </AnimatePresence>
   )
 }

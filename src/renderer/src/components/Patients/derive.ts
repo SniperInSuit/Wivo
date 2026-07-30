@@ -1,6 +1,8 @@
 // Every number shown on the patient page is computed here, so the header, the
 // stat strip, the tooth chart and the ARVED panel can never disagree.
 import type { Job } from '../../types/job'
+import type { Payment } from '../../types/invoice'
+import { jobsPaymentTotals } from '../../lib/jobPayments'
 import type { Patient } from '../../types/patient'
 
 // Count comma-separated FDI tokens. Trims first: `filter(Boolean)` (TableView.tsx:188)
@@ -65,7 +67,7 @@ export function derivedTeeth(patientJobs: Job[]): Set<string> {
 }
 
 // All patient-page totals in one pass.
-export function patientStats(patientJobs: Job[]) {
+export function patientStats(patientJobs: Job[], payments: Payment[] = []) {
   const jobCount = patientJobs.length
   // Matches useDashboardStats:45 — a legacy un-migrated revision has no entry in
   // the array, so it is not counted as a revision, only as revision teeth below.
@@ -86,14 +88,19 @@ export function patientStats(patientJobs: Job[]) {
   }, 0)
   const totalTeeth = originalTeeth + revisionTeeth
 
-  const totalInvoiced = patientJobs.reduce((s, j) => s + jobTotal(j), 0)
-  const paidTotal = patientJobs.filter(j => j.makstud).reduce((s, j) => s + jobTotal(j), 0)
+  // Reads the payment ROWS, not just the `makstud` flag: since part payments
+  // exist a job can be flagged unpaid and still be half settled, and a panel
+  // that ignored that would report a debt the patient has already reduced.
+  const totals = jobsPaymentTotals(patientJobs, payments)
+  const totalInvoiced = totals.total
+  const paidTotal = totals.paid
   // By subtraction, NOT by summing the unpaid jobs: an unpaid job with a total of
   // 0 would otherwise make arveldatud ≠ makstud + tasumata in the ARVED panel.
-  const unpaidTotal = totalInvoiced - paidTotal
+  const unpaidTotal = totals.outstanding
   // The Dashboard rule — the `> 0` guard keeps priceless jobs from being counted
   // as outstanding invoices (PatientsView:161 omits it and over-reports).
-  const unpaidCount = patientJobs.filter(j => !j.makstud && jobTotal(j) > 0).length
+  const unpaidCount = totals.unpaidCount
+  const partialCount = totals.partialCount
 
   return {
     jobCount,
@@ -105,7 +112,8 @@ export function patientStats(patientJobs: Job[]) {
     totalInvoiced,
     paidTotal,
     unpaidTotal,
-    unpaidCount
+    unpaidCount,
+    partialCount
   }
 }
 

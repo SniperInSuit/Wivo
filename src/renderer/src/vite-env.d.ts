@@ -4,3 +4,8 @@
 // from package.json. Declared here rather than in a root-level d.ts because
 // tsconfig.web.json only includes src/renderer/src/**/*.
 declare const __APP_VERSION__: string
+
+// Optional override for the synthetic login domain (see lib/supabase.ts).
+interface ImportMetaEnv {
+  readonly VITE_USERNAME_DOMAIN?: string
+}

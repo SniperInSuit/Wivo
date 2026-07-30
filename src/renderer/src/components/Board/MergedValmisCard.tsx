@@ -9,7 +9,7 @@ import type { Job } from '../../types/job'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
-import { getJobTypeBorderColor } from './JobCard'
+import { useWorkTypes } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
 
 interface MergedValmisCardProps {
@@ -19,6 +19,7 @@ interface MergedValmisCardProps {
 
 export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
   const { doneStageKey } = usePipeline()
+  const wt = useWorkTypes()
   const revisions = job.revisions ?? []
   // Show the most recently completed revision as the "active" one
   const latest = [...revisions]
@@ -27,15 +28,17 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
     ?? [...revisions].sort((a, b) => b.ts.localeCompare(a.ts))[0]
   if (!latest) return null
 
-  // Strip "border-l-" prefix to get the colour class we can use as bg
-  const borderCls = getJobTypeBorderColor(job.too)   // e.g. "border-l-blue-400"
-  const accentBg  = borderCls.replace('border-l-', 'bg-').replace('-400', '-100')
+  // One colour, two strengths: the full hex for the edge, a 15% wash for the
+  // panel. Previously this string-swapped a Tailwind class name ("border-l-blue-400"
+  // → "bg-blue-100"), which could not survive colours becoming user-editable.
+  const typeHex = wt.hex(job.too)
 
   return (
     <div
       onClick={onClick}
       className={`card cursor-pointer hover:shadow-card-hover transition-all duration-150
-        overflow-hidden border-l-[3px] ${borderCls} col-span-2`}
+        overflow-hidden border-l-[3px] col-span-2`}
+      style={{ borderLeftColor: typeHex }}
     >
       <div className="flex min-h-[100px]">
 
@@ -96,7 +99,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
         <div className="w-px bg-ink-faint/10 self-stretch" />
 
         {/* ── RIGHT: Original (context / smaller) ── */}
-        <div className={`flex-[2] p-3 flex flex-col gap-1 ${accentBg}/30`}>
+        <div className="flex-[2] p-3 flex flex-col gap-1" style={{ backgroundColor: `${typeHex}18` }}>
           <p className="text-[9px] font-bold text-ink-faint uppercase tracking-wider mb-0.5">
             Originaal
           </p>

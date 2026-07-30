@@ -1,5 +1,924 @@
 # Changelog
 
+## [1.23.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Patsiendi profiili ARVED kast näitab nüüd ka makseid**
+- Senised kolm summat (arveldatud / makstud / tasumata) ei öelnud midagi selle
+  kohta, **kuidas** raha tuli — ainult kui palju
+- Uus **Makseviisid** plokk: iga viisi kohta maksete arv ja kogusumma
+  (nt "Sularaha · 3× — 450.00 €"). Patsient, kes maksab alati sularahas, ja see,
+  kes maksab ülekandega, on erineva jälgimisvajadusega, ja summad üksi seda ei ütle
+- Uus **Viimased maksed** plokk: kuupäev, viis, viide ja summa, kuni kuus viimast,
+  koos märkusega, kui neid on rohkem
+
+**Maksed korjatakse mõlemast suunast**
+- Nii need, mis on kirja pandud töö juures ("Makstud"), kui ka need, mis on
+  arve alt. Ainult ühe lugemine alahindaks täpselt neid kliinikuid, kes teist teed
+  kasutavad
+- Arve seotakse patsiendiga nii `patient_id` kui ka nime järgi, sest arvel võib
+  olla patsient, kellel ei ole veel patsiendikaarti
+
+**Aus märkus tühja puhul**
+- Kui makseid ei ole, öeldakse välja, et vanad "makstud" märked tehti enne maksete
+  jälgimist ja neil ei ole makseviisi — mitte lihtsalt tühi kast
+
+---
+
+## [1.22.1] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**PARANDUS: osamakse salvestus, aga mitte kuskil ei näidatud seda**
+- 1.22.0 kirjutas osamakse korrektselt kirja, kuid iga ekraan luges endiselt
+  ainult `makstud` lippu — seega töö näitas ikka täissummat ja "Maksmata", nagu
+  poleks midagi laekunud. Pool funktsionaalsust ilma teise pooleta
+- Uus `lib/jobPayments.ts` on üks koht, mis vastab: kui palju on töö väärt, kui
+  palju laekunud, kui palju võlgu
+
+**Kus see nüüd näha on**
+- **Töö vaade**: "Osaliselt makstud" oranži plokina koos laekunud summa ja jäägiga,
+  ning nimekiri üksikutest maksetest (kuupäev, viis, viide, summa) — osamakset
+  saab kontrollida, mitte ainult uskuda
+- Nupp ütleb "Lisa makse", kui midagi on juba laekunud
+- **Töö vorm**: "Makstud" lüliti all on kirjas, kui palju juba laekunud
+- **Patsiendi profiil → ARVED**: makstud ja tasumata summad arvutatakse nüüd
+  maksete ridade, mitte lipu pealt; juures on osaliselt makstud tööde arv
+- **Patsiendi tööde ajalugu**: rida näitab "Osaliselt (X € jääk)" seniste
+  "Makstud" / "Maksmata" asemel
+
+**Vana ajalugu jääb terveks**
+- Enne osamakseid lipuga makstuks märgitud töödel ei ole makseridu. Neid loetakse
+  endiselt täielikult makstuks — muidu paistaks iga vana töö äkki võlgnevusena
+
+---
+
+## [1.22.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Osaline makse**
+- "Märgi makstuks" aknas saab nüüd sisestada, **kui palju** tegelikult maksti
+- Väli näitab kogusummat, juba laekunut ja jääki, ning täidab end vaikimisi jäägiga
+- Kui makstakse vähem: makse salvestatakse, aga **töö jääb maksmata seisu** ja
+  jääk on endiselt võlgu. Makstuks märkimine peidaks võla ära, ja see on ainus
+  asi, mida see ei tohi teha
+- Nupp ütleb, kumb toiming käib: "Salvesta osamakse" või "Märgi makstuks"
+- Hulgi märkimisel summat muuta ei saa — üks väli ei jagune mitme töö vahel nii,
+  et keegi oskaks tulemust ette näha
+
+**Arve saab jagada igakuisteks osamakseteks**
+- Uue arve vormil väli **"Jaga osamakseteks"** — nt 6 tähendab kuut arvet, üks kuus
+- Kõik luuakse kohe, kuupäevadega kuu kaupa edasi (nii arve kuupäev kui maksetähtaeg)
+- **Esimene arve seob tööd**, ülejäänud on samade ridade osamaksed. Nii ei loeta
+  tööd mitu korda arveldatuks ja see ei kao ka arveldamata nimekirjast valesti
+- Viimane osamakse võtab ümardusjäägi, nii et osad annavad kokku täpselt terviku
+- Iga osamakse saab oma arvenumbri ja on eraldi dokument, mida saab eraldi
+  märkida makstuks ja välja printida
+- Teadlikult luuakse need ette ära, mitte reeglina "korda iga kuu": töölauarakendus
+  ei tööta suletuna, seega reegel, mis peaks järgmisel kuul käivituma, ei käivituks
+
+---
+
+## [1.21.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**"Makstud" küsib nüüd alati, KUIDAS maksti**
+- `jobs.makstud` on boolean ja vastab ainult küsimusele "kas raha tuli". Ta ei
+  oska vastata "mis kujul", mis on täpselt see, mida omanik peab kassa või
+  pangaväljavõttega kokku viima
+- Iga tee "makstud" juurde avab nüüd akna, kus valid **ülekanne / sularaha /
+  kaart / muu**, kuupäeva ja soovi korral viite
+- Kaetud on kõik kolm kohta: töö vaate nupp "Märgi makstuks", töö vormi
+  "Makstud" lüliti ja tabeli hulgitoiming
+- Hulgi märkimisel kehtib üks makseviis ja kuupäev kogu valikule — nii see
+  päriselt käibki (üks ülekanne, üks kassapäeva lõpp)
+- Lüliti väljalülitamine ei küsi midagi: see on parandus, mitte makse
+
+**Töö makse on nüüd päris kirje**
+- Lisaks lipule kirjutatakse `payments` tabelisse rida (summa, viis, kuupäev,
+  viide, kes sisestas) — sama tabel, mida arved kasutavad
+- Lippu hoitakse endiselt sünkroonis, sest mitu ekraani loevad seda
+
+**Statistika parandus**
+- "Maksmise viis" ja "Laekunud" lugesid ainult arvete makseid ja jätsid töö
+  juures märgitud maksed täiesti välja — ehk alahindasid iga kliiniku puhul, kes
+  arveid alati ei väljasta
+- Loetakse nüüd kõiki makseid
+
+---
+
+## [1.20.0] — 2026-07-31
+**Käivita:** `sql/031_delete_worker.sql` (Wivo kinni enne).
+
+**PARANDUS: eemaldatud ja võõraste kliinikute kontod olid kõikjal valikutes**
+- `useClinicProfiles` ei filtreerinud **üldse** kliiniku järgi, ja `profiles_read`
+  poliitika lubab igal sisselogitud kasutajal lugeda kõiki profiile — seega tuli
+  sinna iga konto kogu Supabase projektist, sh meeskonnast eemaldatud
+- Puudutas kõiki kohti korraga: töö vormi Teostaja/Disainija, tabeli
+  hulgimääramist ja Töötasusid
+- Nüüd filtreeritakse `clinic_id` järgi
+
+**Konto saab nüüd jäädavalt kustutada**
+- Meeskond → vali töötaja → "Kustuta konto jäädavalt". Kasutajanimi vabaneb ja
+  sama nimega saab uue konto luua
+- **Andmebaas keeldub**, kui inimesel on töid, tunde või väljamakseid — ja ütleb,
+  mitu neid on. `jobs.assigned_to` on ON DELETE SET NULL, seega kustutamine
+  rebiks tema nime iga töö küljest lahti. Palgaajalugu, mis ei oska öelda, kellele
+  maksti, on halvem kui seisev konto
+- Omanikku ega iseennast kustutada ei saa
+
+**"Lisa tagasi" on nüüd ajaline**
+- Vaikimisi näidatakse ainult viimase minuti jooksul eemaldatuid — see nimekiri
+  on eksliku klõpsu tagasivõtmiseks, mitte alaliseks kalmistuks
+- Vanemad jäävad kättesaadavaks nupu "Näita kõiki eemaldatuid" taga. Konto
+  eksisteerib niikuinii edasi, ja orb, keda keegi üles ei leia, on halvem tulemus
+  kui üks lisaklõps
+
+**Töötasud: arhiveeritud**
+- Meeskonnast eemaldatud inimesed, kellele on tehtud väljamakseid, kuvatakse
+  eraldi plokis "Arhiveeritud" koos väljamaksete arvu ja kogusummaga
+- Uut tasu neile ei arvestata; ajalugu jääb jälgitavaks
+
+---
+
+## [1.19.0] — 2026-07-31
+**Käivita:** `sql/030_reset_worker_password.sql` (Wivo kinni enne).
+
+**Omanik saab töötajale uue parooli määrata**
+- Meeskond → vali töötaja → "Määra uus parool"
+- Seni oli vale parool ummiktee: kontot ei saa rakendusest kustutada (vajaks
+  `service_role` võtit, mida ei tohi töölauarakendusse panna), üle luua ei saa
+  (kasutajanimi on võetud), ja lähtestuskirja pole kuhugi saata, sest sünteetiline
+  aadress ongi meelega tupik
+- Uus parool kuvatakse pärast salvestamist koos kopeerimisnupuga, et selle saaks
+  töötajale edasi anda
+- Käib `admin_set_worker_password()` kaudu, mis kontrollib andmebaasi poolel, et
+  kutsuja on selle kliiniku omanik ja sihtmärk kuulub samasse kliinikusse. Teise
+  omaniku parooli muuta ei saa
+- Eemaldatud (kliinikust lahutatud) inimese parooli **ei saa** määrata enne, kui
+  ta on tagasi lisatud: orvuks jäänud konto ei kuulu ühelegi kliinikule, ja
+  vastasel juhul võiks iga omanik selle endale võtta
+
+**Selgem veateade**
+- "Kasutajanimi on juba võetud" ütleb nüüd ka, mida teha: kui tegu on varem
+  eemaldatud liikmega, lisa ta tagasi ja määra uus parool
+
+---
+
+## [1.18.3] — 2026-07-31
+Andmebaasi muudatusi ei ole. **Vajalik Supabase seadistus, vt allpool.**
+
+**"Email rate limit exceeded" töötaja loomisel**
+- Põhjus ei ole rakenduses: Supabase sisseehitatud SMTP lubab vaid paar kirja
+  tunnis, ja `signUp` saadab kinnituskirja ainult siis, kui **"Confirm email"**
+  on sisse lülitatud
+- Majasisest kontot ei ole vaja kinnitada — pealegi ei jõua kiri kuhugi, sest
+  aadress on sünteetiline
+- **Lahendus:** Supabase → Authentication → Providers → Email → lülita
+  **"Confirm email" välja**. Siis ei saadeta ühtegi kirja ja piirangut ei teki
+- Veateade rakenduses ütleb selle nüüd otse välja, koos täpse asukohaga
+
+**PARANDUS: uue töötaja loomine vahetas omaniku sessiooni ära**
+- `signUp` logib uue kasutaja sisse sellel kliendil, kus seda kutsuti. Peakliendil
+  tähendas see, et omanik lõi tehniku konto ja **jäi ise tehnikuna sisse logituks**
+- Seni jäi see märkamata just tänu kinnituskirjadele: kinnitust nõudev signUp ei
+  tagasta sessiooni. See viga oleks avaldunud täpselt sel hetkel, kui "Confirm
+  email" välja lülitada — ehk kohe, kui ülemine probleem lahendada
+- Konto luuakse nüüd eraldi ühekordsel kliendil, mis ei salvesta sessiooni ega
+  värskenda tokenit. Uue kasutaja token sureb funktsiooni lõpus
+
+---
+
+## [1.18.2] — 2026-07-31
+Andmebaasi muudatusi ei ole. (`sql/029_username_login.sql` päis ja backfill uuendatud —
+kui see on juba käivitatud, ei ole vaja midagi uuesti teha.)
+
+**PARANDUS: "Email address tehnik@wivo.invalid is invalid"**
+- Supabase (GoTrue) e-posti valideerija lükkab `.invalid` ja `.local` tipptasemega
+  domeenid tagasi. Valisin `.invalid` sellepärast, et RFC 2606 garanteerib, et see
+  ei saa kunagi lahenduda — aga see garantii ei aita, kui konto loomine sellega
+  üldse läbi ei lähe
+- Vaikimisi domeen on nüüd **`example.com`**: samuti RFC 2606-ga reserveeritud,
+  seda ei saa keegi registreerida, IANA viskab sinna saadetud kirjad ära — ja
+  erinevalt `.invalid`-ist läheb see Supabase valideerijast läbi
+- Sünteetiline aadress jääb kasutaja eest endiselt peitu; kuvatakse kasutajanime
+
+**Domeeni saab ise valida**
+- `.env` failis `VITE_USERNAME_DOMAIN=users.sinukliinik.ee`, kui soovid, et
+  andmebaasis oleks midagi äratuntavamat
+- Vali see **enne** kontode loomist: hilisem muutmine jätab olemasolevad kontod
+  orvuks, sest salvestatud aadress kannab vana domeeni
+
+---
+
+## [1.18.1] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Meeskonna liikme saab nüüd eemaldada**
+- Nuppu ei olnud üldse — prügikasti ikoon oli failis imporditud, aga mitte kordagi
+  kasutatud
+- Meeskond → vali töötaja → "Eemalda meeskonnast" (kaheastmeline kinnitus)
+
+**Mis eemaldamisel täpselt juhtub**
+- Profiil lahutatakse kliinikust ja kõik õigused kustutatakse. Ligipääsu võtab ära
+  just lahutamine: iga RLS poliitika on kirjutatud `my_clinic_id()` vastu, mis
+  muutub tema jaoks tühjaks
+- **Kontot ennast ei kustutata.** Seda ei saa siit teha — see nõuaks
+  `service_role` võtit, millel ei ole töölauarakenduses asja
+- **Tehtud tööd jäävad alles** ja nende juures on tema nimi endiselt näha.
+  Palgaajalugu ja väljamaksed samuti — neid ei tohigi kaotada
+- Eemaldatud inimesed jäävad nimekirja alla eraldi plokki koos nupuga
+  "Lisa tagasi": eksliku eemaldamise parandab üks klõps, ja orvuks jäänud konto
+  ei ole nähtamatu
+
+---
+
+## [1.18.0] — 2026-07-31
+**Käivita:** `sql/029_username_login.sql` (Wivo kinni enne).
+
+**Töötaja konto ei vaja enam e-posti**
+- Meeskond → Lisa töötaja küsib nüüd **kasutajanime**, mitte e-posti
+- Pingi taga töötaval tehnikul ei ole firmapostkasti, ja talle "tehnik2@gmail.com"
+  välja mõtlemine on korraga vale ja hilisem tugiprobleem
+- Sisselogimine käib kasutajanimega. Väli aktsepteerib mõlemat: kui sisestatud
+  tekstis on `@`, koheldakse seda e-postina, muidu kasutajanimena
+- Päris e-posti saab endiselt sisestada — siis saab see inimene ise parooli
+  lähtestada
+
+**Kuidas see töötab**
+- Supabase Auth nõuab parooli jaoks e-posti aadressi, seega tuletab rakendus
+  kasutajanimest sünteetilise aadressi `<kasutajanimi>@wivo.invalid` ja ei näita
+  seda kunagi kuskil
+- `.invalid` on RFC 2606-ga reserveeritud just selleks, et see ei saa kunagi
+  lahenduda ega kirju vastu võtta — nii ei satu ükski parooli lähtestamise kiri
+  kogemata võõrale domeenile
+- Kasutajanimed on tõstutundetult unikaalsed ("Tehnik" ja "tehnik" on sama inimene)
+
+**Mida see tähendab**
+- **Kasutajanimega konto ei saa ise parooli lähtestada** — kirja pole kuhugi
+  saata. Omanik lähtestab selle. See on vahetuskaup postkastide mittenõudmise
+  eest ja vastab sellele, kuidas majasisene konto niikuinii käib
+- Kasutajanimed on unikaalsed kogu Supabase projekti ulatuses. Ühe labori puhul
+  ei ole see nähtav; paljude kliinikute puhul tuleks kliinik nimesse sisse võtta
+- Olemasolevad e-postiga kontod töötavad muutumatult
+
+---
+
+## [1.17.1] — 2026-07-31 — KRIITILINE PARANDUS
+Andmebaasi muudatusi ei ole.
+
+**Töö tüüpide hinnad kadusid iga taaskäivitusega**
+- `workTypeList()` — funktsioon, mis loeb töö tüübid localStorage-ist ja
+  andmebaasist — **ehitas iga kirje uuesti ainult väljadest `nimi`, `hex` ja
+  `match`**. Kõik ülejäänud väljad kustusid vaikselt igal laadimisel:
+  `hind`, `soodushind`, `hinnaTyyp`, `pilt`, `kulud`
+- Seetõttu püsisid hinnad sessiooni jooksul (mälus olev objekt oli terve) ja
+  kadusid taaskäivitusel. Sama funktsioon jookseb ka andmebaasist hüdreerimisel,
+  nii et järgmine salvestus kirjutas kärbitud nimekirja ka serverisse
+- Viga tekkis 1.7.13-s, kui funktsioon kirjutati ajal, mil neid välju veel ei
+  olnud, ja seda ei uuendatud kordagi, kui välju juurde tuli
+- Nüüd kasutab funktsioon spreadi (`...t`) ja normaliseerib ainult neid välju,
+  mis seda vajavad. Iga uus WorkType väli kandub edaspidi automaatselt läbi
+- Lisatud ka väärtuste kontroll: vigane arv ei muutu enam `NaN`-iks, mis rikuks
+  kõik summad allpool
+
+**Mida see tähendab sinu andmetele**
+- Kadunud hinnad tuleb suure tõenäosusega uuesti sisestada
+- **Enne uute hindade sisestamist** tasub Supabase SQL-redaktoris vaadata:
+  `select work_types from clinic_settings;` — kui seal on hinnad veel alles,
+  taastab parandatud versioon need järgmisel käivitamisel ise
+
+---
+
+## [1.17.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Tarvikute kulud töö tüübi peal**
+- Iga töö tüübi kaardil saab nüüd loetleda **kulud**: kruvi, abutment, mis iganes
+  konkreetne töö alati vajab
+- Iga kulu on nimi + summa + kas **töö kohta** või **hamba kohta** — implantaadi
+  kruvi käib hamba kohta, kohaletoimetamine töö kohta
+- Nimekiri, mitte üks number: tüüp vajab tavaliselt mitut asja, ja "12 € millegi
+  eest" ei ole vastus, mida saab hiljem kontrollida
+- **Ei lisandu kunagi arvele.** See on kulu, mitte hind — olemas selleks, et kate
+  teaks, mis töö päriselt ära kulutas
+- Statistika → Rahandus: kaart on nüüd "Materjal ja tarvikud", tarvikute osa eraldi
+  välja toodud; kate arvestab neid maha; töötüübi tabelis on need materjali veerus
+
+**Maksmise viisi statistika**
+- Statistika → Rahandus näitab, kuidas kliendid päriselt maksavad: ülekanne,
+  sularaha, kaart, muu — maksete arv, summa ja osakaal ribadena
+- Arvestatakse perioodil **laekunud** makseid, mitte väljastatud arveid
+
+**Muudatuste hinnad saab hulgi nullida**
+- Seaded → Hinnad → "Arvuta tööde hinnad ümber" all on nüüd valik
+  **Muudatuste hinnad**: *Jäta puutumata* / *Nulli (0 €)* / *Arvuta ümber*
+- Vana poolhinna-loogika jäi vanadele muudatustele külge; nüüd saab need ühe
+  korraga nulli panna, ilma et peaks kliendi hindu puutuma
+- Ülevaade näitab eraldi, mitu muudatust muutub ja mis summast mis summani
+- Töö hind ja selle muudatused kirjutatakse **ühe päringuga** — kaks kirjutust
+  samale reale tähendaks kaotatud uuendust
+
+**Seaded → Hinnad paigutus**
+- "Arvuta tööde hinnad ümber" on nüüd kõige ülal, töö tüüpide kohal
+- Kaks veergu: vasakul ümberarvutus + töö tüüpide kaardid, paremal automaatarvutus,
+  disaini hind ja materjalide tabel — varem oli viis kaarti üle laiuse laiali
+
+---
+
+## [1.16.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Kalendri päis kolis ülemisele ribale — grid sai kõrgust juurde**
+- Vaate valikud (Tööd / Visiidid / Kombineeritud), Kuu/Nädal ja **Täna** on nüüd
+  ülemisel ribal otsingu ja Import CSV vahel
+- Eraldi "Kalender" pealkirjarida ja kuu-stepper (`‹ juuni 2026 ›`) on eemaldatud
+- Kuu-stepper ei öelnud enam midagi: kalender on pidev keritav riba, mis märgib
+  iga kuu algust niikuinii rea kohale. Ta võttis kogu laiuse, et korrata infot,
+  mis on juba ekraanil
+- Kokku ~52px rohkem päevalahtritele, ilma et ükski nupp kaoks
+- Ülemine riba sai üldise "keskmise pesa", nii et see ei tea midagi kalendrist —
+  iga vaade saab sinna ise oma juhtnupud panna
+
+**Täna töötab nüüd ka kerimisega**
+- Varem seadis see ainult valitud päeva; nüüd kerib ka päeva vaatesse
+
+---
+
+## [1.15.0] — 2026-07-31
+**Käivita:** `sql/028_worker_engagement.sql` (Wivo kinni enne).
+
+**Palgal vs esitab arve — number tähendab nüüd õiget asja**
+- Töötasud nimetas iga summat "brutopalgaks" ja liitis kõigele tööandja maksud.
+  Tehniku puhul, kes esitab arve oma ettevõttelt, ei ole see lihtsalt vale sõna,
+  vaid **vale number**: arve on ost, brutot ei ole, tööandja sotsiaalmaksu ei ole,
+  ja maksude pool on arve esitaja enda asi
+- Ostu esitlemine palgana **ülehindaks kliiniku maksukohustust** — täpselt selline
+  enesekindel vale number, mille pealt omanik hakkaks planeerima
+- Iga inimese juures on nüüd **Töösuhe**: *Palgal* või *Esitab arve*
+- Palgal → summa on bruto, tööandja maksud lisanduvad
+- Esitab arve → summa on arve summa, tööandja makse ei lisandu
+- Töötaja nime kõrval on silt "esitab arve", summa all kirjas "bruto" või "arve summa"
+
+**Kokkuvõte on jaotatud**
+- "Palgal, bruto" + "Tööandja maksud" + "Arve alusel (ettevõtted)" + "Kogukulu kliinikule"
+- Varem oli üks "Bruto kokku", mis liitis kaks eri asja kokku ja korrutas mõlemad maksudega
+
+**Statistika → Rahandus**
+- Tööandja maksud arvutatakse ainult **palgaliste** pealt
+- Töötajate tabelis on veerg "Töösuhe"
+- Kate on seetõttu nüüd õige ka siis, kui osa tehnikuid on lepingulised
+
+---
+
+## [1.14.0] — 2026-07-31
+**Käivita:** `sql/027_payroll_permission.sql` (Wivo kinni enne).
+
+**Töötasusid saab nüüd delegeerida**
+- Uus õigus **`payroll.manage`** (Meeskond → töötaja õigused): "Töötasusid hallata"
+- Näeb kõigi tasumäärasid, tunde ja väljamakseid, saab neid kinnitada ja tühistada
+- Omanikul on see alati olemas
+- Varem oli palgaarvestus poliitikates omaniku-ainult, mis tähendas, et raamatupidaja
+  või juhatajaga omanik pidi iga väljamakse ise tegema. See ei olnud turvaotsus,
+  vaid puuduv õigus
+- **Jõustatud andmebaasis** (`can_manage_payroll()`), mitte ainult liideses
+- Tavatöötaja näeb endiselt ainult iseennast — mida keegi teenib, on tema ja
+  palgaarvestaja vaheline asi
+
+**Ridade väljajätmine enne kinnitamist**
+- Iga arvestamata rea ees on nüüd linnuke; võta maha, et see väljamaksest välja jätta
+- Väljajäetud read **jäävad maksmata ja tulevad järgmisel perioodil uuesti ette** —
+  seega "lisamine" käib nii, et jätad rea praegu välja ja kinnitad hiljem
+- Nupp näitab, mitu rida tegelikult kinnitatakse, ja summa arvestab valikut
+
+**Väljamakset saab tagasi võtta**
+- "Võta tagasi" viib makstud väljamakse tagasi kinnitatud olekusse
+- Kustutamine kahe klõpsuga; makstud väljamakse puhul on hoiatus valjem
+- Kustutamine **tagastab kõik read arvestamata hulka** — `paidKeysFrom` loeb
+  otse väljamaksetest, seega midagi muud tagasi kerima ei pea
+- Külmutamise põhimõte jääb: vigast väljamakset ei parandata dokumenti muutes,
+  vaid see kustutatakse ja tehakse uuesti
+
+---
+
+## [1.13.0] — 2026-07-31
+**Käivita:** `sql/026_revision_pay_scope.sql` (Wivo kinni enne).
+
+**Muudatustel saab nüüd olla oma tasumäär**
+- Seni sai muudatuste kohta öelda ainult "sama reegel, mis tööl — sees või väljas"
+  (`pay_revisions`). Labor, kes maksab töö eest 15 €/hammas ja ümbertegemise eest
+  8 €/hammas, ei saanud seda kuidagi kirja panna — ja just nii see tavaliselt käib
+- "Mille eest" valikutele lisandus **Muudatus (ümbertegemine)**
+- Muudatuse reegel saab olla hamba kohta, fikseeritud või protsent — sõltumatult
+  sellest, mille järgi tööd ennast makstakse
+- Kui muudatuse reeglit ei ole, kehtib vana käitumine: tööreegel katab muudatused
+  ainult siis, kui sellel on linnuke "Katab ka muudatused". Olemasolevad
+  seadistused töötavad täpselt nagu enne
+
+**PARANDUS: muudatuste puudumist ei selgitatud kuidagi**
+- Diagnostika vaatas ainult töid, mitte muudatusi. Töö, mis ise arvestusse läks,
+  võis kanda muudatust, mis vaikselt midagi ei teeninud — ilma ühegi märkuseta
+- Nüüd öeldakse muudatuste kohta sama moodi: ei ole valmis-etapis, kuupäev jääb
+  perioodist välja, muudatuste eest ei maksta, hambaid ei ole valitud, hinda ei ole
+
+**Muudatustel on nüüd oma valmimiskuupäev**
+- Sama viga, mis töödel oli 1.11.2-ni: perioodi otsustas tähtaeg, mis on plaan
+- `valmis_kuupaev` pannakse muudatusele hetkel, mil see liigub valmis-etappi
+- Vanadel muudatustel jääb aluseks tähtaeg, siis loomise aeg
+
+---
+
+## [1.12.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Teostaja ja disainija määramine hulgi — Tabel**
+- Vali tabelis tööd (või kõik korraga päise linnukesega) ja määra teostaja või
+  disainija kõigile valitutele korraga
+- Vajalik selleks, et olemasolevad tööd üldse palgaarvestusse jõuaksid — ükshaaval
+  vormi avades jääks see lihtsalt tegemata, ja siis ei ole millegi pealt maksta
+- Sama ribal on juba staatuse muutmine, "Makstud" ja kustutamine
+- "— eemalda —" võtab määrangu maha
+- Tabeli otsing ja sorteerimine töötavad enne valimist, nii et saab näiteks
+  filtreerida ühe töö tüübi või patsiendi ja määrata ainult neile
+- Kirjutamine käib kaupa 15 töö haaval, et pikk nimekiri ei jääks poolele teele
+
+---
+
+## [1.11.3] — 2026-07-31
+Andmebaasi muudatusi ei ole (kui `sql/025_job_completed_date.sql` on käivitamata, tee see ära).
+
+**Töötasud näitab nüüd alati, mitu tööd jäi arvestamata ja miks**
+- 1.11.2 näitas põhjuseid ainult siis, kui kokku oli 0 €. See tähendas, et
+  **osaline tulemus — neli määratud tööd, üks rida — nägi välja täpselt nagu
+  täielik tulemus**. Just see on raskem viga märgata, ja just see jäi märkamata
+- Põhjused arvutatakse ja näidatakse nüüd alati, ka siis kui midagi arvestati
+- Töötaja rea peal on kohe näha: `N reeglit · M rida · K määratud valmis tööd`
+  ning oranžilt `X tööd arvestamata`, ilma et peaks lahti klõpsama
+- Lisatud ka disainija põhjused: "disainijaks on määratud, aga disaini eest
+  makstavat reeglit ei ole"
+- Reegli puudumise teade ütleb nüüd, kust vaadata: "kontrolli 'Mille eest' ja
+  'Ainult töö tüübile'"
+
+---
+
+## [1.11.2] — 2026-07-31
+**Käivita:** `sql/025_job_completed_date.sql` (Wivo kinni enne).
+
+**PARANDUS: töötasu näitas 0, kuigi töö oli valmis ja määr olemas**
+- Palgaarvestus otsustas, millisesse perioodi töö kuulub, `valmis_aeg` järgi —
+  see on aga **tähtaeg, mitte valmimise kuupäev**. 28. juuni tähtajaga töö, mis
+  sai valmis 3. juulil, ei teeninud seetõttu ei juunis ega juulis midagi: ta
+  lihtsalt jäi ekraanil oleva kuu vahelt välja
+- Tähtaeg on plaan. Palka makstakse selle järgi, mis tegelikult juhtus
+- Uus väli `valmis_kuupaev`, mille rakendus paneb hetkel, mil töö liigub
+  valmis-etappi (tahvlil lohistades, vormist salvestades või hulgi muutes).
+  Kirjutatakse ainult üks kord — valmis töö edasi-tagasi lohistamine ei muuda seda
+- Olemasolevatele ridadele tuletatakse kuupäev `updated_at` pealt. See on
+  **oletus** ajalooliste ridade kohta ja migratsioon ütleb seda välja
+
+**Töötasud ütleb nüüd, MIKS midagi ei arvestatud**
+- Kui rida ei teki, näidatakse põhjust töö kaupa: töö ei ole valmis-etapis,
+  valmimiskuupäev jääb perioodist välja, ükski tasureegel ei sobi, tasu on hamba
+  kohta aga hambaid pole valitud, tasu on protsent aga hinda pole, juba makstud
+- Iga põhjuse juures on tööde arv ja näited
+- Põhjus: "0 €" koos seadistatud määra ja valmis töödega on ekraan, millele ei
+  saa vastata ilma koodi lugemata. Rakendus teab vastust, nüüd ka ütleb seda
+
+**Töö tüüp on vormil valikukaardid, mitte tekstiväli**
+- Uus töö / Muuda tööd: töö tüübid on pildi, nime ja hinnaga kaardid
+- Vaba tekst jääb alles nende juhtude jaoks, mida nimekiri ei kata — aga see ei
+  ole enam vaikimisi tee
+- Vabatekst oli see, kuidas "D14 abutmendile kroon" ja "all-on5" said omaette
+  kategooriateks, mis siis vale hinna ja vale värvi said
+
+---
+
+## [1.11.1] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Tööde hindade ümberarvutus — Seaded → Hinnad (ainult omanik)**
+- Vanad tööd kandsid hindu ajast, mil see oli ühe tehniku tööriist ja vaikimisi
+  oli 15 €/hammas. Nüüd on need kliendi hinnad, mille pealt arveid kirjutatakse,
+  seega peavad nad vastama päris hinnakirjale
+- Arvutab sama valemiga, mis töö vorm: töö tüübi hind → materjali hind →
+  €/hammas, kiirtöö kordaja peale. Sama valem tähendab, et ümberarvutatud töö ei
+  saa vormis näidatust erineda
+- **Kaheastmeline**: enne kirjutamist näidatakse ülevaade — mitu tööd muutub, mitu
+  jääb samaks, praegune kogusumma ja uus kogusumma, ning rida-realt vana ja uus
+  hind koos arvutuse alusega
+- **Juba väljastatud arveid see ei puuduta** — arve read on koopiad arveldamise
+  hetkest, täpselt selleks, et hinna hilisem muutmine ei kirjutaks dokumenti ümber
+- Arvel olevad tööd saab soovi korral välja jätta (linnuke), vaikimisi on kaasas
+- Tööd, mille hinda ei saa arvutada (hambaid pole ja töö tüübil hinda pole),
+  jäetakse vahele ja loendatakse eraldi — vaikselt nulliks ei kirjutata
+- Kirjutamine käib kaupa 15 töö haaval, et suurem nimekiri ei jääks poolele teele
+  pidama
+- Tagasivõtmist ei ole ja seda öeldakse enne kinnitamist välja
+
+---
+
+## [1.11.0] — 2026-07-31 — Testimise tagasiside: kliinik, hinnamudel, tasureeglid
+**Käivita:** `sql/023_material_costs.sql` ja `sql/024_worker_pay_scope.sql` (Wivo kinni enne).
+
+**PARANDUS: "Kliinik puudub — seaded kehtivad ainult selles arvutis."**
+- Põhjus: `fetchClinic` neelas oma vea alla ja tagastas `null`, mistõttu
+  **ebaõnnestunud päring ja "kliinikut polegi" nägid välja täpselt ühesugused**
+- Sünkroniseerimine käis kliiniku **objekti** küljes, mitte profiili `clinic_id`
+  küljes. Üks ebaõnnestunud päring lülitas seetõttu kogu kliiniku seadete
+  sünkroni vaikselt välja, kuigi kliinik oli täiesti olemas
+- Nüüd: sünk käib `clinic_id` järgi, viga logitakse konsooli, ja riba eristab
+  kolme olukorda — kliinikut ei ole, kliinik on aga andmeid ei saanud laadida,
+  kõik korras
+- Seaded → Kliinik ei ole enam tühi leht, kui kliinikut ei õnnestunud laadida
+
+**Töö tüübi hind: töö kohta VÕI hamba kohta**
+- Silda ei saanud hinnastada, sest selle hind sõltub ulatusest — sama disaini puhul
+- Iga töö tüüp valib nüüd ise: **Töö kohta** või **Hamba kohta**
+- Hamba kohta hind korrutatakse hammaste arvuga; hambaid valimata ei ole hind veel
+  teada (0 € ei kirjutata vormile)
+
+**Soodushind**
+- Igal töö tüübil on täishind ja soodushind
+- Töö vormil saab valida, kumba kasutatakse — otsustab see, kes tööd sisestab
+
+**Hinnaseaded näevad välja nagu kaardid**
+- Tabeli asemel kaardid: pilt, nimi, hinnastamise viis, täishind, soodushind
+- Piltide kaust: `src/renderer/src/assets/worktypes/`
+- Failinimi = töö tüübi nimi väiketähtedes, täpitähed asendatud, tühikud
+  sidekriipsuga: `kroon.png`, `abutmendile-kroon.png`, `all-on-x.png`, `taidis.png`
+- Kaustas on README kogu nimekirjaga. Pildi puudumisel näidatakse töö tüübi
+  värviga kohatäidet koos oodatava failinimega — midagi katki ei lähe
+- Faili saab ka käsitsi määrata kaardilt
+
+**Tasureeglid: "Disain" ei ole enam Liik**
+- Liik vastab küsimusele **kuidas makstakse** — tund, hammas, töö, %, kuu.
+  "Disain" ei ole vastus sellele küsimusele, see on **töö liik**
+- Uus väli **"Mille eest"**: teostatud töö või disain
+- Tänu sellele saab disaini eest maksta **hamba kohta** (nagu tegelikult tellitakse),
+  mitte ainult fikseeritud summana
+- Olemasolevad `disain`-reeglid teisendatakse automaatselt: kind='too' + "disaini eest"
+
+**Automaatsed töötunnid**
+- Tunnitasu reegel saab "Täida tunnid automaatselt" + tunde päevas
+- Kuu tööpäevad (E–R) täidetakse ise, administraator ei pea 21 ühesugust rida sisestama
+- **Käsitsi sisestatud päev on alati ülimuslik** — erand sisestatakse üks kord
+
+**Tööandja maksud**
+- Uus seade Seaded → Hinnad: tööandja maksude määr %
+- Töötasud näitab omanikule brutot, makse ja **kogukulu tööandjale**
+- Statistika → Rahandus arvestab katte nüüd tööjõukulust **koos maksudega**
+- Vaikimisi 0% ja seda öeldakse välja: vale maksumäär, mille rakendus ise välja
+  mõtles, on halvem kui ilmselgelt puuduv
+
+---
+
+## [1.10.0] — 2026-07-30 — Rahandus: kate, kulud, muudatuste kahju
+**Käivita:** `sql/023_material_costs.sql` (Wivo kinni enne).
+
+**Uus vaheleht Statistika → Rahandus**
+Senine statistika luges hambaid ja töid. See vaheleht loeb raha: mis tuli sisse,
+mis läks välja, mis jäi alles. Tootmise ja raha vaated on eraldi, sest leht oli
+juba pikk ja hambaloendust ei ole mõtet katteprotsendiga ühte kerimisse panna.
+
+**Sisse**
+- **Arveldatud** — arvete netosumma perioodis (käibemaksuta)
+- **Laekunud** — maksed nende laekumise kuupäeva järgi, mitte arve kuupäeva järgi
+- **Tasumata** ja sellest **üle tähtaja**
+- **Arveldamata** — valmis tööd, mis ei ole ühelgi arvel. Kulu on juba kantud,
+  tulu mitte: kõige kiirem koht, kust raha leida
+
+**Välja**
+- **Tööjõukulu (arvestatud)** — sama mootor, mis Töötasud (`lib/earnings.ts`),
+  nii et statistika ja palgaleht ei saa erineda
+- **Välja makstud** — külmutatud väljamaksed
+- **Materjalikulu** — uus, vt allpool
+- **Muudatuste kahju** — tööjõud + materjal − muudatuse eest tasutud
+
+**Materjali omahind — uus väli (migratsioon 023)**
+- Seaded → Hinnad materjalitabelis on nüüd kaks veergu juurde: **omahind** väikese
+  ja suure hamba kohta
+- Põhjus: `material_prices` on **müügihind**, mis läheb arvele. Mitte kusagil ei
+  olnud kirjas, mis materjal laborile maksab, seega "kui palju töö sisse tõi"
+  oli vastatav ja "kui palju see teenis" mitte
+- Omahinda ei lisata kunagi arvele — sellest arvutatakse ainult kate
+- Tühi tähendab **teadmata**, mitte tasuta
+
+**Kate**
+- Kate = arveldatud − tööjõud − materjal, koos katteprotsendiga
+- Arvutatud **arveldatud** summast, mitte tööde hindadest: arve on see, mille saab
+  reaalselt sisse nõuda
+- Üldkulud (rent, seadmed, tarkvara) ei ole arvestatud ja seda on ka öeldud
+
+**Kate töö tüübi järgi**
+- Iga töö tüübi kohta: töid, arveldatud, tööjõud, materjal, kate, kate %
+- Vastab küsimusele, milline töö tegelikult teenib — mitte milline on kalleim
+
+**Muudatuste kahju põhjuse järgi**
+- Iga põhjuse (Vale disain, Patsiendi soov, …) kohta: mitu korda, tööjõud,
+  materjal, tasutud, **netokahju**
+- Eristab labori enda vea kliendi soovist — see on see, mida saab juhtida
+- Kui muudatused ei ole tasureeglis tasustatud, on tööjõukulu 0: aeg läheb siis
+  kaotsi tööajana, mitte rahana. Ka see on kirjas
+
+**Töötajate kaupa**
+- Töid, hambaid, arvestatud tasu, välja makstud
+
+**Numbrid ütlevad, mida nad ei näe**
+- Tööjõukulu ja materjalikulu näitavad katvust: "12/20 tööl on teostaja — 8 tööd puudu"
+- Ilma selleta oleks määramata teostajaga töödest tekkinud kate, mis näeb hea välja
+  ja on väljamõeldis. Osaline arv, mis end täisarvuna esitab, on halvem kui arv puudu
+
+---
+
+## [1.9.0] — 2026-07-30 — Töötasud (Phase 4b)
+**Käivita:** `sql/022_worker_pay.sql` (Wivo kinni enne).
+
+**Paindlik tasumudel — reeglite loend, mitte palgaväli**
+- Labor ei maksa ühtemoodi: administraator tunnitasu, tehnik 15 €/hammas, aga
+  täiskaar fikseeritud summa, disaini eest lisatasu peale. Üks `palk` väli seda
+  väljendada ei suuda, seega on tasu **reeglite loend** inimese kohta
+- Kuus liiki: **hamba tasu**, **töö tasu** (fikseeritud), **% töö hinnast**,
+  **tunnitasu**, **kuutasu**, **disaini lisatasu**
+- Iga reegel võib kehtida ainult ühele töö tüübile. Töö tüübiga reegel on
+  ülimuslik üldise ees — nii toimib "15 €/hammas, aga Allon4 on 200 €/töö"
+  ilma et üldreegel selle vaikselt üle kirjutaks
+- Ühe töö kohta rakendub täpselt üks tootmisreegel; disaini lisatasu liidetakse peale
+- Reeglitel on kehtivusaeg (`active_from` / `active_to`), et vana töö
+  arvestataks vana määraga
+
+**Kes töö tegi**
+- Töö vormil kaks uut välja: **Teostaja** ja **Disainija**
+- Kaks eraldi välja, sest disain on eraldi tasustatud: sageli sama inimene,
+  vahel mitte, vahel sisse ostetud (jäta tühjaks)
+- Tühi on õige vastus — sundvalik paneks palgaaruandesse olematuid inimesi
+
+**Muudatused (rework)**
+- Vaikimisi **tasustamata**: tavaline juhtum on labori enda veast tingitud
+  ümbertegemine, mille eest teist korda ei maksta
+- Lülitatav reeglipõhiselt sisse, kui muudatused on tasustatav töö
+
+**Töötunnid**
+- Tunnipõhiste inimeste jaoks: kuupäev, tunnid, märkus
+- Töötaja saab sisestada enda tunde, omanik kõigi omi
+
+**Uus vaade "Töötasud"**
+- Kuu kaupa, iga töötaja arvestamata read koos allikaga (töö, muudatus, disain, tunnid)
+- Arvestatakse ainult **valmis** töid — pooleli oleva töö eest maksmine tähendaks
+  praaki minnes tagasinõuet, mida see süsteem teadlikult ei toeta
+- "Kinnita väljamakse" **külmutab read**: määra hilisem muutmine juba makstud
+  perioodi ümber ei arvuta. Sama reegel, mis arvetel
+- Juba väljamakstud töö ei ilmu enam järgmise perioodi arvestusse
+- Töötaja näeb ainult iseennast; omanik näeb kõiki (jõustatud RLS-is, mitte ainult UI-s)
+
+**Kuutasu ja osalised perioodid**
+- Kuutasu makstakse perioodi kohta täies ulatuses, mitte proportsionaalselt.
+  Osalise kuu reeglit ei ole keegi öelnud, seega on rida nähtav ja käsitsi
+  parandatav, mitte vaikne murdosa
+
+**Turvalisus**
+- Palgaandmed on RLS-iga piiratud: igaüks näeb enda määra, tunde ja väljamakseid,
+  omanik kõiki. Palk ei ole kogu kliiniku asi
+
+---
+
+## [1.8.0] — 2026-07-30 — Arved ja maksed (Phase 4)
+**Käivita:** `sql/020_invoices.sql` (Wivo kinni enne).
+**Valikuline:** `sql/021_legacy_payments.sql` — loe enne käivitamist selle päist.
+
+**Uus jaotis "Arved"**
+- Nähtav `payments.read` õigusega, muutmine `payments.write` õigusega
+- Nimekiri numbri, patsiendi, kuupäeva, tähtaja, summa ja tasumata jäägiga
+- Kokkuvõte: arveldatud, laekunud, tasumata, üle tähtaja — arvutatud
+  **nähtava nimekirja** põhjal, mitte kõigi arvete pealt, et filtreeritud vaate
+  kokkuvõte ei kirjeldaks teist hulka kui tabel selle all
+- Filtrid: kõik / tasumata / mustandid / saadetud / makstud, otsing numbri ja nime järgi
+
+**Arve koostamine**
+- Vali patsient → näed tema **arveldamata** töid ja muudatusi, klõps lisab rea
+- Juba arvel olev töö ei ole enam valikus: sama töö kaks korda arveldamine on
+  viga, mida see ekraan peab kõige enam ära hoidma
+- Muudatused on eraldi read (oma hind, sageli eraldi arveldatavad)
+- Käsitsi ridade lisamine (transport, allahindlus vms)
+- Ridade kirjeldus ja hind **kopeeritakse töölt arve koostamise hetkel**, mitte ei
+  loeta iga kord uuesti: väljastatud arvet ei tohi hiljem töö hinna muutmine ümber kirjutada
+
+**Maksed**
+- Osalised maksed: makse summa, viis (ülekanne/sularaha/kaart/muu), kuupäev, viide
+- Tasumata jääk arvutatakse maksete summast, mitte lipust
+- Täies ulatuses tasumine märgib arve automaatselt makstuks, et nimekiri ja seis
+  ei läheks lahku
+- Makse saab kustutada (vale sisestus)
+
+**Arve number**
+- Kliiniku- ja aastapõhine järjekord (nt `2026-0001`), genereeritud **andmebaasis**
+- Põhjus: kaks samal hetkel arvet väljastavat töökohta loeksid mõlemad "viimane oli 6"
+  ja kirjutaksid mõlemad 7. Lünk või kordus arvenumbrites on auditi leid
+- Unikaalsus jõustatud `(clinic_id, number)` indeksiga
+
+**Summad**
+- Netosumma, käibemaks ja kogusumma arvutab **andmebaasi trigger** ridade pealt
+- Kliendi arvutatud summa salvestamine tähendaks arvet, mille päis ei klapi
+  omaenda ridadega niipea, kui midagi läheb pooleldi valesti
+- Käibemaksumäär salvestatakse **arve peale**, mitte ei loeta seadetest —
+  määra muutmine järgmisel aastal ei tohi vanu dokumente ümber arvutada
+
+**Trükkimine / PDF**
+- "Prindi / salvesta PDF" avab A4 dokumendivaate ja süsteemi prindidialoogi
+  (Electron oskab ise PDF-i salvestada — teeki ega fonte juurde ei ole vaja)
+- Väljad: müüja andmed koos registrikoodi, KMKR-i ja IBAN-iga, dokumendi number,
+  kuupäev ja tähtaeg, read, käibemaks eraldi real, kokku, maksejuhis
+- Puuduvate kliiniku rekvisiitide kohta hoiatab riba **enne** printimist
+- Prindi-CSS lähtestab kuvasuurenduse 1-le: 125% ekraanieelistus ei tohi
+  millimeetrites määratud dokumenti ümber mõõta
+
+**Seaded → Hinnad**
+- Käibemaksumäär (vaikimisi **0%** — rakendus ei hakka ise maksu arvele panema;
+  kontrolli, milline määr sinu teenustele kehtib)
+- Maksetähtaeg päevades (vaikimisi 14)
+
+**Vana `makstud` lipp**
+- Jäeti puutumata. Selle teisendamine makseridadeks tähendab finantskirjete
+  **väljamõtlemist**, seega on see eraldi valikuline skript `021`, mille omanik
+  käivitab teadlikult
+- Skript märgistab loodud read (`Imporditud: makstud-lipp (021)`), tähistab
+  tuletatud kuupäevad, on korduvkäivitatav ja tagasivõetav ühe DELETE-ga
+- Skripti päis loetleb täpselt, mida ta oletab
+
+---
+
+## [1.7.15] — 2026-07-30
+**Käivita:** `sql/019_clinic_settings.sql` (Wivo kinni enne).
+
+**Kliiniku seaded kolivad andmebaasi — enne arvete moodulit, mitte pärast**
+- Töö tüübid (nimi, värv, hind), materjalid ja nende hinnad, masinad, töö etapid,
+  hinnastamise ja kalendri seaded olid seni `localStorage`-is ehk **arvutipõhised**
+- See tähendas, et kaks töökohta samas kliinikus võisid sama töö eest küsida eri hinda
+  ja miski ei viinud neid kokku
+- Phase 4 (arved) ehitatakse just nende numbrite peale — arve rida, mille hind sõltus
+  sellest, millises arvutis see loodi, on defekt, mis tuleb välja auditil, mitte laua taga
+- Uus tabel `clinic_settings`, üks rida kliiniku kohta, RLS `my_clinic_id()` järgi
+- Reaalaja tellimus: omaniku arvutis muudetud hind jõuab teistesse töökohtadesse
+  ilma taaskäivituseta
+
+**Mis jääb arvutipõhiseks**
+- Teema, teksti suurus, külgriba, kasutaja nimi — need on isiklikud eelistused ja
+  neid ei ole mõtet kliinikuga jagada
+- Seadete jaotus "Minu eelistused" vs kliiniku omad (1.7.13) vastab nüüd täpselt
+  sellele, mis on andmebaasis ja mis mitte
+
+**Üleminek olemasolevatelt seadetelt**
+- Esimesel käivitusel pärast migratsiooni loeb rakendus kliiniku rea; kui seda pole,
+  **külvab selle sinu praeguse seadistuse põhjal** — juba sisestatud hinnad ja töö
+  tüübid liiguvad serverisse, neid ei asendata vaikeväärtustega
+- Kui rida on juba olemas, võidab andmebaas ja `localStorage` jääb vahemäluks,
+  et esimene ekraanitäis oleks kohe õige ja rakendus töötaks ka ilma ühenduseta
+- Kui kaks arvutit külvavad korraga, võidab esimene — teise oma ei kirjuta üle
+
+**Kirjutamine**
+- Iga jaotis on eraldi jsonb veerg ja salvestatakse ainult see, mis tegelikult muutus:
+  kalendri kellaaegade muutja ei kirjuta üle hinda, mille keegi teine hetk tagasi muutis
+- Kirjutused kogutakse kokku ja saadetakse 400 ms pärast — hinna kerimine ei tähenda
+  päringut iga klahvivajutuse kohta
+- Oma kirjutuse reaalaja kaja jäetakse vahele, muidu kirjutaks see üle selle,
+  mida kasutaja vahepeal juba trükkis
+
+**Õigused**
+- Kliiniku seadeid muudab omanik; töötajale näidatakse neid loetavana
+- See ei ole kosmeetika: ilma selleta salvestuks töötaja muudatus tema enda arvutisse
+  ega jõuaks kunagi kliinikusse — täpselt see hajumine, mille pärast need seaded
+  andmebaasi kolisid. Päris jõustamine on RLS poliitikas
+- Seadete lehel on riba, mis ütleb otse, kas muudatused kehtivad kogu kliinikule
+  või ainult sellesse arvutisse (ja miks), koos viimase muutmise ajaga
+- **Teadaolev tagajärg:** `pipeline.write` õigusega töötaja näeb Töö etappe, kuid ei
+  saa neid praegu muuta — `clinic_settings` kirjutusõigus on veerupõhiseta ja seetõttu
+  omaniku päralt. Peenem poliitika tuleb koos Phase 4-ga
+
+---
+
+## [1.7.14] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Kalendri töö tüübi filter tuleb nüüd seadetest**
+- Varem koostati valikud tööde `too` vabatekstist, mistõttu filtris seisid kategooriatena ühekordsed kirjapildid: "D11-22 ajutine sild", "D14 abutmendile kroon", "all-on5"
+- Nüüd on valikud **Seaded → Valikud → Töö tüübid** nimekiri, iga rea ees oma värvitäpp
+- Filtreerimine käib lahendatud tüübi järgi: "Implantkroon" valimine leiab kõik kirjapildid, sh "D14 abutmendile kroon"
+- "Muu / määramata" valik ilmub ainult siis, kui midagi tõesti jääb nimekirjast välja
+
+**Töö tüüpidel on nüüd hind küljes — üks nimekiri, mitte kaks**
+- `tooHinnad` eraldi tabel kaotatud; hind on nüüd töö tüübi väli (`hind`)
+- Põhjus: töö tüüp ja selle hind on üks fakt, ning kaks vabatekstiga seotud nimekirja lähevad lahku kohe, kui üht ümber nimetada
+- Hinnad → Tööde hinnad näitab sama nimekirja, mis Valikud → Töö tüübid; tühi väli tähendab "hinnasta hammaste järgi"
+- Valikud lehel on hind real näha (nt "150.00 €/töö")
+- Varem sisestatud hinnad tõstetakse automaatselt tüüpide külge
+
+**Kõik töötüüpide värvid tulevad nüüd seadetest**
+- Leitud ja kõrvaldatud veel kaks kohta, kus värvid olid koodi sisse kirjutatud:
+  töö kaardi vasak serv tahvlil (`getJobTypeBorderColor`) ja töö paneeli ülemine riba (`getJobTypeBg`)
+- Valmis-veeru liitkaart arvutas tausta klassinime stringivahetusega ("border-l-blue-400" → "bg-blue-100") — see ei saanud kuidagi töötada kasutaja valitud värvidega; nüüd sama hex 15% tugevusega
+
+**Töö tüüpide värviparandus**
+- 1.7.13 migratsioon otsis värvi täpse nimega, mistõttu 1.7.12 nimekirjast tulnud "Allon4" jäi halliks — sisseehitatud tüüp kannab nime "All-on-X"
+- Nüüd kasutab migratsioon sama sünonüümide tabelit, mis kogu ülejäänud rakendus: "Allon4" → All-on-X, "Abutmendile kroon" → Implantkroon, "Nightguard" → Kaitse / splint
+- Ühekordne parandus ka juba salvestatud nimekirjadele: hallile jäänud nimeline tüüp saab õige värvi tagasi. Käivitub üks kord, nii et hiljem teadlikult valitud halli üle ei kirjutata
+
+**Filtri otsing ja vastete navigeerimine**
+- Pikemates filtriloendites (üle 6 valiku) on nüüd otsinguväli — patsienti ei pea enam sadade nimede seast kerima
+- Juba valitud kirjed jäävad otsingu ajal nähtavaks
+- Filtri all olevad päevad on kalendris punase täpiga märgitud
+- "Esmaspäev" lahtris on vastete loendur `1/7` koos nooltega — klõps viib vastele, kalender kerib selle vaatesse ja päev saab punase raami
+- Vajalik seetõttu, et kalendririba katab ±3 kuud: filtri vasted on tavaliselt ekraanilt väljas
+
+---
+
+## [1.7.13] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Teksti suurus töötab nüüd päriselt — kohe, ilma salvestamise ja taaskäivituseta**
+- 1.7.11 kasutas Electroni akna suumi, mis nõuab preload-silda; kui sild puudus (vana preload mälus, brauseri aken), vajus seade vaikselt läbi ja tundus katki
+- Nüüd CSS `zoom` `#root` peal, mida juhib `--ui-scale` muutuja — sama dokument, mis liidese joonistab, ei saa olla pooleldi paigaldatud
+- `#root` kompenseerib oma laiuse ja kõrguse (`calc(100% / var(--ui-scale))`), nii et 125% juures ei teki kerimisriba
+- Paneelid, mis olid mõõdetud vh/vw-s, kasutavad nüüd `.h-panel` / `.max-w-dialog` klasse, mis jagavad sama muutujaga läbi
+- Preload-sild eemaldatud — üks mehhanism, mitte kaks
+
+**Seaded jagatud: minu eelistused vs kliiniku seaded**
+- "Minu eelistused" (Profiil, Kasutajaliides) on nähtav igale töötajale ilma õigusteta — teksti suurus ja teema on localStorage-põhised isiklikud eelistused, mitte kliiniku andmed
+- Kliinik, Valikud, Masinad, Hinnad, Kalender nõuavad nüüd `settings.read` õigust
+- Töö etapid nõuab `pipeline.write` õigust (iga nupp seal kirjutab)
+- Vastus küsimusele "kuidas töötaja fonti muudab, kui ma talle seadete õigust ei anna": teksti suurus ei ole enam õiguse taga
+
+**Töö tüübid on nüüd muudetavad — nimi JA värv**
+- Varem oli 14 töötüüpi värvidega koodi sisse kirjutatud, mistõttu kalendri legend näitas asju, mida seadetes muuta ei saanud
+- Seaded → Valikud → Töö tüübid: lisa, nimeta ümber, muuda värvi, muuda järjekorda, eemalda, lähtesta
+- Värvipalett ja rea kujundus samad, mis töö etappidel
+- Järjekord = sobitamise järjekord ("Implantkroon" peab olema "Kroon" kohal); nooltega liigutatav
+- Sisseehitatud sünonüümid (nt "abutmendile" → Implantkroon) on real näha
+- Kalender, legend ja statistika loevad värve nüüd `useWorkTypes()` kaudu, mis on seadete külge tellitud — värvi muutmine värvib kaardid ja legendi samas renderis
+- Legendi täpp on nüüd täisvärv (varem 12% läbipaistvusega täidis, mis navy taustal muutus kõik ühte halli tooni)
+
+**Statistika**
+- "Hambad töötüübi järgi" → **"Tööd töötüübi järgi"**: loeb töid, mitte hambaid. Üks 14 hambaga Allon4 on üks töö, mitte 14 — hammaste lugemine lasi täiskaare tööd kõige muu üle domineerida
+- **Top patsiendid**: suurima patsiendi nimi puudus. Recharts jätab vaikimisi (`interval="preserveEnd"`) sildid ära, kui need ei mahu — 8 rida 180px sees ei mahtunud. Nüüd `interval={0}` ja kõrgus kasvab ridade arvuga (26px/rida)
+- Nimede veerg 118px, pikad nimed lõigatakse kolmikpunktiga; kahekordne ruumibroneering (margin + axis width) eemaldatud, nii et tulpadele jääb rohkem laiust
+
+**Hinnad → Tööde hinnad (€/töö)**
+- Uus hinnakiri töö tüübi kaupa: lisa, muuda, eemalda
+- Terve töö hind, mitte hamba hind — kui töö tüübil on hind, kasutab autoarvutus seda ja jätab hamba-põhise arvutuse vahele
+- Sobitub ka variantidega: "Allon4 ülemine" leiab kirje "Allon4" (pikim sobiv kirje võidab, sama reegel mis materjalidel)
+- Kehtib ka enne hammaste valimist — töö hinnastatakse tööna
+- Autoarvutuse plokk näitab rida "1 × Allon4 (hind töö kohta)" hamba-ridade asemel
+
+**Kalender**
+- Filtririba asendatud filtriikooniga "Esmaspäev" lahtris — klõps avab akna patsiendi, töö tüübi ja arsti filtritega
+- Aktiivsete filtrite arv on ikoonil punase märgisena
+- Vabastab ~44px kalendri kõrgust, mida kolm enamasti tegevusetut nuppu enne hõivasid
+
+---
+
+## [1.7.12] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Kohandatavad valikud — masinad, materjalid ja töö tüübid**
+- Uus seadete jaotis **Valikud** (Töö ja tootmine all): materjalide ja töö tüüpide loendid
+- **Masinad** jaotis: lisaks vaikimisi masina valikule saab nüüd masinaid ise lisada, ümber nimetada ja eemaldada
+- Kõik kolm loendit olid varem koodi sisse kirjutatud (`Pro2`/`Midas`, 7 materjali, 16 töö tüüpi) — kolmanda printeri või oma materjaliga labor pidi selle iga kord käsitsi sisse tippima
+- Nimetuse muutmiseks klõpsa sildil; eemaldamiseks prügikasti ikoon; "Lähtesta" toob vaikimisi loendi tagasi
+- Dubleerivad kirjed blokeeritakse (tõstutundetu võrdlus)
+- Uus materjal ilmub automaatselt hinnatabelisse (Hinnad → Hind materjali järgi)
+- Töö tüüpide loend toidab töö vormi "Töö" välja soovitusi — väli ise jääb vabaks tekstiks
+- Loendi tühjaks jätmine on lubatud valik: vormil lihtsalt ei näidata nuppe, vaba tekst töötab edasi
+- Nimetuse muutmine ei muuda juba salvestatud töid — need jäävad vana väärtusega
+
+---
+
+## [1.7.11] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Teksti suurus muudetav — Seaded → Kasutajaliides**
+- 5 valmis astet (Väike 90% … Väga suur 140%) + liugur vahemikus 80–160%
+- Iga aste näitab enda suurust nupu peal
+- Kehtib kohe ja jääb meelde (localStorage)
+- Skaleerib kogu kasutajaliidese ühtlaselt — tekst, ikoonid ja vahed koos, paigutus ei lagune
+- Tehniliselt: Electroni akna suum (`webFrame.setZoomFactor`), mitte `font-size`. Rakenduses on ~200 kohta, kus tekstisuurus on antud kindlas pikslis (`text-[10px]`) — font-size skaleerimine oleks kasvatanud poole tekstist ja jätnud tihedaima osa, mille kohta kurdetakse, puutumata
+- Vigane või liiga suur salvestatud väärtus lõigatakse 80–160% vahemikku, et liidest ei saaks kasutuskõlbmatuks seadistada
+
+---
+
+## [1.7.10] — 2026-07-30
+Andmebaasi muudatusi ei ole.
+
+**Muudatused on nüüd kalendris nähtavad**
+- Varem näitas kalender ainult originaaltöid — muudatused olid peidus, kuigi neil on oma tähtaeg ja oma etapp
+- Iga muudatus on nüüd kalendris eraldi kaart oma tähtaja päeval (`deadline`, selle puudumisel muudatuse loomise kuupäev)
+- Kaardil navy "Muudatus #N" märgis ja hall ääris — originaaltööst eristatav
+- Servavärv näitab muudatuse enda etappi, mitte originaaltöö oma
+- "Üle tähtaja" arvutatakse muudatuse enda tähtaja ja etapi järgi — valmis originaaltöö ei kata enam pooleliolevat muudatust
+- Päeva loendur näitab eraldi töid (⚡) ja muudatusi (⤶)
+- Topeltklõps muudatusel avab töö kaardi otse selle muudatuse peal
+- Parem paneel näitab muudatuse põhjust ja kirjeldust; päeva kokkuvõttes uus rida "Muudatusi"
+- Patsiendi ja töötüübi filtrid kehtivad ka muudatustele (päritakse originaaltöölt)
+- Legendi lisatud "Muudatus (oma tähtaeg)"
+
+---
+
 ## [1.7.1] — 2026-07-30
 **Käivita järjekorras:** `sql/012_profiles.sql`, `sql/013_auth_rls.sql`, `sql/014_clinics.sql`, `sql/015_add_clinic_id.sql`, `sql/016_clinic_rls.sql` (Wivo kinni enne).
 

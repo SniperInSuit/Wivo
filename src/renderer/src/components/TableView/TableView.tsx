@@ -6,6 +6,8 @@ import {
 } from 'date-fns'
 import type { Job, StageKey } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { MarkPaidDialog, type PaidDetails } from '../JobDetail/MarkPaidDialog'
 import { stageChipStyle } from '../../config/pipeline'
 import { StatusPill } from '../ui/StatusPill'
 import { ShadeChip } from '../ui/ShadeChip'
@@ -26,8 +28,9 @@ interface TableViewProps {
   onJobClick: (job: Job) => void
   onJobEye?: (job: Job) => void
   onBulkStatusChange?: (ids: string[], status: StageKey) => Promise<void>
-  onBulkMarkPaid?: (ids: string[]) => Promise<void>
+  onBulkMarkPaid?: (ids: string[], details: PaidDetails) => Promise<void>
   onBulkDelete?: (ids: string[]) => Promise<void>
+  onBulkAssign?: (ids: string[], patch: { assigned_to?: string | null; designed_by?: string | null }) => Promise<void>
   search: string
   onSearchChange: (v: string) => void
 }
@@ -50,8 +53,9 @@ function SortIcon({ field, sortKey, sortDir }: { field: string; sortKey: SortKey
     : <ChevronDown size={12} className="text-accent ml-1 inline" />
 }
 
-export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete, search, onSearchChange }: TableViewProps) {
+export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete, onBulkAssign, search, onSearchChange }: TableViewProps) {
   const { stages, doneStageKey } = usePipeline()
+  const { data: workers = [] } = useClinicProfiles()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('kuupaev')
@@ -59,6 +63,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [paidDialog, setPaidDialog] = useState(false)
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -164,12 +169,24 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     }
   }
 
-  async function handleBulkMarkPaid() {
+  async function handleBulkAssign(field: 'assigned_to' | 'designed_by', value: string | null) {
+    if (!onBulkAssign || selected.size === 0) return
+    setBulkWorking(true)
+    try {
+      await onBulkAssign([...selected], { [field]: value })
+      setSelected(new Set())
+    } finally {
+      setBulkWorking(false)
+    }
+  }
+
+  async function handleBulkMarkPaid(details: PaidDetails) {
     if (!onBulkMarkPaid || selected.size === 0) return
     setBulkWorking(true)
     try {
-      await onBulkMarkPaid([...selected])
+      await onBulkMarkPaid([...selected], details)
       setSelected(new Set())
+      setPaidDialog(false)
     } finally {
       setBulkWorking(false)
     }
@@ -280,11 +297,47 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               </button>
             ))}
           </div>
+          {/* Assigning who did the work, in bulk. Doing it one form at a time is
+              what stops the pay data from ever getting filled in. */}
+          {onBulkAssign && (
+            <>
+              <span className="text-ink-faint/40">|</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">Teostaja:</span>
+              <select
+                disabled={bulkWorking}
+                value=""
+                onChange={e => {
+                  if (e.target.value === '') return
+                  handleBulkAssign('assigned_to', e.target.value === '__none' ? null : e.target.value)
+                }}
+                className="input py-1 text-xs w-36"
+              >
+                <option value="">Määra…</option>
+                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>)}
+                <option value="__none">— eemalda —</option>
+              </select>
+              <span className="text-xs text-ink-muted whitespace-nowrap">Disainija:</span>
+              <select
+                disabled={bulkWorking}
+                value=""
+                onChange={e => {
+                  if (e.target.value === '') return
+                  handleBulkAssign('designed_by', e.target.value === '__none' ? null : e.target.value)
+                }}
+                className="input py-1 text-xs w-36"
+              >
+                <option value="">Määra…</option>
+                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>)}
+                <option value="__none">— eemalda —</option>
+              </select>
+            </>
+          )}
+
           <div className="ml-auto flex items-center gap-2">
             {onBulkMarkPaid && (
               <button
                 disabled={bulkWorking}
-                onClick={handleBulkMarkPaid}
+                onClick={() => setPaidDialog(true)}
                 className="flex items-center gap-1 text-xs text-green-700 bg-green-100 hover:bg-green-200 px-2.5 py-1 rounded-lg font-semibold transition-colors disabled:opacity-50"
               >
                 <Euro size={11} /> Makstud
@@ -569,6 +622,22 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           </div>
         )}
       </div>
+
+      {/* One method and date for the whole selection — that is how a batch is
+          actually settled (one bank transfer, one till at close of day). */}
+      {paidDialog && (
+        <MarkPaidDialog
+          title="Märgi valitud tööd makstuks"
+          count={selected.size}
+          amount={filtered
+            .filter(j => selected.has(j.id))
+            .reduce((s, j) => s + Number(j.hind ?? 0) + Number(j.disain_hind ?? 0)
+              + (j.revisions ?? []).reduce((a, r) => a + Number(r.price ?? 0), 0), 0)}
+          busy={bulkWorking}
+          onClose={() => setPaidDialog(false)}
+          onConfirm={handleBulkMarkPaid}
+        />
+      )}
     </div>
   )
 }

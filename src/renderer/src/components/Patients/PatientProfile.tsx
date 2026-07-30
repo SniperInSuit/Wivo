@@ -5,6 +5,7 @@ import type { Job } from '../../types/job'
 import type { Patient, PatientInput } from '../../types/patient'
 import { useUpdatePatient, useDeletePatient } from '../../hooks/usePatients'
 import { jobsForPatient, buildOrderRefs, patientStats } from './derive'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { PatientHeaderCard } from './PatientHeaderCard'
 import { PatientStatStrip } from './PatientStatStrip'
 import { RavikaartPanel } from './RavikaartPanel'
@@ -97,7 +98,26 @@ export function PatientProfile({
 
   const patientJobs = useMemo(() => jobsForPatient(jobs, patient), [jobs, patient])
   const orderRefs = useMemo(() => buildOrderRefs(patient, patientJobs), [patient, patientJobs])
-  const stats = useMemo(() => patientStats(patientJobs), [patientJobs])
+  const { data: payments = [] } = usePayments()
+  const { data: invoices = [] } = useInvoices()
+
+  // A payment belongs to this patient if it settles one of their jobs or one of
+  // their invoices. Both routes exist, so reading only one would under-report
+  // exactly the clinics that use the other.
+  const patientPayments = useMemo(() => {
+    const jobIds = new Set(patientJobs.map(j => j.id))
+    const invoiceIds = new Set(
+      invoices
+        .filter(inv => inv.patient_id === patient.id
+          || inv.patsient.trim().toLowerCase() === patient.nimi.trim().toLowerCase())
+        .map(inv => inv.id)
+    )
+    return payments.filter(p =>
+      (p.job_id && jobIds.has(p.job_id)) || (p.invoice_id && invoiceIds.has(p.invoice_id))
+    )
+  }, [payments, invoices, patientJobs, patient.id, patient.nimi])
+
+  const stats = useMemo(() => patientStats(patientJobs, payments), [patientJobs, payments])
 
   // Only the fields this form owns; markused is written by NotesPanel and is an
   // array, so a reference compare would read permanently dirty.
@@ -232,7 +252,7 @@ export function PatientProfile({
               onOpenJobNote={onJobNoteClick}
             />
           </div>
-          <InvoicesPanel stats={stats} />
+          <InvoicesPanel stats={stats} payments={patientPayments} />
           <LastModifiedPanel patient={patient} patientJobs={patientJobs} />
         </div>
       </div>

@@ -2,33 +2,45 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Plus, Zap, User, Clock, Cpu, CalendarDays,
-  CheckCircle2, AlertTriangle, X, UserCheck, UserX, ArrowUpRight, Filter, XCircle
+  CheckCircle2, AlertTriangle, X, UserCheck, UserX, ArrowUpRight, Filter, XCircle,
+  CornerDownLeft, Search
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
-  isSameMonth, isSameDay, isToday, parseISO, isValid, addMonths, subMonths,
-  addWeeks, differenceInWeeks, differenceInMonths, isBefore, startOfDay
+  isSameDay, isToday, parseISO, isValid, addMonths, isBefore, startOfDay
 } from 'date-fns'
 import { et } from 'date-fns/locale'
 import type { LucideIcon } from 'lucide-react'
-import type { Job } from '../../types/job'
+import type { Job, Revision } from '../../types/job'
 import type { Visit, VisitStatus } from '../../types/visit'
 import {
   VISIT_STATUS_LABEL, VISIT_STATUS_HEX, VISIT_STATUS_CLOSED,
   VISIT_ACTIONS, VISIT_ACTION_LABEL
 } from '../../types/visit'
 import { usePipeline } from '../../context/PipelineContext'
+import { useWorkTypes } from '../../stores/useSettings'
+import { UNKNOWN_WORK_TYPE } from '../../config/workTypes'
 import { useVisits, useUpdateVisit } from '../../hooks/useVisits'
 import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
-import { workTypeHex, workTypeLabel, workTypesPresent } from '../../config/workTypes'
 import { VisitTimeline } from './VisitTimeline'
 import { VisitWeekGrid } from './VisitWeekGrid'
 import { VisitForm } from './VisitForm'
 
 const WEEKDAYS = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev']
 
-type Mode = 'tood' | 'visiidid' | 'kombineeritud'
+export type CalendarMode = 'tood' | 'visiidid' | 'kombineeritud'
+export type CalendarScale = 'kuu' | 'nadal'
+
+// A calendar cell holds two kinds of work: the original job and each of its
+// revisions. A revision carries its own deadline and its own pipeline stage, so
+// it is a separate dated item — not a detail of the row it hangs off.
+type CalEntry =
+  | { type: 'job'; job: Job }
+  | { type: 'rev'; job: Job; rev: Revision; revNum: number }
+
+const entryKey = (e: CalEntry) =>
+  e.type === 'rev' ? `rev-${e.job.id}-${e.rev.id}` : `job-${e.job.id}`
 
 interface CalendarViewProps {
   jobs: Job[]
@@ -36,22 +48,28 @@ interface CalendarViewProps {
   onRevisionClick: (job: Job, revisionId: string) => void
   onNewJobOnDate: (isoDatetime: string) => void
   onOpenPatient?: (patientId: string) => void
+  // Mode, scale and "jump to today" are driven from the TopBar (see
+  // CalendarTopControls), so they are lifted rather than owned here.
+  mode: CalendarMode
+  scale: CalendarScale
+  /** Increments when Täna is pressed; the value itself carries no meaning. */
+  todaySignal: number
 }
 
-export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }: CalendarViewProps) {
+export function CalendarView({
+  jobs, onJobClick, onRevisionClick, onNewJobOnDate, onOpenPatient,
+  mode, scale, todaySignal,
+}: CalendarViewProps) {
   const { stages, stageMap, doneStageKey } = usePipeline()
+  const wt = useWorkTypes()
   const { data: visits = [], isError, error } = useVisits()
   const updateVisit = useUpdateVisit()
 
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
-  const [mode, setMode] = useState<Mode>('kombineeritud')
+
   const [selected, setSelected] = useState<Date | null>(() => startOfDay(new Date()))
   const [timelineDay, setTimelineDay] = useState(() => startOfDay(new Date()))
   const [visitForm, setVisitForm] = useState<{ visit: Visit | null; date?: Date; durationMin?: number } | null>(null)
-  // Month vs week. Only offered in Visiidid — the week grid is a visit schedule,
-  // and the Kombineeritud view already answers "who is coming today" with the
-  // horizontal rail.
-  const [scale, setScale] = useState<'kuu' | 'nadal'>('kuu')
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
 
   // Ticks once a minute so the timeline's current-time indicator moves
@@ -60,6 +78,21 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
     const t = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(t)
   }, [])
+
+  // Täna, pressed in the TopBar. Skips the first run so opening the calendar
+  // does not fight with the mount-time scroll to today.
+  const firstToday = useRef(true)
+  useEffect(() => {
+    if (firstToday.current) { firstToday.current = false; return }
+    const today = startOfDay(new Date())
+    setMonth(startOfMonth(today)); setSelected(today); setTimelineDay(today)
+    setWeekStart(startOfWeek(today, { weekStartsOn: 1 }))
+    requestAnimationFrame(() => {
+      scrollRef.current
+        ?.querySelector(`[data-day="${format(today, 'yyyy-MM-dd')}"]`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }, [todaySignal])
 
   const showJobs = mode !== 'visiidid'
   const showVisits = mode !== 'tood'
@@ -74,9 +107,28 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   const uniquePatients = useMemo(() =>
     [...new Set(jobs.map(j => j.patsient).filter(Boolean))].sort()
   , [jobs])
-  const uniqueWorkTypes = useMemo(() =>
-    [...new Set(jobs.map(j => j.too).filter(Boolean) as string[])].sort()
-  , [jobs])
+  // Work-type filter options are the CONFIGURED types (Seaded → Valikud), not
+  // the raw `too` strings on the jobs. `too` is free text, so deriving options
+  // from it listed one-off spellings — "D14 abutmendile kroon", "all-on5" —
+  // as if they were categories, and the same real type appeared several times
+  // under different names. Filtering matches on the resolved type instead, so
+  // picking "Implantkroon" catches every way someone wrote it.
+  const uniqueWorkTypes = useMemo(() => {
+    const names = wt.types.map(t => t.nimi)
+    // Offered only when something actually falls outside the configured list —
+    // otherwise it is a filter that can never match anything.
+    const hasUnclassified = jobs.some(j => wt.label(j.too) === UNKNOWN_WORK_TYPE.nimi)
+    return hasUnclassified ? [...names, UNKNOWN_WORK_TYPE.nimi] : names
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, wt.types])
+
+  // Colour key for the filter list — same swatch as the calendar fill and the
+  // legend, so the three cannot disagree about what a type looks like.
+  const workTypeSwatches = useMemo(() => {
+    const map: Record<string, string> = { [UNKNOWN_WORK_TYPE.nimi]: UNKNOWN_WORK_TYPE.hex }
+    for (const t of wt.types) map[t.nimi] = t.hex
+    return map
+  }, [wt.types])
   const uniqueDoctors = useMemo(() =>
     [...new Set(visits.map(v => v.arst).filter(Boolean) as string[])].sort()
   , [visits])
@@ -86,10 +138,12 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
     if (!hasFilters) return jobs
     return jobs.filter(j => {
       if (filterPatients.size > 0 && !filterPatients.has(j.patsient)) return false
-      if (filterWorkTypes.size > 0 && !filterWorkTypes.has(j.too ?? '')) return false
+      // Resolved type, not the raw string — see uniqueWorkTypes above
+      if (filterWorkTypes.size > 0 && !filterWorkTypes.has(wt.label(j.too))) return false
       return true
     })
-  }, [jobs, filterPatients, filterWorkTypes, hasFilters])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, filterPatients, filterWorkTypes, hasFilters, wt.types])
 
   const filteredVisits = useMemo(() => {
     if (!hasFilters) return visits
@@ -154,16 +208,26 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Jobs are placed on their DEADLINE — that is the date the work matters on.
-  const jobsByDay = useMemo(() => {
-    const map = new Map<string, Job[]>()
-    for (const j of filteredJobs) {
-      const raw = j.valmis_aeg ?? j.kuupaev
-      if (!raw) continue
+  // Work is placed on its DEADLINE — that is the date it matters on. A revision
+  // gets its own deadline, so it lands on its own day rather than inheriting the
+  // original job's; without a deadline it falls back to the day it was logged.
+  const entriesByDay = useMemo(() => {
+    const map = new Map<string, CalEntry[]>()
+    const place = (raw: string | null | undefined, entry: CalEntry) => {
+      if (!raw) return
       const d = parseISO(raw)
-      if (!isValid(d)) continue
+      if (!isValid(d)) return
       const k = format(d, 'yyyy-MM-dd')
-      map.set(k, [...(map.get(k) ?? []), j])
+      map.set(k, [...(map.get(k) ?? []), entry])
+    }
+    for (const j of filteredJobs) {
+      place(j.valmis_aeg ?? j.kuupaev, { type: 'job', job: j })
+      ;(j.revisions ?? []).forEach((rev, i) =>
+        place(rev.deadline ?? rev.ts, { type: 'rev', job: j, rev, revNum: i + 1 }))
+    }
+    // Originals above their revisions inside a day
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.type === b.type ? 0 : a.type === 'job' ? -1 : 1))
     }
     return map
   }, [filteredJobs])
@@ -214,89 +278,86 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
     }
   }
 
-  const isOverdue = (j: Job) => {
-    if (!j.valmis_aeg || j.status === doneStageKey) return false
-    const d = parseISO(j.valmis_aeg)
+  // A revision runs on its own stage, so "done" and "late" are answered per
+  // entry — a finished original does not clear a revision that is still open.
+  const entryStage = (e: CalEntry) =>
+    e.type === 'job' ? e.job.status : e.rev.status ?? stages[0]?.key ?? ''
+  const entryDeadline = (e: CalEntry) =>
+    e.type === 'job' ? e.job.valmis_aeg : e.rev.deadline ?? null
+
+  const isOverdue = (e: CalEntry) => {
+    const dl = entryDeadline(e)
+    if (!dl || entryStage(e) === doneStageKey) return false
+    const d = parseISO(dl)
     return isValid(d) && isBefore(d, now)
   }
 
-  // Legend lists only the work types visible in this month, not all rules
+  const openEntry = (e: CalEntry) =>
+    e.type === 'rev' ? onRevisionClick(e.job, e.rev.id) : onJobClick(e.job)
+
+  // Legend lists only the work types visible in this month, not every configured
+  // type. wt.types is in the deps because recolouring a type in Seaded has to
+  // repaint this legend in the same render that repaints the cards.
   const visibleTypes = useMemo(() => {
     if (!showJobs) return []
-    const toos = days.flatMap(d => (jobsByDay.get(format(d, 'yyyy-MM-dd')) ?? []).map(j => j.too))
-    return workTypesPresent(toos)
-  }, [days, jobsByDay, showJobs])
+    const toos = days.flatMap(d =>
+      (entriesByDay.get(format(d, 'yyyy-MM-dd')) ?? []).map(e => e.job.too))
+    return wt.present(toos)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [days, entriesByDay, showJobs, wt.types])
+
+  // ── Filter match navigation ────────────────────────────────────────────────
+  // A filtered calendar is mostly empty cells, and the matches are usually not
+  // on the screen you are looking at. These are the days that survived the
+  // filter, in date order, so the header can step through them.
+  const matchDays = useMemo(() => {
+    if (!hasFilters) return []
+    const keys: string[] = []
+    for (const d of stripDays) {
+      const k = format(d, 'yyyy-MM-dd')
+      const jobHit = showJobs && (entriesByDay.get(k)?.length ?? 0) > 0
+      const visitHit = showVisits && (visitsByDay.get(k)?.length ?? 0) > 0
+      if (jobHit || visitHit) keys.push(k)
+    }
+    return keys
+  }, [hasFilters, stripDays, entriesByDay, visitsByDay, showJobs, showVisits])
+
+  const matchSet = useMemo(() => new Set(matchDays), [matchDays])
+  const [matchIdx, setMatchIdx] = useState(0)
+
+  // Changing the filter invalidates the position, and an index left pointing
+  // past the end of a shorter list would make the arrows look broken.
+  useEffect(() => { setMatchIdx(0) }, [filterPatients, filterWorkTypes, filterDoctors])
+
+  const jumpToMatch = useCallback((idx: number) => {
+    const key = matchDays[idx]
+    if (!key) return
+    setMatchIdx(idx)
+    const d = parseISO(key)
+    if (!isValid(d)) return
+    setSelected(d)
+    setTimelineDay(d)
+    setMonth(startOfMonth(d))
+    // After the state above has painted — the target cell may not be mounted
+    // in its final position until then.
+    requestAnimationFrame(() => {
+      scrollRef.current
+        ?.querySelector(`[data-day="${key}"]`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }, [matchDays])
 
   const selKey = selected ? format(selected, 'yyyy-MM-dd') : null
   const selVisits = selKey ? visitsByDay.get(selKey) ?? [] : []
-  const selJobs = selKey ? jobsByDay.get(selKey) ?? [] : []
+  const selEntries = selKey ? entriesByDay.get(selKey) ?? [] : []
+  const selRevCount = selEntries.filter(e => e.type === 'rev').length
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* ─── Header — full width above the content + sidebar ─────────── */}
-      <div className="flex items-center gap-3 px-5 py-3 bg-nav-bg flex-shrink-0 flex-wrap">
-          <h1 className="text-base font-bold text-nav">Kalender</h1>
-
-          {/* View switcher */}
-          <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1">
-            {([
-              { key: 'tood', label: 'Tööd' },
-              { key: 'visiidid', label: 'Visiidid' },
-              { key: 'kombineeritud', label: 'Kombineeritud' }
-            ] as const).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setMode(key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  mode === key ? 'bg-accent text-white' : 'text-nav hover:text-nav'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {mode === 'visiidid' && (
-            <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1">
-              {([
-                { key: 'kuu', label: 'Kuu' },
-                { key: 'nadal', label: 'Nädal' }
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setScale(key)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                    scale === key ? 'bg-bg-card text-ink shadow-card' : 'text-nav hover:text-nav'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={() => {
-                const today = startOfDay(new Date())
-                setMonth(startOfMonth(today)); setSelected(today); setTimelineDay(today)
-                setWeekStart(startOfWeek(today, { weekStartsOn: 1 }))
-              }}
-              className="text-nav hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm border border-nav/30"
-            >
-              Täna
-            </button>
-            <button onClick={() => setMonth(m => subMonths(m, 1))} className="text-nav hover:text-nav p-2 rounded-lg transition-colors">
-              <ChevronLeft size={15} />
-            </button>
-            <span className="text-sm font-semibold text-nav min-w-[110px] text-center first-letter:uppercase">
-              {format(month, 'LLLL yyyy', { locale: et })}
-            </span>
-            <button onClick={() => setMonth(m => addMonths(m, 1))} className="text-nav hover:text-nav p-2 rounded-lg transition-colors">
-              <ChevronRight size={15} />
-            </button>
-          </div>
-        </div>
+      {/* The header row that used to live here — title, mode toggles, Täna and
+          the month stepper — now sits in the TopBar (CalendarTopControls). It
+          cost ~52px of grid height, and the scrolling strip already labels each
+          month inline, so the stepper had nothing left to say. */}
 
       {/* ─── Content row: scrollable left + right sidebar ──────────── */}
       <div className="flex-1 flex overflow-hidden">
@@ -334,49 +395,6 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
             />
           )}
 
-          {/* ─── Filter bar ──────────────────────────────────────────────── */}
-          <div className="pr-5 flex items-center gap-2 flex-wrap flex-shrink-0">
-            <Filter size={13} className="text-nav-muted flex-shrink-0" />
-
-            {/* Patient filter */}
-            <FilterDropdown
-              label="Patsient"
-              options={uniquePatients}
-              selected={filterPatients}
-              onChange={setFilterPatients}
-            />
-
-            {/* Work type filter */}
-            {showJobs && (
-              <FilterDropdown
-                label="Töö tüüp"
-                options={uniqueWorkTypes}
-                selected={filterWorkTypes}
-                onChange={setFilterWorkTypes}
-              />
-            )}
-
-            {/* Doctor filter */}
-            {showVisits && uniqueDoctors.length > 0 && (
-              <FilterDropdown
-                label="Arst"
-                options={uniqueDoctors}
-                selected={filterDoctors}
-                onChange={setFilterDoctors}
-              />
-            )}
-
-            {hasFilters && (
-              <button
-                onClick={() => { setFilterPatients(new Set()); setFilterWorkTypes(new Set()); setFilterDoctors(new Set()) }}
-                className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 font-medium transition-colors"
-              >
-                <XCircle size={12} />
-                Tühjenda
-              </button>
-            )}
-          </div>
-
           {/* ─── Week grid (Visiidid only) ──────────────────────────────── */}
           {weekMode && !isError && (
             <div className="pr-5">
@@ -398,11 +416,58 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
           {!weekMode && (
           <div className="pr-5 flex-1 min-h-0 flex flex-col">
           <div className="rounded-xl overflow-hidden bg-ink-faint/10 p-[3px] flex flex-col flex-1 min-h-0">
-            {/* Sticky weekday headers */}
+            {/* Sticky weekday headers. The filter lives in the Monday cell as a
+                popover rather than in its own row — a permanent filter bar cost
+                ~44px of calendar height to show three buttons that are idle most
+                of the time. */}
             <div className="grid grid-cols-7 gap-[3px] mb-[3px] flex-shrink-0">
-              {WEEKDAYS.map(d => (
-                <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-nav/80">
-                  {d}
+              {WEEKDAYS.map((d, i) => (
+                // Monday carries the filter controls, so it lays out as a row
+                // rather than centring — an absolutely positioned control would
+                // sit on top of the weekday name once the match counter appears.
+                <div
+                  key={d}
+                  className={`px-2 py-2 text-[11px] font-semibold text-nav/80 flex items-center gap-1 ${
+                    i === 0 ? 'justify-start' : 'justify-center'
+                  }`}
+                >
+                  {i === 0 && (
+                    <FilterPopover
+                      hasFilters={hasFilters}
+                      activeCount={filterPatients.size + filterWorkTypes.size + filterDoctors.size}
+                      patients={uniquePatients}
+                      workTypes={uniqueWorkTypes}
+                      workTypeSwatches={workTypeSwatches}
+                      doctors={uniqueDoctors}
+                      showJobs={showJobs}
+                      showVisits={showVisits}
+                      filterPatients={filterPatients}
+                      filterWorkTypes={filterWorkTypes}
+                      filterDoctors={filterDoctors}
+                      onPatients={setFilterPatients}
+                      onWorkTypes={setFilterWorkTypes}
+                      onDoctors={setFilterDoctors}
+                      onClear={() => {
+                        setFilterPatients(new Set()); setFilterWorkTypes(new Set()); setFilterDoctors(new Set())
+                      }}
+                    />
+                  )}
+                  {i === 0 && hasFilters && (
+                    <MatchNav
+                      count={matchDays.length}
+                      index={matchIdx}
+                      label={matchDays[matchIdx]
+                        ? format(parseISO(matchDays[matchIdx]), 'd. MMM', { locale: et })
+                        : null}
+                      onStep={dir => {
+                        if (matchDays.length === 0) return
+                        const next = (matchIdx + dir + matchDays.length) % matchDays.length
+                        jumpToMatch(next)
+                      }}
+                      onJump={() => jumpToMatch(matchIdx)}
+                    />
+                  )}
+                  <span className="truncate">{d}</span>
                 </div>
               ))}
             </div>
@@ -426,18 +491,33 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                     <div className="grid grid-cols-7 gap-[3px] mb-[3px]">
                       {week.map(day => {
                         const key = format(day, 'yyyy-MM-dd')
-                        const dayJobs = showJobs ? jobsByDay.get(key) ?? [] : []
+                        const dayEntries = showJobs ? entriesByDay.get(key) ?? [] : []
+                        const dayJobCount = dayEntries.filter(e => e.type === 'job').length
+                        const dayRevCount = dayEntries.length - dayJobCount
                         const dayVisits = showVisits ? visitsByDay.get(key) ?? [] : []
                         const isSel = selected != null && isSameDay(day, selected)
+
+                        const isMatch = matchSet.has(key)
+                        const isCurrentMatch = hasFilters && matchDays[matchIdx] === key
 
                         return (
                           <div
                             key={key}
+                            data-day={key}
                             onClick={() => { setSelected(day); setTimelineDay(day); setMonth(startOfMonth(day)) }}
                             className={`group relative min-h-[118px] rounded-lg p-1.5 cursor-pointer transition-colors bg-bg-card hover:bg-bg-sidebar/80 ${
-                              isSel ? 'ring-2 ring-inset ring-accent' : ''
+                              isCurrentMatch ? 'ring-2 ring-inset ring-red-500'
+                                : isSel ? 'ring-2 ring-inset ring-accent' : ''
                             }`}
                           >
+                            {/* Marks a day the active filter matched, so the hits
+                                are findable without reading every cell. */}
+                            {isMatch && (
+                              <span
+                                className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"
+                                title="Vastab filtrile"
+                              />
+                            )}
                             <div className="flex items-center justify-between mb-1">
                               <span className={`text-xs font-semibold tabular-nums ${
                                 isToday(day)
@@ -449,7 +529,12 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                               </span>
                               <span className="flex items-center gap-1.5 text-[10px] text-ink-faint tabular-nums">
                                 {showVisits && <span className="flex items-center gap-0.5"><User size={9} />{dayVisits.length}</span>}
-                                {showJobs && <span className="flex items-center gap-0.5"><Zap size={9} />{dayJobs.length}</span>}
+                                {showJobs && <span className="flex items-center gap-0.5"><Zap size={9} />{dayJobCount}</span>}
+                                {showJobs && dayRevCount > 0 && (
+                                  <span className="flex items-center gap-0.5" title={`${dayRevCount} muudatust`}>
+                                    <CornerDownLeft size={9} />{dayRevCount}
+                                  </span>
+                                )}
                               </span>
                             </div>
 
@@ -477,38 +562,46 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                                 <p className="text-[9px] text-ink-faint pl-1">+{dayVisits.length - 2} visiit(i)</p>
                               )}
 
-                              {dayVisits.length > 0 && dayJobs.length > 0 && (
+                              {dayVisits.length > 0 && dayEntries.length > 0 && (
                                 <div className="border-t border-dashed border-ink-faint/25 my-1" />
                               )}
 
-                              {dayJobs.slice(0, 3).map(j => {
-                                const late = isOverdue(j)
-                                const st = stageMap[j.status]
+                              {dayEntries.slice(0, 3).map(e => {
+                                const late = isOverdue(e)
+                                const st = stageMap[entryStage(e)]
+                                const isRev = e.type === 'rev'
                                 return (
                                   <div
-                                    key={j.id}
-                                    onDoubleClick={e => { e.stopPropagation(); onJobClick(j) }}
-                                    title={`${j.too ?? 'Määramata'} (${workTypeLabel(j.too)}) · ${j.patsient} · ${st?.label ?? j.status}`}
-                                    className="rounded-md px-1.5 py-0.5 border-l-[3px]"
+                                    key={entryKey(e)}
+                                    onDoubleClick={ev => { ev.stopPropagation(); openEntry(e) }}
+                                    title={
+                                      isRev
+                                        ? `Muudatus #${e.revNum} · ${e.job.too ?? 'Määramata'} · ${e.job.patsient} · ${st?.label ?? entryStage(e)}${e.rev.note ? ` — ${e.rev.note}` : ''}`
+                                        : `${e.job.too ?? 'Määramata'} (${wt.label(e.job.too)}) · ${e.job.patsient} · ${st?.label ?? entryStage(e)}`
+                                    }
+                                    className={`rounded-md px-1.5 py-0.5 border-l-[3px] ${
+                                      isRev ? 'ring-1 ring-inset ring-slate-500/35' : ''
+                                    }`}
                                     style={{
-                                      backgroundColor: `${workTypeHex(j.too)}1f`,
+                                      backgroundColor: `${wt.hex(e.job.too)}1f`,
                                       borderLeftColor: late ? '#EF4444' : st?.hex ?? '#A8B4BE'
                                     }}
                                   >
-                                    <p className="text-[10px] font-semibold text-ink truncate">
-                                      {j.too ?? 'Määramata'}
+                                    <p className="text-[10px] font-semibold text-ink truncate flex items-center gap-0.5">
+                                      {isRev && <CornerDownLeft size={8} className="flex-shrink-0" />}
+                                      {isRev ? `Muudatus #${e.revNum}` : e.job.too ?? 'Määramata'}
                                     </p>
                                     <p className="text-[9px] text-ink-muted truncate">
-                                      {j.patsient}{late && ' · üle tähtaja'}
+                                      {e.job.patsient}{late && ' · üle tähtaja'}
                                     </p>
                                   </div>
                                 )
                               })}
-                              {dayJobs.length > 3 && (
-                                <p className="text-[9px] text-ink-faint pl-1">+{dayJobs.length - 3} tööd</p>
+                              {dayEntries.length > 3 && (
+                                <p className="text-[9px] text-ink-faint pl-1">+{dayEntries.length - 3} veel</p>
                               )}
 
-                              {dayVisits.length === 0 && dayJobs.length === 0 && (
+                              {dayVisits.length === 0 && dayEntries.length === 0 && (
                                 <>
                                   <p className="text-[9px] text-ink-faint/70 group-hover:hidden pl-1">
                                     0 visiiti · 0 tööd
@@ -585,13 +678,20 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                 </span>
                 {visibleTypes.map(t => (
                   <span key={t.label} className="flex items-center gap-1.5 text-[10px] text-nav">
-                    <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: `${t.hex}1f`, boxShadow: `inset 0 0 0 1px ${t.hex}66` }} />
+                    {/* Solid, not the card's 12%-alpha fill: at that opacity on a
+                        navy legend bar every swatch collapsed to the same dark
+                        grey and the key stopped keying anything. */}
+                    <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: t.hex }} />
                     {t.label}
                   </span>
                 ))}
                 <span className="flex items-center gap-1.5 text-[10px] text-nav">
                   <span className="w-2.5 h-2.5 rounded bg-bg-sidebar ring-1 ring-inset ring-white/30" />
                   Visiit
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] text-nav">
+                  <CornerDownLeft size={10} />
+                  Muudatus (oma tähtaeg)
                 </span>
               </div>
             )}</>
@@ -714,45 +814,65 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
             {/* Jobs */}
             <section className="space-y-2">
               <h3 className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-                <Zap size={11} /> Tööd ({selJobs.length})
+                <Zap size={11} /> Tööd ({selEntries.length})
+                {selRevCount > 0 && (
+                  <span className="normal-case tracking-normal font-normal text-ink-faint">
+                    · {selRevCount} muudatust
+                  </span>
+                )}
               </h3>
-              {selJobs.length === 0 ? (
+              {selEntries.length === 0 ? (
                 <p className="text-xs text-ink-faint">Töid ei ole.</p>
-              ) : selJobs.map(j => {
-                const st = stageMap[j.status]
-                const late = isOverdue(j)
+              ) : selEntries.map(e => {
+                const st = stageMap[entryStage(e)]
+                const late = isOverdue(e)
+                const isRev = e.type === 'rev'
+                const deadline = entryDeadline(e)
                 return (
                   <button
-                    key={j.id}
-                    onDoubleClick={() => onJobClick(j)}
-                    onClick={() => onJobClick(j)}
-                    className="w-full text-left rounded-xl border border-ink-faint/20 p-3 space-y-1 hover:border-accent/40 transition-colors"
+                    key={entryKey(e)}
+                    onDoubleClick={() => openEntry(e)}
+                    onClick={() => openEntry(e)}
+                    className={`w-full text-left rounded-xl border p-3 space-y-1 hover:border-accent/40 transition-colors ${
+                      isRev ? 'border-slate-400/40 border-l-[3px] border-l-slate-600' : 'border-ink-faint/20'
+                    }`}
                   >
+                    {isRev && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-700 text-slate-100">
+                        <CornerDownLeft size={9} />
+                        Muudatus #{e.revNum}
+                      </span>
+                    )}
                     <div className="flex items-start justify-between gap-2">
                       <p className="flex items-center gap-1.5 text-sm font-bold text-ink truncate">
                         <span
                           className="w-2 h-2 rounded flex-shrink-0"
-                          style={{ backgroundColor: workTypeHex(j.too) }}
-                          title={workTypeLabel(j.too)}
+                          style={{ backgroundColor: wt.hex(e.job.too) }}
+                          title={wt.label(e.job.too)}
                         />
-                        {j.too ?? 'Määramata töö'}
+                        {e.job.too ?? 'Määramata töö'}
                       </p>
                       <span
                         className="text-[10px] font-medium rounded-full px-1.5 py-0.5 flex-shrink-0"
                         style={stageChipStyle(late ? '#EF4444' : st?.hex ?? '#A8B4BE')}
                       >
-                        {late ? 'Üle tähtaja' : st?.label ?? j.status}
+                        {late ? 'Üle tähtaja' : st?.label ?? entryStage(e)}
                       </span>
                     </div>
-                    <p className="text-xs text-ink-muted truncate">{j.patsient}</p>
+                    <p className="text-xs text-ink-muted truncate">{e.job.patsient}</p>
+                    {isRev && (e.rev.reason?.trim() || e.rev.note?.trim()) && (
+                      <p className="text-[11px] text-ink-muted italic line-clamp-2">
+                        {[e.rev.reason?.trim(), e.rev.note?.trim()].filter(Boolean).join(' — ')}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between text-[11px] text-ink-faint">
                       <span className="flex items-center gap-1 truncate">
-                        <Cpu size={10} />{j.masina ?? '—'}
+                        <Cpu size={10} />{e.job.masina ?? '—'}
                       </span>
                       <span className="flex items-center gap-1 flex-shrink-0">
                         <Clock size={10} />
-                        {j.valmis_aeg && isValid(parseISO(j.valmis_aeg))
-                          ? format(parseISO(j.valmis_aeg), 'dd.MM HH:mm')
+                        {deadline && isValid(parseISO(deadline))
+                          ? format(parseISO(deadline), 'dd.MM HH:mm')
                           : '—'}
                       </span>
                     </div>
@@ -775,14 +895,15 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
                 icon={UserX} label="Ei tulnud" tone="text-amber-600"
                 value={selVisits.filter(v => v.staatus === 'ei_tulnud').length}
               />
-              <Summary icon={Zap} label="Töid" value={selJobs.length} />
+              <Summary icon={Zap} label="Töid" value={selEntries.length - selRevCount} />
+              <Summary icon={CornerDownLeft} label="Muudatusi" value={selRevCount} />
               <Summary
                 icon={CheckCircle2} label="Valmis" tone="text-emerald-600"
-                value={selJobs.filter(j => j.status === doneStageKey).length}
+                value={selEntries.filter(e => entryStage(e) === doneStageKey).length}
               />
               <Summary
                 icon={AlertTriangle} label="Üle tähtaja" tone="text-red-600"
-                value={selJobs.filter(isOverdue).length}
+                value={selEntries.filter(isOverdue).length}
               />
             </section>
 
@@ -822,15 +943,165 @@ export function CalendarView({ jobs, onJobClick, onNewJobOnDate, onOpenPatient }
   )
 }
 
+// ─── Filter match navigator ───────────────────────────────────────────────────
+// Sits beside the filter icon in the Monday header. The calendar strip covers
+// ±3 months, so a filter's hits are usually scrolled out of sight; this steps
+// through them in date order and scrolls each one into view.
+function MatchNav({ count, index, label, onStep, onJump }: {
+  count: number
+  index: number
+  label: string | null
+  onStep: (dir: 1 | -1) => void
+  onJump: () => void
+}) {
+  if (count === 0) {
+    return (
+      <span
+        className="text-[10px] font-medium text-nav-muted whitespace-nowrap flex-shrink-0"
+        title="Ükski päev ei vasta filtrile"
+      >
+        0 vastet
+      </span>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-0.5 flex-shrink-0">
+      <button
+        onClick={() => onStep(-1)}
+        title="Eelmine vaste"
+        className="p-0.5 rounded text-nav-muted hover:text-nav hover:bg-nav/10 transition-colors"
+      >
+        <ChevronLeft size={11} />
+      </button>
+      <button
+        onClick={onJump}
+        title={label ? `Mine: ${label} (${index + 1}/${count})` : undefined}
+        className="flex items-center gap-1 px-1 py-0.5 rounded hover:bg-nav/10 transition-colors"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+        <span className="text-[10px] font-semibold text-nav tabular-nums whitespace-nowrap">
+          {index + 1}/{count}
+        </span>
+      </button>
+      <button
+        onClick={() => onStep(1)}
+        title="Järgmine vaste"
+        className="p-0.5 rounded text-nav-muted hover:text-nav hover:bg-nav/10 transition-colors"
+      >
+        <ChevronRight size={11} />
+      </button>
+    </span>
+  )
+}
+
+// ─── Filter popover ───────────────────────────────────────────────────────────
+// Anchored in the Monday header cell. Everything the old filter bar showed is
+// still here, just folded behind one icon so the grid keeps the height.
+function FilterPopover({
+  hasFilters, activeCount, patients, workTypes, workTypeSwatches, doctors, showJobs, showVisits,
+  filterPatients, filterWorkTypes, filterDoctors,
+  onPatients, onWorkTypes, onDoctors, onClear,
+}: {
+  hasFilters: boolean
+  activeCount: number
+  patients: string[]
+  workTypes: string[]
+  workTypeSwatches: Record<string, string>
+  doctors: string[]
+  showJobs: boolean
+  showVisits: boolean
+  filterPatients: Set<string>
+  filterWorkTypes: Set<string>
+  filterDoctors: Set<string>
+  onPatients: (v: Set<string>) => void
+  onWorkTypes: (v: Set<string>) => void
+  onDoctors: (v: Set<string>) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0 z-30">
+      <button
+        onClick={() => setOpen(o => !o)}
+        title={hasFilters ? `${activeCount} filtrit aktiivne` : 'Filtreeri'}
+        className={`relative flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
+          hasFilters
+            ? 'bg-accent text-white'
+            : 'text-nav-muted hover:text-nav hover:bg-nav/10'
+        }`}
+      >
+        <Filter size={12} />
+        {hasFilters && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3.5 h-3.5
+            flex items-center justify-center text-[8px] font-bold">
+            {activeCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-8 left-0 z-50 card p-3 w-[220px] space-y-2 text-left">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Filtreeri</p>
+            <button onClick={() => setOpen(false)} className="text-ink-faint hover:text-ink" title="Sulge">
+              <X size={12} />
+            </button>
+          </div>
+
+          <FilterDropdown
+            label="Patsient" options={patients} selected={filterPatients} onChange={onPatients} full
+          />
+          {showJobs && (
+            <FilterDropdown
+              label="Töö tüüp" options={workTypes} selected={filterWorkTypes} onChange={onWorkTypes}
+              swatches={workTypeSwatches} full
+            />
+          )}
+          {showVisits && doctors.length > 0 && (
+            <FilterDropdown
+              label="Arst" options={doctors} selected={filterDoctors} onChange={onDoctors} full
+            />
+          )}
+
+          {hasFilters && (
+            <button
+              onClick={onClear}
+              className="flex items-center gap-1 text-[11px] text-red-500 hover:text-red-400 font-medium transition-colors pt-1"
+            >
+              <XCircle size={12} />
+              Tühjenda kõik
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Filter dropdown ──────────────────────────────────────────────────────────
 
-function FilterDropdown({ label, options, selected, onChange }: {
+function FilterDropdown({ label, options, selected, onChange, full, swatches }: {
   label: string
   options: string[]
   selected: Set<string>
   onChange: (v: Set<string>) => void
+  full?: boolean   // stretch to the popover width instead of hugging the label
+  swatches?: Record<string, string>   // optional colour key, by option
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   // Close on outside click
@@ -849,11 +1120,21 @@ function FilterDropdown({ label, options, selected, onChange }: {
     onChange(next)
   }
 
+  // A clinic has hundreds of patients; scrolling a list that long to find one
+  // name is not a filter, it is a haystack. Selected options always stay
+  // visible so a search cannot hide what is already active.
+  const q = query.trim().toLowerCase()
+  const shown = q
+    ? options.filter(o => o.toLowerCase().includes(q) || selected.has(o))
+    : options
+
   return (
-    <div className="relative" ref={ref}>
+    <div className={`relative ${full ? 'w-full' : ''}`} ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+          full ? 'w-full justify-between' : ''
+        } ${
           selected.size > 0
             ? 'bg-accent/15 text-accent border-accent/30'
             : 'bg-bg-card text-ink-muted border-ink-faint/20 hover:border-ink-faint/40'
@@ -868,10 +1149,27 @@ function FilterDropdown({ label, options, selected, onChange }: {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-50 bg-bg-card border border-ink-faint/20 rounded-xl shadow-panel w-56 max-h-64 overflow-y-auto py-1">
+        <div className="absolute top-full mt-1 left-0 z-50 bg-bg-card border border-ink-faint/20 rounded-xl shadow-panel w-56 max-h-72 overflow-hidden py-1 flex flex-col">
+          {options.length > 6 && (
+            <div className="px-2 pb-1.5 pt-0.5 flex-shrink-0">
+              <div className="relative">
+                <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={`Otsi… (${options.length})`}
+                  className="input py-1 pl-6 pr-2 text-xs w-full"
+                />
+              </div>
+            </div>
+          )}
+          <div className="overflow-y-auto">
           {options.length === 0 ? (
             <p className="text-xs text-ink-faint px-3 py-2">Andmed puuduvad</p>
-          ) : options.map(opt => (
+          ) : shown.length === 0 ? (
+            <p className="text-xs text-ink-faint px-3 py-2">Vastet ei leitud</p>
+          ) : shown.map(opt => (
             <button
               key={opt}
               onClick={() => toggle(opt)}
@@ -884,9 +1182,16 @@ function FilterDropdown({ label, options, selected, onChange }: {
               }`}>
                 {selected.has(opt) && <CheckCircle2 size={8} className="text-white" />}
               </span>
+              {swatches?.[opt] && (
+                <span
+                  className="w-2.5 h-2.5 rounded flex-shrink-0"
+                  style={{ backgroundColor: swatches[opt] }}
+                />
+              )}
               <span className="truncate">{opt}</span>
             </button>
           ))}
+          </div>
         </div>
       )}
     </div>

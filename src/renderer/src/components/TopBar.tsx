@@ -8,12 +8,18 @@ interface TopBarProps {
   onSearchChange: (v: string) => void
   onNewJob: () => void
   onImportDone: () => void
+  /**
+   * Controls belonging to the active view, shown between the search box and the
+   * actions. A slot rather than typed props so this strip does not have to know
+   * what a calendar is — the view composes its own controls and hands them over.
+   */
+  centerSlot?: React.ReactNode
 }
 
 // Navigation moved to the Sidebar in 1.1.0 — this strip is now search + actions
 // only. The h-[56px] flex-shrink-0 sizing stays byte-for-byte: every view's
 // height contract is measured against it.
-export function TopBar({ search, onSearchChange, onNewJob, onImportDone }: TopBarProps) {
+export function TopBar({ search, onSearchChange, onNewJob, onImportDone, centerSlot }: TopBarProps) {
   const { settings } = useSettings()
   const { displayName, signOut } = useAuth()
   const nimi = displayName
@@ -32,6 +38,12 @@ export function TopBar({ search, onSearchChange, onNewJob, onImportDone }: TopBa
           className="w-full pl-8 px-3 py-1.5 text-sm bg-nav/10 border border-nav/20 rounded-lg text-nav placeholder:text-nav/60 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors duration-150"
         />
       </div>
+
+      {centerSlot && (
+        <div className="flex items-center gap-2 min-w-0 overflow-x-auto">
+          {centerSlot}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 ml-auto">
         <ImportCSVButton onSuccess={onImportDone} />

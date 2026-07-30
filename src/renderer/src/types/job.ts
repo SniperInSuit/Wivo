@@ -13,6 +13,9 @@ export interface Revision {
   price?: number      // cost charged for this revision (€)
   kiirtoo?: boolean   // fast/rush revision — price × 2
   status?: StageKey   // pipeline stage for this revision (default: 'disain')
+  // Millal muudatus tegelikult valmis sai. Nagu tööl: deadline on plaan, palka
+  // makstakse selle järgi, mis juhtus. Pannakse valmis-etappi liikumisel.
+  valmis_kuupaev?: string
   print_id?: string   // SprintRay job number for this revision's print
   reason?: string     // why the revision was needed (vale disain, vale värv, etc.)
 }
@@ -55,7 +58,10 @@ export interface Job {
   varv: string | null       // Värv — VITA shade
   hambad: string | null     // Ham — FDI tooth numbers, e.g. "11,21"
   kirjeldus: string | null  // Kirjeldus — free-text description of the work
-  valmis_aeg: string | null // Valmis aeg — deadline (ISO timestamp)
+  valmis_aeg: string | null // Valmis aeg — DEADLINE (ISO timestamp), a plan
+  // Millal töö tegelikult valmis sai. Eraldi väli tähtajast, sest palka makstakse
+  // selle järgi, mis juhtus, mitte selle järgi, mis oli plaanis (migratsioon 025).
+  valmis_kuupaev: string | null
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
   // --- Revision list ---
   revisions: Revision[]     // Multiple revision entries (stored as JSONB)
@@ -71,6 +77,9 @@ export interface Job {
   disain_hind: number | null   // Disain hind — design fee (own or third-party)
   makstud: boolean             // Makstud — paid yes/no
   makse_kuupaev: string | null // Makse kuupäev — payment date
+  // --- Who did the work (migration 022) — drives worker pay ---
+  assigned_to: string | null   // Teostaja — profiles.id
+  designed_by: string | null   // Disainija — profiles.id, design is paid separately
   // --- Metadata ---
   created_at: string
   updated_at: string
@@ -101,3 +110,7 @@ export const MATERIAL_SHADES: Partial<Record<string, readonly string[]>> = {
 
 // SprintRay printer machines
 export const MACHINE_OPTIONS = ['Pro2', 'Midas'] as const
+
+// Work types (suggestions + calendar colours) live in config/workTypes.ts and
+// are edited in Seaded → Valikud. Deliberately not duplicated here: two lists
+// would drift, and the one the user edits has to be the one the app matches on.

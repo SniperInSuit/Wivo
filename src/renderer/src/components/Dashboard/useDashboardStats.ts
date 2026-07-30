@@ -3,8 +3,8 @@ import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO,
 import type { Job } from '../../types/job'
 import type { Visit } from '../../types/visit'
 import type { Patient } from '../../types/patient'
-import { workTypeLabel } from '../../config/workTypes'
 import { usePipeline } from '../../context/PipelineContext'
+import { useWorkTypes } from '../../stores/useSettings'
 
 export type Period = 'month' | 'quarter' | 'year' | 'all'
 
@@ -40,6 +40,7 @@ export function useDashboardStats(
   patients: Patient[] = []
 ) {
   const { stages, doneStageKey } = usePipeline()
+  const wt = useWorkTypes()
 
   return useMemo(() => {
     // Total price for a job = main price + all revision prices
@@ -107,19 +108,22 @@ export function useDashboardStats(
         }, 0) / completedWithDates.length
       : 0
 
-    // Teeth by work type — original + revision teeth
-    const teethByType: Record<string, { original: number; revision: number }> = {}
+    // Work by work type — counted PER JOB, not per tooth. A single Allon4 with
+    // 14 teeth is one job's worth of work, not fourteen; counting teeth made the
+    // full-arch types tower over everything else and hid how the caseload is
+    // actually distributed. Tooth totals still live in `totalTeeth` / topPatients.
+    const jobsByType: Record<string, { original: number; revision: number }> = {}
     filtered.forEach((j) => {
-      const type = workTypeLabel(j.too)
-      const cur = teethByType[type] ?? { original: 0, revision: 0 }
-      cur.original += toothCount(j.hambad)
-      cur.revision += revTeethOf(j)
-      teethByType[type] = cur
+      const type = wt.label(j.too)
+      const cur = jobsByType[type] ?? { original: 0, revision: 0 }
+      cur.original += 1
+      cur.revision += (j.revisions ?? []).length || (j.muudatused ? 1 : 0)
+      jobsByType[type] = cur
     })
-    const teethByWorkType = Object.entries(teethByType)
-      .map(([name, v]) => ({ name, original: v.original, revision: v.revision, teeth: v.original + v.revision }))
-      .filter(t => t.teeth > 0)
-      .sort((a, b) => b.teeth - a.teeth)
+    const workByType = Object.entries(jobsByType)
+      .map(([name, v]) => ({ name, original: v.original, revision: v.revision, total: v.original + v.revision }))
+      .filter(t => t.total > 0)
+      .sort((a, b) => b.total - a.total)
       .slice(0, 8)
 
     // Payment stats — include revision prices in every revenue figure
@@ -234,7 +238,7 @@ export function useDashboardStats(
     // Proper classification, not the old "first word of the too field" split.
     const typeBuckets = new Map<string, { count: number; revisions: number; teeth: number; revenue: number }>()
     filtered.forEach(j => {
-      const key = workTypeLabel(j.too)
+      const key = wt.label(j.too)
       const cur = typeBuckets.get(key) ?? { count: 0, revisions: 0, teeth: 0, revenue: 0 }
       cur.count++
       cur.revisions += (j.revisions ?? []).length
@@ -323,7 +327,7 @@ export function useDashboardStats(
       machineStats,
       topPatients,
       avgTurnaround,
-      teethByWorkType,
+      workByType,
       totalRevenue,
       paidRevenue,
       unpaidRevenue,
@@ -344,5 +348,9 @@ export function useDashboardStats(
       revisionReasons,
       patientSummary: patientStatsSummary
     }
-  }, [jobs, period, stages, doneStageKey, visits, patients])
+  // wt.types, not wt: the hook returns fresh closures every render, so depending
+  // on it would recompute every stat on every render. The list identity only
+  // changes when a work type is actually edited.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, period, stages, doneStageKey, visits, patients, wt.types])
 }

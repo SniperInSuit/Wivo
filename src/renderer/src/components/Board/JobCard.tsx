@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { MessageSquare, Euro, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { useWorkTypes } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -13,28 +14,10 @@ interface JobCardProps {
   isDragging?: boolean
 }
 
-export function getJobTypeBorderColor(too: string | null | undefined): string {
-  if (!too) return 'border-l-slate-300'
-  const t = too.toLowerCase()
-  if (t.includes('kroon')  || t.includes('crown'))   return 'border-l-blue-400'
-  if (t.includes('sild')   || t.includes('bridge'))  return 'border-l-violet-400'
-  if (t.includes('viniir') || t.includes('veneer'))  return 'border-l-emerald-400'
-  if (t.includes('laminaat'))                         return 'border-l-lime-400'
-  if (t.includes('inlay'))                            return 'border-l-amber-400'
-  if (t.includes('onlay'))                            return 'border-l-orange-400'
-  if (t.includes('täidis') || t.includes('taidis'))  return 'border-l-yellow-400'
-  if (t.includes('proteez')|| t.includes('denture')) return 'border-l-rose-400'
-  if (t.includes('splint') || t.includes('splaad'))  return 'border-l-cyan-400'
-  if (t.includes('ibt'))                              return 'border-l-indigo-400'
-  if (t.includes('kirur')  || t.includes('surgic'))  return 'border-l-teal-400'
-  if (t.includes('allon')  || t.includes('all-on'))  return 'border-l-pink-400'
-  return 'border-l-slate-300'
-}
-
 export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProps) {
   const { stages } = usePipeline()
+  const wt = useWorkTypes()
   const hasRevision = (job.revisions?.length ?? 0) > 0 || !!job.muudatused
-  const borderColor = getJobTypeBorderColor(job.too)
 
   const stageIdx  = stages.findIndex(s => s.key === job.status)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -49,9 +32,10 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
-      className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${borderColor} ${
+      className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${
         isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''
       }`}
+      style={{ borderLeftColor: wt.hex(job.too) }}
       onClick={() => onClick(job)}
     >
       {/* Header */}

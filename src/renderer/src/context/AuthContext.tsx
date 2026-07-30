@@ -51,7 +51,15 @@ async function fetchClinic(clinicId: string): Promise<Clinic | null> {
     .select('*')
     .eq('id', clinicId)
     .single()
-  if (error) return null
+  if (error) {
+    // Returning null used to be the whole story, which made a failed fetch
+    // indistinguishable from "this user has no clinic" — and everything
+    // downstream (settings sync, the Kliinik page) then behaved as if the
+    // clinic did not exist. The profile's clinic_id is still the truth; this
+    // only means the DETAILS could not be loaded.
+    console.error('[Wivo] kliiniku andmete laadimine ebaõnnestus:', error.message)
+    return null
+  }
   return data as Clinic
 }
 

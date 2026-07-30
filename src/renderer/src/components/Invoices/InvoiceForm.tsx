@@ -1,0 +1,401 @@
+/**
+ * Create an invoice from a patient's unbilled work.
+ *
+ * The line list is built by COPYING description and price off the job at this
+ * moment. It is not a live join: once this document is issued, editing the job's
+ * price must not restate what the customer was told to pay.
+ */
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import { X, Plus, Trash2, Loader2, FileText } from 'lucide-react'
+import { format, addDays, addMonths, parseISO } from 'date-fns'
+import type { Job } from '../../types/job'
+import { useSettings } from '../../stores/useSettings'
+import { useCreateInvoice, useInvoices, type CreateInvoiceInput } from '../../hooks/useInvoices'
+import { PatientPicker } from '../Patients/PatientPicker'
+import { describeError } from '../Patients/errors'
+
+interface DraftLine {
+  key: string
+  job_id: string | null
+  revision_id: string | null
+  description: string
+  qty: number
+  unit_price: number
+}
+
+interface InvoiceFormProps {
+  jobs: Job[]
+  initialPatient?: { id: string | null; nimi: string }
+  onClose: () => void
+  onCreated?: (invoiceId: string) => void
+}
+
+export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: InvoiceFormProps) {
+  const { settings } = useSettings()
+  const createInvoice = useCreateInvoice()
+  const { data: invoices = [] } = useInvoices()
+
+  const [patsient, setPatsient] = useState(initialPatient?.nimi ?? '')
+  const [patientId, setPatientId] = useState<string | null>(initialPatient?.id ?? null)
+  const [issueDate, setIssueDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const [vatRate, setVatRate] = useState(settings.kmMaar)
+  const [note, setNote] = useState('')
+  const [lines, setLines] = useState<DraftLine[]>([])
+  // Split into equal monthly instalments. Generated up front as real documents
+  // rather than as a recurring rule: a desktop app has nothing running when it
+  // is closed, so a rule that "fires next month" would simply never fire.
+  const [instalments, setInstalments] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+
+  const dueDate = useMemo(
+    () => format(addDays(parseISO(issueDate), settings.makseTahtaegPaevades), 'yyyy-MM-dd'),
+    [issueDate, settings.makseTahtaegPaevades]
+  )
+
+  // Every job_id already on any invoice. Billing the same job twice is the
+  // mistake this screen most needs to prevent, so those jobs are not offered.
+  const billedJobIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const inv of invoices) {
+      if (inv.status === 'tuhistatud') continue
+      for (const l of inv.lines) if (l.job_id) set.add(`${l.job_id}:${l.revision_id ?? ''}`)
+    }
+    return set
+  }, [invoices])
+
+  const patientKey = patsient.trim().toLowerCase()
+
+  // Candidate work: this patient's jobs and their revisions, minus what is
+  // already billed and minus what is already on this draft.
+  const candidates = useMemo(() => {
+    if (!patientKey) return []
+    const onDraft = new Set(lines.map(l => `${l.job_id}:${l.revision_id ?? ''}`))
+    const out: DraftLine[] = []
+
+    for (const j of jobs) {
+      const matches = (patientId && j.patient_id === patientId)
+        || (j.patsient ?? '').trim().toLowerCase() === patientKey
+      if (!matches) continue
+
+      const jobKey = `${j.id}:`
+      if (!billedJobIds.has(jobKey) && !onDraft.has(jobKey)) {
+        out.push({
+          key: jobKey,
+          job_id: j.id,
+          revision_id: null,
+          description: [j.too?.trim() || 'Töö', j.hambad ? `hambad ${j.hambad}` : null]
+            .filter(Boolean).join(' · '),
+          qty: 1,
+          unit_price: Number(j.hind ?? 0) + Number(j.disain_hind ?? 0),
+        })
+      }
+
+      // Revisions are billed as their own lines — they have their own price and
+      // are frequently charged separately from the original work.
+      for (const [i, r] of (j.revisions ?? []).entries()) {
+        const revKey = `${j.id}:${r.id}`
+        if (billedJobIds.has(revKey) || onDraft.has(revKey)) continue
+        if (!r.price) continue
+        out.push({
+          key: revKey,
+          job_id: j.id,
+          revision_id: r.id,
+          description: `${j.too?.trim() || 'Töö'} — muudatus #${i + 1}${r.reason ? ` (${r.reason})` : ''}`,
+          qty: 1,
+          unit_price: Number(r.price),
+        })
+      }
+    }
+    return out
+  }, [jobs, patientKey, patientId, billedJobIds, lines])
+
+  const net = Math.round(lines.reduce((s, l) => s + l.qty * l.unit_price, 0) * 100) / 100
+  const vat = Math.round(net * vatRate) / 100
+  const gross = Math.round((net + vat) * 100) / 100
+
+  const addLine = (l: DraftLine) => setLines(prev => [...prev, l])
+  const addBlank = () => setLines(prev => [...prev, {
+    key: `manual-${prev.length}-${prev.reduce((n, x) => n + x.key.length, 0)}`,
+    job_id: null, revision_id: null, description: '', qty: 1, unit_price: 0,
+  }])
+  const patchLine = (key: string, patch: Partial<DraftLine>) =>
+    setLines(prev => prev.map(l => (l.key === key ? { ...l, ...patch } : l)))
+  const removeLine = (key: string) => setLines(prev => prev.filter(l => l.key !== key))
+
+  const canSave = patsient.trim().length > 0 && lines.length > 0 && !createInvoice.isPending
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!canSave) return
+    const input: CreateInvoiceInput = {
+      patient_id: patientId,
+      patsient: patsient.trim(),
+      issue_date: issueDate,
+      due_date: dueDate,
+      vat_rate: vatRate,
+      note: note.trim() || null,
+      lines: lines.map((l, i) => ({
+        job_id: l.job_id,
+        revision_id: l.revision_id,
+        description: l.description.trim() || 'Töö',
+        qty: l.qty,
+        unit_price: l.unit_price,
+        sort_order: i,
+      })),
+    }
+    try {
+      if (instalments <= 1) {
+        const invoice = await createInvoice.mutateAsync(input)
+        onCreated?.(invoice.id)
+        onClose()
+        return
+      }
+
+      // Instalment 1 carries the job links, so the work counts as billed exactly
+      // once and cannot be picked again. The later ones are plain lines — they
+      // bill the same work, not more of it.
+      const share = (v: number) => Math.floor((v / instalments) * 100) / 100
+      let first: Awaited<ReturnType<typeof createInvoice.mutateAsync>> | null = null
+
+      for (let k = 0; k < instalments; k++) {
+        const last = k === instalments - 1
+        const linesForK = input.lines.map(l => {
+          const per = share(l.qty * l.unit_price)
+          // The last instalment absorbs the rounding, so the parts add up to the
+          // whole to the cent.
+          const amount = last
+            ? Math.round((l.qty * l.unit_price - per * (instalments - 1)) * 100) / 100
+            : per
+          return {
+            ...l,
+            job_id: k === 0 ? l.job_id : null,
+            revision_id: k === 0 ? l.revision_id : null,
+            description: `${l.description} — osamakse ${k + 1}/${instalments}`,
+            qty: 1,
+            unit_price: amount,
+          }
+        })
+
+        const inv = await createInvoice.mutateAsync({
+          ...input,
+          issue_date: format(addMonths(parseISO(input.issue_date), k), 'yyyy-MM-dd'),
+          due_date: input.due_date
+            ? format(addMonths(parseISO(input.due_date), k), 'yyyy-MM-dd')
+            : null,
+          note: [input.note, `Osamakse ${k + 1}/${instalments}`].filter(Boolean).join(' · '),
+          lines: linesForK,
+        })
+        if (k === 0) first = inv
+      }
+
+      if (first) onCreated?.(first.id)
+      onClose()
+    } catch (err) {
+      setError(describeError(err))
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6"
+      onClick={onClose}
+    >
+      <motion.form
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+        onClick={e => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        className="bg-bg-card rounded-2xl shadow-panel w-[720px] max-w-dialog max-h-panel flex flex-col overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-ink-faint/15 flex-shrink-0">
+          <h2 className="text-sm font-bold text-ink flex items-center gap-2">
+            <FileText size={15} className="text-accent" /> Uus arve
+          </h2>
+          <button type="button" onClick={onClose} className="btn-ghost p-1.5"><X size={14} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Patsient / klient</label>
+              <PatientPicker
+                name={patsient}
+                patientId={patientId}
+                onChange={(nimi, pid) => { setPatsient(nimi); setPatientId(pid) }}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Kuupäev</label>
+                <input
+                  type="date" value={issueDate}
+                  onChange={e => setIssueDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">Maksetähtaeg</label>
+                <input type="date" value={dueDate} readOnly className="input opacity-70" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Unbilled work ── */}
+          <div>
+            <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+              Arveldamata töö {patientKey && `(${candidates.length})`}
+            </p>
+            {!patientKey ? (
+              <p className="text-xs text-ink-faint">Vali patsient, et näha tema arveldamata töid.</p>
+            ) : candidates.length === 0 ? (
+              <p className="text-xs text-ink-faint">
+                Arveldamata töid ei ole. Kõik selle patsiendi tööd on juba arvel.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                {candidates.map(c => (
+                  <button
+                    key={c.key} type="button" onClick={() => addLine(c)}
+                    className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded-lg
+                      border border-ink-faint/20 hover:border-accent/40 transition-colors"
+                  >
+                    <Plus size={11} className="text-accent flex-shrink-0" />
+                    <span className="text-xs text-ink truncate flex-1">{c.description}</span>
+                    <span className="text-xs font-semibold text-ink tabular-nums flex-shrink-0">
+                      {c.unit_price.toFixed(2)} €
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Lines ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+                Arve read ({lines.length})
+              </p>
+              <button type="button" onClick={addBlank} className="btn-ghost text-xs border border-ink-faint/25">
+                <Plus size={12} /> Lisa rida
+              </button>
+            </div>
+
+            {lines.length === 0 ? (
+              <p className="text-xs text-ink-faint">Ridu ei ole. Lisa ülalt või käsitsi.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-[1fr_60px_90px_28px] gap-2 px-1">
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase">Kirjeldus</span>
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-center">Kogus</span>
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-right">Hind</span>
+                  <span />
+                </div>
+                {lines.map(l => (
+                  <div key={l.key} className="grid grid-cols-[1fr_60px_90px_28px] gap-2 items-center">
+                    <input
+                      value={l.description}
+                      onChange={e => patchLine(l.key, { description: e.target.value })}
+                      placeholder="Kirjeldus"
+                      className="input py-1.5 text-sm"
+                    />
+                    <input
+                      type="number" min="0" step="0.5" value={l.qty}
+                      onChange={e => patchLine(l.key, { qty: parseFloat(e.target.value) || 0 })}
+                      className="input py-1.5 text-sm text-center"
+                    />
+                    <input
+                      type="number" min="0" step="0.01" value={l.unit_price}
+                      onChange={e => patchLine(l.key, { unit_price: parseFloat(e.target.value) || 0 })}
+                      className="input py-1.5 text-sm text-right"
+                    />
+                    <button
+                      type="button" onClick={() => removeLine(l.key)}
+                      className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
+                      title="Eemalda rida"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="label">Jaga osamakseteks</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number" min="1" max="24" value={instalments}
+                onChange={e => setInstalments(Math.max(1, Math.min(24, parseInt(e.target.value) || 1)))}
+                className="input py-1.5 text-sm w-20 text-right"
+              />
+              <span className="text-xs text-ink-muted">
+                {instalments > 1
+                  ? `${instalments} arvet, üks kuus, igaüks ${(gross / instalments).toFixed(2)} €`
+                  : 'kuud (1 = üks arve)'}
+              </span>
+            </div>
+            {instalments > 1 && (
+              <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
+                Kõik arved luuakse kohe mustanditena, kuupäevadega kuu kaupa edasi.
+                Esimene arve seob tööd, ülejäänud on samade ridade osamaksed — seega
+                tööd ei arveldata mitu korda. Viimane arve võtab ümardusjäägi.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="label">Märkus arvel</label>
+            <textarea
+              value={note} onChange={e => setNote(e.target.value)} rows={2}
+              placeholder="Nähtav arvel…" className="input resize-none"
+            />
+          </div>
+        </div>
+
+        {/* ── Totals + actions ── */}
+        <div className="border-t border-ink-faint/15 px-5 py-3 flex-shrink-0 space-y-2">
+          {error && (
+            <p className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
+              {error}
+            </p>
+          )}
+          <div className="flex items-end justify-between gap-4">
+            <div className="flex items-end gap-3">
+              <div>
+                <label className="label">KM %</label>
+                <input
+                  type="number" min="0" max="30" step="0.5" value={vatRate}
+                  onChange={e => setVatRate(parseFloat(e.target.value) || 0)}
+                  className="input py-1.5 text-sm w-20 text-right"
+                />
+              </div>
+              <div className="text-xs text-ink-muted space-y-0.5 pb-1">
+                <div className="flex gap-3 justify-between"><span>Summa</span><span className="tabular-nums font-medium text-ink">{net.toFixed(2)} €</span></div>
+                <div className="flex gap-3 justify-between"><span>KM</span><span className="tabular-nums font-medium text-ink">{vat.toFixed(2)} €</span></div>
+                <div className="flex gap-3 justify-between border-t border-ink-faint/20 pt-0.5">
+                  <span className="font-semibold text-ink">Kokku</span>
+                  <span className="tabular-nums font-bold text-accent">{gross.toFixed(2)} €</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={onClose} className="btn-ghost border border-ink-faint/25">
+                Loobu
+              </button>
+              <button type="submit" disabled={!canSave} className="btn-primary disabled:opacity-50">
+                {createInvoice.isPending ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                Loo arve
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.form>
+    </motion.div>
+  )
+}

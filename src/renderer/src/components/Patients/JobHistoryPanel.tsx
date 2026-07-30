@@ -2,6 +2,8 @@ import { CornerDownRight, Stethoscope, Zap } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { usePayments } from '../../hooks/useInvoices'
+import { jobPaymentState } from '../../lib/jobPayments'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { PanelCard } from './PanelCard'
@@ -57,6 +59,9 @@ function buildLines(jobs: Job[]): Line[] {
 }
 
 export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }: JobHistoryPanelProps) {
+  // Part payments mean "Maksmata" is no longer the only alternative to "Makstud".
+  const { data: payments = [] } = usePayments()
+  const payState = (job: Job) => jobPaymentState(job, payments)
   const { stageMap } = usePipeline()
   const lines = buildLines(jobs)
   const revisionCount = lines.filter(l => l.revision).length
@@ -158,13 +163,19 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                     </td>
                     <td
                       className={`py-2 text-[11px] font-medium whitespace-nowrap ${
-                        job.makstud ? 'text-emerald-600' : 'text-orange-600'
+                        payState(job).settled ? 'text-emerald-600'
+                          : payState(job).partial ? 'text-amber-600' : 'text-orange-600'
                       }`}
                     >
                       {/* Payment is tracked per job, not per revision — a revision
                           inherits its parent's paid state, so the cell stays empty
                           rather than repeating it. */}
-                      {isRev ? '' : (job.makstud ? 'Makstud' : 'Maksmata')}
+                      {isRev ? '' : (() => {
+                        const st = payState(job)
+                        if (st.settled) return 'Makstud'
+                        if (st.partial) return `Osaliselt (${st.outstanding.toFixed(2)} € jääk)`
+                        return 'Maksmata'
+                      })()}
                     </td>
                   </tr>
                 )

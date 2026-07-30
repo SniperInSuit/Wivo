@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import type { Revision, StageKey } from '../../types/job'
-import { MATERIAL_OPTIONS, MATERIAL_SHADES, REVISION_REASONS } from '../../types/job'
+import { MATERIAL_SHADES, REVISION_REASONS } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
@@ -500,7 +500,7 @@ function RevisionForm({
           <Package size={10} /> Uus materjal
         </label>
         {(() => {
-          const baseMat = ([...MATERIAL_OPTIONS] as string[])
+          const baseMat = [...settings.materjalid]
             .sort((a, b) => b.length - a.length)
             .find(m => draft.materjal === m || draft.materjal.startsWith(m + ' ')) ?? null
           const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
@@ -510,7 +510,7 @@ function RevisionForm({
           return (
             <>
               <div className="flex gap-1.5 flex-wrap mb-1.5">
-                {MATERIAL_OPTIONS.map(m => (
+                {settings.materjalid.map(m => (
                   <button
                     key={m}
                     type="button"
