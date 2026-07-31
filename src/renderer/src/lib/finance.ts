@@ -17,6 +17,7 @@
  *   not see, and the UI shows it next to the number.
  */
 import type { Job } from '../types/job'
+import { revisionReasons } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { MaterialPricing } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
@@ -299,17 +300,24 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   for (const j of jobs) {
     for (const r of j.revisions ?? []) {
       if (!inPeriod((r.deadline ?? r.ts ?? '').slice(0, 10))) continue
-      const reason = r.reason?.trim() || 'Määramata'
-      const b = reasonBuckets.get(reason) ?? {
-        reason, count: 0, labour: 0, material: 0, recovered: 0, net: 0,
-      }
-      b.count++
-      b.recovered += Number(r.price ?? 0)
-      // Redoing the work consumes the material again, for the revised teeth if
-      // they are recorded and the original set otherwise.
-      b.material += (jobMaterialCost({ materjal: j.materjal, hambad: r.hambad ?? j.hambad }, materialCosts) ?? 0)
+      // A revision can now name several causes. Each one is COUNTED, but the
+      // money is SPLIT between them — adding the full cost to every bucket
+      // would inflate the total by the number of reasons someone happened to tick.
+      const names = revisionReasons(r)
+      const reasons = names.length > 0 ? names : ['Määramata']
+      const shareOf = (v: number) => v / reasons.length
+      const revMaterial = (jobMaterialCost({ materjal: j.materjal, hambad: r.hambad ?? j.hambad }, materialCosts) ?? 0)
         + workTypeConsumables(j.too, types, toothCount(r.hambad ?? j.hambad)).total
-      reasonBuckets.set(reason, b)
+
+      for (const reason of reasons) {
+        const b = reasonBuckets.get(reason) ?? {
+          reason, count: 0, labour: 0, material: 0, recovered: 0, net: 0,
+        }
+        b.count++
+        b.recovered += shareOf(Number(r.price ?? 0))
+        b.material += shareOf(revMaterial)
+        reasonBuckets.set(reason, b)
+      }
     }
   }
   // Labour actually paid for revisions comes from the earnings lines
@@ -322,9 +330,12 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       if (!l.revision_id || !l.job_id) continue
       const job = jobs.find(x => x.id === l.job_id)
       const rev = job?.revisions?.find(r => r.id === l.revision_id)
-      const reason = rev?.reason?.trim() || 'Määramata'
-      const b = reasonBuckets.get(reason)
-      if (b) b.labour += l.amount
+      const names = rev ? revisionReasons(rev) : []
+      const reasons = names.length > 0 ? names : ['Määramata']
+      for (const reason of reasons) {
+        const b = reasonBuckets.get(reason)
+        if (b) b.labour += l.amount / reasons.length
+      }
     }
   }
   const revisionLoss = [...reasonBuckets.values()].map(b => ({

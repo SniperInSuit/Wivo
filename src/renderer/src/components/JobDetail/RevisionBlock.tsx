@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package, CalendarClock } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import type { Revision, StageKey } from '../../types/job'
-import { MATERIAL_SHADES, REVISION_REASONS } from '../../types/job'
+import {
+  MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
+} from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
@@ -18,7 +20,7 @@ interface RevisionBlockProps {
 
 const EMPTY_DRAFT = {
   note: '',
-  reason: '' as string,
+  reasons: [] as string[],
   hambad: '',
   varv: '' as string | null,
   materjal: '' as string,
@@ -56,7 +58,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
       id: crypto.randomUUID(),
       ts: new Date().toISOString(),
       note: draft.note.trim(),
-      reason: draft.reason || undefined,
+      reasons: draft.reasons.length > 0 ? draft.reasons : undefined,
       hambad: draft.hambad || undefined,
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
@@ -75,7 +77,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
     setEditingId(rev.id)
     setEditDraft({
       note: rev.note,
-      reason: rev.reason ?? '',
+      reasons: revisionReasons(rev),
       hambad: rev.hambad ? rev.hambad.split(',').map(t => t.trim()).filter(Boolean).join(',') : '',
       varv: rev.varv ?? null,
       materjal: rev.materjal ?? '',
@@ -94,7 +96,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
     onChange(value.map(r => r.id !== revId ? r : {
       ...r,
       note: d.note.trim() || r.note,
-      reason: d.reason || undefined,
+      reasons: d.reasons.length > 0 ? d.reasons : undefined,
       hambad: d.hambad || undefined,
       varv: d.varv || undefined,
       materjal: d.materjal || undefined,
@@ -223,9 +225,9 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
                       {rev.materjal}
                     </span>
                   )}
-                  {rev.reason && (
+                  {revisionReasonLabel(rev) && (
                     <span className="text-[10px] bg-pink-500/30 text-pink-200 px-1.5 py-0.5 rounded font-medium">
-                      {rev.reason}
+                      {revisionReasonLabel(rev)}
                     </span>
                   )}
                   {rev.deadline && (
@@ -369,7 +371,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
 function RevisionForm({
   draft, setDraft, onSubmit, onCancel, submitLabel, isEdit = false,
 }: {
-  draft: { note: string; reason: string; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
+  draft: { note: string; reasons: string[]; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
   setDraft: React.Dispatch<React.SetStateAction<typeof draft>>
   onSubmit: () => void
   onCancel: () => void
@@ -412,9 +414,16 @@ function RevisionForm({
             <button
               key={r}
               type="button"
-              onClick={() => setDraft(d => ({ ...d, reason: d.reason === r ? '' : r }))}
+              onClick={() => setDraft(d => ({
+                ...d,
+                // Multi-select: a remake often has more than one cause, and
+                // making them exclusive threw away half the reason data.
+                reasons: d.reasons.includes(r)
+                  ? d.reasons.filter(x => x !== r)
+                  : [...d.reasons, r],
+              }))}
               className={`text-xs px-2.5 py-1 rounded-lg border transition-all duration-100 font-medium ${
-                draft.reason === r
+                draft.reasons.includes(r)
                   ? 'bg-pink-500 text-white border-pink-500'
                   : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
               }`}
@@ -450,6 +459,43 @@ function RevisionForm({
       </div>
 
       {/* Price */}
+      {/* Deadline sits high in the form on purpose: it used to be the last
+          field, below the shade grid and the tooth picker, so people scrolled
+          past it and reported that revisions had no deadline at all. */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
+          <CalendarClock size={11} /> Uus tähtaeg
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={(draft.deadline ?? '').split('T')[0] || ''}
+            onChange={e => {
+              const time = (draft.deadline ?? '').split('T')[1] || '12:00'
+              setDraft(d => ({ ...d, deadline: e.target.value ? `${e.target.value}T${time}` : '' }))
+            }}
+            className="input flex-1 bg-slate-800 border-slate-600 text-slate-100 focus:border-accent"
+          />
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="HH:MM"
+            maxLength={5}
+            value={(draft.deadline ?? '').split('T')[1]?.slice(0, 5) || ''}
+            onChange={e => {
+              const raw = e.target.value.replace(/[^0-9:]/g, '')
+              const date = (draft.deadline ?? '').split('T')[0]
+              if (date) setDraft(d => ({ ...d, deadline: `${date}T${raw}` }))
+            }}
+            className="input w-24 bg-slate-800 border-slate-600 text-slate-100 focus:border-accent"
+          />
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1">
+          Muudatusel on oma tähtaeg — kalendris on ta selle päeva peal, mitte
+          originaaltöö oma peal.
+        </p>
+      </div>
+
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
           <Euro size={10} /> Hind (€)
@@ -569,34 +615,6 @@ function RevisionForm({
           <OdontogramPicker
             value={draft.hambad}
             onChange={v => setDraft(d => ({ ...d, hambad: v }))}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Uus tähtaeg</label>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={(draft.deadline ?? '').split('T')[0] || ''}
-            onChange={e => {
-              const time = (draft.deadline ?? '').split('T')[1] || '12:00'
-              setDraft(d => ({ ...d, deadline: e.target.value ? `${e.target.value}T${time}` : '' }))
-            }}
-            className="input flex-1 bg-slate-800 border-slate-600 text-slate-100 focus:border-accent"
-          />
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="HH:MM"
-            maxLength={5}
-            value={(draft.deadline ?? '').split('T')[1]?.slice(0, 5) || ''}
-            onChange={e => {
-              const raw = e.target.value.replace(/[^0-9:]/g, '')
-              const date = (draft.deadline ?? '').split('T')[0]
-              if (date) setDraft(d => ({ ...d, deadline: `${date}T${raw}` }))
-            }}
-            className="input w-24 bg-slate-800 border-slate-600 text-slate-100 focus:border-accent"
           />
         </div>
       </div>

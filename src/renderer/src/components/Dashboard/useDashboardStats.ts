@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
 import type { Job } from '../../types/job'
+import { revisionReasons } from '../../types/job'
 import type { Visit } from '../../types/visit'
 import type { Patient } from '../../types/patient'
 import { usePipeline } from '../../context/PipelineContext'
@@ -258,11 +259,18 @@ export function useDashboardStats(
     const reasonBuckets = new Map<string, number>()
     filtered.forEach(j => {
       ;(j.revisions ?? []).forEach(r => {
-        const reason = r.reason?.trim() || 'Määramata'
-        reasonBuckets.set(reason, (reasonBuckets.get(reason) ?? 0) + 1)
+        // Each named cause counts. A revision with two reasons appears in both
+        // bars, so the bars total more than the revision count — which is the
+        // honest reading of "how often is a wrong shade involved".
+        const names = revisionReasons(r)
+        for (const reason of (names.length > 0 ? names : ['Määramata'])) {
+          reasonBuckets.set(reason, (reasonBuckets.get(reason) ?? 0) + 1)
+        }
       })
     })
-    const revisionReasons = [...reasonBuckets.entries()]
+    // Named differently from the imported revisionReasons() helper — the local
+    // const shadowed it and made the call above uncallable.
+    const revisionReasonStats = [...reasonBuckets.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
 
@@ -345,7 +353,7 @@ export function useDashboardStats(
       visitsByWeekday,
       byDoctor,
       byWorkType,
-      revisionReasons,
+      revisionReasons: revisionReasonStats,
       patientSummary: patientStatsSummary
     }
   // wt.types, not wt: the hook returns fresh closures every render, so depending

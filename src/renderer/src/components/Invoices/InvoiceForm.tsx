@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { X, Plus, Trash2, Loader2, FileText } from 'lucide-react'
 import { format, addDays, addMonths, parseISO } from 'date-fns'
 import type { Job } from '../../types/job'
+import { revisionReasonLabel } from '../../types/job'
 import { useSettings } from '../../stores/useSettings'
 import { useCreateInvoice, useInvoices, type CreateInvoiceInput } from '../../hooks/useInvoices'
 import { PatientPicker } from '../Patients/PatientPicker'
@@ -101,7 +102,8 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           key: revKey,
           job_id: j.id,
           revision_id: r.id,
-          description: `${j.too?.trim() || 'Töö'} — muudatus #${i + 1}${r.reason ? ` (${r.reason})` : ''}`,
+          description: `${j.too?.trim() || 'Töö'} — muudatus #${i + 1}${
+            revisionReasonLabel(r) ? ` (${revisionReasonLabel(r)})` : ''}`,
           qty: 1,
           unit_price: Number(r.price),
         })

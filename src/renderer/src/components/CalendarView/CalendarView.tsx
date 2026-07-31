@@ -12,6 +12,7 @@ import {
 import { et } from 'date-fns/locale'
 import type { LucideIcon } from 'lucide-react'
 import type { Job, Revision } from '../../types/job'
+import { revisionReasonLabel } from '../../types/job'
 import type { Visit, VisitStatus } from '../../types/visit'
 import {
   VISIT_STATUS_LABEL, VISIT_STATUS_HEX, VISIT_STATUS_CLOSED,
@@ -860,9 +861,9 @@ export function CalendarView({
                       </span>
                     </div>
                     <p className="text-xs text-ink-muted truncate">{e.job.patsient}</p>
-                    {isRev && (e.rev.reason?.trim() || e.rev.note?.trim()) && (
+                    {isRev && (revisionReasonLabel(e.rev) || e.rev.note?.trim()) && (
                       <p className="text-[11px] text-ink-muted italic line-clamp-2">
-                        {[e.rev.reason?.trim(), e.rev.note?.trim()].filter(Boolean).join(' — ')}
+                        {[revisionReasonLabel(e.rev), e.rev.note?.trim()].filter(Boolean).join(' — ')}
                       </p>
                     )}
                     <div className="flex items-center justify-between text-[11px] text-ink-faint">

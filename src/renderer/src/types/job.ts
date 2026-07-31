@@ -17,8 +17,25 @@ export interface Revision {
   // makstakse selle järgi, mis juhtus. Pannakse valmis-etappi liikumisel.
   valmis_kuupaev?: string
   print_id?: string   // SprintRay job number for this revision's print
-  reason?: string     // why the revision was needed (vale disain, vale värv, etc.)
+  // Why the revision was needed. A remake often has more than one cause — the
+  // shade was wrong AND the fit was poor — and forcing a single choice made the
+  // reason statistics quietly lossy.
+  reasons?: string[]
+  /** Legacy single reason, written before 1.24.0. Read through revisionReasons(). */
+  reason?: string
 }
+
+/** Every reason on a revision, old shape or new. Use this, never `rev.reason`. */
+export function revisionReasons(rev: Pick<Revision, 'reasons' | 'reason'>): string[] {
+  if (Array.isArray(rev.reasons) && rev.reasons.length > 0) {
+    return rev.reasons.map(r => r.trim()).filter(Boolean)
+  }
+  return rev.reason?.trim() ? [rev.reason.trim()] : []
+}
+
+/** For labels and tooltips. */
+export const revisionReasonLabel = (rev: Pick<Revision, 'reasons' | 'reason'>): string =>
+  revisionReasons(rev).join(', ')
 
 // Pre-defined revision reasons — free text is also allowed
 export const REVISION_REASONS = [

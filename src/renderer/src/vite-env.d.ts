@@ -9,3 +9,12 @@ declare const __APP_VERSION__: string
 interface ImportMetaEnv {
   readonly VITE_USERNAME_DOMAIN?: string
 }
+
+// Preload bridge (src/preload/index.ts). Optional: during `dev` the renderer can
+// also be opened in a plain browser tab, where no preload has run.
+interface Window {
+  wivo?: {
+    getVersion: () => Promise<string>
+    relaunch: () => Promise<void>
+  }
+}

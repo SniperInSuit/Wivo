@@ -22,6 +22,7 @@ import { PipelineProvider, usePipeline } from './context/PipelineContext'
 import { AuthProvider } from './context/AuthContext'
 import { AuthGuard } from './components/Auth/AuthGuard'
 import { ClinicSettingsSync } from './components/ClinicSettingsSync'
+import { UpdateBanner } from './components/UpdateBanner'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
 
@@ -362,6 +363,8 @@ export default function App() {
                 local edits back. Inside AuthGuard because it needs the clinic. */}
             <ClinicSettingsSync />
             <AppContent />
+            {/* Corner toast when a newer version is on disk. */}
+            <UpdateBanner />
           </PipelineProvider>
         </AuthGuard>
       </AuthProvider>

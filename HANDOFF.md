@@ -1,6 +1,6 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.23.0
+## Current version: 1.25.0
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
@@ -72,6 +72,10 @@ look arbitrary until the day someone undoes it.
 
 ### Payroll
 
+- Revision reasons are a LIST (`reasons`), read through `revisionReasons()` —
+  never `rev.reason`, which is the pre-1.24.0 shape kept only for reading. In
+  stats: COUNT each reason, but SPLIT money between them, or a revision with two
+  causes doubles the loss total.
 - `lib/earnings.ts` is the **single** implementation. The preview, the payout
   writer and the finance dashboard all call it, so what someone is shown and
   what they are paid cannot diverge.
@@ -114,6 +118,12 @@ look arbitrary until the day someone undoes it.
 
 ### UI
 
+- **`__APP_VERSION__` is a BUILD-TIME constant and goes stale in dev.** Never show
+  it as "the app's version" — use `useAppVersion().running`, which reads
+  package.json through the preload bridge on every check. The stale constant sent
+  debugging down the wrong path twice; that is why the sidebar no longer uses it.
+- The update toast compares the version captured at boot against the file on
+  disk. It is NOT an auto-updater — nothing is downloaded.
 - **No bare `vh`/`vw` inside `#root`.** The UI scale is a CSS `zoom`, so viewport
   units are measured unzoomed and painted scaled — they overflow. Use
   `.h-panel` / `.max-w-dialog`, or divide by `--ui-scale`.

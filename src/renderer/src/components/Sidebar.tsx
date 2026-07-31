@@ -7,6 +7,7 @@ import wivoLogo from '../assets/Wivo Logo.png'
 import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
 import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
+import { useAppVersion } from '../hooks/useAppVersion'
 
 interface SidebarProps {
   view: ViewMode
@@ -31,6 +32,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
   const { role } = useAuth()
   const { can } = usePermissions()
+  const { running } = useAppVersion()
   const wide = settings.ribaLaiendatud
 
   // Shared by the nav items and Seaded so the active treatment never drifts
@@ -110,7 +112,9 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           {wide && 'Minimeeri'}
         </button>
         <div className={`pb-2.5 ${wide ? 'px-4' : 'text-center'}`}>
-          <span className="text-[9px] text-nav-muted/70 font-mono">v{__APP_VERSION__}</span>
+          {/* The LIVE version, not the build-time constant — the constant goes
+              stale in dev and reported a version the app was not running. */}
+          <span className="text-[9px] text-nav-muted/70 font-mono">v{running}</span>
         </div>
       </div>
     </aside>

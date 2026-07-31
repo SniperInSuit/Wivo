@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.25.0] — 2026-07-31
+Andmebaasi muudatusi ei ole.
+
+**Uue versiooni teade koos taaskäivitamise nupuga**
+- Kui kettal on uuem versioon kui see, millega aken käivitus, ilmub all paremale
+  teade: "Töötab X, saadaval on Y" ja nupp **Taaskäivita**
+- Nurgas, mitte modaalina: uuendus ei ole kunagi nii kiireloomuline, et katkestada
+  keegi keset arve koostamist, ja ekraani blokeeriv aken suletakse refleksist läbi lugemata
+- Peitmine kehtib selle versiooni kohta — järgmise juures tuletatakse uuesti meelde
+- Kontrollitakse käivitusel, iga 30 sekundi järel ja akna fookusesse tulekul
+
+**Versiooninumber külgribas on nüüd õige**
+- Seni näitas see `__APP_VERSION__` konstanti, mis küpsetatakse **ehitamise ajal**
+  sisse. Arenduses jääb see seisma niipea, kui `package.json` versiooni tõstetakse,
+  sest Vite loeb konfiguratsiooni üks kord, samal ajal kui HMR serveerib uut koodi
+  vana numbri all
+- Ehk see näitas versiooni, millega rakendus ei töötanud. **Kaks korda selle
+  sessiooni jooksul saatis see vigade otsimise valele rajale**
+- Nüüd loetakse number `package.json`-ist iga kord uuesti: arenduses repo failist,
+  pakendatud rakenduses asari seest, mis ei saa ilma uuesti paigaldamiseta muutuda
+
+**Mida see ei ole**
+- See ei ole automaatne uuendaja: uut versiooni internetist alla ei laadita.
+  See ütleb, et **kettal olev** kood on uuem kui see, mida see aken käivitades luges
+
+---
+
+## [1.24.0] — 2026-07-31
+Andmebaasi muudatusi ei ole (muudatused on JSONB-s, migratsiooni ei ole vaja).
+
+**Muudatuse põhjuseid saab nüüd valida mitu**
+- Ümbertegemisel on tihti mitu põhjust korraga — värv oli vale JA passivus halb —
+  ja ühe valiku sundimine viskas poole infost minema
+- Nupud töötavad nüüd lülititena: klõps lisab, teine klõps eemaldab
+- Vana ühe põhjusega andmed loetakse muutumatult; kirjutatakse uude `reasons`
+  välja, loetakse mõlemat (`revisionReasons()`)
+
+**Statistika mitme põhjusega**
+- **Muudatuste põhjused** (Tootmine): iga nimetatud põhjus loeb. Kahe põhjusega
+  muudatus ilmub mõlemas tulbas, seega tulpade summa on suurem kui muudatuste arv
+  — see on aus vastus küsimusele "kui tihti on vale värv mängus"
+- **Muudatuste kahju** (Rahandus): raha **jagatakse** põhjuste vahel. Kogu kulu
+  igasse lahtrisse liitmine paisutaks kogusummat täpselt nii mitu korda, mitu
+  põhjust keegi juhtus märkima
+
+**Muudatuse tähtaeg on nüüd nähtav**
+- Väli "Uus tähtaeg" oli vormi kõige lõpus, värvivaliku ja hambakaardi taga —
+  sinna keriti mööda ja tundus, et muudatusel polegi tähtaega
+- Tõstetud üles, kohe staatuse alla, koos kalendriikooniga
+- Juurde selgitus, et muudatus on kalendris **oma** tähtaja päeval, mitte
+  originaaltöö oma peal
+
+---
+
 ## [1.23.0] — 2026-07-31
 Andmebaasi muudatusi ei ole.
 
