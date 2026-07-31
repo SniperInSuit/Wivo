@@ -1483,12 +1483,13 @@ export function SettingsPage() {
 
             {/* Table header. Two pairs: what you charge, and what it costs you —
                 the second is what makes a margin figure possible at all. */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 mb-2 px-1">
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Materjal</span>
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide w-24 text-center">Hind väike</span>
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wide w-24 text-center">Hind suur</span>
-              <span className="text-xs font-semibold text-accent uppercase tracking-wide w-24 text-center">Omahind väike</span>
-              <span className="text-xs font-semibold text-accent uppercase tracking-wide w-24 text-center">Omahind suur</span>
+            <div className="overflow-x-auto">
+            <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px_80px_80px] gap-x-2 mb-2 px-1 min-w-[500px]">
+              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">Materjal</span>
+              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind väike</span>
+              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind suur</span>
+              <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind väike</span>
+              <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind suur</span>
             </div>
 
             <div className="space-y-1.5">
@@ -1502,9 +1503,9 @@ export function SettingsPage() {
                 return (
                   <div
                     key={material}
-                    className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 items-center px-1 py-0.5"
+                    className="grid grid-cols-[minmax(140px,1fr)_80px_80px_80px_80px] gap-x-2 items-center px-1 py-0.5 min-w-[500px]"
                   >
-                    <span className="text-sm text-ink truncate">{material}</span>
+                    <span className="text-sm text-ink truncate" title={material}>{material}</span>
                     <PriceInput
                       value={p.small}
                       onChange={v => setMaterialPrice(material, 'small', v)}
@@ -1525,7 +1526,8 @@ export function SettingsPage() {
                 )
               })}
             </div>
-          
+            </div>
+
 
           {/* Example */}
           <div className="p-3 bg-bg-sidebar rounded-xl text-xs text-ink-muted leading-relaxed">

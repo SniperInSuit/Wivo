@@ -1,4 +1,4 @@
-import { Plus, Search, LogOut } from 'lucide-react'
+import { Plus, Search, LogOut, CalendarPlus } from 'lucide-react'
 import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
 import { ImportCSVButton } from './ImportCSVButton'
@@ -7,6 +7,7 @@ interface TopBarProps {
   search: string
   onSearchChange: (v: string) => void
   onNewJob: () => void
+  onNewVisit?: () => void
   onImportDone: () => void
   /**
    * Controls belonging to the active view, shown between the search box and the
@@ -19,7 +20,7 @@ interface TopBarProps {
 // Navigation moved to the Sidebar in 1.1.0 — this strip is now search + actions
 // only. The h-[56px] flex-shrink-0 sizing stays byte-for-byte: every view's
 // height contract is measured against it.
-export function TopBar({ search, onSearchChange, onNewJob, onImportDone, centerSlot }: TopBarProps) {
+export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportDone, centerSlot }: TopBarProps) {
   const { settings } = useSettings()
   const { displayName, signOut } = useAuth()
   const nimi = displayName
@@ -47,6 +48,12 @@ export function TopBar({ search, onSearchChange, onNewJob, onImportDone, centerS
 
       <div className="flex items-center gap-2 ml-auto">
         <ImportCSVButton onSuccess={onImportDone} />
+        {onNewVisit && (
+          <button onClick={onNewVisit} className="btn-ghost text-nav hover:text-nav border border-nav/20">
+            <CalendarPlus size={14} />
+            Uus visiit
+          </button>
+        )}
         <button onClick={onNewJob} className="btn-primary">
           <Plus size={14} />
           Uus töö

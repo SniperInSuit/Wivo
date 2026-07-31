@@ -228,8 +228,8 @@ export function Dashboard({ jobs }: DashboardProps) {
         </div>
 
         {/* Paid vs Outstanding donut */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="card p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Tasutud vs ootel</p>
             {stats.totalRevenue > 0 ? (
               <div className="flex items-center gap-4">
@@ -271,7 +271,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           {/* Revenue by month bar chart */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Käive kuude kaupa (€)</p>
             {stats.revenueByMonth.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
@@ -294,9 +294,9 @@ export function Dashboard({ jobs }: DashboardProps) {
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
           <Package size={13} /> Materjalid
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* Bar chart: jobs per material */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Tööd materjali järgi</p>
             {stats.materialStats.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
@@ -321,7 +321,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           {/* Donut: share per material */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Osakaal (%)</p>
             {stats.materialStats.length > 0 ? (
               <div className="flex items-center gap-4">
@@ -369,9 +369,9 @@ export function Dashboard({ jobs }: DashboardProps) {
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
           <TrendingUp size={13} /> Tootmine
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* WIP by stage */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Praegune WIP etappide kaupa</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.wipByStage} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
@@ -388,7 +388,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           {/* Throughput */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Valmis tööd kuude kaupa</p>
             {stats.throughput.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
@@ -451,13 +451,14 @@ export function Dashboard({ jobs }: DashboardProps) {
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
           <Users size={13} /> Patsiendid & Töötüübid
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch items-stretch">
           {/* Top patients */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-0.5">Top patsiendid (hambad)</p>
             <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad patsiendi kaupa</p>
             {stats.topPatients.length > 0 ? (
-              <ResponsiveContainer width="100%" height={rowChartHeight(stats.topPatients.length)}>
+              <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={stats.topPatients}
                   layout="vertical"
@@ -473,17 +474,19 @@ export function Dashboard({ jobs }: DashboardProps) {
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">Andmed puuduvad</p>
+              <p className="text-sm text-ink-faint text-center py-6 flex-1">Andmed puuduvad</p>
             )}
           </div>
 
           {/* Work by work type — jobs, not teeth */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-0.5">Tööd töötüübi järgi</p>
             <p className="text-xs text-ink-faint mb-3">Tööde arv töö liigi kaupa (originaal + muudatused)</p>
             {stats.workByType.length > 0 ? (
-              <ResponsiveContainer width="100%" height={rowChartHeight(stats.workByType.length)}>
+              <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={stats.workByType}
                   layout="vertical"
@@ -499,13 +502,14 @@ export function Dashboard({ jobs }: DashboardProps) {
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">Andmed puuduvad</p>
+              <p className="text-sm text-ink-faint text-center py-6 flex-1">Andmed puuduvad</p>
             )}
           </div>
 
           {/* Revision rate by work type */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-0.5">Muudatuste määr töötüübi järgi</p>
             <p className="text-xs text-ink-faint mb-3">Mitu muudatust 100 töö kohta</p>
             {stats.byWorkType.length > 0 ? (
@@ -538,7 +542,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           {/* Revision reasons breakdown */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-0.5">Muudatuste põhjused</p>
             <p className="text-xs text-ink-faint mb-3">Miks muudatusi tehakse</p>
             {stats.revisionReasons.length > 0 ? (
@@ -576,9 +580,9 @@ export function Dashboard({ jobs }: DashboardProps) {
           <TrendingUp size={13} /> Hammaste analüüs
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* Weakest teeth */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-1">Nõrgemad hambad (FDI)</p>
             <p className="text-xs text-ink-faint mb-3">Kõige sagedamini töödeldud</p>
             {stats.weakestTeeth.length > 0 ? (
@@ -603,7 +607,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           {/* Strongest teeth */}
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-1">Tugevamad hambad (FDI)</p>
             <p className="text-xs text-ink-faint mb-3">Harva töödeldud (kõige vastupidavamad)</p>
             {stats.strongestTeeth.length > 0 ? (
@@ -658,8 +662,8 @@ export function Dashboard({ jobs }: DashboardProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3">
-          <div className="card p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mt-3">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Visiidid nädalapäeva järgi</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.visitsByWeekday}>
@@ -672,7 +676,7 @@ export function Dashboard({ jobs }: DashboardProps) {
             </ResponsiveContainer>
           </div>
 
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink mb-3">Visiitide seis</p>
             <div className="space-y-2">
               {(['planeeritud', 'saabunud', 'toimunud', 'ei_tulnud', 'tuhistatud'] as const).map(st => {
@@ -713,8 +717,8 @@ export function Dashboard({ jobs }: DashboardProps) {
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
           Kust töö tuleb
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="card p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink">Top suunavad arstid</p>
             <p className="text-[11px] text-ink-muted mb-3">Käive patsiendi kaardil oleva arsti järgi</p>
             {stats.byDoctor.length === 0 ? (
@@ -735,7 +739,7 @@ export function Dashboard({ jobs }: DashboardProps) {
             )}
           </div>
 
-          <div className="card p-4">
+          <div className="card p-4 flex flex-col">
             <p className="text-sm font-semibold text-ink">Käive töö liigi järgi</p>
             <p className="text-[11px] text-ink-muted mb-3">Sama liigitus, mida kalender kasutab</p>
             {stats.byWorkType.length === 0 ? (

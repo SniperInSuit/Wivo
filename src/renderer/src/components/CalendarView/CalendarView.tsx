@@ -55,11 +55,13 @@ interface CalendarViewProps {
   scale: CalendarScale
   /** Increments when Täna is pressed; the value itself carries no meaning. */
   todaySignal: number
+  /** Increments when "Uus visiit" is pressed in TopBar */
+  newVisitSignal?: number
 }
 
 export function CalendarView({
   jobs, onJobClick, onRevisionClick, onNewJobOnDate, onOpenPatient,
-  mode, scale, todaySignal,
+  mode, scale, todaySignal, newVisitSignal,
 }: CalendarViewProps) {
   const { stages, stageMap, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
@@ -72,6 +74,11 @@ export function CalendarView({
   const [timelineDay, setTimelineDay] = useState(() => startOfDay(new Date()))
   const [visitForm, setVisitForm] = useState<{ visit: Visit | null; date?: Date; durationMin?: number } | null>(null)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+
+  // Open new visit form when TopBar "Uus visiit" is clicked
+  useEffect(() => {
+    if (newVisitSignal) setVisitForm({ visit: null })
+  }, [newVisitSignal])
 
   // Ticks once a minute so the timeline's current-time indicator moves
   const [now, setNow] = useState(() => new Date())

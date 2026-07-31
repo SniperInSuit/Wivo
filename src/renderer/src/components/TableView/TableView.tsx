@@ -58,6 +58,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   const { data: workers = [] } = useClinicProfiles()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
+  const [workTypeFilter, setWorkTypeFilter] = useState<string | 'all'>('all')
   const [sortKey, setSortKey] = useState<SortKey>('kuupaev')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -81,6 +82,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       )
     }
     if (stageFilter !== 'all') result = result.filter(j => j.status === stageFilter)
+    if (workTypeFilter !== 'all') result = result.filter(j => (j.too ?? '') === workTypeFilter)
     if (periodFilter !== 'all') {
       const now = new Date()
       let start: Date, end: Date
@@ -113,7 +115,11 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       })
     }
     return result
-  }, [jobs, search, stageFilter, periodFilter, sortKey, sortDir, stages])
+  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, sortKey, sortDir, stages])
+
+  const uniqueWorkTypes = useMemo(() =>
+    [...new Set(jobs.map(j => j.too).filter(Boolean) as string[])].sort()
+  , [jobs])
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(j => selected.has(j.id))
   const someSelected = filtered.some(j => selected.has(j.id)) && !allFilteredSelected
@@ -273,6 +279,34 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             </button>
           ))}
         </div>
+
+        {/* Work type filter */}
+        {uniqueWorkTypes.length > 1 && (
+          <>
+            <span className="text-ink-faint/30 text-sm select-none">|</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setWorkTypeFilter('all')}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                  workTypeFilter === 'all' ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
+                }`}
+              >
+                Kõik tööd
+              </button>
+              {uniqueWorkTypes.map(wt => (
+                <button
+                  key={wt}
+                  onClick={() => setWorkTypeFilter(workTypeFilter === wt ? 'all' : wt)}
+                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    workTypeFilter === wt ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
+                  }`}
+                >
+                  {wt}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
       </div>
 

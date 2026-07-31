@@ -52,6 +52,7 @@ function AppContent() {
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('kombineeritud')
   const [calendarScale, setCalendarScale] = useState<CalendarScale>('kuu')
   const [todaySignal, setTodaySignal] = useState(0)
+  const [newVisitSignal, setNewVisitSignal] = useState(0)
 
   const { data: jobs = [], isLoading } = useJobs()
   const { doneStageKey } = usePipeline()
@@ -242,6 +243,7 @@ function AppContent() {
           search={search}
           onSearchChange={setSearch}
           onNewJob={openNew}
+          onNewVisit={() => { setView('calendar'); setNewVisitSignal(n => n + 1) }}
           onImportDone={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
           centerSlot={view === 'calendar' ? (
             <CalendarTopControls
@@ -297,6 +299,7 @@ function AppContent() {
               mode={calendarMode}
               scale={calendarScale}
               todaySignal={todaySignal}
+              newVisitSignal={newVisitSignal}
             />
           )}
           {view === 'patients' && (
