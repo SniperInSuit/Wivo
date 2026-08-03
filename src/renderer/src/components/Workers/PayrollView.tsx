@@ -553,6 +553,10 @@ function PayoutRow({ payout: p, isOwner, onMarkPaid, onUnmarkPaid, onDelete }: {
 }) {
   const [expanded, setExpanded] = useState(false)
 
+  // Only per-tooth lines count — the same qty column also holds hours, jobs and
+  // job prices, and summing those together would be a number of nothing.
+  const teeth = p.lines.reduce((n, l) => l.kind === 'hammas' ? n + l.qty : n, 0)
+
   return (
     <div className="rounded-lg border border-ink-faint/20 overflow-hidden">
       <div className="flex items-center gap-2 text-xs px-3 py-2 cursor-pointer hover:bg-bg-sidebar/50 transition-colors"
@@ -605,7 +609,14 @@ function PayoutRow({ payout: p, isOwner, onMarkPaid, onUnmarkPaid, onDelete }: {
             </div>
           ))}
           <div className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[11px] border-t border-ink-faint/15 pt-1 mt-1">
-            <span className="font-semibold text-ink">Kokku</span>
+            <span className="font-semibold text-ink">
+              Kokku
+              {teeth > 0 && (
+                <span className="ml-1.5 font-normal text-ink-faint tabular-nums">
+                  {teeth} hammast
+                </span>
+              )}
+            </span>
             <span />
             <span />
             <span className="font-bold text-ink text-right tabular-nums">{Number(p.total).toFixed(2)} €</span>
