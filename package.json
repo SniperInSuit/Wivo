@@ -1,6 +1,6 @@
 {
   "name": "wivo",
-  "version": "1.25.6",
+  "version": "1.25.15",
   "description": "SprintRay Dental Production Tracker",
   "author": "Wivo",
   "main": "out/main/index.js",
@@ -8,14 +8,15 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder",
-    "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --dir"
+    "dist": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& set WIN_CSC_LINK=&& electron-builder --config.forceCodeSigning=false",
+    "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir --config.forceCodeSigning=false"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.56.0",
     "@tanstack/react-query-devtools": "^5.56.0",
     "date-fns": "^3.6.0",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^11.5.4",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
@@ -48,10 +49,27 @@
     "files": [
       "out/**/*"
     ],
+    "extraResources": [
+      { "from": ".env", "to": ".env" }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "SniperInSuit",
+      "repo": "Wivo"
+    },
     "win": {
-      "target": "nsis",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
       "icon": "build/icon.png"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "perMachine": false,
+      "shortcutName": "Wivo"
+    },
+    "forceCodeSigning": false,
     "mac": {
       "target": "dmg",
       "icon": "build/icon.png"

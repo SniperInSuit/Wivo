@@ -9,6 +9,16 @@ import { electronAPI } from '@electron-toolkit/preload'
 const wivoAPI = {
   getVersion: (): Promise<string> => ipcRenderer.invoke('wivo:version'),
   relaunch: (): Promise<void> => ipcRenderer.invoke('wivo:relaunch'),
+  checkRemoteUpdate: (): Promise<boolean> => ipcRenderer.invoke('wivo:check-remote-update'),
+  gitPull: (): Promise<string | null> => ipcRenderer.invoke('wivo:git-pull'),
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('wivo:download-update'),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('wivo:install-update'),
+  onUpdateAvailable: (cb: (version: string) => void) => {
+    ipcRenderer.on('wivo:update-available', (_e, version) => cb(version))
+  },
+  onUpdateDownloaded: (cb: () => void) => {
+    ipcRenderer.on('wivo:update-downloaded', () => cb())
+  },
 }
 
 // Expose minimal electron API to renderer

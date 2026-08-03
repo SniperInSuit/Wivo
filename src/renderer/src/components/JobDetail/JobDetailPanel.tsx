@@ -717,55 +717,112 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   })}
                 </div>
 
-                {/* Selected types as chips — click to activate for tooth selection */}
-                {form.work_items.length > 0 && (
+                {/* Selected types as chips — click to activate, + to duplicate */}
+                {form.work_items.length > 0 && (() => {
+                  // Count instances per type for numbering (Sild 1, Sild 2)
+                  const typeCountMap = new Map<string, number>()
+                  form.work_items.forEach(i => typeCountMap.set(i.too, (typeCountMap.get(i.too) ?? 0) + 1))
+                  const typeSeenMap = new Map<string, number>()
+
+                  return (
                   <div className="flex items-center gap-1.5 flex-wrap mb-3">
                     {form.work_items.map(item => {
                       const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
                       const isActive = item.id === activeWorkItemId
                       const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+                      const typeTotal = typeCountMap.get(item.too) ?? 1
+                      const seen = (typeSeenMap.get(item.too) ?? 0) + 1
+                      typeSeenMap.set(item.too, seen)
+                      const label = typeTotal > 1 ? `${item.too} ${seen}` : item.too
+
                       return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
-                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border-2 transition-all ${
-                            isActive
-                              ? 'border-accent bg-accent/10'
-                              : 'border-transparent hover:border-ink-faint/30'
-                          }`}
-                          style={{ backgroundColor: isActive ? undefined : `${hex}15` }}
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
-                          <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
-                          {teethCount > 0 && (
-                            <span className="text-[10px] text-ink-faint">{teethCount}</span>
-                          )}
-                          {/* Bridge toggle */}
-                          <span
-                            role="button"
+                        <div key={item.id} className="flex items-center gap-0">
+                          <button
+                            type="button"
+                            onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
+                            className={`flex items-center gap-1.5 text-xs font-medium pl-2.5 pr-1.5 py-1.5 rounded-l-lg border-2 border-r-0 transition-all ${
+                              isActive
+                                ? 'border-accent bg-accent/10'
+                                : 'border-transparent hover:border-ink-faint/30'
+                            }`}
+                            style={{ backgroundColor: isActive ? undefined : `${hex}15` }}
+                          >
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                            <span style={{ color: isActive ? '#0AB6C4' : hex }}>{label}</span>
+                            {teethCount > 0 && (
+                              <span className="text-[10px] text-ink-faint">{teethCount}</span>
+                            )}
+                            {/* Bridge toggle */}
+                            <span
+                              role="button"
+                              onClick={e => {
+                                e.stopPropagation()
+                                setForm(f => ({
+                                  ...f,
+                                  work_items: f.work_items.map(i => i.id === item.id ? { ...i, bridge: !i.bridge } : i)
+                                }))
+                              }}
+                              title={item.bridge ? 'Eemalda silla märge' : 'Märgi sillaks'}
+                              className={`text-[10px] px-1 py-0.5 rounded transition-colors ${
+                                item.bridge ? 'bg-accent/20 text-accent' : 'text-ink-faint hover:text-ink-muted'
+                              }`}
+                            >
+                              {item.bridge ? '⛓ sild' : '⛓'}
+                            </span>
+                          </button>
+                          {/* + add another / × remove */}
+                          <button
+                            type="button"
+                            title={`Lisa veel üks ${item.too}`}
                             onClick={e => {
                               e.stopPropagation()
-                              setForm(f => ({
-                                ...f,
-                                work_items: f.work_items.map(i => i.id === item.id ? { ...i, bridge: !i.bridge } : i)
-                              }))
+                              const newItem = { id: crypto.randomUUID(), too: item.too, hambad: '' }
+                              setForm(f => {
+                                const idx = f.work_items.findIndex(i => i.id === item.id)
+                                const next = [...f.work_items]
+                                next.splice(idx + 1, 0, newItem)
+                                return { ...f, work_items: next }
+                              })
+                              setActiveWorkItemId(newItem.id)
                             }}
-                            title={item.bridge ? 'Eemalda silla märge' : 'Märgi sillaks'}
-                            className={`ml-0.5 text-[10px] px-1 py-0.5 rounded transition-colors ${
-                              item.bridge ? 'bg-accent/20 text-accent' : 'text-ink-faint hover:text-ink-muted'
+                            className={`text-[10px] font-bold px-1 py-1.5 border-2 border-l-0 transition-colors ${
+                              isActive
+                                ? 'border-accent bg-accent/5 text-accent hover:bg-accent/15'
+                                : 'border-transparent text-ink-faint hover:text-ink-muted'
                             }`}
+                            style={{ backgroundColor: isActive ? undefined : `${hex}08` }}
                           >
-                            {item.bridge ? '⛓ sild' : '⛓'}
-                          </span>
-                        </button>
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            title="Eemalda"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setForm(f => {
+                                const next = f.work_items.filter(i => i.id !== item.id)
+                                return { ...f, work_items: next, too: next[0]?.too ?? '' }
+                              })
+                              if (activeWorkItemId === item.id) setActiveWorkItemId(null)
+                            }}
+                            className={`text-[10px] font-bold px-1 py-1.5 rounded-r-lg border-2 border-l-0 transition-colors ${
+                              isActive
+                                ? 'border-accent bg-accent/5 text-red-400 hover:text-red-500 hover:bg-red-50'
+                                : 'border-transparent text-ink-faint hover:text-red-400'
+                            }`}
+                            style={{ backgroundColor: isActive ? undefined : `${hex}08` }}
+                          >
+                            ×
+                          </button>
+                        </div>
                       )
                     })}
                     <p className="text-[10px] text-ink-faint">
                       {activeWorkItemId ? 'Klõpsa hammastel' : 'Vali tüüp, et hambaid märkida'}
                     </p>
                   </div>
-                )}
+                  )
+                })()}
 
                 {/* Shared odontogram for all work items */}
                 {form.work_items.length > 0 && (
@@ -976,16 +1033,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
             {/* ── RIGHT COLUMN (bottom mode) / continuation (side mode) ── */}
             <div className="space-y-5">
-              {/* Legacy single odontogram — only when no work items selected */}
+              {/* No work type selected — hint to pick one first */}
               {form.work_items.length === 0 && (
-              <div>
-                <label className="label">Hambad (FDI)</label>
-                <div className="bg-bg-sidebar rounded-xl p-3">
-                  <OdontogramPicker
-                    value={form.hambad ?? ''}
-                    onChange={v => set('hambad', v)}
-                  />
-                </div>
+              <div className="bg-bg-sidebar rounded-xl p-4 text-center">
+                <p className="text-xs text-ink-faint">Vali ülalt töötüüp, et hambaid märkida</p>
               </div>
               )}
 
@@ -1077,10 +1128,28 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 paid_at: details.paid_at,
                 reference: details.reference,
               })
-              // Only reflect "paid" in the form when it actually is.
               if (paying >= Math.max(0, total - already) - 0.005) {
                 set('makstud', true)
                 set('makse_kuupaev', details.paid_at)
+              }
+              setPaidDialog(false)
+            }}
+            onConfirmMulti={async detailsList => {
+              const owed = Math.max(0, total - already)
+              let totalPaying = 0
+              for (const details of detailsList) {
+                const paying = details.amount ?? 0
+                totalPaying += paying
+                await markPaid.mutateAsync({
+                  jobs: [{ id: job.id, amount: paying, total: owed }],
+                  method: details.method,
+                  paid_at: details.paid_at,
+                  reference: details.reference,
+                })
+              }
+              if (totalPaying >= owed - 0.005) {
+                set('makstud', true)
+                set('makse_kuupaev', detailsList[0]?.paid_at ?? '')
               }
               setPaidDialog(false)
             }}

@@ -21,6 +21,7 @@ import {
   useWorkerRates, useSaveWorkerRate, useDeleteWorkerRate,
   useWorkHours, useAddWorkHours, useDeleteWorkHours,
   useWorkerPayouts, useCreatePayout, useUpdatePayout, useDeletePayout, paidKeysFrom,
+  type WorkerPayout,
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
@@ -470,47 +471,11 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                       Selle perioodi väljamaksed
                     </h4>
                     {periodPayouts.map(p => (
-                      <div key={p.id} className="flex items-center gap-2 text-xs rounded-lg border border-ink-faint/20 px-3 py-2">
-                        <div className="flex-1">
-                          <p className="font-semibold text-ink tabular-nums">{Number(p.total).toFixed(2)} €</p>
-                          <p className="text-[11px] text-ink-faint">
-                            {p.lines.length} rida · {p.status === 'makstud'
-                              ? `makstud ${fmtDate(p.paid_at)}`
-                              : 'kinnitatud, maksmata'}
-                          </p>
-                        </div>
-                        {isOwner && (
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {p.status !== 'makstud' ? (
-                              <button
-                                onClick={() => updatePayout.mutate({
-                                  id: p.id, status: 'makstud', paid_at: format(new Date(), 'yyyy-MM-dd'),
-                                })}
-                                className="btn-ghost text-xs border border-ink-faint/25"
-                              >
-                                Märgi makstuks
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => updatePayout.mutate({
-                                  id: p.id, status: 'kinnitatud', paid_at: null,
-                                })}
-                                className="text-[11px] text-ink-faint hover:text-ink transition-colors"
-                                title="Võta makstuks märkimine tagasi"
-                              >
-                                Võta tagasi
-                              </button>
-                            )}
-                            {/* Deleting returns every line to the unpaid pool, so a
-                                mistaken payout is corrected by redoing it, not by
-                                editing a frozen document. */}
-                            <PayoutDeleteButton
-                              paid={p.status === 'makstud'}
-                              onDelete={() => removePayout(p.id)}
-                            />
-                          </div>
-                        )}
-                      </div>
+                      <PayoutRow key={p.id} payout={p} isOwner={isOwner}
+                        onMarkPaid={() => updatePayout.mutate({ id: p.id, status: 'makstud', paid_at: format(new Date(), 'yyyy-MM-dd') })}
+                        onUnmarkPaid={() => updatePayout.mutate({ id: p.id, status: 'kinnitatud', paid_at: null })}
+                        onDelete={() => removePayout(p.id)}
+                      />
                     ))}
                   </section>
                 )}
@@ -581,6 +546,76 @@ function EngagementPicker({ profileId, value }: { profileId: string; value: Enga
 
 // ─── Payout delete ────────────────────────────────────────────────────────────
 // Two clicks, and a louder warning once the money is marked as paid — undoing a
+// Expandable payout row — shows lines (jobs) when expanded
+function PayoutRow({ payout: p, isOwner, onMarkPaid, onUnmarkPaid, onDelete }: {
+  payout: WorkerPayout; isOwner: boolean
+  onMarkPaid: () => void; onUnmarkPaid: () => void; onDelete: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-ink-faint/20 overflow-hidden">
+      <div className="flex items-center gap-2 text-xs px-3 py-2 cursor-pointer hover:bg-bg-sidebar/50 transition-colors"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <span className="text-ink-faint">
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </span>
+        <div className="flex-1">
+          <p className="font-semibold text-ink tabular-nums">{Number(p.total).toFixed(2)} €</p>
+          <p className="text-[11px] text-ink-faint">
+            {p.lines.length} rida · {p.status === 'makstud'
+              ? `makstud ${fmtDate(p.paid_at)}`
+              : 'kinnitatud, maksmata'}
+          </p>
+        </div>
+        {isOwner && (
+          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {p.status !== 'makstud' ? (
+              <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/25">
+                Märgi makstuks
+              </button>
+            ) : (
+              <button onClick={onUnmarkPaid}
+                className="text-[11px] text-ink-faint hover:text-ink transition-colors"
+                title="Võta makstuks märkimine tagasi"
+              >
+                Võta tagasi
+              </button>
+            )}
+            <PayoutDeleteButton paid={p.status === 'makstud'} onDelete={onDelete} />
+          </div>
+        )}
+      </div>
+
+      {expanded && p.lines.length > 0 && (
+        <div className="border-t border-ink-faint/10 bg-bg-sidebar/30 px-3 py-2 space-y-1">
+          <div className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[10px] font-semibold text-ink-faint uppercase mb-1">
+            <span>Kirjeldus</span>
+            <span className="text-right">Kogus</span>
+            <span className="text-right">Määr</span>
+            <span className="text-right">Summa</span>
+          </div>
+          {p.lines.map(line => (
+            <div key={line.id} className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[11px]">
+              <span className="text-ink truncate" title={line.description}>{line.description}</span>
+              <span className="text-ink-muted text-right tabular-nums">{line.qty}</span>
+              <span className="text-ink-muted text-right tabular-nums">{line.rate.toFixed(2)} €</span>
+              <span className="text-ink font-medium text-right tabular-nums">{line.amount.toFixed(2)} €</span>
+            </div>
+          ))}
+          <div className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[11px] border-t border-ink-faint/15 pt-1 mt-1">
+            <span className="font-semibold text-ink">Kokku</span>
+            <span />
+            <span />
+            <span className="font-bold text-ink text-right tabular-nums">{Number(p.total).toFixed(2)} €</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // record of something that left the bank should feel different from undoing a
 // draft.
 function PayoutDeleteButton({ paid, onDelete }: { paid: boolean; onDelete: () => void }) {

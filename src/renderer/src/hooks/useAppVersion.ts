@@ -1,30 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 /**
- * The version this window is running, and whether a newer one is on disk.
+ * Tracks the running version and available updates.
  *
- * Two different numbers used to be confused for each other:
- *   `__APP_VERSION__` — baked in when the bundle was BUILT. During development
- *      it goes stale the moment package.json is bumped, because Vite reads the
- *      config once and HMR keeps serving new code under the old constant.
- *   the file on disk — what the app WOULD be if it started now.
- *
- * The sidebar used to show the first and call it the app's version, which meant
- * it reported a version the app was not running. Twice this session that sent
- * debugging down the wrong path. So: the running version is captured once at
- * boot from the live file, and the same file is re-read periodically. When the
- * two differ, there is an update waiting for a restart.
- *
- * Outside Electron (a browser tab during dev) the bridge is absent, and this
- * falls back to the build constant with no update prompt — a missing bridge must
- * degrade visibly-nothing, not pretend.
+ * Two update paths:
+ *   1. Production (packaged): electron-updater checks GitHub Releases
+ *   2. Dev mode: git fetch/pull via IPC
  */
 export function useAppVersion() {
-  // What this window booted with. Captured once; never updated, or the
-  // comparison would always agree with itself.
   const booted = useRef<string | null>(null)
   const [running, setRunning] = useState<string>(__APP_VERSION__)
+
+  // Dev mode: disk/git based
   const [available, setAvailable] = useState<string | null>(null)
+  const [remoteAvailable, setRemoteAvailable] = useState(false)
+  const [pulling, setPulling] = useState(false)
+  const [pullDone, setPullDone] = useState(false)
+
+  // Production: electron-updater based
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
 
   useEffect(() => {
     const bridge = window.wivo
@@ -32,7 +28,8 @@ export function useAppVersion() {
 
     let cancelled = false
 
-    const check = async () => {
+    // Read running version from disk
+    const checkDisk = async () => {
       try {
         const onDisk = await bridge.getVersion()
         if (cancelled) return
@@ -42,30 +39,91 @@ export function useAppVersion() {
           return
         }
         setAvailable(onDisk !== booted.current ? onDisk : null)
-      } catch {
-        // Nothing to say — an unreachable main process is not an update.
-      }
+      } catch {}
     }
 
-    void check()
-    // Polling rather than a file watcher: the answer is one small read, and a
-    // watcher on package.json would fire on every editor save regardless of
-    // whether the version actually moved.
-    const timer = setInterval(check, 30_000)
-    const onFocus = () => void check()
+    // Dev mode: check git remote
+    const checkRemote = async () => {
+      try {
+        const hasUpdate = await bridge.checkRemoteUpdate()
+        if (cancelled) return
+        setRemoteAvailable(hasUpdate)
+      } catch {}
+    }
+
+    // Production: listen for auto-updater events
+    bridge.onUpdateAvailable?.((version) => {
+      setUpdateVersion(version)
+    })
+    bridge.onUpdateDownloaded?.(() => {
+      setDownloaded(true)
+      setDownloading(false)
+    })
+
+    void checkDisk()
+    const remoteTimeout = setTimeout(() => void checkRemote(), 10_000)
+    const diskTimer = setInterval(checkDisk, 30_000)
+    const remoteTimer = setInterval(checkRemote, 60_000)
+    const onFocus = () => { void checkDisk(); void checkRemote() }
     window.addEventListener('focus', onFocus)
 
     return () => {
       cancelled = true
-      clearInterval(timer)
+      clearTimeout(remoteTimeout)
+      clearInterval(diskTimer)
+      clearInterval(remoteTimer)
       window.removeEventListener('focus', onFocus)
     }
   }, [])
 
+  // Dev: git pull + restart
+  const pullAndRestart = useCallback(async () => {
+    const bridge = window.wivo
+    if (!bridge) return
+    setPulling(true)
+    try {
+      const newVersion = await bridge.gitPull()
+      if (newVersion) {
+        setPullDone(true)
+        setAvailable(newVersion)
+        setRemoteAvailable(false)
+        setTimeout(() => bridge.relaunch(), 1500)
+      }
+    } finally {
+      setPulling(false)
+    }
+  }, [])
+
+  // Production: download + install
+  const downloadAndInstall = useCallback(async () => {
+    const bridge = window.wivo
+    if (!bridge) return
+    setDownloading(true)
+    await bridge.downloadUpdate()
+  }, [])
+
+  const installNow = useCallback(() => {
+    window.wivo?.installUpdate()
+  }, [])
+
+  const hasUpdate = available !== null || remoteAvailable || updateVersion !== null
+
   return {
     running,
-    available,
-    hasUpdate: available !== null,
+    available: available ?? updateVersion,
+    hasUpdate,
+    // Dev mode
+    remoteAvailable,
+    pulling,
+    pullDone,
+    pullAndRestart,
+    // Production
+    updateVersion,
+    downloading,
+    downloaded,
+    downloadAndInstall,
+    installNow,
+    // Generic
     restart: () => window.wivo?.relaunch(),
   }
 }

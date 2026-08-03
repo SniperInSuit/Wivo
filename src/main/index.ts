@@ -1,7 +1,9 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { execSync } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
 app.commandLine.appendSwitch('lang', 'et-EE')
@@ -66,6 +68,66 @@ app.whenReady().then(() => {
   ipcMain.handle('wivo:relaunch', () => {
     app.relaunch()
     app.exit(0)
+  })
+
+  // ── Git auto-update (dev mode only) ──────────────────────────────────────
+  // Check if remote has new commits. Returns true if origin/main is ahead.
+  ipcMain.handle('wivo:check-remote-update', () => {
+    try {
+      const cwd = app.getAppPath()
+      execSync('git fetch origin main --quiet', { cwd, timeout: 10_000, stdio: 'ignore' })
+      const local = execSync('git rev-parse HEAD', { cwd, encoding: 'utf-8' }).trim()
+      const remote = execSync('git rev-parse origin/main', { cwd, encoding: 'utf-8' }).trim()
+      return local !== remote
+    } catch {
+      return false
+    }
+  })
+
+  // Pull latest code from origin. Returns the new version or null on failure.
+  ipcMain.handle('wivo:git-pull', () => {
+    try {
+      const cwd = app.getAppPath()
+      execSync('git pull origin main --quiet', { cwd, timeout: 30_000, stdio: 'ignore' })
+      return readDiskVersion()
+    } catch {
+      return null
+    }
+  })
+
+  // ── Auto-updater (GitHub Releases) ─────────────────────────────────────
+  // In dev mode, skip auto-update — use git-based check instead.
+  // In production (packaged), check GitHub Releases for new versions.
+  if (!is.dev) {
+    autoUpdater.autoDownload = false  // ask user first
+    autoUpdater.autoInstallOnAppQuit = true
+
+    autoUpdater.on('update-available', (info) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win) win.webContents.send('wivo:update-available', info.version)
+    })
+
+    autoUpdater.on('update-downloaded', () => {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win) win.webContents.send('wivo:update-downloaded')
+    })
+
+    autoUpdater.on('error', (err) => {
+      console.error('Auto-updater error:', err.message)
+    })
+
+    // Check for updates every 5 minutes
+    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 5 * 60_000)
+    // And on startup (after a short delay)
+    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 10_000)
+  }
+
+  ipcMain.handle('wivo:download-update', () => {
+    autoUpdater.downloadUpdate().catch(() => {})
+  })
+
+  ipcMain.handle('wivo:install-update', () => {
+    autoUpdater.quitAndInstall(false, true)
   })
 
   app.on('browser-window-created', (_, window) => {

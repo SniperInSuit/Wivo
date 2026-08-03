@@ -16,5 +16,11 @@ interface Window {
   wivo?: {
     getVersion: () => Promise<string>
     relaunch: () => Promise<void>
+    checkRemoteUpdate: () => Promise<boolean>
+    gitPull: () => Promise<string | null>
+    downloadUpdate: () => Promise<void>
+    installUpdate: () => Promise<void>
+    onUpdateAvailable: (cb: (version: string) => void) => void
+    onUpdateDownloaded: (cb: () => void) => void
   }
 }
