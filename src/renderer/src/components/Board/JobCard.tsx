@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { MessageSquare, Euro, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
+import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
@@ -18,6 +19,8 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
   const { stages } = usePipeline()
   const wt = useWorkTypes()
   const hasRevision = (job.revisions?.length ?? 0) > 0 || !!job.muudatused
+  const workItems = jobWorkItems(job)
+  const isMultiType = workItems.length > 1
 
   const stageIdx  = stages.findIndex(s => s.key === job.status)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -35,9 +38,17 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${
         isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''
       }`}
-      style={{ borderLeftColor: wt.hex(job.too) }}
+      style={{ borderLeftColor: isMultiType ? 'transparent' : wt.hex(job.too) }}
       onClick={() => onClick(job)}
     >
+      {/* Multi-type color strip */}
+      {isMultiType && (
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] flex flex-col rounded-l-card overflow-hidden">
+          {workItems.map(item => (
+            <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
+          ))}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
@@ -60,10 +71,18 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
         </div>
       </div>
 
-      {/* Töö type */}
-      {job.too && (
+      {/* Töö type(s) */}
+      {isMultiType ? (
+        <div className="flex items-center gap-1 flex-wrap mb-2">
+          {workItems.map(item => (
+            <span key={item.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${wt.hex(item.too)}20`, color: wt.hex(item.too) }}>
+              {item.too}{item.bridge ? ' (sild)' : ''}
+            </span>
+          ))}
+        </div>
+      ) : job.too ? (
         <p className="text-xs text-ink-muted mb-2 truncate">{job.too}</p>
-      )}
+      ) : null}
 
       {/* Tooth badges */}
       {job.hambad && (

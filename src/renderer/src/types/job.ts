@@ -59,6 +59,44 @@ export interface JobNote {
   tekst: string
 }
 
+// A single piece of work within a job — one work type applied to specific teeth.
+// A job can have multiple: e.g. 10 crowns + 4 bridges on different teeth.
+export interface WorkItem {
+  id: string              // crypto.randomUUID()
+  too: string             // work type name (matches WorkType.nimi)
+  hambad: string          // FDI comma-separated for this item, e.g. "14,15,16"
+  bridge?: boolean        // true = teeth form a connected bridge unit
+  note?: string           // optional per-item note
+}
+
+/** Canonical work items for a job, whether it uses the new or old shape. */
+export function jobWorkItems(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): WorkItem[] {
+  if (Array.isArray(job.work_items) && job.work_items.length > 0) {
+    // SPREAD each stored object — never rebuild field by field (see HANDOFF.md)
+    return job.work_items.map(item => ({ ...item }))
+  }
+  if (!job.too && !job.hambad) return []
+  return [{ id: 'legacy', too: job.too ?? '', hambad: job.hambad ?? '' }]
+}
+
+/** All distinct work type names across a job's items. */
+export function jobWorkTypeNames(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): string[] {
+  return jobWorkItems(job).map(i => i.too).filter(Boolean)
+}
+
+/** All teeth from all work items, deduplicated. */
+export function jobAllTeeth(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): string {
+  const items = jobWorkItems(job)
+  const set = new Set<string>()
+  for (const item of items) {
+    for (const t of item.hambad.split(',')) {
+      const trimmed = t.trim()
+      if (trimmed) set.add(trimmed)
+    }
+  }
+  return [...set].join(',')
+}
+
 // Full Job record matching the Supabase `jobs` table
 export interface Job {
   id: string
@@ -80,6 +118,8 @@ export interface Job {
   // selle järgi, mis juhtus, mitte selle järgi, mis oli plaanis (migratsioon 025).
   valmis_kuupaev: string | null
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
+  // --- Work items (migration 0XX) — multiple work types per job ---
+  work_items: WorkItem[]    // e.g. [{too:'Kroon', hambad:'11,12'}, {too:'Sild', hambad:'14,15,16'}]
   // --- Revision list ---
   revisions: Revision[]     // Multiple revision entries (stored as JSONB)
   // --- Notes (migration 005) ---

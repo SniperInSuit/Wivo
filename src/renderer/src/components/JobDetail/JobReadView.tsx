@@ -2,11 +2,13 @@ import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap } fro
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
+import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { usePayments } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { PAYMENT_METHOD_LABEL } from '../../types/invoice'
+import { useWorkTypes } from '../../stores/useSettings'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
@@ -150,12 +152,19 @@ export function JobReadView({
                   <p className="text-sm text-ink-soft whitespace-pre-wrap break-words">{job.kirjeldus}</p>
                 </div>
               )}
+              {/* Work items breakdown */}
+              {!rev && jobWorkItems(job).length > 1 && (
+                <WorkItemsReadBlock job={job} />
+              )}
+              {/* Legacy single tooth display */}
+              {jobWorkItems(job).length <= 1 && (
               <div>
                 <Label>Hambad (FDI)</Label>
                 {teeth > 0
                   ? <ToothBadges hambad={v.teeth} max={32} />
                   : <p className="text-sm text-ink-faint">—</p>}
               </div>
+              )}
               <Cell label="Kogus" value={teeth > 0 ? `${teeth} hammast` : '—'} />
               <Cell
                 label={rev ? 'Muudatuse aeg' : 'Töö kuupäev'}
@@ -350,6 +359,29 @@ function Card({ title, icon: Icon, children }: {
       </div>
       {children}
     </section>
+  )
+}
+
+function WorkItemsReadBlock({ job }: { job: Job }) {
+  const wt = useWorkTypes()
+  const items = jobWorkItems(job)
+  return (
+    <div className="col-span-2 space-y-1.5">
+      <Label>Tööosad ({items.length})</Label>
+      {items.map(item => {
+        const hex = wt.hex(item.too)
+        const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+        return (
+          <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: `${hex}10` }}>
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+            <span className="text-sm font-semibold text-ink">{item.too}</span>
+            {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">sild</span>}
+            <span className="text-xs text-ink-muted ml-auto">{teethCount} hammast</span>
+            <ToothBadges hambad={item.hambad} max={8} />
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

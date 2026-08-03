@@ -8,6 +8,7 @@ import { MATERIAL_SHADES } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { OdontogramPicker } from './OdontogramPicker'
+import { WorkItemsEditor } from './WorkItemsEditor'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
 import { PatientPicker } from '../Patients/PatientPicker'
@@ -48,6 +49,7 @@ const EMPTY_FORM: JobInput = {
   disain_id: '',
   varv: '',
   hambad: '',
+  work_items: [],
   valmis_aeg: '',
   valmis_kuupaev: null,
   kiirtoo: false,
@@ -352,6 +354,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         disain_id: job.disain_id ?? '',
         varv: job.varv ?? '',
         hambad: job.hambad ?? '',
+        work_items: Array.isArray(job.work_items) ? job.work_items.map(i => ({ ...i })) : [],
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
@@ -424,14 +427,20 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     setSaveError(null)
     const cleaned: JobInput = {
       ...form,
-      too: form.too || null,
+      // Sync denormalized too/hambad from work_items if items exist
+      too: form.work_items.length > 0
+        ? form.work_items[0].too
+        : (form.too || null),
+      hambad: form.work_items.length > 0
+        ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || null
+        : (form.hambad || null),
+      work_items: form.work_items,
       kirjeldus: form.kirjeldus || null,
       materjal: form.materjal || null,
       masina: form.masina || null,
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
       varv: form.varv || null,
-      hambad: form.hambad || null,
       valmis_aeg: form.valmis_aeg ? new Date(form.valmis_aeg).toISOString() : null,
       disain_hind: form.disain_hind,
       // Clear legacy fields on save
@@ -914,7 +923,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
             {/* ── RIGHT COLUMN (bottom mode) / continuation (side mode) ── */}
             <div className="space-y-5">
-              {/* Hambad */}
+              {/* Work items (multi-type) or simple hambad picker */}
+              <WorkItemsEditor
+                value={form.work_items}
+                onChange={items => setForm(f => ({ ...f, work_items: items }))}
+              />
+
+              {/* Legacy single odontogram — only when no work items */}
+              {form.work_items.length === 0 && (
               <div>
                 <label className="label">Hambad (FDI)</label>
                 <div className="bg-bg-sidebar rounded-xl p-3">
@@ -924,6 +940,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   />
                 </div>
               </div>
+              )}
 
               {/* Pricing block — after teeth in both modes */}
               <PricingBlock
