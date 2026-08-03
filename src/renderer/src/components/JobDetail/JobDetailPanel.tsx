@@ -8,7 +8,7 @@ import { MATERIAL_SHADES } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { OdontogramPicker } from './OdontogramPicker'
-import { WorkItemsEditor } from './WorkItemsEditor'
+import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
 import { PatientPicker } from '../Patients/PatientPicker'
@@ -311,6 +311,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const { data: jobPayments = [] } = usePayments()
   const { stages } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
+  const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
@@ -663,41 +664,46 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 />
               </div>
 
-              {/* Töö */}
+              {/* Töö — multi-select grid + shared odontogram */}
               <div>
-                <label className="label">Töö</label>
-                {/* Picked from the configured types rather than typed. Free text
-                    was how "D14 abutmendile kroon" and "all-on5" became their own
-                    de-facto categories, which then priced and coloured wrong.
-                    The field below still accepts anything for the cases the list
-                    does not cover. */}
+                <label className="label">Töö tüüp (vali üks või mitu)</label>
                 <div className="grid grid-cols-3 gap-1.5 mb-2">
                   {settings.tooTuubid.map(t => {
-                    const active = (form.too ?? '').trim().toLowerCase() === t.nimi.toLowerCase()
-                      || (form.too ?? '').toLowerCase().startsWith(t.nimi.toLowerCase() + ' ')
+                    const hasItem = form.work_items.some(i => i.too === t.nimi)
                     const img = workTypeImage(t.nimi, t.pilt)
                     return (
                       <button
                         key={t.nimi}
                         type="button"
-                        onClick={() => set('too', active ? '' : t.nimi)}
+                        onClick={() => {
+                          if (hasItem) {
+                            // Remove this type
+                            const next = form.work_items.filter(i => i.too !== t.nimi)
+                            setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
+                          } else {
+                            // Add this type
+                            const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '' }
+                            const next = [...form.work_items, item]
+                            setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
+                          }
+                        }}
                         title={t.hind != null
                           ? `${t.hind.toFixed(2)} € ${t.hinnaTyyp === 'hammas' ? '/ hammas' : '/ töö'}`
                           : t.nimi}
                         className={`relative rounded-lg border-2 overflow-hidden text-left transition-all duration-100 ${
-                          active ? 'border-accent shadow-card' : 'border-ink-faint/25 hover:border-accent/40'
+                          hasItem ? 'border-accent shadow-card' : 'border-ink-faint/25 hover:border-accent/40'
                         }`}
                       >
                         <span
                           className="flex h-10 items-center justify-center"
-                          style={{ backgroundColor: `${t.hex}1f` }}
+                          style={{ backgroundColor: `${t.hex}${hasItem ? '30' : '1f'}` }}
                         >
                           {img
                             ? <img src={img} alt="" className="h-full w-full object-cover" />
                             : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.hex }} />}
                         </span>
                         <span className={`block px-1.5 py-1 text-[11px] font-medium truncate ${
-                          active ? 'text-accent' : 'text-ink'
+                          hasItem ? 'text-accent' : 'text-ink'
                         }`}>
                           {t.nimi}
                         </span>
@@ -710,38 +716,85 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     )
                   })}
                 </div>
-                <input
-                  type="text"
-                  value={form.too ?? ''}
-                  onChange={e => set('too', e.target.value)}
-                  placeholder="Või kirjuta vabalt…"
-                  className="input"
-                />
-                {/* Jaw picker — shown when work type starts with Allon */}
-                {/^allon/i.test(form.too ?? '') && (() => {
-                  const base = (form.too ?? '').replace(/\s+(ülemine|alumine)$/i, '').trim()
-                  const jaw = /ülemine/i.test(form.too ?? '') ? 'ülemine'
-                    : /alumine/i.test(form.too ?? '') ? 'alumine' : null
-                  return (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-ink-muted">Lõug:</span>
-                      {(['Ülemine', 'Alumine'] as const).map(j => (
+
+                {/* Selected types as chips — click to activate for tooth selection */}
+                {form.work_items.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                    {form.work_items.map(item => {
+                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+                      const isActive = item.id === activeWorkItemId
+                      const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+                      return (
                         <button
-                          key={j}
+                          key={item.id}
                           type="button"
-                          onClick={() => set('too', jaw?.toLowerCase() === j.toLowerCase() ? base : `${base} ${j.toLowerCase()}`)}
-                          className={`text-xs px-3 py-1 rounded-lg border-2 font-semibold transition-all ${
-                            jaw?.toLowerCase() === j.toLowerCase()
-                              ? 'bg-accent text-white border-accent'
-                              : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+                          onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
+                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border-2 transition-all ${
+                            isActive
+                              ? 'border-accent bg-accent/10'
+                              : 'border-transparent hover:border-ink-faint/30'
                           }`}
+                          style={{ backgroundColor: isActive ? undefined : `${hex}15` }}
                         >
-                          {j}
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                          <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
+                          {teethCount > 0 && (
+                            <span className="text-[10px] text-ink-faint">{teethCount}</span>
+                          )}
+                          {/* Bridge toggle */}
+                          <span
+                            role="button"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setForm(f => ({
+                                ...f,
+                                work_items: f.work_items.map(i => i.id === item.id ? { ...i, bridge: !i.bridge } : i)
+                              }))
+                            }}
+                            title={item.bridge ? 'Eemalda silla märge' : 'Märgi sillaks'}
+                            className={`ml-0.5 text-[10px] px-1 py-0.5 rounded transition-colors ${
+                              item.bridge ? 'bg-accent/20 text-accent' : 'text-ink-faint hover:text-ink-muted'
+                            }`}
+                          >
+                            {item.bridge ? '⛓ sild' : '⛓'}
+                          </span>
                         </button>
-                      ))}
-                    </div>
-                  )
-                })()}
+                      )
+                    })}
+                    <p className="text-[10px] text-ink-faint">
+                      {activeWorkItemId ? 'Klõpsa hammastel' : 'Vali tüüp, et hambaid märkida'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Shared odontogram for all work items */}
+                {form.work_items.length > 0 && (
+                  <div className="bg-bg-sidebar rounded-xl p-3">
+                    <MultiOdontogramPicker
+                      items={form.work_items}
+                      activeItemId={activeWorkItemId}
+                      colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}
+                      onToggleTooth={tooth => {
+                        if (!activeWorkItemId) return
+                        const s = String(tooth)
+                        setForm(f => ({
+                          ...f,
+                          work_items: f.work_items.map(item => {
+                            if (item.id === activeWorkItemId) {
+                              const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
+                              teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                              return { ...item, hambad: [...teeth].join(',') }
+                            }
+                            // Remove from other items (tooth can only be in one)
+                            const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
+                            if (teeth.has(s)) { teeth.delete(s); return { ...item, hambad: [...teeth].join(',') } }
+                            return item
+                          })
+                        }))
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Kirjeldus */}
@@ -923,13 +976,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
             {/* ── RIGHT COLUMN (bottom mode) / continuation (side mode) ── */}
             <div className="space-y-5">
-              {/* Work items (multi-type) or simple hambad picker */}
-              <WorkItemsEditor
-                value={form.work_items}
-                onChange={items => setForm(f => ({ ...f, work_items: items }))}
-              />
-
-              {/* Legacy single odontogram — only when no work items */}
+              {/* Legacy single odontogram — only when no work items selected */}
               {form.work_items.length === 0 && (
               <div>
                 <label className="label">Hambad (FDI)</label>

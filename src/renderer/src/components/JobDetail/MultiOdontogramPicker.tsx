@@ -6,6 +6,7 @@
  * One item is "active" at a time — clicking teeth toggles on that item.
  * A tooth can belong to at most one item.
  */
+import { useState } from 'react'
 import type { WorkItem } from '../../types/job'
 
 // ─── Arch geometry (same as OdontogramPicker) ────────────────────────────────
@@ -94,6 +95,16 @@ interface MultiOdontogramPickerProps {
 export function MultiOdontogramPicker({
   items, activeItemId, colorMap, onToggleTooth, disabled
 }: MultiOdontogramPickerProps) {
+
+  // Orientation toggle: arsti (standard, R left) vs patsiendi (mirror, R right)
+  const [mirror, setMirror] = useState(() => {
+    try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
+  })
+  function toggleMirror() {
+    const next = !mirror
+    setMirror(next)
+    try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
+  }
 
   // Build tooth → { itemId, color, itemIndex } lookup
   const toothOwner = new Map<string, { itemId: string; color: string }>()
@@ -222,10 +233,21 @@ export function MultiOdontogramPicker({
 
   return (
     <div className="space-y-2">
+      {/* Orientation toggle */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={toggleMirror}
+          className="text-[10px] text-ink-faint hover:text-ink-muted transition-colors px-2 py-1 rounded-lg hover:bg-bg-sidebar"
+        >
+          {mirror ? '👤 Patsiendi vaade' : '🩺 Arsti vaade'}
+        </button>
+      </div>
+
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full rounded-xl"
-        style={{ maxHeight: H, background: '#FFF5F6' }}
+        style={{ maxHeight: H, background: '#FFF5F6', transform: mirror ? 'scaleX(-1)' : undefined }}
       >
         <path d={upperGum} fill="#F5C4CA" />
         <path d={lowerGum} fill="#F5C4CA" />
@@ -234,8 +256,13 @@ export function MultiOdontogramPicker({
         <path d={`M ${UCX - URX - 4} ${UCY} A ${URX + 4} ${URY + 4} 0 0 1 ${UCX + URX + 4} ${UCY}`} fill="none" stroke="#EBA8B0" strokeWidth={3} />
         <path d={`M ${LCX - LRX - 4} ${LCY} A ${LRX + 4} ${LRY + 4} 0 0 0 ${LCX + LRX + 4} ${LCY}`} fill="none" stroke="#EBA8B0" strokeWidth={3} />
         <line x1={CX} y1={12} x2={CX} y2={H - 12} stroke="#DDB8BC" strokeWidth={1} strokeDasharray="3 3" />
-        <text x={16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif">R</text>
-        <text x={W - 16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif" textAnchor="end">L</text>
+        {/* R/L labels — flip text back so it's readable when mirrored */}
+        <text x={16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif"
+          style={mirror ? { transform: 'scaleX(-1)', transformOrigin: '16px' } : undefined}
+        >{mirror ? 'L' : 'R'}</text>
+        <text x={W - 16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif" textAnchor="end"
+          style={mirror ? { transform: 'scaleX(-1)', transformOrigin: `${W - 16}px` } : undefined}
+        >{mirror ? 'R' : 'L'}</text>
 
         {/* Bridge connectors (behind teeth) */}
         <BridgeConnectors />
@@ -249,7 +276,7 @@ export function MultiOdontogramPicker({
           return <Tooth key={num} num={num} cx={x} cy={y} upper={false} />
         })}
 
-        {/* FDI labels */}
+        {/* FDI labels — flip text back when mirrored so numbers read correctly */}
         {UPPER_NUMS.map((num, i) => {
           const { x } = upperXY(i)
           const owner = toothOwner.get(String(num))
@@ -258,7 +285,11 @@ export function MultiOdontogramPicker({
               fontFamily="monospace" fontWeight="700"
               fill={owner ? owner.color : '#A08088'}
               onClick={() => handleClick(num)}
-              style={{ cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer', userSelect: 'none' }}
+              style={{
+                cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer',
+                userSelect: 'none',
+                ...(mirror ? { transform: `scaleX(-1)`, transformOrigin: `${x}px 16px` } : {})
+              }}
             >{num}</text>
           )
         })}
@@ -270,7 +301,11 @@ export function MultiOdontogramPicker({
               fontFamily="monospace" fontWeight="700"
               fill={owner ? owner.color : '#A08088'}
               onClick={() => handleClick(num)}
-              style={{ cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer', userSelect: 'none' }}
+              style={{
+                cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer',
+                userSelect: 'none',
+                ...(mirror ? { transform: `scaleX(-1)`, transformOrigin: `${x}px 322px` } : {})
+              }}
             >{num}</text>
           )
         })}
