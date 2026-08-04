@@ -122,10 +122,11 @@ export function PayrollView({ jobs }: PayrollViewProps) {
       // Computed ALWAYS, not only when the total is zero. Gating it on an empty
       // list meant a partial result — three jobs assigned, one line — looked
       // exactly like a complete one, which is the harder problem to notice.
+      // Filter out 'makstud' — already paid is normal, not a warning
       issues: diagnoseEarnings({
         profileId: w.id, rates, jobs, hours, types: wt.types,
         periodStart: period.start, periodEnd: period.end, doneStageKey, alreadyPaid,
-      }),
+      }).filter(iss => iss.code !== 'makstud'),
       assignedDone: jobs.filter(j =>
         (j.assigned_to === w.id || j.designed_by === w.id) && j.status === doneStageKey
       ).length,

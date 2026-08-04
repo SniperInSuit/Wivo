@@ -563,6 +563,107 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
   )
 }
 
+// ─── Material cost tabs (per machine) ─────────────────────────────────────────
+
+function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, setMaterialPrice, setMaterialCost }: {
+  materjalid: string[]
+  masinad: string[]
+  materialPrices: Record<string, import('../stores/useSettings').MaterialPricing>
+  materialCosts: Record<string, import('../stores/useSettings').MaterialPricing>
+  setMaterialPrice: (material: string, size: 'small' | 'large', value: number) => void
+  setMaterialCost: (material: string, size: 'small' | 'large', value: number) => void
+}) {
+  const [costTab, setCostTab] = useState<string>('base')
+  const tabs = ['base', ...masinad]
+
+  // Cost key: "material" for base, "material|machine" for machine-specific
+  const costKey = (material: string) =>
+    costTab === 'base' ? material : `${material}|${costTab}`
+
+  return (
+    <>
+      {/* Sell price header + rows (same for all machines) */}
+      <div className="overflow-x-auto">
+        <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 mb-2 px-1 min-w-[340px]">
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">Materjal</span>
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind väike</span>
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind suur</span>
+        </div>
+        <div className="space-y-1.5 mb-4">
+          {materjalid.length === 0 && (
+            <p className="text-xs text-ink-faint">Materjale ei ole. Lisa need Seaded → Valikud alt.</p>
+          )}
+          {materjalid.map(material => {
+            const p = materialPrices[material] ?? { small: 0, large: 0 }
+            return (
+              <div key={material} className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 items-center px-1 py-0.5 min-w-[340px]">
+                <span className="text-sm text-ink truncate" title={material}>{material}</span>
+                <PriceInput value={p.small} onChange={v => setMaterialPrice(material, 'small', v)} />
+                <PriceInput value={p.large} onChange={v => setMaterialPrice(material, 'large', v)} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Cost section with machine tabs */}
+      <div className="border-t border-ink-faint/15 pt-3">
+        <p className="text-[10px] font-semibold text-accent uppercase tracking-wide mb-2">
+          Omahind (materjali kulu)
+        </p>
+        {masinad.length > 0 && (
+          <div className="flex items-center gap-1 mb-3">
+            {tabs.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setCostTab(tab)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                  costTab === tab
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-sidebar text-ink-muted hover:text-ink'
+                }`}
+              >
+                {tab === 'base' ? 'Vaikimisi' : tab}
+              </button>
+            ))}
+          </div>
+        )}
+        {costTab !== 'base' && (
+          <p className="text-[10px] text-ink-faint mb-2">
+            Kulu masinal <strong>{costTab}</strong>. Kui tühi, kasutatakse vaikimisi hinda.
+          </p>
+        )}
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 mb-2 px-1 min-w-[340px]">
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">Materjal</span>
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind väike</span>
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind suur</span>
+          </div>
+          <div className="space-y-1.5">
+            {materjalid.map(material => {
+              const key = costKey(material)
+              return (
+                <div key={material} className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 items-center px-1 py-0.5 min-w-[340px]">
+                  <span className="text-sm text-ink truncate" title={material}>{material}</span>
+                  <PriceInput
+                    value={materialCosts[key]?.small ?? 0}
+                    onChange={v => setMaterialCost(key, 'small', v)}
+                  />
+                  <PriceInput
+                    value={materialCosts[key]?.large ?? 0}
+                    onChange={v => setMaterialCost(key, 'large', v)}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Profile settings sub-component ───────────────────────────────────────────
 
 function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
@@ -970,7 +1071,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
 export function SettingsPage() {
   const {
     settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber,
-    setTekstiSuurus, addOption, removeOption, renameOption, resetOptions,
+    setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
   } = useSettings()
   const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults } = usePipeline()
@@ -1193,6 +1294,40 @@ export function SettingsPage() {
               >
                 <RotateCcw size={11} /> 100%
               </button>
+            </div>
+          </section>
+          )}
+
+          {activeGroup === 'kasutajaliides' && (
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <Layers size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Paneeli suund</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3">
+              Kuidas töö ja visiidi detailvaade avaneb.
+            </p>
+            <div className="flex gap-2">
+              {([
+                { key: 'side' as const, label: 'Külgpaneel', desc: 'Avaneb paremalt küljelt' },
+                { key: 'bottom' as const, label: 'Alumine paneel', desc: 'Avaneb alt üles' },
+              ]).map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setPaneeliSuund(opt.key)}
+                  className={`flex-1 text-left rounded-xl border-2 p-3 transition-all ${
+                    settings.paneeliSuund === opt.key
+                      ? 'border-accent bg-accent/5'
+                      : 'border-ink-faint/25 hover:border-accent/40'
+                  }`}
+                >
+                  <p className={`text-sm font-medium ${settings.paneeliSuund === opt.key ? 'text-accent' : 'text-ink'}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[11px] text-ink-muted">{opt.desc}</p>
+                </button>
+              ))}
             </div>
           </section>
           )}
@@ -1481,53 +1616,141 @@ export function SettingsPage() {
               Rahandus all kate. Tühi tähendab "teadmata", mitte "tasuta".
             </p>
 
-            {/* Table header. Two pairs: what you charge, and what it costs you —
-                the second is what makes a margin figure possible at all. */}
-            <div className="overflow-x-auto">
-            <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px_80px_80px] gap-x-2 mb-2 px-1 min-w-[500px]">
-              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">Materjal</span>
-              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind väike</span>
-              <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind suur</span>
-              <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind väike</span>
-              <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind suur</span>
-            </div>
+            {/* Machine tab for cost pricing */}
+            <MaterialCostTabs
+              materjalid={settings.materjalid}
+              masinad={settings.masinad}
+              materialPrices={settings.materialPrices}
+              materialCosts={settings.materialCosts}
+              setMaterialPrice={setMaterialPrice}
+              setMaterialCost={setMaterialCost}
+            />
 
-            <div className="space-y-1.5">
-              {settings.materjalid.length === 0 && (
-                <p className="text-xs text-ink-faint">
-                  Materjale ei ole. Lisa need Seaded → Valikud alt.
-                </p>
-              )}
-              {settings.materjalid.map(material => {
-                const p = settings.materialPrices[material] ?? { small: 0, large: 0 }
-                return (
-                  <div
-                    key={material}
-                    className="grid grid-cols-[minmax(140px,1fr)_80px_80px_80px_80px] gap-x-2 items-center px-1 py-0.5 min-w-[500px]"
-                  >
-                    <span className="text-sm text-ink truncate" title={material}>{material}</span>
-                    <PriceInput
-                      value={p.small}
-                      onChange={v => setMaterialPrice(material, 'small', v)}
+
+          {/* Fixed costs per job */}
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Euro size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Fikseeritud kulud töö kohta</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3">
+              Lisatakse automaatselt iga töö kuludesse. Kindad, visiirid, desinfitseerimine jm väikesed kulud mis on iga patsiendiga.
+            </p>
+            <div className="space-y-1.5 mb-2">
+              {settings.fixedCostsPerJob.map((cost, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={cost.nimi}
+                    onChange={e => {
+                      const next = [...settings.fixedCostsPerJob]
+                      next[idx] = { ...next[idx], nimi: e.target.value }
+                      setFixedCosts(next)
+                    }}
+                    placeholder="Kulu nimi"
+                    className="input py-1.5 text-sm flex-1"
+                  />
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cost.summa}
+                      onChange={e => {
+                        const next = [...settings.fixedCostsPerJob]
+                        next[idx] = { ...next[idx], summa: parseFloat(e.target.value) || 0 }
+                        setFixedCosts(next)
+                      }}
+                      className="input py-1.5 text-sm pr-7 text-right"
                     />
-                    <PriceInput
-                      value={p.large}
-                      onChange={v => setMaterialPrice(material, 'large', v)}
-                    />
-                    <PriceInput
-                      value={settings.materialCosts[material]?.small ?? 0}
-                      onChange={v => setMaterialCost(material, 'small', v)}
-                    />
-                    <PriceInput
-                      value={settings.materialCosts[material]?.large ?? 0}
-                      onChange={v => setMaterialCost(material, 'large', v)}
-                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
                   </div>
-                )
-              })}
+                  <span className="text-xs text-ink-faint">/töö</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = settings.fixedCostsPerJob.filter((_, i) => i !== idx)
+                      setFixedCosts(next)
+                    }}
+                    className="p-1 text-ink-faint hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
             </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const next = [...settings.fixedCostsPerJob, { nimi: '', summa: 0 }]
+                setFixedCosts(next)
+              }}
+              className="text-xs text-accent font-medium hover:underline"
+            >
+              + Lisa kulu
+            </button>
+            {settings.fixedCostsPerJob.length > 0 && (
+              <p className="text-xs text-ink-muted mt-2">
+                Kokku: <strong className="tabular-nums">{settings.fixedCostsPerJob.reduce((s, c) => s + c.summa, 0).toFixed(2)} €</strong> / töö
+              </p>
+            )}
+          </section>
 
+          {/* Extra services price list */}
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Euro size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Lisateenused (hinnakirja valik)</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3">
+              Teenused mida saab tööle juurde lisada (nt ülesehitus, ajutine kroon, wax-up).
+              Ilmuvad töö vormil valitavate nuppudena.
+            </p>
+            <div className="space-y-1.5 mb-2">
+              {settings.lisateenused.map((svc, idx) => (
+                <div key={svc.id} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={svc.nimi}
+                    onChange={e => {
+                      const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, nimi: e.target.value } : s)
+                      setLisateenused(next)
+                    }}
+                    placeholder="Teenuse nimi"
+                    className="input py-1.5 text-sm flex-1"
+                  />
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={svc.hind}
+                      onChange={e => {
+                        const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, hind: parseFloat(e.target.value) || 0 } : s)
+                        setLisateenused(next)
+                      }}
+                      className="input py-1.5 text-sm pr-7 text-right"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLisateenused(settings.lisateenused.filter((_, i) => i !== idx))}
+                    className="p-1 text-ink-faint hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLisateenused([...settings.lisateenused, { id: crypto.randomUUID(), nimi: '', hind: 0 }])}
+              className="text-xs text-accent font-medium hover:underline"
+            >
+              + Lisa teenus
+            </button>
+          </section>
 
           {/* Example */}
           <div className="p-3 bg-bg-sidebar rounded-xl text-xs text-ink-muted leading-relaxed">

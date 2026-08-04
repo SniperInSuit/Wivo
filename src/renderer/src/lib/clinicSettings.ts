@@ -39,6 +39,8 @@ export interface ClinicSettingsRow {
     kiirtooKordaja: number
     kmMaar: number
     makseTahtaegPaevades: number
+    fixedCostsPerJob: import('../stores/useSettings').FixedCost[]
+    lisateenused: import('../stores/useSettings').ExtraService[]
   }
   payroll: {
     tooandjaMaksudProtsent: number
@@ -103,6 +105,8 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   kmMaar: 'pricing',
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
+  fixedCostsPerJob: 'pricing',
+  lisateenused: 'pricing',
   ajajoonAlgus: 'calendar',
   ajajoonLopp: 'calendar',
   nadalAlgus: 'calendar',

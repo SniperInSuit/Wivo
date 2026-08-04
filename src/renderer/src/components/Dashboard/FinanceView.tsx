@@ -64,10 +64,11 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
     workers: workers.map(w => ({ id: w.id, full_name: w.full_name, toosuhe: w.toosuhe })),
     types: wt.types,
     materialCosts: settings.materialCosts,
+    fixedCosts: settings.fixedCostsPerJob,
     doneStageKey,
     periodStart: range.start,
     periodEnd: range.end,
-  }), [jobsInPeriod, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, doneStageKey, range])
+  }), [jobsInPeriod, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.fixedCostsPerJob, doneStageKey, range])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
   // real money leaving the account.
@@ -141,6 +142,10 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
               ? `sh. tarvikud ${fin.consumableCost.toFixed(2)} €`
               : undefined}
             coverage={fin.materialCoverage} coverageLabel="tööl on omahind" />
+          {fin.fixedCostTotal > 0 && (
+            <Money icon={Package} label="Fikseeritud kulud" value={fin.fixedCostTotal} accent="#8B5CF6"
+              sub={`${settings.fixedCostsPerJob.map(c => c.nimi).join(', ')}`} />
+          )}
           <Money icon={Repeat} label="Muudatuste kahju" value={fin.revisionLossTotal} accent="#EC4899"
             sub="tööjõud + materjal − tasutud" />
         </div>

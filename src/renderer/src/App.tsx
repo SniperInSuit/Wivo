@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { TopBar } from './components/TopBar'
@@ -19,6 +19,7 @@ import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJo
 import { useMarkJobsPaid } from './hooks/useInvoices'
 import type { PaidDetails } from './components/JobDetail/MarkPaidDialog'
 import { PipelineProvider, usePipeline } from './context/PipelineContext'
+import { useSettings } from './stores/useSettings'
 import { AuthProvider } from './context/AuthContext'
 import { AuthGuard } from './components/Auth/AuthGuard'
 import { ClinicSettingsSync } from './components/ClinicSettingsSync'
@@ -55,6 +56,22 @@ function AppContent() {
   const [newVisitSignal, setNewVisitSignal] = useState(0)
 
   const { data: jobs = [], isLoading } = useJobs()
+  const { settings } = useSettings()
+
+  // Global search filter — applied to views that display individual jobs
+  const searchedJobs = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return jobs
+    return jobs.filter(j =>
+      j.patsient.toLowerCase().includes(q) ||
+      (j.too ?? '').toLowerCase().includes(q) ||
+      (j.hambad ?? '').toLowerCase().includes(q) ||
+      (j.materjal ?? '').toLowerCase().includes(q) ||
+      (j.print_id ?? '').toLowerCase().includes(q) ||
+      (j.kirjeldus ?? '').toLowerCase().includes(q)
+    )
+  }, [jobs, search])
+  const panelPosition = settings.paneeliSuund
   const { doneStageKey } = usePipeline()
   const createJob = useCreateJob()
   const updateJob = useUpdateJob()
@@ -259,7 +276,7 @@ function AppContent() {
         <main className="flex-1 overflow-hidden flex flex-col">
           {view === 'overview' && (
             <OverviewView
-              jobs={jobs}
+              jobs={searchedJobs}
               loading={isLoading}
               onJobClick={openEdit}
               onNewJob={openNew}
@@ -268,7 +285,7 @@ function AppContent() {
           )}
           {view === 'board' && (
             <Board
-              jobs={jobs}
+              jobs={searchedJobs}
               loading={isLoading}
               onJobClick={openEdit}
               onStageChange={handleStageChange}
@@ -278,7 +295,7 @@ function AppContent() {
           )}
           {view === 'table' && (
             <TableView
-              jobs={jobs}
+              jobs={searchedJobs}
               onJobClick={openEdit}
               onJobEye={openBottom}
               onBulkStatusChange={handleBulkStatusChange}
@@ -291,7 +308,7 @@ function AppContent() {
           )}
           {view === 'calendar' && (
             <CalendarView
-              jobs={jobs}
+              jobs={searchedJobs}
               onJobClick={openBottom}
               onRevisionClick={openBottomRevision}
               onNewJobOnDate={openNewOnDate}
@@ -331,6 +348,7 @@ function AppContent() {
             onSave={handleSave}
             onDelete={panelJob !== 'new' ? handleDelete : undefined}
             saving={createJob.isPending || updateJob.isPending}
+            position={panelPosition}
             initialDate={newJobDate}
             highlightRevisionId={panelRevisionId}
             highlightNoteId={panelNoteId}
@@ -347,7 +365,7 @@ function AppContent() {
           onSave={handleBottomSave}
           onDelete={handleDelete}
           saving={updateJob.isPending}
-          position="bottom"
+          position={panelPosition}
           highlightRevisionId={bottomRevisionId}
           onOpenPatient={openPatient}
         />

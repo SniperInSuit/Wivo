@@ -97,6 +97,13 @@ export function jobAllTeeth(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): st
   return [...set].join(',')
 }
 
+// An extra service added to a specific job, copied from settings.lisateenused
+export interface JobExtra {
+  id: string      // matches ExtraService.id
+  nimi: string    // copied at add time (so renaming the service doesn't rewrite history)
+  hind: number    // € — can be overridden per job
+}
+
 // Full Job record matching the Supabase `jobs` table
 export interface Job {
   id: string
@@ -129,6 +136,8 @@ export interface Job {
   rev_hambad?: string | null
   rev_varv?: string | null
   uus_valmis?: string | null
+  // --- Extra services added to this job (from settings.lisateenused) ---
+  extras: JobExtra[]           // e.g. [{id, nimi, hind}]
   // --- Pricing / payment ---
   hind: number | null          // Hind — total price in EUR
   disain_hind: number | null   // Disain hind — design fee (own or third-party)

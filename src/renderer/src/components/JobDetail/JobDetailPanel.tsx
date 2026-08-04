@@ -50,6 +50,7 @@ const EMPTY_FORM: JobInput = {
   varv: '',
   hambad: '',
   work_items: [],
+  extras: [],
   valmis_aeg: '',
   valmis_kuupaev: null,
   kiirtoo: false,
@@ -356,6 +357,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         varv: job.varv ?? '',
         hambad: job.hambad ?? '',
         work_items: Array.isArray(job.work_items) ? job.work_items.map(i => ({ ...i })) : [],
+        extras: Array.isArray(job.extras) ? job.extras.map(e => ({ ...e })) : [],
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
@@ -1040,6 +1042,63 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               </div>
               )}
 
+              {/* Extra services picker */}
+              {settings.lisateenused.length > 0 && (
+                <div>
+                  <label className="label">Lisateenused</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {settings.lisateenused.map(svc => {
+                      const added = (form.extras ?? []).find(e => e.id === svc.id)
+                      return (
+                        <button
+                          key={svc.id}
+                          type="button"
+                          onClick={() => {
+                            if (added) {
+                              setForm(f => ({ ...f, extras: (f.extras ?? []).filter(e => e.id !== svc.id) }))
+                            } else {
+                              setForm(f => ({ ...f, extras: [...(f.extras ?? []), { id: svc.id, nimi: svc.nimi, hind: svc.hind }] }))
+                            }
+                          }}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg border-2 font-medium transition-all ${
+                            added
+                              ? 'border-accent bg-accent/10 text-accent'
+                              : 'border-ink-faint/25 text-ink-muted hover:border-accent/40'
+                          }`}
+                        >
+                          {svc.nimi} · {svc.hind.toFixed(0)}€
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {(form.extras ?? []).length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {(form.extras ?? []).map(ext => (
+                        <div key={ext.id} className="flex items-center gap-2 text-xs">
+                          <span className="text-ink flex-1">{ext.nimi}</span>
+                          <div className="relative w-20">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={ext.hind}
+                              onChange={e => {
+                                const v = parseFloat(e.target.value) || 0
+                                setForm(f => ({ ...f, extras: (f.extras ?? []).map(x => x.id === ext.id ? { ...x, hind: v } : x) }))
+                              }}
+                              className="input py-1 text-xs pr-6 text-right"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint">€</span>
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-ink-muted">
+                        Lisateenused kokku: <strong className="tabular-nums">{(form.extras ?? []).reduce((s, e) => s + e.hind, 0).toFixed(2)} €</strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Pricing block — after teeth in both modes */}
               <PricingBlock
                 form={form} set={set} settings={settings}
@@ -1067,16 +1126,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         )}
 
         {/* Footer */}
+        {(editing || !job) && (
         <div className="flex flex-col gap-2 px-6 py-4 border-t border-nav/10 flex-shrink-0 bg-nav-bg">
           {saveError && (
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
           )}
           <div className="flex items-center justify-between">
-            {job && !editing ? (
-              <button type="button" onClick={onClose} className="text-nav-muted hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm ml-auto">
-                Sulge
-              </button>
-            ) : (
+            {(
               <>
                 <button
                   type="button"
@@ -1104,6 +1160,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             )}
           </div>
         </div>
+        )}
       </motion.aside>
 
       {/* Marking paid always records HOW — never a bare boolean flip. */}

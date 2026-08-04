@@ -19,7 +19,7 @@
 import type { Job } from '../types/job'
 import { revisionReasons } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
-import type { MaterialPricing } from '../stores/useSettings'
+import type { MaterialPricing, FixedCost } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
@@ -45,22 +45,52 @@ const coverage = (total: number, covered: number): Coverage => ({
 })
 
 /** Material cost of one job, or null when the material has no cost recorded. */
+/**
+ * Material cost for a job. Checks machine-specific cost first (key: "material|machine"),
+ * then falls back to base material cost (key: "material").
+ * This is because capsule capacity differs by machine:
+ *   Pro2 arch kit → bulk, lower per-tooth cost
+ *   Midas → tooth per capsule (1 large, up to 3 small), higher per-tooth cost
+ */
 export function jobMaterialCost(
-  job: Pick<Job, 'materjal' | 'hambad'>,
+  job: Pick<Job, 'materjal' | 'hambad' | 'masina'>,
   costs: Record<string, MaterialPricing>
 ): number | null {
   const mat = job.materjal?.trim()
   if (!mat) return null
-  // Materials are stored with the shade appended ("Crown HT A2"), so fall back
-  // to the longest configured name the value starts with — the same rule the
-  // material picker uses.
-  const key = Object.keys(costs)
-    .sort((a, b) => b.length - a.length)
-    .find(k => mat === k || mat.toLowerCase().startsWith(k.toLowerCase() + ' '))
-  const c = key ? costs[key] : undefined
+  const machine = job.masina?.trim()
+
+  // Try machine-specific key first ("Crown HT|Pro2"), then base ("Crown HT")
+  function findCost(material: string): MaterialPricing | undefined {
+    const allKeys = Object.keys(costs).sort((a, b) => b.length - a.length)
+
+    // 1. Machine-specific: "material|machine"
+    if (machine) {
+      const machineKey = allKeys.find(k => {
+        if (!k.includes('|')) return false
+        const [kMat, kMach] = k.split('|')
+        return kMach.toLowerCase() === machine.toLowerCase()
+          && (material === kMat || material.toLowerCase().startsWith(kMat.toLowerCase() + ' '))
+      })
+      if (machineKey) return costs[machineKey]
+    }
+
+    // 2. Base material (no machine)
+    const baseKey = allKeys
+      .filter(k => !k.includes('|'))
+      .find(k => material === k || material.toLowerCase().startsWith(k.toLowerCase() + ' '))
+    return baseKey ? costs[baseKey] : undefined
+  }
+
+  const c = findCost(mat)
   if (!c || (c.small === 0 && c.large === 0)) return null
   const h = job.hambad ?? ''
   return round2(countSmallTeeth(h) * c.small + countLargeTeeth(h) * c.large)
+}
+
+/** Total fixed overhead per job (gloves, shields, disinfection etc). */
+export function jobFixedCost(fixedCosts: FixedCost[]): number {
+  return round2(fixedCosts.reduce((s, c) => s + (c.summa ?? 0), 0))
 }
 
 export interface WorkTypeFinance {
@@ -120,6 +150,7 @@ export interface FinanceStats {
   materialCost: number
   /** Screws, abutments and the like, from the work type's cost list. */
   consumableCost: number
+  fixedCostTotal: number
   // Result
   grossMargin: number
   grossMarginPct: number
@@ -147,6 +178,7 @@ export interface FinanceInput {
   workers: { id: string; full_name: string; toosuhe?: string | null }[]
   types: WorkType[]
   materialCosts: Record<string, MaterialPricing>
+  fixedCosts: FixedCost[]
   doneStageKey: string
   periodStart: string
   periodEnd: string
@@ -155,7 +187,7 @@ export interface FinanceInput {
 export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
-    materialCosts, doneStageKey, periodStart, periodEnd,
+    materialCosts, fixedCosts, doneStageKey, periodStart, periodEnd,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -231,11 +263,13 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   }
   materialCost = round2(materialCost)
   consumableCost = round2(consumableCost)
+  const perJobFixed = jobFixedCost(fixedCosts)
+  const fixedCostTotal = round2(done.length * perJobFixed)
 
   // ── Margin ────────────────────────────────────────────────────────────────
   // Against BILLED, not against job prices: an invoice is what the clinic can
   // actually collect on.
-  const grossMargin = round2(billed - labourAccrued - materialCost - consumableCost)
+  const grossMargin = round2(billed - labourAccrued - materialCost - consumableCost - fixedCostTotal)
   const grossMarginPct = billed > 0 ? round2((grossMargin / billed) * 100) : 0
 
   // ── Per work type ─────────────────────────────────────────────────────────
@@ -306,7 +340,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const names = revisionReasons(r)
       const reasons = names.length > 0 ? names : ['Määramata']
       const shareOf = (v: number) => v / reasons.length
-      const revMaterial = (jobMaterialCost({ materjal: j.materjal, hambad: r.hambad ?? j.hambad }, materialCosts) ?? 0)
+      const revMaterial = (jobMaterialCost({ materjal: j.materjal, hambad: r.hambad ?? j.hambad, masina: j.masina }, materialCosts) ?? 0)
         + workTypeConsumables(j.too, types, toothCount(r.hambad ?? j.hambad)).total
 
       for (const reason of reasons) {
@@ -379,7 +413,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     billed, received, outstanding: outstandingTotal, overdue: overdueTotal,
     unbilled, unbilledJobs: unbilledList.length,
     labourAccrued, labourPaid, labourEmployeeGross, labourContractor,
-    materialCost, consumableCost,
+    materialCost, consumableCost, fixedCostTotal,
     grossMargin, grossMarginPct,
     byWorkType, revisionLoss, revisionLossTotal, byWorker, byPaymentMethod,
     labourCoverage: coverage(done.length, done.filter(j => j.assigned_to).length),

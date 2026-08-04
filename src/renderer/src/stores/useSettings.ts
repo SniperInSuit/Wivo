@@ -87,6 +87,7 @@ export interface WivoSettings {
   teema: ThemeKey         // Teema — see THEMES / styles/index.css
   ribaLaiendatud: boolean // Külgriba laiendatud (sildid ikoonide kõrval) või kompaktne
   tekstiSuurus: number    // Teksti/kuva suurus, 1 = 100%
+  paneeliSuund: 'side' | 'bottom'  // Kuidas töö/visiidi paneel avaneb
   // ─── Kohandatavad valikud ──────────────────────────────────────────────────
   // These were hardcoded constants, which meant a lab with a third printer or a
   // material outside the SprintRay range had to type it free-hand every time.
@@ -121,6 +122,26 @@ export interface WivoSettings {
   // Tööandja maksude määr brutopalgalt, %. Vaikimisi 0 — vale maksumäär, mille
   // rakendus ise välja mõtles, on halvem kui ilmselgelt puuduv.
   tooandjaMaksudProtsent: number
+  // ─── Fikseeritud kulud iga töö kohta ───────────────────────────────────────
+  // Applied automatically to every job's cost calculation. Covers things like
+  // gloves, face shields, disinfection supplies — small per-patient costs that
+  // are real but not worth tracking individually.
+  fixedCostsPerJob: FixedCost[]
+  // ─── Lisateenused ──────────────────────────────────────────────────────────
+  // Extra services that can be added to individual jobs (e.g. Ülesehitus,
+  // Ajutine kroon, Wax-up). Defined here as a price list, selected per job.
+  lisateenused: ExtraService[]
+}
+
+export interface FixedCost {
+  nimi: string    // e.g. "Kindad ja visiirid", "Desinfitseerimine"
+  summa: number   // € per job
+}
+
+export interface ExtraService {
+  id: string      // crypto.randomUUID()
+  nimi: string    // e.g. "Ülesehitus", "Ajutine kroon", "Wax-up"
+  hind: number    // € default price
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -137,6 +158,7 @@ function defaultSettings(): WivoSettings {
     kasutajaNimi: '',
     teema: 'hele',
     ribaLaiendatud: true,
+    paneeliSuund: 'side' as const,
     tekstiSuurus: 1,
     masinad: [...MACHINE_OPTIONS],
     materjalid: [...MATERIAL_OPTIONS],
@@ -157,6 +179,8 @@ function defaultSettings(): WivoSettings {
     kmMaar: 0,
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
+    fixedCostsPerJob: [],
+    lisateenused: [],
   }
 }
 
@@ -276,6 +300,7 @@ function loadSettings(): WivoSettings {
       kasutajaNimi: stored.kasutajaNimi ?? '',
       teema: stored.teema ?? 'hele',
       ribaLaiendatud: stored.ribaLaiendatud ?? true,
+      paneeliSuund: stored.paneeliSuund === 'bottom' ? 'bottom' : 'side',
       // Clamped: a corrupted value here would otherwise render the UI unusable
       // at a size from which the settings page could not be reached again.
       tekstiSuurus: clampTextScale(stored.tekstiSuurus),
@@ -298,6 +323,8 @@ function loadSettings(): WivoSettings {
       kmMaar: stored.kmMaar ?? 0,
       makseTahtaegPaevades: stored.makseTahtaegPaevades ?? 14,
       tooandjaMaksudProtsent: stored.tooandjaMaksudProtsent ?? 0,
+      fixedCostsPerJob: Array.isArray(stored.fixedCostsPerJob) ? stored.fixedCostsPerJob.map(c => ({ ...c })) : [],
+      lisateenused: Array.isArray(stored.lisateenused) ? stored.lisateenused.map(s => ({ ...s })) : [],
     }
   } catch {
     return defaultSettings()
@@ -475,6 +502,18 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, ribaLaiendatud: !prev.ribaLaiendatud }))
   }, [setSettings])
 
+  const setFixedCosts = useCallback((costs: FixedCost[]) => {
+    setSettings(prev => ({ ...prev, fixedCostsPerJob: costs }), ['pricing'])
+  }, [setSettings])
+
+  const setLisateenused = useCallback((items: ExtraService[]) => {
+    setSettings(prev => ({ ...prev, lisateenused: items }), ['pricing'])
+  }, [setSettings])
+
+  const setPaneeliSuund = useCallback((suund: 'side' | 'bottom') => {
+    setSettings(prev => ({ ...prev, paneeliSuund: suund }))
+  }, [setSettings])
+
   const setTekstiSuurus = useCallback((scale: number) => {
     setSettings(prev => ({ ...prev, tekstiSuurus: clampTextScale(scale) }))
   }, [setSettings])
@@ -582,7 +621,7 @@ export function useSettings() {
 
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
-    setTeema, toggleRiba, setNumber, setTekstiSuurus,
+    setTeema, toggleRiba, setNumber, setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     setTooHind,
