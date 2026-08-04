@@ -50,6 +50,9 @@
   --c-chrome-muted: 99 115 129;
   --c-chrome-faint: 168 180 190;
 
+  /* The logo's navy plate — see .chip-active */
+  --c-chip-plate: 13 28 56;
+
   --app-bg: rgb(247 249 250);
   --card-blur: none;
 }
@@ -83,6 +86,8 @@
   --c-chrome-muted: 200 215 235;
   --c-chrome-faint: 120 140 170;
 
+  --c-chip-plate: 13 28 56;
+
   /* Flat navy matching the sidebar — no gradient, one solid surface. */
   --app-bg: rgb(12 24 48);
   --card-blur: none;
@@ -108,6 +113,10 @@
   --c-nav: 236 244 252;
   --c-nav-muted: 160 180 205;
   --c-nav-bg: 13 22 42;
+
+  /* The cards are already navy here, so the logo plate would vanish into them.
+     Sink the chip below the card instead — the cyan text does the rest. */
+  --c-chip-plate: 6 14 30;
 
   /* Chrome — bg is light in this theme, so chrome text stays dark */
   --c-chrome: 233 239 246;
@@ -205,6 +214,32 @@
   .btn-ghost {
     @apply text-ink-muted hover:text-ink hover:bg-bg-sidebar font-medium px-3 py-2 rounded-lg
            transition-colors duration-150 flex items-center gap-2 text-sm;
+  }
+
+  /* Selected filter chip — the logo worn small: its navy plate as the fill, its
+     cyan tooth gradient as the text. Every list in the app filters with chips
+     like these, and each view used to pick its own accent (teal in the table,
+     black for the period pills), so the look lives in one place now.
+
+     Two background layers, each with its own clip: the cyan gradient on top
+     clipped to the glyphs, the flat plate under it clipped to the box. Painting
+     the plate any other way — an inset shadow, a ::before — puts it ON TOP of
+     the text-shaped gradient, because that gradient is a background too, and
+     the transparent glyphs leave nothing to draw over it. The chip comes out
+     solid navy with no label. */
+  .chip-active {
+    background-image:
+      linear-gradient(180deg, #19cfe6 0%, #0ba6c6 100%),
+      linear-gradient(rgb(var(--c-chip-plate)), rgb(var(--c-chip-plate)));
+    -webkit-background-clip: text, border-box;
+    background-clip: text, border-box;
+    color: transparent;
+  }
+  /* Icons stroke with currentColor, and currentColor here is the transparent
+     that lets the gradient through — without this they vanish. A flat mid-tone
+     from the same gradient; a 12px glyph is too small to show a ramp anyway. */
+  .chip-active svg {
+    color: #16c2da;
   }
 
   .input {

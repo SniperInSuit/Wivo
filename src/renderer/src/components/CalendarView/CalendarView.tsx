@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Plus, Zap, User, Clock, Cpu, CalendarDays,
   CheckCircle2, AlertTriangle, X, UserCheck, UserX, ArrowUpRight, Filter, XCircle,
-  CornerDownLeft, Search
+  CornerDownLeft
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
@@ -24,6 +24,7 @@ import { UNKNOWN_WORK_TYPE } from '../../config/workTypes'
 import { useVisits, useUpdateVisit } from '../../hooks/useVisits'
 import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
+import { MultiFilterMenu } from '../ui/FilterMenu'
 import { VisitTimeline } from './VisitTimeline'
 import { VisitWeekGrid } from './VisitWeekGrid'
 import { VisitForm } from './VisitForm'
@@ -1068,17 +1069,17 @@ function FilterPopover({
             </button>
           </div>
 
-          <FilterDropdown
+          <MultiFilterMenu
             label="Patsient" options={patients} selected={filterPatients} onChange={onPatients} full
           />
           {showJobs && (
-            <FilterDropdown
+            <MultiFilterMenu
               label="Töö tüüp" options={workTypes} selected={filterWorkTypes} onChange={onWorkTypes}
               swatches={workTypeSwatches} full
             />
           )}
           {showVisits && doctors.length > 0 && (
-            <FilterDropdown
+            <MultiFilterMenu
               label="Arst" options={doctors} selected={filterDoctors} onChange={onDoctors} full
             />
           )}
@@ -1092,114 +1093,6 @@ function FilterPopover({
               Tühjenda kõik
             </button>
           )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Filter dropdown ──────────────────────────────────────────────────────────
-
-function FilterDropdown({ label, options, selected, onChange, full, swatches }: {
-  label: string
-  options: string[]
-  selected: Set<string>
-  onChange: (v: Set<string>) => void
-  full?: boolean   // stretch to the popover width instead of hugging the label
-  swatches?: Record<string, string>   // optional colour key, by option
-}) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  const toggle = (item: string) => {
-    const next = new Set(selected)
-    next.has(item) ? next.delete(item) : next.add(item)
-    onChange(next)
-  }
-
-  // A clinic has hundreds of patients; scrolling a list that long to find one
-  // name is not a filter, it is a haystack. Selected options always stay
-  // visible so a search cannot hide what is already active.
-  const q = query.trim().toLowerCase()
-  const shown = q
-    ? options.filter(o => o.toLowerCase().includes(q) || selected.has(o))
-    : options
-
-  return (
-    <div className={`relative ${full ? 'w-full' : ''}`} ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
-          full ? 'w-full justify-between' : ''
-        } ${
-          selected.size > 0
-            ? 'bg-accent/15 text-accent border-accent/30'
-            : 'bg-bg-card text-ink-muted border-ink-faint/20 hover:border-ink-faint/40'
-        }`}
-      >
-        {label}
-        {selected.size > 0 && (
-          <span className="bg-accent text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
-            {selected.size}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute top-full mt-1 left-0 z-50 bg-bg-card border border-ink-faint/20 rounded-xl shadow-panel w-56 max-h-72 overflow-hidden py-1 flex flex-col">
-          {options.length > 6 && (
-            <div className="px-2 pb-1.5 pt-0.5 flex-shrink-0">
-              <div className="relative">
-                <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={`Otsi… (${options.length})`}
-                  className="input py-1 pl-6 pr-2 text-xs w-full"
-                />
-              </div>
-            </div>
-          )}
-          <div className="overflow-y-auto">
-          {options.length === 0 ? (
-            <p className="text-xs text-ink-faint px-3 py-2">Andmed puuduvad</p>
-          ) : shown.length === 0 ? (
-            <p className="text-xs text-ink-faint px-3 py-2">Vastet ei leitud</p>
-          ) : shown.map(opt => (
-            <button
-              key={opt}
-              onClick={() => toggle(opt)}
-              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                selected.has(opt) ? 'bg-accent/10 text-accent font-medium' : 'text-ink-muted hover:bg-bg-sidebar'
-              }`}
-            >
-              <span className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                selected.has(opt) ? 'bg-accent border-accent' : 'border-ink-faint'
-              }`}>
-                {selected.has(opt) && <CheckCircle2 size={8} className="text-white" />}
-              </span>
-              {swatches?.[opt] && (
-                <span
-                  className="w-2.5 h-2.5 rounded flex-shrink-0"
-                  style={{ backgroundColor: swatches[opt] }}
-                />
-              )}
-              <span className="truncate">{opt}</span>
-            </button>
-          ))}
-          </div>
         </div>
       )}
     </div>

@@ -302,6 +302,11 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId, highlightNoteId, onOpenPatient }: JobDetailPanelProps) {
   const isBottom = position === 'bottom'
   const isFullscreen = position === 'fullscreen'
+  // Both bottom and fullscreen are sheets: they rise from the bottom edge and
+  // stop short of the top, so the blurred page underneath stays visible and the
+  // panel keeps reading as something layered over your work, not a new screen.
+  // They differ only in how far up they go.
+  const isSheet = isBottom || isFullscreen
   const { settings } = useSettings()
   const wt = useWorkTypes()
   // Full price vs the type's discount price. Per job, not a setting: the person
@@ -483,22 +488,23 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       />
       <motion.aside
         key="panel"
-        initial={isFullscreen ? { opacity: 0, scale: 0.98 } : isBottom ? { y: '100%' } : { x: '100%' }}
-        animate={isFullscreen ? { opacity: 1, scale: 1 } : isBottom ? { y: 0 } : { x: 0 }}
-        exit={isFullscreen ? { opacity: 0, scale: 0.98 } : isBottom ? { y: '100%' } : { x: '100%' }}
+        initial={isSheet ? { y: '100%' } : { x: '100%' }}
+        animate={isSheet ? { y: 0 } : { x: 0 }}
+        exit={isSheet ? { y: '100%' } : { x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className={
           isFullscreen
-            ? 'fixed inset-0 bg-bg-card z-50 flex flex-col overflow-hidden'
+            ? 'fixed left-0 right-0 bottom-0 top-8 bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
             : isBottom
               ? 'fixed left-0 right-0 bottom-0 h-panel bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
               : 'fixed right-0 top-0 bottom-0 w-[680px] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden'
         }
         onClick={e => e.stopPropagation()}
       >
-        {/* Work-type colour strip — bottom panel only. Colour comes from
-            Seaded → Valikud, same source as the calendar and the legend. */}
-        {isBottom && (
+        {/* Work-type colour strip — sheets only, where there is a top edge to
+            crown. Colour comes from Seaded → Valikud, same source as the
+            calendar and the legend. */}
+        {isSheet && (
           <div
             className="h-1.5 flex-shrink-0 rounded-t-2xl"
             style={{ backgroundColor: wt.hex(job?.too ?? form.too) }}

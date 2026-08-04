@@ -276,7 +276,7 @@ function Toggle({ active, onClick, label }: { active: boolean; onClick: () => vo
     <button
       onClick={onClick}
       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-        active ? 'bg-accent text-white' : 'text-ink-muted hover:bg-bg-sidebar border border-ink-faint/30'
+        active ? 'chip-active' : 'text-ink-muted hover:bg-bg-sidebar border border-ink-faint/30'
       }`}
     >
       {label}

@@ -1,6 +1,6 @@
 {
   "name": "wivo",
-  "version": "1.25.35",
+  "version": "1.26.0",
   "description": "SprintRay Dental Production Tracker",
   "author": "Wivo",
   "main": "out/main/index.js",
@@ -50,7 +50,10 @@
       "out/**/*"
     ],
     "extraResources": [
-      { "from": ".env", "to": ".env" }
+      {
+        "from": ".env",
+        "to": ".env"
+      }
     ],
     "publish": {
       "provider": "github",
@@ -59,7 +62,12 @@
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.png"
     },

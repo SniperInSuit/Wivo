@@ -150,7 +150,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-100 ${
-                filter === f.key ? 'bg-accent text-white' : 'bg-bg-sidebar text-ink-muted hover:text-ink'
+                filter === f.key ? 'chip-active' : 'bg-bg-sidebar text-ink-muted hover:text-ink'
               }`}
             >
               {f.label}

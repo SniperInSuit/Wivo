@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.26.0] — 2026-08-04
+Andmebaasi muudatusi ei ole.
+
+> **Viimane versioon enne suunamuutust.** Siit edasi kitseneb toode solo-kliiniku
+> haldusest tagasi algse ideeni: **WivoLab, töövoo haldus hambalaborile**.
+> Kliinikupool (patsiendikaart, visiidid) läheb lipu taha ja tuleb hiljem eraldi
+> tootena. Järgmisena: jagatud hinnamootor, tellijakliinik ja B2B arveldus.
+
+**Töö paneel avaneb nüüd alt üles**
+- Täisekraani-režiim käitub nagu alumine paneel — tõuseb alt, jätab ülevalt 32px
+  vahe, kust paistab läbi hägustatud eelmine leht
+- Enne ilmus see sisse `scale`-iga ja kattis kogu akna, mis luges uue ekraanina,
+  mitte töö kohal oleva paneelina
+- Ümarad ülanurgad, ülemine ääris ja töötüübi värviriba — need olid ainult
+  alumisel paneelil, sest täisekraanil polnud servi kuhugi joonistada
+
+**Valitud filtrid kannavad logo värve**
+- Uus `.chip-active`: logo tumesinine plaat taustaks, hamba tsüaan gradient tekstiks
+- Enne valis iga vaade oma rõhuvärvi — tabelis türkiis, kuupäevapillidel must
+- Kaks taustakihti eraldi clip'idega (`text, border-box`), sest gradient-tekst on
+  *taust*, mitte tindivärv — plaat mis tahes muul viisil (inset shadow, ::before)
+  maalitakse selle peale ja nupp jääb tühjaks
+- Ikoonid saavad eraldi värvi: `currentColor` on siin läbipaistev
+
+**Tabeli filtririba kukkus ühele reale**
+- 20 chipi kolmes grupis → etapid + kaks rippmenüüd
+- Tööliigid grupeeritakse nüüd Seadete töötüüpide järgi, mitte toore `too`
+  vabateksti järgi: "Allon4", "allon4 ülemine", "all-on5" ja "allonx ülemine"
+  on üks "All-on-X". Enne filtreeris täpse stringi järgi, nii et ühe variandi
+  valimine peitis vaikselt ülejäänud
+- Mitmikvalik otsinguga, valitud liigid eemaldatavate tokenitena
+- `MultiFilterMenu` tõsteti `CalendarView`-st välja jagatud komponendiks
+  (`ui/FilterMenu.tsx`) — kalendrist kadus 108 rida duplikaati
+
 ## [1.25.0] — 2026-07-31
 Andmebaasi muudatusi ei ole.
 

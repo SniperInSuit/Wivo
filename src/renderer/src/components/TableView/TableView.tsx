@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes } from 'lucide-react'
 import {
   format, isPast, parseISO,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isWithinInterval
@@ -13,6 +13,8 @@ import { StatusPill } from '../ui/StatusPill'
 import { ShadeChip } from '../ui/ShadeChip'
 import { usePayments } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
+import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
+import { useWorkTypes } from '../../stores/useSettings'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
@@ -57,11 +59,16 @@ function SortIcon({ field, sortKey, sortDir }: { field: string; sortKey: SortKey
 
 export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete, onBulkAssign, search, onSearchChange }: TableViewProps) {
   const { stages, doneStageKey } = usePipeline()
+  const wt = useWorkTypes()
   const { data: workers = [] } = useClinicProfiles()
   const { data: allPayments = [] } = usePayments()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
-  const [workTypeFilter, setWorkTypeFilter] = useState<string | 'all'>('all')
+  // Resolved type NAMES from Seaded, not the raw `too` strings. The raw field is
+  // free text, so filtering on it listed "Allon4", "allon4 ülemine", "all-on5"
+  // and "allonx ülemine" as four unrelated filters and picking one silently hid
+  // the other three. Empty set means no filter.
+  const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set())
   const [sortKey, setSortKey] = useState<SortKey>('valmis_aeg')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -85,7 +92,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       )
     }
     if (stageFilter !== 'all') result = result.filter(j => j.status === stageFilter)
-    if (workTypeFilter !== 'all') result = result.filter(j => (j.too ?? '') === workTypeFilter)
+    if (workTypeFilter.size) result = result.filter(j => workTypeFilter.has(wt.resolve(j.too).nimi))
     if (periodFilter !== 'all') {
       const now = new Date()
       let start: Date, end: Date
@@ -118,11 +125,34 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       })
     }
     return result
-  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, sortKey, sortDir, stages])
+  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, sortKey, sortDir, stages, wt])
 
-  const uniqueWorkTypes = useMemo(() =>
-    [...new Set(jobs.map(j => j.too).filter(Boolean) as string[])].sort()
-  , [jobs])
+  // The work types actually on screen, grouped the way Seaded defines them, with
+  // the row count and colour each one carries elsewhere in the app.
+  const workTypeOptions = useMemo(() => {
+    const byName = new Map<string, { hex: string; count: number }>()
+    for (const j of jobs) {
+      const t = wt.resolve(j.too)
+      const seen = byName.get(t.nimi)
+      if (seen) seen.count++
+      else byName.set(t.nimi, { hex: t.hex, count: 1 })
+    }
+    const names = [...byName.keys()].sort((a, b) => a.localeCompare(b, 'et'))
+    return {
+      names,
+      swatches: Object.fromEntries(names.map(n => [n, byName.get(n)!.hex])),
+      counts:   Object.fromEntries(names.map(n => [n, byName.get(n)!.count])),
+    }
+  }, [jobs, wt])
+
+  const hasFilters = stageFilter !== 'all' || periodFilter !== 'all' || workTypeFilter.size > 0 || !!search.trim()
+
+  function clearFilters() {
+    setStageFilter('all')
+    setPeriodFilter('all')
+    setWorkTypeFilter(new Set())
+    onSearchChange('')
+  }
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(j => selected.has(j.id))
   const someSelected = filtered.some(j => selected.has(j.id)) && !allFilteredSelected
@@ -239,7 +269,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           <button
             onClick={() => setStageFilter('all')}
             className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-              stageFilter === 'all' ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
+              stageFilter === 'all' ? 'chip-active' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
             }`}
           >
             Kõik ({jobs.length})
@@ -266,49 +296,57 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
         <span className="text-ink-faint/30 text-sm select-none">|</span>
 
-        {/* Period filter pills */}
-        <div className="flex items-center gap-1">
-          {PERIOD_OPTIONS.map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => setPeriodFilter(opt.key)}
-              className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                periodFilter === opt.key
-                  ? 'bg-ink text-bg-card'
-                  : 'text-ink-muted hover:text-ink bg-bg-sidebar'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        {/* Period and work type. Both were chip rows until the work types grew
+            past a dozen and pushed the toolbar onto a second line — a filter you
+            have to scan for ten seconds is not faster than sorting. */}
+        <SelectMenu
+          icon={CalendarDays}
+          value={periodFilter}
+          options={PERIOD_OPTIONS}
+          onChange={setPeriodFilter}
+        />
 
-        {/* Work type filter */}
-        {uniqueWorkTypes.length > 1 && (
-          <>
-            <span className="text-ink-faint/30 text-sm select-none">|</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setWorkTypeFilter('all')}
-                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                  workTypeFilter === 'all' ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
-                }`}
-              >
-                Kõik tööd
-              </button>
-              {uniqueWorkTypes.map(wt => (
-                <button
-                  key={wt}
-                  onClick={() => setWorkTypeFilter(workTypeFilter === wt ? 'all' : wt)}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                    workTypeFilter === wt ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
-                  }`}
-                >
-                  {wt}
-                </button>
-              ))}
-            </div>
-          </>
+        {workTypeOptions.names.length > 1 && (
+          <MultiFilterMenu
+            label="Tööliik"
+            icon={Shapes}
+            options={workTypeOptions.names}
+            swatches={workTypeOptions.swatches}
+            counts={workTypeOptions.counts}
+            selected={workTypeFilter}
+            onChange={setWorkTypeFilter}
+          />
+        )}
+
+        {/* Picked types stay readable without reopening the menu, and each one
+            comes off with the click that put it on. */}
+        {[...workTypeFilter].map(name => (
+          <button
+            key={name}
+            onClick={() => setWorkTypeFilter(prev => {
+              const next = new Set(prev)
+              next.delete(name)
+              return next
+            })}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-bg-sidebar text-xs font-medium text-ink-muted hover:text-ink transition-colors flex-shrink-0"
+            title={`Eemalda filter: ${name}`}
+          >
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: workTypeOptions.swatches[name] }}
+            />
+            {name}
+            <XIcon size={11} className="opacity-60" />
+          </button>
+        ))}
+
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-ink-faint hover:text-red-500 transition-colors flex-shrink-0 ml-auto"
+          >
+            Tühjenda filtrid
+          </button>
         )}
 
       </div>
@@ -467,7 +505,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={15} className="text-center py-16 text-ink-faint text-sm">
-                  {search || stageFilter !== 'all' ? 'Tulemusi ei leitud' : 'Töid pole veel lisatud'}
+                  {hasFilters ? 'Tulemusi ei leitud' : 'Töid pole veel lisatud'}
                 </td>
               </tr>
             )}
@@ -661,7 +699,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
         {filtered.length > 0 && (
           <div className="px-5 py-3 text-xs text-ink-faint border-t border-ink-faint/10">
             {filtered.length} töö{filtered.length !== 1 ? 'd' : ''}
-            {stageFilter !== 'all' || search ? ` (filtreeritud ${jobs.length}-st)` : ''}
+            {hasFilters ? ` (filtreeritud ${jobs.length}-st)` : ''}
             {selected.size > 0 && ` · ${selected.size} valitud`}
           </div>
         )}
