@@ -38,6 +38,12 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --publish always --config.forceCodeSigning=false
 
-      # The "publish always" flag creates a GitHub Release with the .exe
-      # and latest.yml automatically. electron-updater reads latest.yml
-      # to know when a new version is available.
+      # electron-builder creates a draft release. Publish it so
+      # electron-updater can find it — drafts are invisible to the client.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          gh release edit $version --draft=false --repo ${{ github.repository }}
+        shell: pwsh
