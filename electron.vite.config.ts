@@ -24,7 +24,13 @@ export default defineConfig({
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
-        '@': resolve('src/renderer/src')
+        '@': resolve('src/renderer/src'),
+        // Dependency-free code the web portal will also import — see
+        // shared/README.md. A source alias rather than a workspace package on
+        // purpose: externalizeDepsPlugin() above would mark a package external
+        // and electron-builder ships out/**/* with no node_modules.
+        // For the same reason, main and preload must never import from here.
+        '@shared': resolve('shared')
       }
     },
     plugins: [react()],

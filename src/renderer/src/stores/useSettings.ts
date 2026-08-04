@@ -9,13 +9,22 @@ import {
   type ClinicColumn, type ClinicPatch, type ClinicSettingsRow
 } from '../lib/clinicSettings'
 
+// The price rules moved to shared/ so the web order form can quote a job
+// without importing React — see shared/README.md. Re-exported from here so the
+// existing import sites keep working; new code should import @shared directly.
+export {
+  countSmallTeeth, countLargeTeeth, toothCount
+} from '@shared/pricing/teeth'
+export {
+  workTypePriceFor, calcProduction,
+  type MaterialPricing, type FixedCost, type ExtraService,
+  type PriceBook, type WorkTypePriceResult
+} from '@shared/pricing/priceBook'
+import { workTypePriceFor } from '@shared/pricing/priceBook'
+import type { MaterialPricing, FixedCost, ExtraService } from '@shared/pricing/priceBook'
+
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
-
-export interface MaterialPricing {
-  small: number   // €/tooth for positions 1–5 (incisors, canines, premolars)
-  large: number   // €/tooth for positions 6–8 (molars)
-}
 
 export type ThemeKey = 'hele' | 'navy-cloud' | 'cloudy-navy'
 
@@ -131,17 +140,6 @@ export interface WivoSettings {
   // Extra services that can be added to individual jobs (e.g. Ülesehitus,
   // Ajutine kroon, Wax-up). Defined here as a price list, selected per job.
   lisateenused: ExtraService[]
-}
-
-export interface FixedCost {
-  nimi: string    // e.g. "Kindad ja visiirid", "Desinfitseerimine"
-  summa: number   // € per job
-}
-
-export interface ExtraService {
-  id: string      // crypto.randomUUID()
-  nimi: string    // e.g. "Ülesehitus", "Ajutine kroon", "Wax-up"
-  hind: number    // € default price
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -647,71 +645,6 @@ export function useWorkTypes() {
   }
 }
 
-// ─── Tooth-size helpers ───────────────────────────────────────────────────────
-// FDI last digit gives position 1–8; 6–8 are molars (large)
-export function countSmallTeeth(hambad: string): number {
-  return hambad.split(',').filter(t => {
-    const pos = parseInt(t.trim()) % 10
-    return pos >= 1 && pos <= 5
-  }).length
-}
-
-export function countLargeTeeth(hambad: string): number {
-  return hambad.split(',').filter(t => {
-    const pos = parseInt(t.trim()) % 10
-    return pos >= 6
-  }).length
-}
-
-// ─── Work-type price lookup ───────────────────────────────────────────────────
-// Resolves through exactly the same matcher that picks the calendar colour, so
-// a job priced as an Allon4 is also coloured as one. `too` is free text
-// ("Allon4 ülemine", "D14 abutmendile kroon"), and that matcher is what knows
-// those belong to a configured type at all.
-export interface WorkTypePriceResult {
-  /** Final € for this job — already multiplied out for per-tooth types. */
-  amount: number
-  /** The configured unit price, before any multiplication. */
-  unit: number
-  mode: PriceMode
-  discounted: boolean
-  /** Whether a discount price exists at all, so the UI can offer the choice. */
-  hasDiscount: boolean
-}
-
-/**
- * What a work type costs for this particular job.
- *
- * Per-tooth types multiply by the tooth count: a bridge cannot have one price,
- * because its cost is entirely a function of how many units it spans. Per-job
- * types ignore the tooth count entirely — that is the point of them.
- */
-export function workTypePriceFor(
-  too: string | null | undefined,
-  types: WorkType[],
-  teeth: number,
-  useDiscount = false
-): WorkTypePriceResult | null {
-  const t = resolveWorkType(too, types)
-  const full = typeof t.hind === 'number' && t.hind > 0 ? t.hind : null
-  const discount = typeof t.soodushind === 'number' && t.soodushind > 0 ? t.soodushind : null
-  const unit = useDiscount && discount != null ? discount : full
-  if (unit == null) return null
-
-  const mode: PriceMode = t.hinnaTyyp ?? 'too'
-  // A per-tooth price with no teeth picked yet is not zero — it is "not known
-  // yet", and returning 0 would stamp a free job onto the form.
-  if (mode === 'hammas' && teeth <= 0) return null
-
-  return {
-    amount: Math.round((mode === 'hammas' ? unit * teeth : unit) * 100) / 100,
-    unit,
-    mode,
-    discounted: useDiscount && discount != null,
-    hasDiscount: discount != null,
-  }
-}
-
 /** Back-compat single number, used where the breakdown is not needed. */
 export function workTypePrice(
   too: string | null | undefined,
@@ -719,14 +652,4 @@ export function workTypePrice(
   teeth = 0
 ): number | null {
   return workTypePriceFor(too, types, teeth)?.amount ?? null
-}
-
-export function calcProduction(
-  hambad: string,
-  material: string,
-  prices: Record<string, MaterialPricing>
-): number {
-  const p = prices[material]
-  if (!p) return 0
-  return countSmallTeeth(hambad) * p.small + countLargeTeeth(hambad) * p.large
 }
