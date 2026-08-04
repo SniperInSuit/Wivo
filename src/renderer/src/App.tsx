@@ -154,10 +154,11 @@ function AppContent() {
       const payload = withCompletionDate(input)
       if (panelJob === 'new') {
         await createJob.mutateAsync(payload)
+        closePanel() // New job: close after creation
       } else if (panelJob) {
         await updateJob.mutateAsync({ id: (panelJob as Job).id, ...payload })
+        // Existing job: panel stays open, JobDetailPanel switches to read view
       }
-      closePanel()
     },
     [panelJob, createJob, updateJob, closePanel, withCompletionDate]
   )
@@ -189,9 +190,9 @@ function AppContent() {
       if (bottomJob) {
         await updateJob.mutateAsync({ id: bottomJob.id, ...withCompletionDate(input) })
       }
-      closeBottom()
+      // Panel stays open, JobDetailPanel switches to read view
     },
-    [bottomJob, updateJob, closeBottom, withCompletionDate]
+    [bottomJob, updateJob, withCompletionDate]
   )
 
   // Bulk assignment. Chunked for the same reason the reprice is: a few hundred

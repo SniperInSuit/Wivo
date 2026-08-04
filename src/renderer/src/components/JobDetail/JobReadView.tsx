@@ -1,11 +1,12 @@
-import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
-import { usePayments } from '../../hooks/useInvoices'
+import { usePayments, useDeletePayment } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { PAYMENT_METHOD_LABEL } from '../../types/invoice'
 import { useWorkTypes } from '../../stores/useSettings'
@@ -53,6 +54,7 @@ export function JobReadView({
   const { stageMap } = usePipeline()
   const revisions = job.revisions ?? []
   const { data: allPayments = [] } = usePayments()
+  const deletePayment = useDeletePayment()
   const jobPayments = allPayments.filter(p => p.job_id === job.id)
   const pay = jobPaymentState(job, allPayments)
   const rev: Revision | null = activeRevisionId
@@ -273,14 +275,7 @@ export function JobReadView({
             {jobPayments.length > 0 && (
               <div className="mt-1.5 space-y-0.5">
                 {jobPayments.map(p => (
-                  <div key={p.id} className="flex items-center gap-2 text-[11px] text-ink-muted">
-                    <span className="tabular-nums">{fmt(p.paid_at, 'dd.MM.yyyy')}</span>
-                    <span>{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
-                    {p.reference && <span className="truncate text-ink-faint">{p.reference}</span>}
-                    <span className="ml-auto tabular-nums font-medium text-ink">
-                      {Number(p.amount).toFixed(2)} €
-                    </span>
-                  </div>
+                  <PaymentRow key={p.id} payment={p} onDelete={() => deletePayment.mutate(p.id)} />
                 ))}
               </div>
             )}
@@ -363,6 +358,39 @@ function Card({ title, icon: Icon, children }: {
       </div>
       {children}
     </section>
+  )
+}
+
+function PaymentRow({ payment: p, onDelete }: {
+  payment: { id: string; paid_at: string; method: string; reference: string | null; amount: number }
+  onDelete: () => void
+}) {
+  const [confirm, setConfirm] = useState(false)
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-ink-muted group">
+      <span className="tabular-nums">{fmt(p.paid_at, 'dd.MM.yyyy')}</span>
+      <span>{PAYMENT_METHOD_LABEL[p.method as keyof typeof PAYMENT_METHOD_LABEL] ?? p.method}</span>
+      {p.reference && <span className="truncate text-ink-faint">{p.reference}</span>}
+      <span className="ml-auto tabular-nums font-medium text-ink">
+        {Number(p.amount).toFixed(2)} €
+      </span>
+      {confirm ? (
+        <span className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={() => { onDelete(); setConfirm(false) }}
+            className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-medium">Jah</button>
+          <button onClick={() => setConfirm(false)}
+            className="text-[10px] text-ink-faint hover:text-ink">Ei</button>
+        </span>
+      ) : (
+        <button
+          onClick={() => setConfirm(true)}
+          className="p-0.5 text-ink-faint hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          title="Kustuta makse"
+        >
+          <Trash2 size={10} />
+        </button>
+      )}
+    </div>
   )
 }
 

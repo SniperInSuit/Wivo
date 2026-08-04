@@ -14,6 +14,8 @@ import type { ViewMode } from '../../types/view'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
+import { usePayments } from '../../hooks/useInvoices'
+import { jobPaymentState } from '../../lib/jobPayments'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
@@ -60,6 +62,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
   }, [])
 
   const [day, setDay] = useState(() => startOfDay(new Date()))
+  const { data: allPayments = [] } = usePayments()
 
   const stats = useMemo(() => {
     const weekAgo = subDays(now, 7)
@@ -96,6 +99,8 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       teethDelta: teethOf(thisWeek) - teethOf(lastWeek),
       unpaidTotal: unpaid.reduce((s, j) => s + jobTotal(j), 0),
       unpaidCount: unpaid.length,
+      paidCount: jobs.filter(j => jobPaymentState(j, allPayments).settled).length,
+      partialCount: jobs.filter(j => jobPaymentState(j, allPayments).partial).length,
       wip: stages.map(s => ({
         name: s.label,
         hex: s.hex,
@@ -103,7 +108,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       })),
       inProduction: jobs.filter(j => j.status !== doneStageKey).length
     }
-  }, [jobs, stages, doneStageKey, now])
+  }, [jobs, stages, doneStageKey, now, allPayments])
 
   // Recent activity, derived from the timestamps we actually have. There is no
   // audit-log table, so this is every event that can be shown truthfully.
@@ -190,9 +195,9 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
           delta={stats.teethDelta} deltaLabel="võrreldes eelmise nädalaga"
         />
         <Kpi
-          label="Arveldamata" value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
+          label="Maksete seis" value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
-          note={`${stats.unpaidCount} tasumata ${stats.unpaidCount === 1 ? 'töö' : 'tööd'}`}
+          note={`${stats.paidCount ?? 0} makstud · ${stats.partialCount ?? 0} osaliselt · ${stats.unpaidCount} maksmata`}
           noteDanger={stats.unpaidCount > 0}
         />
       </div>

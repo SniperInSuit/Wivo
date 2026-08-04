@@ -1309,6 +1309,7 @@ export function SettingsPage() {
             </p>
             <div className="flex gap-2">
               {([
+                { key: 'fullscreen' as const, label: 'Täisekraan', desc: 'Hambakaart keskel, andmed ümber' },
                 { key: 'side' as const, label: 'Külgpaneel', desc: 'Avaneb paremalt küljelt' },
                 { key: 'bottom' as const, label: 'Alumine paneel', desc: 'Avaneb alt üles' },
               ]).map(opt => (

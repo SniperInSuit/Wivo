@@ -11,6 +11,8 @@ import { MarkPaidDialog, type PaidDetails } from '../JobDetail/MarkPaidDialog'
 import { stageChipStyle } from '../../config/pipeline'
 import { StatusPill } from '../ui/StatusPill'
 import { ShadeChip } from '../ui/ShadeChip'
+import { usePayments } from '../../hooks/useInvoices'
+import { jobPaymentState } from '../../lib/jobPayments'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
@@ -56,6 +58,7 @@ function SortIcon({ field, sortKey, sortDir }: { field: string; sortKey: SortKey
 export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBulkMarkPaid, onBulkDelete, onBulkAssign, search, onSearchChange }: TableViewProps) {
   const { stages, doneStageKey } = usePipeline()
   const { data: workers = [] } = useClinicProfiles()
+  const { data: allPayments = [] } = usePayments()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [workTypeFilter, setWorkTypeFilter] = useState<string | 'all'>('all')
@@ -578,17 +581,24 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
                   {/* Makstud */}
                   <td className="px-4 py-3">
-                    {job.makstud ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
-                        <Check size={10} /> Jah
-                      </span>
-                    ) : (
-                      job.hind ? (
+                    {(() => {
+                      const pay = jobPaymentState(job, allPayments)
+                      if (pay.settled) return (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
+                          <Check size={10} /> Jah
+                        </span>
+                      )
+                      if (pay.partial) return (
+                        <span className="inline-flex items-center gap-1 text-xs text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full font-medium">
+                          Osaliselt
+                        </span>
+                      )
+                      return job.hind ? (
                         <span className="text-xs text-red-500 font-medium">Ei</span>
                       ) : (
                         <span className="text-ink-faint text-xs">—</span>
                       )
-                    )}
+                    })()}
                   </td>
 
                   {/* Muudatused */}

@@ -29,7 +29,7 @@ interface JobDetailPanelProps {
   onSave: (input: JobInput) => Promise<void>
   onDelete?: (id: string) => Promise<void>
   saving?: boolean
-  position?: 'side' | 'bottom'  // default: side
+  position?: 'side' | 'bottom' | 'fullscreen'  // default: side
   initialDate?: string           // pre-fill valmis_aeg for new jobs (ISO or datetime-local)
   highlightRevisionId?: string   // auto-expand + scroll to this revision on open
   highlightNoteId?: string       // scroll to + highlight this note on open
@@ -301,6 +301,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 
 export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId, highlightNoteId, onOpenPatient }: JobDetailPanelProps) {
   const isBottom = position === 'bottom'
+  const isFullscreen = position === 'fullscreen'
   const { settings } = useSettings()
   const wt = useWorkTypes()
   // Full price vs the type's discount price. Per job, not a setting: the person
@@ -455,6 +456,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     } as JobInput
     try {
       await onSave(cleaned)
+      // Existing job: return to read view instead of closing
+      if (job) {
+        setEditing(false)
+      }
     } catch (err: unknown) {
       setSaveError((err as Error)?.message ?? 'Salvestamine ebaõnnestus')
     }
@@ -478,14 +483,16 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       />
       <motion.aside
         key="panel"
-        initial={isBottom ? { y: '100%' } : { x: '100%' }}
-        animate={isBottom ? { y: 0 } : { x: 0 }}
-        exit={isBottom ? { y: '100%' } : { x: '100%' }}
+        initial={isFullscreen ? { opacity: 0, scale: 0.98 } : isBottom ? { y: '100%' } : { x: '100%' }}
+        animate={isFullscreen ? { opacity: 1, scale: 1 } : isBottom ? { y: 0 } : { x: 0 }}
+        exit={isFullscreen ? { opacity: 0, scale: 0.98 } : isBottom ? { y: '100%' } : { x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className={
-          isBottom
-            ? 'fixed left-0 right-0 bottom-0 h-panel bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
-            : 'fixed right-0 top-0 bottom-0 w-[540px] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden'
+          isFullscreen
+            ? 'fixed inset-0 bg-bg-card z-50 flex flex-col overflow-hidden'
+            : isBottom
+              ? 'fixed left-0 right-0 bottom-0 h-panel bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden rounded-t-2xl border-t border-ink-faint/15'
+              : 'fixed right-0 top-0 bottom-0 w-[680px] bg-bg-card shadow-panel z-50 flex flex-col overflow-hidden'
         }
         onClick={e => e.stopPropagation()}
       >
@@ -595,12 +602,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             </div>
           </>
         ) : (
-        /* Scrollable form body — grid-cols-1 (side) or grid-cols-2 (bottom) */
+        /* Scrollable form body */
         <form id="job-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className={
-            isBottom
-              ? 'px-6 py-5 grid grid-cols-2 gap-x-8 items-start'
-              : 'px-6 py-5 space-y-5'
+            isFullscreen
+              ? 'px-6 py-5 grid grid-cols-[1fr_minmax(400px,2fr)_1fr] gap-x-6 items-start'
+              : isBottom
+                ? 'px-6 py-5 grid grid-cols-2 gap-x-8 items-start'
+                : 'px-6 py-5 space-y-5'
           }>
 
             {/* ── LEFT / SINGLE COLUMN ── metadata fields */}
@@ -684,7 +693,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
                           } else {
                             // Add this type
-                            const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '' }
+                            // Auto-mark as bridge if the type name contains "sild" or "bridge"
+                            const isBridge = /sild|bridge/i.test(t.nimi)
+                            const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
                             const next = [...form.work_items, item]
                             setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
                           }
@@ -778,7 +789,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             title={`Lisa veel üks ${item.too}`}
                             onClick={e => {
                               e.stopPropagation()
-                              const newItem = { id: crypto.randomUUID(), too: item.too, hambad: '' }
+                              const newItem = { id: crypto.randomUUID(), too: item.too, hambad: '', ...(item.bridge ? { bridge: true } : {}) }
                               setForm(f => {
                                 const idx = f.work_items.findIndex(i => i.id === item.id)
                                 const next = [...f.work_items]
@@ -826,8 +837,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   )
                 })()}
 
-                {/* Shared odontogram for all work items */}
-                {form.work_items.length > 0 && (
+                {/* Shared odontogram for all work items (hidden in fullscreen — shown in center column) */}
+                {!isFullscreen && form.work_items.length > 0 && (
                   <div className="bg-bg-sidebar rounded-xl p-3">
                     <MultiOdontogramPicker
                       items={form.work_items}
@@ -836,18 +847,16 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       onToggleTooth={tooth => {
                         if (!activeWorkItemId) return
                         const s = String(tooth)
+                        // Check if tooth belongs to another item
+                        const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
+                        if (otherOwner) return // tooth belongs to another item — don't steal it
                         setForm(f => ({
                           ...f,
                           work_items: f.work_items.map(item => {
-                            if (item.id === activeWorkItemId) {
-                              const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
-                              teeth.has(s) ? teeth.delete(s) : teeth.add(s)
-                              return { ...item, hambad: [...teeth].join(',') }
-                            }
-                            // Remove from other items (tooth can only be in one)
+                            if (item.id !== activeWorkItemId) return item
                             const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
-                            if (teeth.has(s)) { teeth.delete(s); return { ...item, hambad: [...teeth].join(',') } }
-                            return item
+                            teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                            return { ...item, hambad: [...teeth].join(',') }
                           })
                         }))
                       }}
@@ -1033,10 +1042,44 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
             </div>
 
-            {/* ── RIGHT COLUMN (bottom mode) / continuation (side mode) ── */}
+            {/* ── CENTER COLUMN (fullscreen: odontogram) ── */}
+            {isFullscreen && (
+              <div className="space-y-3 sticky top-0">
+                {form.work_items.length === 0 ? (
+                  <div className="bg-bg-sidebar rounded-xl p-8 text-center">
+                    <p className="text-sm text-ink-faint">Vali vasakult töötüüp, et hambaid märkida</p>
+                  </div>
+                ) : (
+                  <div className="bg-bg-sidebar rounded-xl p-4">
+                    <MultiOdontogramPicker
+                      items={form.work_items}
+                      activeItemId={activeWorkItemId}
+                      colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}
+                      onToggleTooth={tooth => {
+                        if (!activeWorkItemId) return
+                        const s = String(tooth)
+                        const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
+                        if (otherOwner) return
+                        setForm(f => ({
+                          ...f,
+                          work_items: f.work_items.map(item => {
+                            if (item.id !== activeWorkItemId) return item
+                            const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
+                            teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                            return { ...item, hambad: [...teeth].join(',') }
+                          })
+                        }))
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── RIGHT COLUMN (bottom/fullscreen) / continuation (side mode) ── */}
             <div className="space-y-5">
-              {/* No work type selected — hint to pick one first */}
-              {form.work_items.length === 0 && (
+              {/* No work type selected — hint (non-fullscreen only, fullscreen shows it in center) */}
+              {!isFullscreen && form.work_items.length === 0 && (
               <div className="bg-bg-sidebar rounded-xl p-4 text-center">
                 <p className="text-xs text-ink-faint">Vali ülalt töötüüp, et hambaid märkida</p>
               </div>

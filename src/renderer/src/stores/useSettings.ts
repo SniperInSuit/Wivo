@@ -87,7 +87,7 @@ export interface WivoSettings {
   teema: ThemeKey         // Teema — see THEMES / styles/index.css
   ribaLaiendatud: boolean // Külgriba laiendatud (sildid ikoonide kõrval) või kompaktne
   tekstiSuurus: number    // Teksti/kuva suurus, 1 = 100%
-  paneeliSuund: 'side' | 'bottom'  // Kuidas töö/visiidi paneel avaneb
+  paneeliSuund: 'side' | 'bottom' | 'fullscreen'  // Kuidas töö/visiidi paneel avaneb
   // ─── Kohandatavad valikud ──────────────────────────────────────────────────
   // These were hardcoded constants, which meant a lab with a third printer or a
   // material outside the SprintRay range had to type it free-hand every time.
@@ -158,7 +158,7 @@ function defaultSettings(): WivoSettings {
     kasutajaNimi: '',
     teema: 'hele',
     ribaLaiendatud: true,
-    paneeliSuund: 'side' as const,
+    paneeliSuund: 'fullscreen' as const,
     tekstiSuurus: 1,
     masinad: [...MACHINE_OPTIONS],
     materjalid: [...MATERIAL_OPTIONS],
@@ -300,7 +300,7 @@ function loadSettings(): WivoSettings {
       kasutajaNimi: stored.kasutajaNimi ?? '',
       teema: stored.teema ?? 'hele',
       ribaLaiendatud: stored.ribaLaiendatud ?? true,
-      paneeliSuund: stored.paneeliSuund === 'bottom' ? 'bottom' : 'side',
+      paneeliSuund: (['side', 'bottom', 'fullscreen'] as const).includes(stored.paneeliSuund as any) ? stored.paneeliSuund as 'side' | 'bottom' | 'fullscreen' : 'fullscreen',
       // Clamped: a corrupted value here would otherwise render the UI unusable
       // at a size from which the settings page could not be reached again.
       tekstiSuurus: clampTextScale(stored.tekstiSuurus),
@@ -510,7 +510,7 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, lisateenused: items }), ['pricing'])
   }, [setSettings])
 
-  const setPaneeliSuund = useCallback((suund: 'side' | 'bottom') => {
+  const setPaneeliSuund = useCallback((suund: 'side' | 'bottom' | 'fullscreen') => {
     setSettings(prev => ({ ...prev, paneeliSuund: suund }))
   }, [setSettings])
 

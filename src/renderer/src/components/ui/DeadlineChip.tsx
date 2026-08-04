@@ -27,17 +27,18 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
 
   const Icon = overdue || urgent ? AlertTriangle : Clock
 
+  const time = format(date, 'HH:mm')
   const label = overdue
     ? 'Tähtaeg möödas'
     : isDone
       ? format(date, 'dd.MM')
       : isToday(date)
-      ? 'Täna'
-      : daysLeft === 1
-        ? 'Homme'
-        : daysLeft <= 7
-          ? `${daysLeft}p`
-          : format(date, 'dd.MM')
+        ? `Täna ${time}`
+        : daysLeft === 1
+          ? `Homme ${time}`
+          : daysLeft <= 7
+            ? `${daysLeft}p ${time}`
+            : `${format(date, 'dd.MM')} ${time}`
 
   if (compact) {
     return (

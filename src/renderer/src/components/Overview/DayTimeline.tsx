@@ -66,8 +66,8 @@ export function DayTimeline({
       if (!isValid(d) || !isSameDay(d, day)) continue
       const minutes = d.getHours() * 60 + d.getMinutes()
       const label = format(d, 'HH:mm')
-      const arst = doctorOf(j)
-      const key = `${label}|${arst}`
+      const arst = `${j.patsient} · ${j.too ?? 'Määramata'}`
+      const key = `${label}|${j.id}`
       const slot = map.get(key) ?? {
         key, minutes, label, arst, jobs: [], overdue: false, done: false
       }

@@ -106,18 +106,19 @@ export function MultiOdontogramPicker({
     try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
   }
 
-  // Build tooth → { itemId, color, itemIndex } lookup
-  const toothOwner = new Map<string, { itemId: string; color: string }>()
+  // Build tooth → { itemId, color, itemNum } lookup
+  const toothOwner = new Map<string, { itemId: string; color: string; itemNum: number }>()
   // Track how many items share each work type (for hue shifting)
   const typeCount = new Map<string, number>()
-  for (const item of items) {
+  for (let ii = 0; ii < items.length; ii++) {
+    const item = items[ii]
     const idx = typeCount.get(item.too) ?? 0
     typeCount.set(item.too, idx + 1)
     const baseHex = colorMap[item.too] ?? '#94A3B8'
     const color = shiftHex(baseHex, idx)
     for (const t of item.hambad.split(',')) {
       const trimmed = t.trim()
-      if (trimmed) toothOwner.set(trimmed, { itemId: item.id, color })
+      if (trimmed) toothOwner.set(trimmed, { itemId: item.id, color, itemNum: ii + 1 })
     }
   }
 
@@ -169,6 +170,22 @@ export function MultiOdontogramPicker({
             <line x1={2} y1={upper ? 2 : rectY + 2} x2={2} y2={upper ? h - 2 : -2} stroke={isOwned ? 'rgba(255,255,255,0.5)' : '#E0CECE'} strokeWidth={0.8} />
           </>
         )}
+        {/* Work item number inside the tooth */}
+        {isOwned && items.length > 1 && (
+          <text
+            x={0}
+            y={upper ? h / 2 + 1 : rectY + h / 2 + 1}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={9}
+            fontWeight="800"
+            fontFamily="sans-serif"
+            fill="white"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {owner!.itemNum}
+          </text>
+        )}
       </g>
     )
   }
@@ -205,10 +222,10 @@ export function MultiOdontogramPicker({
         let offset: number
 
         if (u1 >= 0 && u2 >= 0) {
-          p1 = upperXY(u1); p2 = upperXY(u2)
+          p1 = upperXY(mirror ? 15 - u1 : u1); p2 = upperXY(mirror ? 15 - u2 : u2)
           offset = -10 // above upper teeth
         } else if (l1 >= 0 && l2 >= 0) {
-          p1 = lowerXY(l1); p2 = lowerXY(l2)
+          p1 = lowerXY(mirror ? 15 - l1 : l1); p2 = lowerXY(mirror ? 15 - l2 : l2)
           offset = 10 // below lower teeth
         } else continue // cross-arch, skip
 
@@ -218,10 +235,10 @@ export function MultiOdontogramPicker({
             x1={p1.x} y1={p1.y + offset}
             x2={p2.x} y2={p2.y + offset}
             stroke={color}
-            strokeWidth={3}
+            strokeWidth={4.5}
             strokeLinecap="round"
-            strokeDasharray={idx > 0 ? '6 3' : undefined}
-            opacity={0.8}
+            strokeDasharray={idx > 0 ? '8 4' : undefined}
+            opacity={0.9}
           />
         )
       }
@@ -247,7 +264,7 @@ export function MultiOdontogramPicker({
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full rounded-xl"
-        style={{ maxHeight: H, background: '#FFF5F6', transform: mirror ? 'scaleX(-1)' : undefined }}
+        style={{ background: '#FFF5F6' }}
       >
         <path d={upperGum} fill="#F5C4CA" />
         <path d={lowerGum} fill="#F5C4CA" />
@@ -256,55 +273,61 @@ export function MultiOdontogramPicker({
         <path d={`M ${UCX - URX - 4} ${UCY} A ${URX + 4} ${URY + 4} 0 0 1 ${UCX + URX + 4} ${UCY}`} fill="none" stroke="#EBA8B0" strokeWidth={3} />
         <path d={`M ${LCX - LRX - 4} ${LCY} A ${LRX + 4} ${LRY + 4} 0 0 0 ${LCX + LRX + 4} ${LCY}`} fill="none" stroke="#EBA8B0" strokeWidth={3} />
         <line x1={CX} y1={12} x2={CX} y2={H - 12} stroke="#DDB8BC" strokeWidth={1} strokeDasharray="3 3" />
-        {/* R/L labels — flip text back so it's readable when mirrored */}
+        {/* R/L labels */}
         <text x={16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif"
-          style={mirror ? { transform: 'scaleX(-1)', transformOrigin: '16px' } : undefined}
-        >{mirror ? 'L' : 'R'}</text>
+        >{mirror ? 'R' : 'R'}</text>
         <text x={W - 16} y={H / 2 + 4} fontSize={10} fill="#C4989E" fontWeight="600" fontFamily="sans-serif" textAnchor="end"
-          style={mirror ? { transform: 'scaleX(-1)', transformOrigin: `${W - 16}px` } : undefined}
-        >{mirror ? 'R' : 'L'}</text>
+        >{mirror ? 'L' : 'L'}</text>
+
+        {/* Upper / Lower labels */}
+        <text x={CX} y={30} textAnchor="middle" fontSize={9} fill="#C4989E" fontWeight="600" fontFamily="sans-serif"
+        >UPPER</text>
+        <text x={CX} y={H - 18} textAnchor="middle" fontSize={9} fill="#C4989E" fontWeight="600" fontFamily="sans-serif"
+        >LOWER</text>
 
         {/* Bridge connectors (behind teeth) */}
         <BridgeConnectors />
 
         {UPPER_NUMS.map((num, i) => {
-          const { x, y } = upperXY(i)
+          const pos = mirror ? 15 - i : i
+          const { x, y } = upperXY(pos)
           return <Tooth key={num} num={num} cx={x} cy={y} upper={true} />
         })}
         {LOWER_NUMS.map((num, i) => {
-          const { x, y } = lowerXY(i)
+          const pos = mirror ? 15 - i : i
+          const { x, y } = lowerXY(pos)
           return <Tooth key={num} num={num} cx={x} cy={y} upper={false} />
         })}
 
-        {/* FDI labels — flip text back when mirrored so numbers read correctly */}
+        {/* FDI labels */}
         {UPPER_NUMS.map((num, i) => {
-          const { x } = upperXY(i)
+          const pos = mirror ? 15 - i : i
+          const { x } = upperXY(pos)
           const owner = toothOwner.get(String(num))
           return (
-            <text key={`ul-${num}`} x={x} y={16} textAnchor="middle" fontSize={9.5}
-              fontFamily="monospace" fontWeight="700"
+            <text key={`ul-${num}`} x={x} y={16} textAnchor="middle" fontSize={11}
+              fontFamily="monospace" fontWeight="800"
               fill={owner ? owner.color : '#A08088'}
               onClick={() => handleClick(num)}
               style={{
                 cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer',
                 userSelect: 'none',
-                ...(mirror ? { transform: `scaleX(-1)`, transformOrigin: `${x}px 16px` } : {})
               }}
             >{num}</text>
           )
         })}
         {LOWER_NUMS.map((num, i) => {
-          const { x } = lowerXY(i)
+          const pos = mirror ? 15 - i : i
+          const { x } = lowerXY(pos)
           const owner = toothOwner.get(String(num))
           return (
-            <text key={`ll-${num}`} x={x} y={322} textAnchor="middle" fontSize={9.5}
-              fontFamily="monospace" fontWeight="700"
+            <text key={`ll-${num}`} x={x} y={322} textAnchor="middle" fontSize={11}
+              fontFamily="monospace" fontWeight="800"
               fill={owner ? owner.color : '#A08088'}
               onClick={() => handleClick(num)}
               style={{
                 cursor: disabled ? 'not-allowed' : !activeItemId ? 'default' : 'pointer',
                 userSelect: 'none',
-                ...(mirror ? { transform: `scaleX(-1)`, transformOrigin: `${x}px 322px` } : {})
               }}
             >{num}</text>
           )
