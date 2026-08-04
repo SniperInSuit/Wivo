@@ -59,8 +59,8 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [workTypeFilter, setWorkTypeFilter] = useState<string | 'all'>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('kuupaev')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [sortKey, setSortKey] = useState<SortKey>('valmis_aeg')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -517,7 +517,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
                   {/* Kuupäev */}
                   <td className="px-4 py-3 text-xs text-ink-muted whitespace-nowrap">
-                    {job.kuupaev ? format(parseISO(job.kuupaev), 'dd.MM.yy') : '—'}
+                    {job.kuupaev ? format(parseISO(job.kuupaev), 'dd.MM.yy HH:mm') : '—'}
                   </td>
 
                   {/* Patsient */}

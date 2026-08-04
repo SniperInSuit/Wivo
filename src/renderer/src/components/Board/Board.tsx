@@ -75,6 +75,15 @@ export function Board({
     }
   })
 
+  // Sort entries within each stage by deadline (earliest first)
+  for (const key of Object.keys(byStage)) {
+    byStage[key].sort((a, b) => {
+      const da = a.job.valmis_aeg ?? a.job.kuupaev ?? ''
+      const db = b.job.valmis_aeg ?? b.job.kuupaev ?? ''
+      return da.localeCompare(db)
+    })
+  }
+
   return (
     <div className="flex gap-3 h-full overflow-x-auto pb-4 px-4 pt-2">
       {stages.map((stage) => (
