@@ -1,3 +1,5 @@
+import type { DeliveryStatus } from './customer'
+
 // Pipeline stage keys — now an open string so custom stages are possible
 export type StageKey = string
 
@@ -112,6 +114,13 @@ export interface Job {
   kuupaev: string           // Kuupäev — date received (YYYY-MM-DD)
   patsient: string          // Patsient — patient name (kept denormalised for display + legacy rows)
   patient_id: string | null // FK → patients.id (null = not linked to a patient record yet)
+  // --- Who ordered it (migration 035) ---
+  // The dental practice that sent the case. Null on everything predating the
+  // customer table, and on work a lab does for itself.
+  customer_id: string | null   // FK → customers.id
+  // The ordering practice's OWN case number, as they wrote it. The only
+  // identifier a public status link may show — see sql/035.
+  customer_ref: string | null
   too: string | null        // Töö — work type (crown, bridge, veneer…)
   materjal: string | null   // Materjal — resin material (may include shade, e.g. "Ceramic Crown HT A2")
   masina: string | null     // Masin — printer (Pro2, Midas)
@@ -125,6 +134,10 @@ export interface Job {
   // selle järgi, mis juhtus, mitte selle järgi, mis oli plaanis (migratsioon 025).
   valmis_kuupaev: string | null
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
+  // Where the work physically is. The pipeline ending at "done" says the bench
+  // has finished with it, not that the practice has it (migration 035).
+  delivery_status: DeliveryStatus
+  delivered_at: string | null
   // --- Work items (migration 0XX) — multiple work types per job ---
   work_items: WorkItem[]    // e.g. [{too:'Kroon', hambad:'11,12'}, {too:'Sild', hambad:'14,15,16'}]
   // --- Revision list ---
