@@ -75,6 +75,14 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
       kiirtooKordaja: s.kiirtooKordaja,
       kmMaar: s.kmMaar,
       makseTahtaegPaevades: s.makseTahtaegPaevades,
+      // Both were added to WivoSettings and to COLUMN_OF, but never here, so a
+      // setter declared `['pricing']`, pushed the pricing column, and wrote it
+      // WITHOUT these two fields — the write path silently dropped them while
+      // the read path (applyClinicRow spreads row.pricing wholesale) would have
+      // taken them fine. Per-job overheads and the extra-service price list
+      // therefore never left the machine that typed them.
+      fixedCostsPerJob: s.fixedCostsPerJob,
+      lisateenused: s.lisateenused,
     },
     payroll: {
       tooandjaMaksudProtsent: s.tooandjaMaksudProtsent,

@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.26.1] — 2026-08-04
+Andmebaasi muudatusi ei ole.
+
+**Püsikulud ja lisateenused sünkroniseeruvad nüüd päriselt**
+- `toRow()` ei pannud `pricing` veergu `fixedCostsPerJob` ega `lisateenused` välju,
+  kuigi mõlemad olid `WivoSettings`-is ja `COLUMN_OF` märkis need kliiniku-ülesteks
+- Tagajärg: seadistaja deklareeris `['pricing']`, sünkroniseerija kirjutas `pricing`
+  veeru — ilma nende kahe väljata. **Töö püsikulud ja lisateenuste hinnakiri ei
+  lahkunud kunagi masinast, kus need sisse trükiti.** Teine tööjaam ei näinud neid,
+  ja uus masin alustas tühjalt
+- Lugemistee oli kogu aeg korras (`applyClinicRow` spreadib `row.pricing` tervikuna),
+  nii et katki oli ainult kirjutamine
+- Olemasolevad andmebaasiread ei kaota midagi: puuduv võti spread'is ei kirjuta
+  lokaalset väärtust üle. Esimene salvestus pärast seda parandust viib väljad kaasa
+- `npx tsc` läheb nüüd puhtaks — see viga oli tüübikontrollis nähtav
+
 ## [1.26.0] — 2026-08-04
 Andmebaasi muudatusi ei ole.
 
