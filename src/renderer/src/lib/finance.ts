@@ -29,6 +29,7 @@ import {
 import type { WorkerPayout } from '../hooks/useWorkerPay'
 import { outstanding, paidAmount, PAYMENT_METHOD_LABEL } from '../types/invoice'
 import type { Payment as PaymentRow } from '../types/invoice'
+import { jobTotalValue } from './jobPayments'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const toothCount = (h: string | null | undefined) =>
@@ -216,8 +217,10 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   }
   const done = jobs.filter(j => j.status === doneStageKey)
   const unbilledList = done.filter(j => !billedJobIds.has(j.id))
-  const unbilled = round2(unbilledList.reduce(
-    (s, j) => s + Number(j.hind ?? 0) + Number(j.disain_hind ?? 0), 0))
+  // jobTotalValue, not a hand-rolled sum: unbilled revenue and what the invoice
+  // form would actually bill have to be the same number, and they were not
+  // while extras were missing from this one.
+  const unbilled = round2(unbilledList.reduce((s, j) => s + jobTotalValue(j), 0))
 
   // ── Labour ────────────────────────────────────────────────────────────────
   // Accrued = what the current rules say this period's finished work is worth,

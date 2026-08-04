@@ -15,6 +15,7 @@ import { useSettings } from '../../stores/useSettings'
 import { useCreateInvoice, useInvoices, type CreateInvoiceInput } from '../../hooks/useInvoices'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { describeError } from '../Patients/errors'
+import { jobTotalValue } from '../../lib/jobPayments'
 
 interface DraftLine {
   key: string
@@ -85,10 +86,20 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           key: jobKey,
           job_id: j.id,
           revision_id: null,
-          description: [j.too?.trim() || 'Töö', j.hambad ? `hambad ${j.hambad}` : null]
-            .filter(Boolean).join(' · '),
+          description: [
+            j.too?.trim() || 'Töö',
+            j.hambad ? `hambad ${j.hambad}` : null,
+            // Named, because the price includes them and a line that silently
+            // carries 60 € of Ülesehitus is a line the client will query.
+            (j.extras ?? []).length > 0
+              ? (j.extras ?? []).map(e => e.nimi).join(', ')
+              : null,
+          ].filter(Boolean).join(' · '),
           qty: 1,
-          unit_price: Number(j.hind ?? 0) + Number(j.disain_hind ?? 0),
+          // Through jobTotalValue, not summed by hand: this line and the job's
+          // own payment state must agree about what the job is worth, and they
+          // did not while extras were missing from one of them.
+          unit_price: jobTotalValue(j),
         })
       }
 
