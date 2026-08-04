@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   FileText, Plus, Loader2, AlertTriangle, Euro, Clock, CheckCircle2,
-  Trash2, X, Search, Printer
+  Trash2, X, Search, Printer, Building2, User
 } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import { et } from 'date-fns/locale'
@@ -182,7 +182,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
                   <th className="px-3 py-2 font-semibold">Number</th>
-                  <th className="px-3 py-2 font-semibold">Patsient</th>
+                  <th className="px-3 py-2 font-semibold">Saaja</th>
                   <th className="px-3 py-2 font-semibold">Kuupäev</th>
                   <th className="px-3 py-2 font-semibold">Tähtaeg</th>
                   <th className="px-3 py-2 font-semibold text-right">Summa</th>
@@ -203,7 +203,17 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
                       }`}
                     >
                       <td className="px-3 py-2 font-semibold text-ink tabular-nums">{inv.number}</td>
-                      <td className="px-3 py-2 text-ink truncate max-w-[200px]">{inv.patsient}</td>
+                      {/* Which KIND of addressee, not just the name: a list
+                          sorted by name puts practices and patients side by
+                          side and they read identically without this. */}
+                      <td className="px-3 py-2 text-ink truncate max-w-[200px]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {inv.bill_to_kind === 'customer'
+                            ? <Building2 size={11} className="text-ink-faint flex-shrink-0" />
+                            : <User size={11} className="text-ink-faint flex-shrink-0" />}
+                          <span className="truncate">{inv.patsient}</span>
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-ink-muted tabular-nums">{fmtDate(inv.issue_date)}</td>
                       <td className={`px-3 py-2 tabular-nums ${late ? 'text-red-500 font-semibold' : 'text-ink-muted'}`}>
                         {fmtDate(inv.due_date)}
@@ -322,7 +332,12 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
           <div>
             <p className="text-[11px] text-ink-muted">Arve</p>
             <h2 className="text-lg font-bold text-ink tabular-nums">{invoice.number}</h2>
-            <p className="text-sm text-ink-muted">{invoice.patsient}</p>
+            <p className="text-sm text-ink-muted flex items-center gap-1.5">
+              {invoice.bill_to_kind === 'customer'
+                ? <Building2 size={12} className="text-ink-faint" />
+                : <User size={12} className="text-ink-faint" />}
+              {invoice.patsient}
+            </p>
           </div>
           <div className="flex items-center gap-1">
             <button onClick={onPrint} className="btn-ghost p-1.5" title="Prindi / salvesta PDF">

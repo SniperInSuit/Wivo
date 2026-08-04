@@ -16,6 +16,8 @@ import { useCreateInvoice, useInvoices, type CreateInvoiceInput } from '../../ho
 import { PatientPicker } from '../Patients/PatientPicker'
 import { describeError } from '../Patients/errors'
 import { jobTotalValue } from '../../lib/jobPayments'
+import { useCustomers } from '../../hooks/useCustomers'
+import type { BillToKind } from '../../types/customer'
 
 interface DraftLine {
   key: string
@@ -37,9 +39,14 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   const { settings } = useSettings()
   const createInvoice = useCreateInvoice()
   const { data: invoices = [] } = useInvoices()
+  const { data: customers = [] } = useCustomers()
 
   const [patsient, setPatsient] = useState(initialPatient?.nimi ?? '')
   const [patientId, setPatientId] = useState<string | null>(initialPatient?.id ?? null)
+  // Who this document is addressed to. A lab bills the ordering practice; the
+  // patient route stays because clinic work and legacy documents both use it.
+  const [billTo, setBillTo] = useState<BillToKind>('patient')
+  const [customerId, setCustomerId] = useState<string | null>(null)
   const [issueDate, setIssueDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [vatRate, setVatRate] = useState(settings.kmMaar)
   const [note, setNote] = useState('')
@@ -68,16 +75,19 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
 
   const patientKey = patsient.trim().toLowerCase()
 
-  // Candidate work: this patient's jobs and their revisions, minus what is
-  // already billed and minus what is already on this draft.
+  // Candidate work, minus what is already billed and minus what is already on
+  // this draft. WHOSE work depends on the addressee: a customer invoice covers
+  // everything that practice ordered, whoever the patients were.
   const candidates = useMemo(() => {
-    if (!patientKey) return []
+    if (billTo === 'customer' ? !customerId : !patientKey) return []
     const onDraft = new Set(lines.map(l => `${l.job_id}:${l.revision_id ?? ''}`))
     const out: DraftLine[] = []
 
     for (const j of jobs) {
-      const matches = (patientId && j.patient_id === patientId)
-        || (j.patsient ?? '').trim().toLowerCase() === patientKey
+      const matches = billTo === 'customer'
+        ? j.customer_id === customerId
+        : (patientId && j.patient_id === patientId)
+          || (j.patsient ?? '').trim().toLowerCase() === patientKey
       if (!matches) continue
 
       const jobKey = `${j.id}:`
@@ -88,6 +98,11 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           revision_id: null,
           description: [
             j.too?.trim() || 'Töö',
+            // On a customer invoice the practice needs to know WHICH case, and
+            // their own reference is what they filed it under.
+            billTo === 'customer'
+              ? (j.customer_ref?.trim() || j.patsient?.trim() || null)
+              : null,
             j.hambad ? `hambad ${j.hambad}` : null,
             // Named, because the price includes them and a line that silently
             // carries 60 € of Ülesehitus is a line the client will query.
@@ -121,7 +136,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
       }
     }
     return out
-  }, [jobs, patientKey, patientId, billedJobIds, lines])
+  }, [jobs, billTo, customerId, patientKey, patientId, billedJobIds, lines])
 
   const net = Math.round(lines.reduce((s, l) => s + l.qty * l.unit_price, 0) * 100) / 100
   const vat = Math.round(net * vatRate) / 100
@@ -136,15 +151,22 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
     setLines(prev => prev.map(l => (l.key === key ? { ...l, ...patch } : l)))
   const removeLine = (key: string) => setLines(prev => prev.filter(l => l.key !== key))
 
-  const canSave = patsient.trim().length > 0 && lines.length > 0 && !createInvoice.isPending
+  const addresseeOk = billTo === 'customer' ? !!customerId : patsient.trim().length > 0
+  const canSave = addresseeOk && lines.length > 0 && !createInvoice.isPending
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!canSave) return
     const input: CreateInvoiceInput = {
-      patient_id: patientId,
-      patsient: patsient.trim(),
+      // The check constraint in sql/035 requires these to agree: a customer
+      // invoice carries customer_id and no patient_id, and vice versa.
+      patient_id: billTo === 'customer' ? null : patientId,
+      patsient: billTo === 'customer'
+        ? (customers.find(c => c.id === customerId)?.name ?? '')
+        : patsient.trim(),
+      customer_id: billTo === 'customer' ? customerId : null,
+      bill_to_kind: billTo,
       issue_date: issueDate,
       due_date: dueDate,
       vat_rate: vatRate,
@@ -232,13 +254,51 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Patsient / klient</label>
-              <PatientPicker
-                name={patsient}
-                patientId={patientId}
-                onChange={(nimi, pid) => { setPatsient(nimi); setPatientId(pid) }}
-                required
-              />
+              <label className="label">Saaja</label>
+              {/* Switching clears the other side's selection: an invoice
+                  addressed to a customer must not carry a patient_id, and the
+                  DB refuses the row if it does. */}
+              <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit mb-2">
+                {([
+                  { key: 'customer' as const, label: 'Klient' },
+                  { key: 'patient'  as const, label: 'Patsient' },
+                ]).map(o => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => {
+                      setBillTo(o.key)
+                      setLines([])
+                      if (o.key === 'customer') { setPatsient(''); setPatientId(null) }
+                      else setCustomerId(null)
+                    }}
+                    className={`text-xs font-medium px-3 py-1 rounded-md transition-colors ${
+                      billTo === o.key ? 'chip-active' : 'text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              {billTo === 'customer' ? (
+                <select
+                  value={customerId ?? ''}
+                  onChange={e => { setCustomerId(e.target.value || null); setLines([]) }}
+                  className="input"
+                >
+                  <option value="">Vali klient…</option>
+                  {customers.filter(c => !c.archived_at).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <PatientPicker
+                  name={patsient}
+                  patientId={patientId}
+                  onChange={(nimi, pid) => { setPatsient(nimi); setPatientId(pid) }}
+                  required
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

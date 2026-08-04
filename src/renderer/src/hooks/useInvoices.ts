@@ -58,7 +58,14 @@ export function useInvoices() {
 
 export interface CreateInvoiceInput {
   patient_id: string | null
+  /** The addressee's NAME. A patient's or a customer's — see types/invoice.ts. */
   patsient: string
+  // Who this is billed to. The DB has a check constraint tying these together:
+  // 'customer' requires customer_id, 'patient' requires it to be null.
+  customer_id?: string | null
+  bill_to_kind?: 'patient' | 'customer'
+  period_start?: string | null
+  period_end?: string | null
   issue_date: string
   due_date: string | null
   vat_rate: number
@@ -88,6 +95,10 @@ export function useCreateInvoice() {
           number: numberData as string,
           patient_id: input.patient_id,
           patsient: input.patsient,
+          customer_id: input.customer_id ?? null,
+          bill_to_kind: input.bill_to_kind ?? 'patient',
+          period_start: input.period_start ?? null,
+          period_end: input.period_end ?? null,
           issue_date: input.issue_date,
           due_date: input.due_date,
           vat_rate: input.vat_rate,
