@@ -96,12 +96,36 @@ look arbitrary until the day someone undoes it.
 - `diagnoseEarnings()` runs ALWAYS, not only when a total is zero — a partial
   result (4 jobs assigned, 1 line) looks identical to a correct one otherwise.
 
+### Pricing
+
+- **`shared/pricing/quote.ts` is the ONLY implementation.** The job form, the
+  repricer and (later) the web order form all call `quoteJob()`. This replaced
+  two copies that had already drifted: with `hambaHind = 0` the form stamped
+  **0 €** and the repricer refused. Refusing is right — see the Trust rule.
+- Build the price book with **`priceBookOf()`**, never by hand. Two callers
+  assembling it themselves is the same divergence through the back door.
+- **Every work item is priced separately.** Both old copies read the
+  denormalised `too`/`hambad`, so 10 crowns + 4 bridges was quoted as one type
+  across 14 teeth. A job with no `work_items` yields one legacy item and is
+  quoted exactly as before.
+- `quote.unpriced` non-empty means **do not write a price**. `production` still
+  holds what could be worked out, for display only.
+- Anything in `shared/` has **zero dependencies** — no React, no Supabase, no
+  npm. That is what lets a Deno edge function and a browser import it. `main`
+  and `preload` must never import from it (`externalizeDepsPlugin`).
+- `npm test` runs the quote tests. They exist because this code handles money.
+
 ### Auth and people
 
-- `useClinicProfiles` **must** filter on `clinic_id`. `profiles_read` lets any
-  signed-in user select every profile in the project, so an unfiltered query
-  offers removed people and other clinics' staff as assignable.
+- `useClinicProfiles` **must** filter on `clinic_id`. Belt and braces: since
+  `sql/034` the `profiles_read` policy is clinic-scoped too, but the client
+  filter also excludes removed people (clinic_id null), whom the policy still
+  allows so history keeps its names.
   Use `useProfileNames` only for labelling existing history.
+- **Do not enable Supabase anonymous sign-in.** It mints a real `auth.uid()`,
+  and `handle_new_user()` would accumulate junk `profiles` rows for every
+  visitor. Public surfaces go through an edge function holding the service key,
+  never through an anon session.
 - **Creating another user MUST go through `createSignupClient()`.** `signUp` on
   the main client signs the new user in and swaps the owner's session.
 - Username login: `<username>@example.com` (override `VITE_USERNAME_DOMAIN`) is
@@ -189,6 +213,7 @@ Supabase SQL editor, **Wivo closed**.
 20. `029_username_login.sql` — `profiles.username`
 21. `030_reset_worker_password.sql` — owner sets a worker's password
 22. `031_delete_worker.sql` — permanent delete, refused if history exists
+23. `034_profiles_read_scope.sql` — `profiles_read` scoped to the caller's clinic
 
 **Supabase Auth settings:**
 - Enable Email provider (Authentication → Providers → Email)

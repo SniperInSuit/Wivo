@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.27.0] — 2026-08-04
+**Andmebaasi muudatus: `sql/034_profiles_read_scope.sql`** — jooksuta Supabase SQL
+editoris, Wivo kinni.
+
+Faas 0 suunamuutuse plaanist: hinnareeglid ühte kohta ja neli raha puudutavat
+viga, mis olid koodis juba sees.
+
+**Üks hinnaarvutus kolme asemel**
+- Uus `shared/pricing/quote.ts` (`quoteJob`) on ainus implementatsioon. Töö vorm
+  ja tööde ümberhindaja kutsuvad seda; veebi tellimusvorm hakkab sama tegema
+- Kaks vana koopiat olid juba lahku läinud: `hambaHind = 0` korral kirjutas vorm
+  tööle **0 €**, ümberhindaja keeldus. Nüüd keeldub ka vorm
+- **Töö, mille mõnda osa ei õnnestu hinnastada, ei saa enam automaatselt hinda.**
+  Paneelile ilmub kollane selgitus, mis puudu on ja kust seda seada
+- **Mitme tööosaga töö hinnastatakse osade summana.** 10 krooni + 4 silda andis
+  enne ühe tüübi hinna üle kõigi 14 hamba. Töö ilma tööosadeta saab sama hinna
+  mis enne
+- Lisatud `npm test` (vitest, ainult arenduses) — 18 testi hinnaloogikale
+
+**Lisateenused jõuavad summadesse**
+- `job.extras` lisati 1.25-s ja jäeti `jobTotalValue`-st välja. Iga ekraan, mis
+  töö väärtust näitab, loeb seda funktsiooni, nii et auk oli korraga kõikjal:
+  makseseis luges 60 € Ülesehitusega töö makstuks niipea kui põhihind laekus,
+  arve kandidaat pakkus liiga väikest summat, Rahandus alahindas arveldamata tulu
+- Juba väljastatud arveid ei muudeta — nende read on koopiad
+
+**Turvaparandus: `profiles_read`**
+- Poliitika oli `auth.uid() is not null`, ehk iga sisselogitud kasutaja luges
+  **kõigi kliinikute** personali. Pärineb ajast, kui projektis oli üks kliinik
+- Nüüd kliinikupõhine. Enda rida ja eemaldatud töötajad jäävad loetavaks, et
+  sisselogimine ja ajaloo nimed töötaksid
+
 ## [1.26.1] — 2026-08-04
 Andmebaasi muudatusi ei ole.
 
