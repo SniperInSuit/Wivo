@@ -33,6 +33,7 @@ interface PaymentLine {
   method: PaymentMethod
   amount: string
   reference: string
+  paidAt: string
 }
 
 interface MarkPaidDialogProps {
@@ -57,14 +58,15 @@ export function MarkPaidDialog({
   const outstanding = Math.round(((amount ?? 0) - alreadyPaid) * 100) / 100
   const single = !count || count <= 1
 
-  const [paidAt, setPaidAt] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+  const today = format(new Date(), 'yyyy-MM-dd')
 
   // Payment lines — start with one
   const [lines, setLines] = useState<PaymentLine[]>(() => [{
     id: crypto.randomUUID(),
     method: 'ulekanne',
     amount: outstanding > 0 ? outstanding.toFixed(2) : '',
-    reference: ''
+    reference: '',
+    paidAt: today
   }])
 
   function addLine() {
@@ -74,7 +76,8 @@ export function MarkPaidDialog({
       id: crypto.randomUUID(),
       method: 'sularaha',
       amount: remaining > 0 ? remaining.toFixed(2) : '',
-      reference: ''
+      reference: '',
+      paidAt: today
     }])
   }
 
@@ -108,7 +111,7 @@ export function MarkPaidDialog({
     if (onConfirmMulti && lines.length > 1) {
       onConfirmMulti(lines.map(l => ({
         method: l.method,
-        paid_at: paidAt,
+        paid_at: l.paidAt,
         reference: l.reference.trim() || null,
         amount: parseFloat(l.amount),
       })))
@@ -117,7 +120,7 @@ export function MarkPaidDialog({
       const l = lines[0]
       onConfirm({
         method: l.method,
-        paid_at: paidAt,
+        paid_at: l.paidAt,
         reference: l.reference.trim() || null,
         ...(single && Number.isFinite(parseFloat(l.amount)) ? { amount: parseFloat(l.amount) } : {}),
       })
@@ -157,16 +160,6 @@ export function MarkPaidDialog({
             </p>
           )}
 
-          {/* Date — shared across all lines */}
-          <div className="w-40">
-            <label className="label">Kuupäev</label>
-            <input
-              type="date" value={paidAt}
-              onChange={e => setPaidAt(e.target.value)}
-              className="input"
-            />
-          </div>
-
           {/* Payment lines */}
           <div className="space-y-2">
             {lines.map((line, idx) => (
@@ -187,6 +180,16 @@ export function MarkPaidDialog({
                 )}
 
                 <div className="flex gap-2">
+                  {/* Date */}
+                  <div className="w-32">
+                    <label className="label">Kuupäev</label>
+                    <input
+                      type="date" value={line.paidAt}
+                      onChange={e => updateLine(line.id, { paidAt: e.target.value })}
+                      className="input"
+                    />
+                  </div>
+
                   {/* Amount */}
                   {single && (
                     <div className="w-28">
