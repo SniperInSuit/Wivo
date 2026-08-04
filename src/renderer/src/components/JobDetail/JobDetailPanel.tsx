@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound
+  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
 import { MATERIAL_SHADES, jobWorkItems } from '../../types/job'
@@ -20,6 +20,8 @@ import { quoteJob } from '@shared/pricing/quote'
 
 const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { useCustomers } from '../../hooks/useCustomers'
+import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
@@ -91,6 +93,36 @@ function WorkerSelect({ label, value, onChange }: {
         <option value="">—</option>
         {workers.map(w => (
           <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// ─── Customer select ──────────────────────────────────────────────────────────
+// Archived customers are still shown when one is already selected, so opening
+// an old job does not silently blank the practice it was ordered by.
+function CustomerSelect({ value, onChange }: {
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  const { data: customers = [] } = useCustomers()
+  const options = customers.filter(c => !c.archived_at || c.id === value)
+  return (
+    <div>
+      <label className="label flex items-center gap-1.5">
+        <Building2 size={11} /> Tellija
+      </label>
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || null)}
+        className="input"
+      >
+        <option value="">—</option>
+        {options.map(c => (
+          <option key={c.id} value={c.id}>
+            {c.name}{c.archived_at ? ' (arhiveeritud)' : ''}
+          </option>
         ))}
       </select>
     </div>
@@ -727,6 +759,57 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   onChange={(nimi, pid) => setForm(f => ({ ...f, patsient: nimi, patient_id: pid }))}
                   required
                 />
+              </div>
+
+              {/* Who ordered it. The customer is the paying party — the patient
+                  is who the work is for. A lab bills the practice, not the
+                  person in the chair, so these are two different questions. */}
+              <div className="grid grid-cols-2 gap-3">
+                <CustomerSelect
+                  value={form.customer_id}
+                  onChange={id => set('customer_id', id)}
+                />
+                <div>
+                  <label className="label">Tellija viide</label>
+                  <input
+                    value={form.customer_ref ?? ''}
+                    onChange={e => set('customer_ref', e.target.value || null)}
+                    placeholder="nt A-2291"
+                    className="input"
+                  />
+                  <p className="text-[10px] text-ink-faint mt-1">
+                    Kliiniku enda juhtumi number. Ainus viide, mida jälgimislink näitab.
+                  </p>
+                </div>
+              </div>
+
+              {/* Where the work physically is. The pipeline ending at "valmis"
+                  says the bench has finished with it — not that the practice
+                  has it in their hands. Those are different days. */}
+              <div>
+                <label className="label">Väljastus</label>
+                <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
+                  {(['labor', 'teel', 'yle_antud'] as const).map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        delivery_status: d,
+                        // Stamped when it leaves, cleared if that is undone —
+                        // a handover date on work still at the lab is a lie.
+                        delivered_at: d === 'yle_antud'
+                          ? (f.delivered_at ?? new Date().toISOString())
+                          : null,
+                      }))}
+                      className={`text-xs font-medium px-3 py-1 rounded-md transition-colors ${
+                        form.delivery_status === d ? 'chip-active' : 'text-ink-muted hover:text-ink'
+                      }`}
+                    >
+                      {DELIVERY_LABEL[d]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Töö — multi-select grid + shared odontogram */}
