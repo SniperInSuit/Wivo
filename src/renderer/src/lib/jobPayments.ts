@@ -11,11 +11,11 @@ import type { Payment } from '../types/invoice'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-/** Price + design fee + every revision's price. */
+/** Price + design fee. Revision costs are internal (technician expense),
+ *  not client-facing — they do not increase what the client owes. */
 export const jobTotalValue = (job: Job): number => round2(
   Number(job.hind ?? 0)
   + Number(job.disain_hind ?? 0)
-  + (job.revisions ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0)
 )
 
 export const paidForJob = (jobId: string, payments: Payment[]): number =>

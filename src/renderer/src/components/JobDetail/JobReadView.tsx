@@ -61,7 +61,8 @@ export function JobReadView({
 
   const revTotal = revisions.reduce((s, r) => s + (r.price ?? 0), 0)
   const extras = job.disain_hind ?? 0
-  const jobGrandTotal = (job.hind ?? 0) + extras + revTotal
+  // Revision costs are internal (technician cost), not client-facing
+  const jobGrandTotal = (job.hind ?? 0) + extras
 
   // What this variant is: a revision falls back to nothing, not to the original.
   // Showing the parent's teeth on a revision row is exactly the confusion this
@@ -217,16 +218,19 @@ export function JobReadView({
               ) : (
                 <>
                   <Line label="Töö hind" value={`${(job.hind ?? 0).toFixed(2)} €`} />
-                  <Line label="Lisakulud" value={`${extras.toFixed(2)} €`} />
-                  {revisions.length > 0 && (
-                    <Line label={`Muudatused (${revisions.length})`} value={`${revTotal.toFixed(2)} €`} />
-                  )}
+                  {extras > 0 && <Line label="Lisakulud" value={`${extras.toFixed(2)} €`} />}
                 </>
               )}
               <div className="flex items-center justify-between pt-1.5 border-t border-ink-faint/15">
                 <span className="text-sm font-semibold text-ink">Kokku tööl</span>
                 <span className="text-sm font-bold text-ink">{jobGrandTotal.toFixed(2)} €</span>
               </div>
+              {revisions.length > 0 && !rev && (
+                <div className="flex items-center justify-between text-[11px] text-ink-faint mt-1">
+                  <span>Muudatuste kulu (sisemine)</span>
+                  <span className="tabular-nums">{revTotal.toFixed(2)} €</span>
+                </div>
+              )}
             </div>
 
             {/* Part payments mean the flag alone no longer tells the story: a job
