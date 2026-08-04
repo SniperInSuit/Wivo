@@ -21,7 +21,7 @@ export {
   type PriceBook, type WorkTypePriceResult
 } from '@shared/pricing/priceBook'
 import { workTypePriceFor } from '@shared/pricing/priceBook'
-import type { MaterialPricing, FixedCost, ExtraService } from '@shared/pricing/priceBook'
+import type { MaterialPricing, FixedCost, ExtraService, PriceBook } from '@shared/pricing/priceBook'
 
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
@@ -642,6 +642,22 @@ export function useWorkTypes() {
     hex: (too: string | null | undefined) => workTypeHexIn(too, types),
     label: (too: string | null | undefined) => workTypeLabelIn(too, types),
     present: (toos: (string | null | undefined)[]) => workTypesPresentIn(toos, types),
+  }
+}
+
+/**
+ * The quote inputs, pulled out of settings into the plain shape `quoteJob`
+ * takes. Every caller must build the book through THIS function: two callers
+ * assembling it by hand is how the job form and the repricer drifted apart in
+ * the first place.
+ */
+export function priceBookOf(s: WivoSettings = snapshot): PriceBook {
+  return {
+    workTypes: s.tooTuubid,
+    materialPrices: s.materialPrices,
+    hambaHind: s.hambaHind,
+    kiirtooKordaja: s.kiirtooKordaja,
+    designFee: s.designFee,
   }
 }
 

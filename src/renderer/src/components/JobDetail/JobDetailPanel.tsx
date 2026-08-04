@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
-import { MATERIAL_SHADES } from '../../types/job'
+import { MATERIAL_SHADES, jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { OdontogramPicker } from './OdontogramPicker'
@@ -15,7 +15,8 @@ import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
 import { JobTimeline } from './JobTimeline'
 import { StatusPill } from '../ui/StatusPill'
-import { useSettings, useWorkTypes, calcProduction, countSmallTeeth, countLargeTeeth, workTypePriceFor } from '../../stores/useSettings'
+import { useSettings, useWorkTypes, calcProduction, countSmallTeeth, countLargeTeeth, workTypePriceFor, priceBookOf } from '../../stores/useSettings'
+import { quoteJob } from '@shared/pricing/quote'
 
 const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -114,12 +115,44 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
   const info = workTypePriceFor(form.too, settings.tooTuubid, teeth, useDiscount)
   const typePrice = info?.amount ?? null
 
+  // Same reasoning as above: computed here, from the same function the
+  // auto-price effect and the repricer call, rather than passed down.
+  const unpriced = quoteJob({
+    items: jobWorkItems({
+      work_items: form.work_items,
+      too: form.too,
+      hambad: form.hambad,
+    }).map(i => ({ too: i.too, hambad: i.hambad })),
+    materjal: form.materjal,
+    kiirtoo: form.kiirtoo,
+    useDiscount,
+  }, priceBookOf(settings)).unpriced
+
   return (
     <div className="border border-ink-faint/20 rounded-xl p-4 space-y-4">
       <p className="text-sm font-semibold text-ink flex items-center gap-2">
         <Euro size={15} className="text-accent" />
         Hind ja maksmine
       </p>
+
+      {/* The auto-price deliberately leaves the field alone when it cannot work
+          a number out. Silence would read as "nothing to do here", so it says
+          what is missing — otherwise the price is quietly whatever was typed. */}
+      {unpriced.length > 0 && (
+        <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            Hinda ei arvutatud automaatselt
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {unpriced.map((reason, i) => (
+              <li key={i} className="text-[11px] text-ink-muted">· {reason}</li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-ink-faint mt-1">
+            Sisesta hind käsitsi või määra hind Seaded → Hinnad all.
+          </p>
+        </div>
+      )}
 
       {hasCalc && (
         <div className="bg-bg-sidebar rounded-xl p-3 space-y-1.5">
@@ -395,25 +428,32 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     setForm(f => ({ ...f, [key]: val }))
   }, [])
 
-  // Live auto-price: fires when work type, teeth, material, or kiirtöö change
-  // (new jobs only)
+  // What this job is worth, by the same rules the repricer and the web order
+  // form use — see shared/pricing/quote.ts. Every work item is priced on its
+  // own, so a job holding crowns AND a bridge is the sum of both rather than
+  // one type spread across all the teeth.
+  const quote = useMemo(() => quoteJob({
+    items: jobWorkItems({
+      work_items: form.work_items,
+      too: form.too,
+      hambad: form.hambad,
+    }).map(i => ({ too: i.too, hambad: i.hambad })),
+    materjal: form.materjal,
+    kiirtoo: form.kiirtoo,
+    useDiscount,
+  }, priceBookOf(settings)),
+  [form.work_items, form.too, form.hambad, form.materjal, form.kiirtoo, useDiscount, settings])
+
+  // Live auto-price (new jobs only). Leaves the field ALONE when any part of
+  // the job cannot be priced: this used to write `teeth * hambaHind` even when
+  // that rate was 0, stamping a free job onto the record. A gap is not a price.
   useEffect(() => {
     if (!hindAutoRef.current) return
-    // A work-type price is per job, so it applies even before any tooth is
-    // picked — that is the whole point of quoting a case rather than a tooth.
-    const h = form.hambad ?? ''
-    const toothCount = h.split(',').filter(Boolean).length
-    const typePrice = workTypePriceFor(form.too, settings.tooTuubid, toothCount, useDiscount)?.amount ?? null
-    if (typePrice == null && toothCount === 0) return
-    const p = form.materjal
-      ? calcProduction(h, form.materjal, settings.materialPrices)
-      : 0
-    // Fallback €/tooth when the material has no price set — Seaded → Hinnad
-    const base = typePrice ?? (p > 0 ? p : toothCount * settings.hambaHind)
-    const total = form.kiirtoo ? base * settings.kiirtooKordaja : base
-    set('hind', parseFloat(total.toFixed(2)))
+    if (quote.unpriced.length > 0) return
+    if (quote.production === 0) return
+    set('hind', quote.production)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.too, form.hambad, form.materjal, form.kiirtoo, useDiscount])
+  }, [quote.production, quote.unpriced.length])
 
   // Auto-calculate: small teeth + large teeth from settings, plus design fee
   // The revision currently being viewed, if any — drives both the timeline and

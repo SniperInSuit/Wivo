@@ -11,8 +11,10 @@
  * taken at billing time, which is exactly why they were built that way.
  */
 import type { Job } from '../types/job'
+import { jobWorkItems } from '../types/job'
 import type { WivoSettings } from '../stores/useSettings'
-import { workTypePriceFor, calcProduction } from '../stores/useSettings'
+import { priceBookOf } from '../stores/useSettings'
+import { quoteJob } from '@shared/pricing/quote'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const toothCount = (h: string | null | undefined) =>
@@ -22,8 +24,12 @@ export interface RepriceChange {
   job: Job
   oldPrice: number
   newPrice: number
-  /** Where the new number came from, so the preview can be audited. */
-  source: 'tüüp' | 'materjal' | 'hambad'
+  /**
+   * Where the new number came from, so the preview can be audited. `segu` means
+   * a multi-item job whose items priced from different sources — one crown off
+   * the type list, one bridge off the material table.
+   */
+  source: 'tüüp' | 'materjal' | 'hambad' | 'segu'
   billed: boolean
 }
 
@@ -67,10 +73,10 @@ export interface RepriceOptions {
 }
 
 /**
- * Mirrors the job form's auto-calculation exactly — work-type price first, then
- * the material table, then the flat €/tooth fallback, with the rush multiplier
- * on top. If the two ever diverge, a repriced job would disagree with what the
- * form shows for the same job.
+ * Prices through `quoteJob` — the same function the job form calls, so a
+ * repriced job cannot disagree with what the form shows for the same job. This
+ * file used to hold its own copy of the rules "mirroring" the form; they had
+ * drifted apart by v1.26 and that is why there is now one implementation.
  */
 export function planReprice(
   jobs: Job[], settings: WivoSettings, opts: RepriceOptions
@@ -80,6 +86,7 @@ export function planReprice(
   const skipped: RepriceSkip[] = []
   let unchanged = 0
   let billedCount = 0
+  const book = priceBookOf(settings)
 
   for (const job of jobs) {
     const billed = opts.billedJobIds.has(job.id)
@@ -101,35 +108,29 @@ export function planReprice(
       })
     }
 
-    const teeth = toothCount(job.hambad)
-    const typePrice = workTypePriceFor(job.too, settings.tooTuubid, teeth)
+    // Each work item is priced on its own. A job still carrying only the old
+    // `too`/`hambad` fields yields one legacy item and is quoted as before.
+    const quote = quoteJob({
+      items: jobWorkItems(job).map(i => ({ too: i.too, hambad: i.hambad })),
+      materjal: job.materjal,
+      kiirtoo: job.kiirtoo ?? false,
+    }, book)
 
-    let base: number | null = null
-    let source: RepriceChange['source'] = 'tüüp'
-
-    if (typePrice) {
-      base = typePrice.amount
-      source = 'tüüp'
-    } else if (job.materjal && teeth > 0) {
-      const p = calcProduction(job.hambad ?? '', job.materjal, settings.materialPrices)
-      if (p > 0) { base = p; source = 'materjal' }
-    }
-    if (base == null && teeth > 0 && settings.hambaHind > 0) {
-      base = teeth * settings.hambaHind
-      source = 'hambad'
-    }
-
-    if (base == null) {
-      skipped.push({
-        job,
-        reason: teeth === 0 && !typePrice
-          ? 'hambaid ei ole valitud ja töö tüübil pole hinda'
-          : 'hinda ei õnnestu arvutada',
-      })
+    // Any part unpriced skips the WHOLE job. Writing a partial total onto the
+    // record would look like a decision rather than a gap.
+    if (quote.unpriced.length > 0) {
+      skipped.push({ job, reason: quote.unpriced.join('; ') })
       continue
     }
 
-    const newPrice = round2(job.kiirtoo ? base * settings.kiirtooKordaja : base)
+    const sources = new Set(
+      quote.lines.filter(l => l.source !== 'kiirtöö').map(l => l.source)
+    )
+    const source = (sources.size === 1
+      ? [...sources][0]
+      : 'segu') as RepriceChange['source']
+
+    const newPrice = quote.production
     const oldPrice = round2(Number(job.hind ?? 0))
     if (newPrice === oldPrice) { unchanged++; continue }
 
