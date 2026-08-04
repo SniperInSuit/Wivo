@@ -1,3 +1,4 @@
+import type { BillToKind } from './customer'
 // Invoicing (Phase 4, migration 020).
 //
 // An invoice line copies its description and price from the job at billing
@@ -64,7 +65,24 @@ export interface Invoice {
   clinic_id: string
   number: string
   patient_id: string | null
+  /**
+   * The name this document is addressed to, as text.
+   *
+   * Named `patsient` for history: before migration 035 the only addressee a lab
+   * could bill was a patient. It now holds a patient's OR a customer's name and
+   * `bill_to_kind` says which — that is what let customers arrive without
+   * restating a single existing document. Do not rename it; every issued
+   * invoice, print view and export reads this column.
+   */
   patsient: string
+  // Who this is billed to (migration 035). 'patient' on everything issued
+  // before customers existed, which is what it was.
+  customer_id: string | null
+  bill_to_kind: BillToKind
+  // Which month a statement covers. Null on per-job invoices, which cover
+  // whatever their lines say and nothing more.
+  period_start: string | null
+  period_end: string | null
   status: InvoiceStatus
   issue_date: string     // date
   due_date: string | null

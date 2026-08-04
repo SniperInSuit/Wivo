@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -20,6 +20,7 @@ const NAV: { key: ViewMode; label: string; icon: typeof LayoutDashboard; perm?: 
   { key: 'calendar', label: 'Kalender',   icon: CalendarDays,    perm: 'visits.read' },
   { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read' },
   { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read' },
+  { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read' },
   { key: 'arved',    label: 'Arved',      icon: FileText,        perm: 'payments.read' },
   { key: 'tootasud', label: 'Töötasud',   icon: Wallet },
   { key: 'stats',    label: 'Statistika', icon: BarChart2,       perm: 'stats.read' },

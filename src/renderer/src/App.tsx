@@ -13,6 +13,7 @@ import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { SettingsPage } from './components/SettingsPage'
 import { InvoicesView } from './components/Invoices/InvoicesView'
+import { CustomersView } from './components/Customers/CustomersView'
 import { PayrollView } from './components/Workers/PayrollView'
 import { WorkersPage } from './components/Workers/WorkersPage'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
@@ -332,6 +333,7 @@ function AppContent() {
               onFocusHandled={() => setFocusPatientId(null)}
             />
           )}
+          {view === 'kliendid' && <CustomersView />}
           {view === 'arved' && <InvoicesView jobs={jobs} />}
           {view === 'tootasud' && <PayrollView jobs={jobs} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
