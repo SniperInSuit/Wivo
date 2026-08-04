@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.28.0] — 2026-08-05
+**Andmebaasi muudatused:** `sql/035_customers.sql`, `sql/036_customers_realtime.sql`
+(eraldi, omaette), `sql/037_features.sql`. Jooksuta Supabase SQL editoris, Wivo kinni.
+
+Faas 1: WivoLab hakkab olema laboritoode. Labor müüb kliinikutele, mitte
+patsientidele — ja tarkvara teab seda nüüd ka.
+
+**Kliendid**
+- Uus vaade Patsientide ja Arvete vahel: tellijakliinikud, kellele labor töid teeb
+- Nimi, registrikood, KMKR, aadress, kontakt, e-post, maksetähtaeg ja arveldusviis
+  (töö kaupa või kuu koondarve)
+- Arhiveerimine on esmane; kustutada saab ainult klienti, kellel pole ühtegi tööd
+  ega arvet, sest kustutamine jätaks kogu ta ajaloo nimetuks
+
+**Tööl on nüüd tellija**
+- Tellija (klient), tellija enda juhtumi viide, ja väljastuse staatus
+  (Laboris / Teel / Üle antud) koos üleandmise kuupäevaga
+- Torustik lõpeb "valmis" peal, mis ütleb, et pink on lõpetanud — mitte et
+  kliinikul on töö käes. Need on eri päevad
+
+**Arved saavad olla kliendi nimel**
+- Arve vormil on saaja lüliti: Klient või Patsient
+- Kliendi valimisel tulevad kandidaadiks kõik selle kliiniku tellitud tööd,
+  sõltumata patsientidest; rea kirjeldusse läheb tellija enda viide
+- Arvete nimekiri näitab saaja liiki ikooniga
+- **Ükski olemasolev arve ei muutu.** `patsient` väli tähendab nüüd "nimi, kellele
+  dokument on adresseeritud" ja uus `bill_to_kind` ütleb, mis liiki see nimi on —
+  iga vana rida on 'patient', mis ta oligi
+
+**Kliiniline režiim — vaikimisi VÄLJAS**
+- Patsiendikaart ja visiitide broneerimine on nüüd lipu taga. Labor haldab töid,
+  mitte patsiente, ja ravikaart on GDPR-i eriliigiline andmestik, mida ei ole
+  mõtet koguda, kui seda vaja ei lähe
+- **Midagi ei kustutata.** Olemasolevad patsiendid ja visiidid on andmebaasis alles
+  ja tulevad tagasi kohe, kui režiimi sisse lülitad:
+  **Seaded → Kalender → Kliiniline režiim**
+
 ## [1.27.0] — 2026-08-04
 **Andmebaasi muudatus: `sql/034_profiles_read_scope.sql`** — jooksuta Supabase SQL
 editoris, Wivo kinni.

@@ -131,6 +131,12 @@ export interface WivoSettings {
   // Tööandja maksude määr brutopalgalt, %. Vaikimisi 0 — vale maksumäär, mille
   // rakendus ise välja mõtles, on halvem kui ilmselgelt puuduv.
   tooandjaMaksudProtsent: number
+  // ─── Kliiniline režiim ─────────────────────────────────────────────────────
+  // Patsiendikaart (ravikaart, allergiad, hambakaardi seisund) ja visiitide
+  // broneerimine. Vaikimisi VÄLJAS: WivoLab on laboritoode ja terviseandmed on
+  // GDPR Art. 9 vastutus, mida laboril pole vaja kanda. Sisselülitamine toob
+  // kõik tagasi — andmeid ei kustutata kunagi, ainult peidetakse.
+  kliinilineRezhiim: boolean
   // ─── Fikseeritud kulud iga töö kohta ───────────────────────────────────────
   // Applied automatically to every job's cost calculation. Covers things like
   // gloves, face shields, disinfection supplies — small per-patient costs that
@@ -175,6 +181,7 @@ function defaultSettings(): WivoSettings {
     // start issuing invoices with tax on them because the app guessed a rate.
     // Set it in Seaded → Hinnad once, and confirm the rate that applies to you.
     kmMaar: 0,
+    kliinilineRezhiim: false,
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
     fixedCostsPerJob: [],
@@ -293,6 +300,7 @@ function loadSettings(): WivoSettings {
     return {
       materialPrices: { ...def.materialPrices, ...(stored.materialPrices ?? {}) },
       materialCosts: stored.materialCosts ?? {},
+      kliinilineRezhiim: stored.kliinilineRezhiim ?? false,
       designFee: stored.designFee ?? 0,
       defaultMachine: stored.defaultMachine ?? '',
       kasutajaNimi: stored.kasutajaNimi ?? '',
@@ -404,6 +412,7 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
     ...(row.machines ? { masinad: strList(row.machines, prev.masinad) } : {}),
     ...(row.pricing ?? {}),
     ...(row.payroll ?? {}),
+    ...(row.features ? { kliinilineRezhiim: !!row.features.clinical } : {}),
     ...(row.calendar ?? {}),
   }
   persistLocal(next)
@@ -552,6 +561,13 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, [key]: value } as WivoSettings), col ? [col] : undefined)
   }, [setSettings])
 
+  // Same shape as setNumber, for the feature flags. Goes through COLUMN_OF so
+  // the flag lands in the right jsonb column and syncs to the clinic.
+  const setFlag = useCallback(<K extends keyof WivoSettings>(key: K, value: boolean) => {
+    const col = COLUMN_OF[key as string]
+    setSettings(prev => ({ ...prev, [key]: value } as WivoSettings), col ? [col] : undefined)
+  }, [setSettings])
+
   // ── Work types (name + colour) ─────────────────────────────────────────────
   // Separate from the string lists above because a type carries a colour, and
   // that colour is what every calendar fill and legend swatch is keyed on.
@@ -619,7 +635,7 @@ export function useSettings() {
 
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
-    setTeema, toggleRiba, setNumber, setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund,
+    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     setTooHind,

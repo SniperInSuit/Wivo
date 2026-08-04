@@ -14,12 +14,17 @@ interface SidebarProps {
   onViewChange: (v: ViewMode) => void
 }
 
-const NAV: { key: ViewMode; label: string; icon: typeof LayoutDashboard; perm?: PermissionKey }[] = [
+// `clinical: true` = only shown when the clinical half is switched on in Seaded.
+// WivoLab is the laboratory product; the patient record is a clinic's job.
+const NAV: {
+  key: ViewMode; label: string; icon: typeof LayoutDashboard
+  perm?: PermissionKey; clinical?: boolean
+}[] = [
   { key: 'overview', label: 'Ülevaade',   icon: LayoutDashboard },
   { key: 'board',    label: 'Tööd',       icon: Kanban,          perm: 'jobs.read' },
   { key: 'calendar', label: 'Kalender',   icon: CalendarDays,    perm: 'visits.read' },
   { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read' },
-  { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read' },
+  { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read', clinical: true },
   { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read' },
   { key: 'arved',    label: 'Arved',      icon: FileText,        perm: 'payments.read' },
   { key: 'tootasud', label: 'Töötasud',   icon: Wallet },
@@ -62,7 +67,10 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
 
       {/* no-drag: without it the drag region above would swallow every nav click */}
       <nav className={`flex-1 overflow-y-auto space-y-1 [-webkit-app-region:no-drag] ${wide ? 'px-2' : 'px-1.5'}`}>
-        {NAV.filter(item => !item.perm || can(item.perm)).map(({ key, label, icon: Icon }) => (
+        {NAV
+          .filter(item => !item.clinical || settings.kliinilineRezhiim)
+          .filter(item => !item.perm || can(item.perm))
+          .map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => onViewChange(key)}

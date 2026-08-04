@@ -1070,7 +1070,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
 
 export function SettingsPage() {
   const {
-    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber,
+    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
   } = useSettings()
@@ -1187,11 +1187,45 @@ export function SettingsPage() {
                 onChange={v => setNumber('ajaSamm', v)}
                 hint="Nädalavaates visiiti lohistades klapsub algusaeg selle sammu peale."
               />
-              <NumField
-                label="Visiidi vaikimisi kestus" suffix="min" min={5} max={600} step={5}
-                value={settings.visiidiKestus}
-                onChange={v => setNumber('visiidiKestus', v)}
-              />
+              {settings.kliinilineRezhiim && (
+                <NumField
+                  label="Visiidi vaikimisi kestus" suffix="min" min={5} max={600} step={5}
+                  value={settings.visiidiKestus}
+                  onChange={v => setNumber('visiidiKestus', v)}
+                />
+              )}
+            </div>
+
+            {/* The one switch that decides which product this is. Placed here
+                rather than hidden in an advanced pane: someone who wants the
+                patient record back must be able to find it. */}
+            <div className="mt-6 pt-5 border-t border-ink-faint/15">
+              <h4 className="text-sm font-semibold text-ink mb-1">Kliiniline režiim</h4>
+              <p className="text-xs text-ink-muted leading-relaxed mb-3 max-w-xl">
+                Patsiendikaart (ravikaart, allergiad, hambumus, hambakaardi seisund)
+                ja visiitide broneerimine. <strong>Vaikimisi väljas:</strong> labor
+                haldab töid, mitte patsiente, ja terviseandmed on GDPR-i eriliigilised
+                andmed, mida ei ole mõtet koguda, kui neid vaja ei lähe.
+                Väljalülitamine ei kustuta midagi — olemasolevad patsiendid ja visiidid
+                jäävad andmebaasi alles ja tulevad tagasi, kui selle uuesti sisse lülitad.
+              </p>
+              <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
+                {([
+                  { v: false, label: 'Väljas — ainult labor' },
+                  { v: true,  label: 'Sees — labor + kliinik' },
+                ]).map(o => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => setFlag('kliinilineRezhiim', o.v)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
+                      settings.kliinilineRezhiim === o.v ? 'chip-active' : 'text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
         )}

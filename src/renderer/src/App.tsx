@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { TopBar } from './components/TopBar'
@@ -58,6 +58,13 @@ function AppContent() {
 
   const { data: jobs = [], isLoading } = useJobs()
   const { settings } = useSettings()
+
+  // Switching the clinical half off while its view is open would leave <main>
+  // empty with no error — the exact hazard types/view.ts warns about. Send the
+  // user somewhere that exists instead.
+  useEffect(() => {
+    if (!settings.kliinilineRezhiim && view === 'patients') setView('overview')
+  }, [settings.kliinilineRezhiim, view])
 
   // Global search filter — applied to views that display individual jobs
   const searchedJobs = useMemo(() => {
@@ -321,7 +328,7 @@ function AppContent() {
               newVisitSignal={newVisitSignal}
             />
           )}
-          {view === 'patients' && (
+          {view === 'patients' && settings.kliinilineRezhiim && (
             <PatientsView
               jobs={jobs}
               onJobClick={openEdit}

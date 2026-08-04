@@ -7,6 +7,7 @@
  * not have any to spare.
  */
 import type { CalendarMode, CalendarScale } from './CalendarView'
+import { useSettings } from '../../stores/useSettings'
 
 interface CalendarTopControlsProps {
   mode: CalendarMode
@@ -19,14 +20,20 @@ interface CalendarTopControlsProps {
 export function CalendarTopControls({
   mode, onModeChange, scale, onScaleChange, onToday,
 }: CalendarTopControlsProps) {
+  const { settings } = useSettings()
   return (
     <>
       <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1 flex-shrink-0">
+        {/* Visits are appointment booking — a practice's front desk, not a
+            lab's. Hidden unless the clinical half is on; the jobs half of the
+            calendar (deadlines) is the lab's and always shows. */}
         {([
-          { key: 'tood', label: 'Tööd' },
-          { key: 'visiidid', label: 'Visiidid' },
-          { key: 'kombineeritud', label: 'Kombineeritud' },
-        ] as const).map(({ key, label }) => (
+          { key: 'tood', label: 'Tööd', clinical: false },
+          { key: 'visiidid', label: 'Visiidid', clinical: true },
+          { key: 'kombineeritud', label: 'Kombineeritud', clinical: true },
+        ] as const)
+          .filter(o => !o.clinical || settings.kliinilineRezhiim)
+          .map(({ key, label }) => (
           <button
             key={key}
             onClick={() => onModeChange(key)}

@@ -18,7 +18,7 @@ import type { WorkType } from '../config/workTypes'
 
 export const CLINIC_COLUMNS = [
   'work_types', 'materials', 'material_prices', 'material_costs', 'machines',
-  'pipeline_stages', 'pricing', 'calendar', 'payroll',
+  'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features',
 ] as const
 
 export type ClinicColumn = (typeof CLINIC_COLUMNS)[number]
@@ -44,6 +44,11 @@ export interface ClinicSettingsRow {
   }
   payroll: {
     tooandjaMaksudProtsent: number
+  }
+  // Which halves of the product this lab uses. See sql/037.
+  features: {
+    /** Patient record + visit booking. Off = WivoLab, the laboratory product. */
+    clinical: boolean
   }
   calendar: {
     ajajoonAlgus: number
@@ -87,6 +92,9 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
     payroll: {
       tooandjaMaksudProtsent: s.tooandjaMaksudProtsent,
     },
+    features: {
+      clinical: s.kliinilineRezhiim,
+    },
     calendar: {
       ajajoonAlgus: s.ajajoonAlgus,
       ajajoonLopp: s.ajajoonLopp,
@@ -113,6 +121,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   kmMaar: 'pricing',
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
+  kliinilineRezhiim: 'features',
   fixedCostsPerJob: 'pricing',
   lisateenused: 'pricing',
   ajajoonAlgus: 'calendar',
