@@ -13,6 +13,10 @@ const wivoAPI = {
   gitPull: (): Promise<string | null> => ipcRenderer.invoke('wivo:git-pull'),
   downloadUpdate: (): Promise<void> => ipcRenderer.invoke('wivo:download-update'),
   installUpdate: (): Promise<void> => ipcRenderer.invoke('wivo:install-update'),
+  licenseStatus: (): Promise<unknown> => ipcRenderer.invoke('wivo:license-status'),
+  licenseInstall: (token: string): Promise<unknown> =>
+    ipcRenderer.invoke('wivo:license-install', token),
+  licenseEnforced: (): Promise<boolean> => ipcRenderer.invoke('wivo:license-enforced'),
   onUpdateAvailable: (cb: (version: string) => void) => {
     ipcRenderer.on('wivo:update-available', (_e, version) => cb(version))
   },

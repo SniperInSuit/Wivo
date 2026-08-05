@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useLicense } from './useLicense'
 
 export type PermissionKey =
   | 'jobs.read' | 'jobs.write'
@@ -43,6 +44,7 @@ interface PermissionRow {
  */
 export function usePermissions() {
   const { role, user, status } = useAuth()
+  const { canWrite: licenceCanWrite } = useLicense()
 
   const { data: rows = [] } = useQuery<PermissionRow[]>({
     queryKey: ['permissions', user?.id],
@@ -59,6 +61,14 @@ export function usePermissions() {
   })
 
   function can(perm: PermissionKey): boolean {
+    // An expired licence makes the app read-only. Enforced HERE because every
+    // write button in the app already asks this question — gating it anywhere
+    // else would mean finding and patching each of them, and missing some.
+    // Reading is deliberately untouched: a lab must always be able to look up
+    // what it promised a customer, whatever the state of its invoice to us.
+    if (!licenceCanWrite && (perm.endsWith('.write') || perm === 'payroll.manage')) {
+      return false
+    }
     if (role === 'owner') return true
     if (role === 'patient') {
       // Patients can only view their own visits
@@ -69,5 +79,5 @@ export function usePermissions() {
     return row?.granted ?? false
   }
 
-  return { can, role, isOwner: role === 'owner' }
+  return { can, role, isOwner: role === 'owner', licenceCanWrite }
 }

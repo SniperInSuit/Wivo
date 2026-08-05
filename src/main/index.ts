@@ -4,6 +4,7 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
+import { currentLicence, installLicence, licensingEnforced } from './license'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
 app.commandLine.appendSwitch('lang', 'et-EE')
@@ -65,6 +66,11 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.wivo.dental')
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
+
+  // Licence lives in the main process — see license.ts for why.
+  ipcMain.handle('wivo:license-status', () => currentLicence())
+  ipcMain.handle('wivo:license-install', (_e, token: string) => installLicence(token))
+  ipcMain.handle('wivo:license-enforced', () => licensingEnforced())
   ipcMain.handle('wivo:relaunch', () => {
     app.relaunch()
     app.exit(0)

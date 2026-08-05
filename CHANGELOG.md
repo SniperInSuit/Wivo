@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.29.0] — 2026-08-05
+Andmebaasi muudatusi ei ole.
+
+**Litsentsivõti**
+- Ed25519-ga allkirjastatud võti, formaadis `WIVO1.<payload>.<allkiri>`. Sees on
+  kellele, pakett, kasutajate arv ja aegumiskuupäev
+- **Kontroll toimub arvutis kohapeal, ilma internetita.** Labor ei tohi seisma
+  jääda sellepärast, et võrk kadus — aegumine on võtme sees ja allkiri tõestab,
+  et keegi pole seda muutnud
+- **14 päeva armuaega.** Aegunud võti ei lukusta rakendust kohe: kollane hoiatus,
+  siis kirjutuskaitse. Lugemine jääb alati alles. Labor, kes ei saa juba tehtud
+  tööd arveldada, ei uuenda litsentsi vaid vihastab
+- Kirjutuskaitse jõustub `usePermissions().can()` sees — ühes kohas, kust kogu
+  rakendus niikuinii kirjutusõigust küsib
+- Seaded → Litsents näitab seisu ja võtab uue võtme vastu
+- Võti käib ettevõtte, mitte arvuti külge — sama võti iga töökoha peale
+
+**Sinule (mitte kliendile):**
+```
+node scripts/make-license.mjs keygen
+node scripts/make-license.mjs sign --name "Labor OÜ" --plan labor --months 12
+```
+`keygen` jookseb ÜKS kord. `license-private.pem` on gitignore'is — varunda seda
+nagu pangaparooli. Avalik võti läheb `src/main/license.ts` sisse; kuni see on
+tühi, litsentsi ei kontrollita ja iga build on arendusversioon.
+
 ## [1.28.0] — 2026-08-05
 **Andmebaasi muudatused:** `sql/035_customers.sql`, `sql/036_customers_realtime.sql`
 (eraldi, omaette), `sql/037_features.sql`. Jooksuta Supabase SQL editoris, Wivo kinni.

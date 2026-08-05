@@ -39,8 +39,13 @@ Deliberately **not** an npm workspace package. `electron.vite.config.ts` runs
 `out/**/*` with no `node_modules`, so a packaged build would die at require time.
 A source alias cannot fail that way.
 
-**Nothing in here may be imported by `src/main` or `src/preload`** — that is the
-same trap from the other side.
+`src/main` and `src/preload` import from here by **relative path**
+(`../../shared/…`), not through the alias — the alias is only configured for the
+renderer. That bundles correctly: `externalizeDepsPlugin()` externalises bare
+specifiers listed in `dependencies`, and a relative source import is neither.
+Verified by grepping `out/main/index.js` after a build. What must NOT happen is
+`shared/` acquiring an npm dependency, which would then be externalised out of
+the packaged main bundle and crash at require time.
 
 ## Contents
 

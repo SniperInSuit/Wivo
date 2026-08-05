@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { TopBar } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
+import { LicenseBanner } from './components/LicenseBanner'
 import { Board } from './components/Board/Board'
 import { TableView } from './components/TableView/TableView'
 import { Dashboard } from './components/Dashboard/Dashboard'
@@ -282,6 +283,7 @@ function AppContent() {
           ) : undefined}
         />
 
+        <LicenseBanner onOpenSettings={() => setView('settings')} />
         <main className="flex-1 overflow-hidden flex flex-col">
           {view === 'overview' && (
             <OverviewView

@@ -111,8 +111,12 @@ look arbitrary until the day someone undoes it.
 - `quote.unpriced` non-empty means **do not write a price**. `production` still
   holds what could be worked out, for display only.
 - Anything in `shared/` has **zero dependencies** — no React, no Supabase, no
-  npm. That is what lets a Deno edge function and a browser import it. `main`
-  and `preload` must never import from it (`externalizeDepsPlugin`).
+  npm. That is what lets a Deno edge function, a browser and the Electron main
+  process all import it. `main`/`preload` use a RELATIVE path, not `@shared`
+  (the alias is renderer-only); relative imports bundle fine. The rule that
+  matters is the zero-dependency one: an npm dependency in `shared/` would be
+  externalised out of the packaged main bundle by `externalizeDepsPlugin()` and
+  crash at require time.
 - `npm test` runs the quote tests. They exist because this code handles money.
 
 ### Auth and people

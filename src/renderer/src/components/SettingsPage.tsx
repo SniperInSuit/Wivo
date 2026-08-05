@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon } from 'lucide-react'
+import { Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound} from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
@@ -11,6 +11,7 @@ import { workTypeImage, slugifyWorkType } from '../lib/workTypeImages'
 import { RepriceJobsSection } from './Settings/RepriceJobsSection'
 import { supabase, updateProfile, displayIdentity } from '../lib/supabase'
 import type { PipelineStage } from '../config/pipeline'
+import { LicenseSection } from './Settings/LicenseSection'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -20,7 +21,7 @@ const STAGE_PALETTE = [
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#0E1116'
 ]
 
-type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud'
+type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents'
 
 // Personal preferences vs clinic configuration.
 //
@@ -48,6 +49,7 @@ const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: 
     title: 'Kliinik',
     items: [
       { key: 'kliinik', label: 'Kliinik', icon: Building2 },
+      { key: 'litsents', label: 'Litsents', icon: KeyRound },
     ]
   },
   {
@@ -1229,6 +1231,8 @@ export function SettingsPage() {
             </div>
           </section>
         )}
+
+        {activeGroup === 'litsents' && <LicenseSection />}
 
         {/* Teema */}
         {activeGroup === 'kasutajaliides' && (
