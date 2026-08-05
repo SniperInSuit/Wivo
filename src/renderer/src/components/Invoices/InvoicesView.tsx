@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   FileText, Plus, Loader2, AlertTriangle, Euro, Clock, CheckCircle2,
-  Trash2, X, Search, Printer, Building2, User
+  Trash2, X, Search, Printer, Building2, User, Download
 } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import { et } from 'date-fns/locale'
@@ -21,6 +21,7 @@ import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
 import { InvoiceForm } from './InvoiceForm'
 import { InvoicePrintView } from './InvoicePrintView'
+import { exportCsv, INVOICE_COLUMNS } from '../../lib/exports'
 
 interface InvoicesViewProps {
   jobs: Job[]
@@ -128,6 +129,14 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
               className="input py-1.5 pl-8 text-sm w-64"
             />
           </div>
+          <button
+            onClick={() => exportCsv('arved', filtered, INVOICE_COLUMNS)}
+            disabled={filtered.length === 0}
+            title={`Ekspordi ${filtered.length} arvet CSV-sse`}
+            className="btn-ghost text-sm border border-ink-faint/25 disabled:opacity-40"
+          >
+            <Download size={14} /> CSV
+          </button>
           {canWrite && (
             <button onClick={() => setShowForm(true)} className="btn-primary">
               <Plus size={14} /> Uus arve

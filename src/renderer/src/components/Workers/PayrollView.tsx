@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react'
 import {
   Wallet, Plus, Trash2, Loader2, AlertTriangle, Clock, CheckCircle2,
-  ChevronDown, ChevronRight, Euro, Lock
+  ChevronDown, ChevronRight, Euro, Lock, Download
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, addMonths, parseISO, isValid } from 'date-fns'
 import { et } from 'date-fns/locale'
@@ -33,6 +33,7 @@ import { updateProfile, type Engagement } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
+import { exportCsv, payoutColumns, payoutLineColumns } from '../../lib/exports'
 
 const KINDS: RateKind[] = ['hammas', 'too', 'protsent', 'tund', 'kuu']
 const SCOPES: RateScope[] = ['too', 'disain', 'muudatus']
@@ -64,6 +65,13 @@ export function PayrollView({ jobs }: PayrollViewProps) {
     return [...new Set(payouts.map(p => p.profile_id))].filter(id => !inClinic.has(id))
   }, [payouts, workers])
   const { data: archivedProfiles } = useProfileNames(archivedIds)
+
+  // Names for the export. Archived people included — a payout that cannot name
+  // its recipient is a worse record than a slightly longer lookup.
+  const nameOf = (id: string): string =>
+    workers.find(w => w.id === id)?.full_name
+    ?? archivedProfiles?.get(id)?.full_name
+    ?? 'Tundmatu'
 
   const createPayout = useCreatePayout()
   const updatePayout = useUpdatePayout()
@@ -196,7 +204,34 @@ export function PayrollView({ jobs }: PayrollViewProps) {
           <Wallet size={18} className="text-accent" /> Töötasud
         </h1>
 
-        <div className="flex items-center gap-1 ml-auto">
+        {/* The accountant's export. Two files rather than one: the summary is
+            what goes on a payroll run, the lines are the answer to "why is this
+            person's number what it is" — and being asked that months later is
+            exactly when the payout has already been frozen. */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <button
+            onClick={() => exportCsv('valjamaksed', payouts, payoutColumns(nameOf))}
+            disabled={payouts.length === 0}
+            className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
+            title="Väljamaksed kokku, CSV"
+          >
+            <Download size={13} /> Väljamaksed
+          </button>
+          <button
+            onClick={() => exportCsv(
+              'valjamaksed-read',
+              payouts.flatMap(p => p.lines.map(line => ({ payout: p, line }))),
+              payoutLineColumns(nameOf),
+            )}
+            disabled={payouts.length === 0}
+            className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
+            title="Iga väljamakse rida eraldi, CSV"
+          >
+            <Download size={13} /> Read
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1">
           <button onClick={() => setMonthOffset(o => o - 1)} className="btn-ghost p-2">
             <ChevronRight size={14} className="rotate-180" />
           </button>

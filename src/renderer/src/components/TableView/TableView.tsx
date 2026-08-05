@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes, Download } from 'lucide-react'
 import {
   format, isPast, parseISO,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isWithinInterval
@@ -15,6 +15,8 @@ import { usePayments } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
 import { useWorkTypes } from '../../stores/useSettings'
+import { useCustomers } from '../../hooks/useCustomers'
+import { exportCsv, jobColumns } from '../../lib/exports'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
@@ -61,6 +63,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
   const { data: workers = [] } = useClinicProfiles()
+  const { data: customers = [] } = useCustomers()
   const { data: allPayments = [] } = usePayments()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
@@ -340,10 +343,26 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           </button>
         ))}
 
+        {/* Exports what is ON SCREEN, filters included. Exporting everything
+            from a filtered view is how someone sends the wrong month to their
+            accountant. */}
+        <button
+          onClick={() => exportCsv('tood', filtered, jobColumns(
+            key => stages.find(st => st.key === key)?.label ?? key,
+            id => customers.find(c => c.id === id)?.name ?? '',
+            id => workers.find(w => w.id === id)?.full_name ?? '',
+          ))}
+          disabled={filtered.length === 0}
+          title={`Ekspordi ${filtered.length} rida CSV-sse`}
+          className="text-xs px-2.5 py-1 rounded-lg font-medium text-ink-muted hover:text-ink bg-bg-sidebar transition-colors flex-shrink-0 flex items-center gap-1.5 disabled:opacity-40 ml-auto"
+        >
+          <Download size={12} /> CSV
+        </button>
+
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="text-xs text-ink-faint hover:text-red-500 transition-colors flex-shrink-0 ml-auto"
+            className="text-xs text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
           >
             Tühjenda filtrid
           </button>

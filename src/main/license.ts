@@ -28,7 +28,7 @@ import {
  * Empty = licensing is NOT enforced, which is what an unreleased build wants.
  * The moment this is set, every install needs a key.
  */
-const LICENCE_PUBLIC_KEY = ''
+const LICENCE_PUBLIC_KEY = 'e39d2ca4c5f3ecb4d801206f2581d1b991a8de45ed6af19d26993cb845c9c211'
 
 /** Where the key file lives. Same folder Electron keeps its own state in. */
 const licencePath = (): string => join(app.getPath('userData'), 'license.key')

@@ -6,7 +6,7 @@
  * calling this one "Kliendid" and never "Kliinikud".
  */
 import { useMemo, useState } from 'react'
-import { Plus, Search, Building2, Archive, ArchiveRestore, Pencil, Trash2, Loader2, X } from 'lucide-react'
+import { Plus, Search, Building2, Archive, ArchiveRestore, Pencil, Trash2, Loader2, X, Download } from 'lucide-react'
 import type { Customer, CustomerInput } from '../../types/customer'
 import { BILLING_MODE_LABEL, BILLING_MODE_HINT, EMPTY_CUSTOMER } from '../../types/customer'
 import {
@@ -15,6 +15,7 @@ import {
 import { useJobs } from '../../hooks/useJobs'
 import { useInvoices } from '../../hooks/useInvoices'
 import { describeError } from '../Patients/errors'
+import { exportCsv, CUSTOMER_COLUMNS } from '../../lib/exports'
 
 export function CustomersView() {
   const { data: customers = [], isLoading } = useCustomers()
@@ -75,7 +76,15 @@ export function CustomersView() {
             Arhiiv ({archivedCount})
           </button>
         )}
-        <button onClick={() => setEditing('new')} className="btn-primary ml-auto flex-shrink-0">
+        <button
+          onClick={() => exportCsv('kliendid', shown, CUSTOMER_COLUMNS)}
+          disabled={shown.length === 0}
+          className="btn-ghost text-sm border border-ink-faint/25 ml-auto flex-shrink-0 disabled:opacity-40"
+          title={`Ekspordi ${shown.length} klienti CSV-sse`}
+        >
+          <Download size={14} /> CSV
+        </button>
+        <button onClick={() => setEditing('new')} className="btn-primary flex-shrink-0">
           <Plus size={15} /> Uus klient
         </button>
       </div>
