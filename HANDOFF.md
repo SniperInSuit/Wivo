@@ -1,6 +1,6 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.25.0
+## Current version: 1.30.0
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
@@ -165,105 +165,95 @@ look arbitrary until the day someone undoes it.
 
 ---
 
-## What this session delivered (v1.7.9 → v1.23.0)
+## WivoLab — the repositioning (v1.26 → v1.30)
 
-### Clinic settings → database (1.7.15)
-Done before invoicing on purpose: invoices are built on these prices, and they
-were per-machine localStorage. `sql/019`, `lib/clinicSettings.ts`,
-`components/ClinicSettingsSync.tsx`. `PipelineContext` became a module store so
-the sync layer can reach it.
+The product narrowed from solo-clinic management back to its original idea:
+**workflow management for a dental LABORATORY**. A clinic-side product
+(WivoDental) comes later and the two connect. The full plan, including pricing
+and the competitive read, is at
+`~/.claude/plans/task-notification-task-id-bpqvowmnm-tas-parsed-spring.md`.
 
-### Invoicing and payments — Phase 4 (1.8.0, 1.21–1.23)
-`invoices` / `invoice_lines` / `payments` / `invoice_counters`, Arved view, A4
-print → system PDF, partial payments, payment methods everywhere "makstud" can be
-set, instalment invoices, per-patient payment tracking.
+### Delivered
 
-### Worker pay — Phase 4b (1.9.0, 1.13–1.15, 1.19–1.20)
-`worker_rates` / `work_hours` / `worker_payouts` / `worker_payout_lines`,
-`jobs.assigned_to` + `designed_by`, the rules engine, automatic hours, employer
-tax, employee-vs-contractor, `payroll.manage` delegation, password reset and
-permanent delete.
+**Faas 0 — one price engine, four money bugs (1.27.0)**
+`shared/pricing/` now holds the only implementation. Fixed: `extras` reaching no
+total anywhere, `toRow()` dropping `fixedCostsPerJob`/`lisateenused`, the two
+copies disagreeing at `hambaHind = 0`, `work_items` never being priced, and
+`profiles_read` being project-wide.
 
-### Financial statistics (1.10.0, 1.17.0)
-`lib/finance.ts` + Statistika → Rahandus: revenue, labour, material, consumables,
-margin, per-work-type margin, revision loss by reason, payment-method split.
+**Faas 1 — customers and B2B invoicing (1.28.0)**
+`customers` table, jobs carry a customer + the practice's own reference +
+delivery status, invoices can be addressed to a customer, and the clinical half
+went behind a flag.
 
-### Pricing model (1.7.12–1.7.14, 1.11.0, 1.17.0)
-Editable machines/materials/work types; per-job **or** per-tooth pricing;
-discount prices; work-type images; consumable costs; bulk reprice.
+**Licensing (1.29.0)** — Ed25519, offline, 14-day grace.
 
-### Calendar, UI, misc
-Revisions on the calendar, text size (CSS zoom), filter popover with match
-navigation, work-type colours settings-owned, calendar header moved to the top
-bar, job-type card picker, bulk assignment in Tabel.
+**Exports and overheads (1.30.0)** — CSV out of every list, monthly overheads.
 
----
+### Migrations to run, in order
 
-## Migrations to run (in order)
+Supabase SQL editor, **Wivo closed**. Everything through `033` was already run.
 
-Supabase SQL editor, **Wivo closed**.
-
-1–9. `sql/010` … `sql/018` — through Phase 3 (jobs fields, auth, clinics, RLS, permissions)
-10. `019_clinic_settings.sql` — clinic config out of localStorage
-11. `020_invoices.sql` — invoices, lines, payments, numbering
-12. `021_legacy_payments.sql` — **OPTIONAL**, read its header first
-13. `022_worker_pay.sql` — rates, hours, payouts
-14. `023_material_costs.sql` — material cost (margin)
-15. `024_worker_pay_scope.sql` — pay scope, auto hours, employer tax
-16. `025_job_completed_date.sql` — `jobs.valmis_kuupaev`
-17. `026_revision_pay_scope.sql` — revisions get their own rate
-18. `027_payroll_permission.sql` — `payroll.manage` + `can_manage_payroll()`
-19. `028_worker_engagement.sql` — `profiles.toosuhe`
-20. `029_username_login.sql` — `profiles.username`
-21. `030_reset_worker_password.sql` — owner sets a worker's password
-22. `031_delete_worker.sql` — permanent delete, refused if history exists
 23. `034_profiles_read_scope.sql` — `profiles_read` scoped to the caller's clinic
+24. `035_customers.sql` — customers, `jobs.customer_id`/`customer_ref`/`delivery_status`, `invoices.customer_id`/`bill_to_kind`
+25. `036_customers_realtime.sql` — **run alone**, see the deadlock note in the file
+26. `037_features.sql` — `clinic_settings.features`
 
-**Supabase Auth settings:**
-- Enable Email provider (Authentication → Providers → Email)
-- **Disable "Confirm email"** — REQUIRED, not cosmetic. With it on, every worker
-  signup mails a synthetic address and hits the built-in SMTP limit of a couple
-  of messages per hour ("Email rate limit exceeded").
-- Site URL: the Supabase project URL, not localhost
+Each file ends with a verification query. Run them.
 
 ---
 
-## Testing status
+## Licensing — what you have to do
 
-`Testing.md` holds the risk-ordered manual test plan.
+`LICENCE_PUBLIC_KEY` in `src/main/license.ts` is **set**, so this build enforces
+licensing. `license-private.pem` is in the repo root, gitignored, mode 600.
+**Back it up.** Losing it means every key you have issued stops verifying the
+moment you ship a build with a different public key.
 
-Exercised by the owner so far: clinic settings sync, calendar, work types and
-prices, payroll rules and the zero-earnings diagnostics, worker accounts and
-removal. **Not yet exercised end to end:** invoice numbering under concurrency,
-the print view on a real printer, instalment invoices, and the finance dashboard
-against a full month of real data.
+Issue a key:
+```
+node scripts/make-license.mjs sign --name "Labor OÜ" --plan labor --months 12
+```
 
-Everything in this session is typecheck- and build-clean only. None of it has run
-against production volumes.
+A five-year Labor+ key for this machine was already issued and should be pasted
+into Seaded → Litsents. Without a key the app is read-only.
+
+Enforcement is one line in `usePermissions().can()`: every `.write` permission
+and `payroll.manage` return false once the grace window closes. **Any future
+write path that does not ask `can()` will not be gated** — that is the trade for
+having it in one place instead of forty.
 
 ---
 
 ## What's next
 
-### Open, in rough order of value
-- **Payroll export for the accountant** — period totals per person, CSV. The
-  payout data can currently only be read on screen.
-- **Overheads** (rent, equipment, software) so the margin becomes profit rather
-  than gross margin.
-- **`pipeline.write` means nothing right now** — clinic settings are owner-only
-  writes with no column-level policy. Either give it a proper policy or make
-  pipeline editing owner-only honestly.
-- Drag-to-assign on the board (bulk assign in Tabel already exists).
-- Recurring monthly invoices per referring dentist rather than per patient.
-- Move `kasutajaNimi` fully to `profiles`.
+### Immediately outstanding
+- **Run the four migrations above.** Nothing from 1.27–1.30 works fully without
+  them. The app will show empty customer lists and fail on `features` reads.
+- **Run Seaded → Hinnad → tööde ümberhindamine in PREVIEW** against real data.
+  Mixed-work-item jobs get a different price now (the sum of their items rather
+  than one type across all teeth). Review before writing. Issued invoices are
+  safe by construction — their lines are copies.
+- **Enter overheads** (Seaded → Hinnad → Üldkulud kuus) or Rahandus keeps
+  reporting contribution rather than profit, correctly labelled but less useful.
 
-### Backlog
-- Supabase email templates (branding, Estonian, custom SMTP)
-- Calendar filter persistence
-- Global search (Cmd+K)
-- Deadline alerts / notifications
+### Faas 2 — public job-status link
+Design is in the plan. **Supabase Pro is NOT required for this**, contrary to an
+earlier draft: Edge Functions, `pg_cron` and `pg_net` are all on the free tier.
+Pro is only needed for Faas 4's file uploads (1 GB free vanishes in a week of
+real scans). The free tier's one real risk is a project pausing after 7 idle
+days — irrelevant for a lab using the app daily.
 
----
+You will still need: a Cloudflare account, a domain, and the Supabase CLI (for
+`functions deploy` and `secrets set` ONLY — never `db push`, which would want to
+take ownership of the 37 hand-run files in `sql/`).
+
+### Smaller, no external setup
+- Customers from the free-text `patients.kliinik` field — a one-off import with
+  a preview, same shape as `RepriceJobsSection`. Not built; worth it only if
+  those names are actually populated in your data.
+- i18n. Every string is Estonian, inline. Blocks the Baltics.
+- Job attachments. No file storage exists at all yet.
 
 ## Legal / compliance
 
