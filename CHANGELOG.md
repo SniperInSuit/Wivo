@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.30.0] — 2026-08-05
+Andmebaasi muudatusi ei ole. `clinic_settings.pricing` saab kaks uut välja,
+mis tekivad iseenesest (jsonb).
+
+**CSV eksport — Tööd, Arved, Kliendid, Väljamaksed**
+- Eksporti ei olnud varem üldse. Litsentsimudelis on see kohustuslik: iga
+  ostja küsib "kas ma saan oma andmed kätte"
+- Kirjutatud Eesti Exceli jaoks: **semikoolon** eraldajaks (komaga fail avaneb
+  ühe veeruna), **BOM** (muidu "Tõnu Käär" → "TÃµnu KÃ¤Ã¤r"), **komakoht komaga**
+  (muidu loeb Excel summa tekstina)
+- Tabel ekspordib **filtreeritud** read, mitte kõik — filtreeritud vaatest
+  kõige eksportimine on see, kuidas raamatupidajale läheb vale kuu
+- Töötasud annab kaks faili: väljamaksed kokku ja read eraldi. Teine on vastus
+  küsimusele "miks see number selline on", mida küsitakse kuid hiljem
+
+**Üldkulud — brutomarginaalist saab kasum**
+- Uus **Seaded → Hinnad → Üldkulud kuus**: rent, liisingud, tarkvara, side
+- Rahandus jagab need perioodile päevade järgi (30,44-päevase keskmise kuu
+  alusel, et veebruar ei paistaks märtsist odavam — rent on sama)
+- Kui üldkulud on sisestatud, muutub tulemuse pealkiri "Kate" → **"Kasum"**.
+  Kui neid ei ole, jääb "Kate": nulli lahutamine ja tulemuse kasumiks nimetamine
+  oleks sama vale mis marginaal, mis tööjõudu ignoreerib
+
 ## [1.29.0] — 2026-08-05
 Andmebaasi muudatusi ei ole.
 

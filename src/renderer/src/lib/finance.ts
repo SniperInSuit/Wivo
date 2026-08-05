@@ -19,7 +19,7 @@
 import type { Job } from '../types/job'
 import { revisionReasons } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
-import type { MaterialPricing, FixedCost } from '../stores/useSettings'
+import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
@@ -89,6 +89,27 @@ export function jobMaterialCost(
   return round2(countSmallTeeth(h) * c.small + countLargeTeeth(h) * c.large)
 }
 
+/**
+ * A month's overheads, prorated to the days the period actually covers.
+ *
+ * 30.44 days is the mean month length. Using it rather than the real length of
+ * the month in question keeps a 28-day February from looking cheaper to run
+ * than a 31-day March, which it is not — the rent is the same.
+ */
+const MEAN_MONTH_DAYS = 30.44
+
+export function overheadForPeriod(
+  overheads: Overhead[], periodStart: string, periodEnd: string
+): number {
+  const monthly = overheads.reduce((s, o) => s + (Number(o.summa) || 0), 0)
+  if (monthly <= 0) return 0
+  const start = Date.parse(`${periodStart}T00:00:00Z`)
+  const end = Date.parse(`${periodEnd}T00:00:00Z`)
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return 0
+  const days = (end - start) / 86_400_000 + 1   // inclusive of both ends
+  return round2(monthly * (days / MEAN_MONTH_DAYS))
+}
+
 /** Total fixed overhead per job (gloves, shields, disinfection etc). */
 export function jobFixedCost(fixedCosts: FixedCost[]): number {
   return round2(fixedCosts.reduce((s, c) => s + (c.summa ?? 0), 0))
@@ -152,9 +173,14 @@ export interface FinanceStats {
   /** Screws, abutments and the like, from the work type's cost list. */
   consumableCost: number
   fixedCostTotal: number
+  /** Rent, leases, software — prorated to the period. See overheadForPeriod. */
+  overheadCost: number
   // Result
   grossMargin: number
   grossMarginPct: number
+  /** Gross margin minus overheads. This is the one that answers "did we earn". */
+  netMargin: number
+  netMarginPct: number
   // Detail
   byWorkType: WorkTypeFinance[]
   revisionLoss: RevisionLoss[]
@@ -180,6 +206,8 @@ export interface FinanceInput {
   types: WorkType[]
   materialCosts: Record<string, MaterialPricing>
   fixedCosts: FixedCost[]
+  /** Monthly recurring costs. Empty = overheads unknown, reported as 0. */
+  overheads: Overhead[]
   doneStageKey: string
   periodStart: string
   periodEnd: string
@@ -188,7 +216,7 @@ export interface FinanceInput {
 export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
-    materialCosts, fixedCosts, doneStageKey, periodStart, periodEnd,
+    materialCosts, fixedCosts, overheads, doneStageKey, periodStart, periodEnd,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -274,6 +302,13 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   // actually collect on.
   const grossMargin = round2(billed - labourAccrued - materialCost - consumableCost - fixedCostTotal)
   const grossMarginPct = billed > 0 ? round2((grossMargin / billed) * 100) : 0
+
+  // Overheads are charged by the month, so a period that is not a whole month
+  // gets its share by days. A three-day view showing a full month's rent would
+  // read as a catastrophic loss.
+  const overheadCost = overheadForPeriod(overheads ?? [], periodStart, periodEnd)
+  const netMargin = round2(grossMargin - overheadCost)
+  const netMarginPct = billed > 0 ? round2((netMargin / billed) * 100) : 0
 
   // ── Per work type ─────────────────────────────────────────────────────────
   const revenueByJob = new Map<string, number>()
@@ -416,8 +451,8 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     billed, received, outstanding: outstandingTotal, overdue: overdueTotal,
     unbilled, unbilledJobs: unbilledList.length,
     labourAccrued, labourPaid, labourEmployeeGross, labourContractor,
-    materialCost, consumableCost, fixedCostTotal,
-    grossMargin, grossMarginPct,
+    materialCost, consumableCost, fixedCostTotal, overheadCost,
+    grossMargin, grossMarginPct, netMargin, netMarginPct,
     byWorkType, revisionLoss, revisionLossTotal, byWorker, byPaymentMethod,
     labourCoverage: coverage(done.length, done.filter(j => j.assigned_to).length),
     materialCoverage: coverage(done.length, costedJobs),

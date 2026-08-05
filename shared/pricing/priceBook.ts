@@ -26,6 +26,18 @@ export interface FixedCost {
   summa: number   // € per job
 }
 
+/**
+ * A recurring cost of being open at all — rent, the mill lease, software.
+ *
+ * Monthly, because that is how they are invoiced and how anyone thinks about
+ * them. Deliberately NOT per job: overheads exist whether or not a job was
+ * made, and spreading them per job makes a quiet month look profitable.
+ */
+export interface Overhead {
+  nimi: string    // e.g. "Rent", "Freesipingi liising", "Tarkvara"
+  summa: number   // € per month
+}
+
 /** An add-on the customer can be charged for. Revenue, not cost. */
 export interface ExtraService {
   id: string      // crypto.randomUUID()

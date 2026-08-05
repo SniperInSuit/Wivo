@@ -41,6 +41,7 @@ export interface ClinicSettingsRow {
     makseTahtaegPaevades: number
     fixedCostsPerJob: import('../stores/useSettings').FixedCost[]
     lisateenused: import('../stores/useSettings').ExtraService[]
+    yldkulud: import('../stores/useSettings').Overhead[]
   }
   payroll: {
     tooandjaMaksudProtsent: number
@@ -88,6 +89,7 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
       // therefore never left the machine that typed them.
       fixedCostsPerJob: s.fixedCostsPerJob,
       lisateenused: s.lisateenused,
+      yldkulud: s.yldkulud,
     },
     payroll: {
       tooandjaMaksudProtsent: s.tooandjaMaksudProtsent,
@@ -124,6 +126,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   kliinilineRezhiim: 'features',
   fixedCostsPerJob: 'pricing',
   lisateenused: 'pricing',
+  yldkulud: 'pricing',
   ajajoonAlgus: 'calendar',
   ajajoonLopp: 'calendar',
   nadalAlgus: 'calendar',

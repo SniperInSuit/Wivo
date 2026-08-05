@@ -17,11 +17,11 @@ export {
 } from '@shared/pricing/teeth'
 export {
   workTypePriceFor, calcProduction,
-  type MaterialPricing, type FixedCost, type ExtraService,
+  type MaterialPricing, type FixedCost, type ExtraService, type Overhead,
   type PriceBook, type WorkTypePriceResult
 } from '@shared/pricing/priceBook'
 import { workTypePriceFor } from '@shared/pricing/priceBook'
-import type { MaterialPricing, FixedCost, ExtraService, PriceBook } from '@shared/pricing/priceBook'
+import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } from '@shared/pricing/priceBook'
 
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
@@ -146,6 +146,10 @@ export interface WivoSettings {
   // Extra services that can be added to individual jobs (e.g. Ülesehitus,
   // Ajutine kroon, Wax-up). Defined here as a price list, selected per job.
   lisateenused: ExtraService[]
+  // ─── Üldkulud ──────────────────────────────────────────────────────────────
+  // Kuised püsikulud, mis kehtivad sõltumata sellest, kas töid tehti: rent,
+  // liisingud, tarkvara. Nendeta on Rahandus brutomarginaal, mitte kasum.
+  yldkulud: Overhead[]
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -182,6 +186,7 @@ function defaultSettings(): WivoSettings {
     // Set it in Seaded → Hinnad once, and confirm the rate that applies to you.
     kmMaar: 0,
     kliinilineRezhiim: false,
+    yldkulud: [],
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
     fixedCostsPerJob: [],
@@ -331,6 +336,7 @@ function loadSettings(): WivoSettings {
       tooandjaMaksudProtsent: stored.tooandjaMaksudProtsent ?? 0,
       fixedCostsPerJob: Array.isArray(stored.fixedCostsPerJob) ? stored.fixedCostsPerJob.map(c => ({ ...c })) : [],
       lisateenused: Array.isArray(stored.lisateenused) ? stored.lisateenused.map(s => ({ ...s })) : [],
+      yldkulud: Array.isArray(stored.yldkulud) ? stored.yldkulud.map(o => ({ ...o })) : [],
     }
   } catch {
     return defaultSettings()
@@ -513,6 +519,10 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, fixedCostsPerJob: costs }), ['pricing'])
   }, [setSettings])
 
+  const setYldkulud = useCallback((items: Overhead[]) => {
+    setSettings(prev => ({ ...prev, yldkulud: items }), ['pricing'])
+  }, [setSettings])
+
   const setLisateenused = useCallback((items: ExtraService[]) => {
     setSettings(prev => ({ ...prev, lisateenused: items }), ['pricing'])
   }, [setSettings])
@@ -635,7 +645,7 @@ export function useSettings() {
 
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
-    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund,
+    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     setTooHind,

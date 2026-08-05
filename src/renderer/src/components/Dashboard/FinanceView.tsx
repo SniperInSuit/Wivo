@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import {
   TrendingUp, TrendingDown, Euro, Wallet, Package, AlertTriangle, Clock,
-  FileWarning, Repeat, Users, Info
+  FileWarning, Repeat, Users, Info, Building2
 } from 'lucide-react'
 import { startOfMonth, startOfQuarter, startOfYear, endOfMonth, format } from 'date-fns'
 import type { Job } from '../../types/job'
@@ -65,6 +65,7 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
     types: wt.types,
     materialCosts: settings.materialCosts,
     fixedCosts: settings.fixedCostsPerJob,
+    overheads: settings.yldkulud,
     doneStageKey,
     periodStart: range.start,
     periodEnd: range.end,
@@ -75,7 +76,12 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
   // Employer tax applies to WAGES only. A contractor's invoice already carries
   // its own tax treatment, and grossing it up here would invent a liability.
   const employerTax = employerTaxAmount(fin.labourEmployeeGross, settings.tooandjaMaksudProtsent)
-  const marginAfterTax = Math.round((fin.grossMargin - employerTax) * 100) / 100  // grossMargin already nets off material + consumables
+  // grossMargin already nets off material + consumables. Overheads come off on
+  // top, so the headline is profit rather than contribution — but ONLY when
+  // overheads are actually recorded. Subtracting an unentered zero and calling
+  // the result "kasum" would be the same lie as a margin that ignores labour.
+  const hasOverheads = fin.overheadCost > 0
+  const marginAfterTax = Math.round((fin.grossMargin - employerTax - fin.overheadCost) * 100) / 100
   const marginPctAfterTax = fin.billed > 0
     ? Math.round((marginAfterTax / fin.billed) * 1000) / 10
     : 0
@@ -146,6 +152,10 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
             <Money icon={Package} label="Fikseeritud kulud" value={fin.fixedCostTotal} accent="#8B5CF6"
               sub={`${settings.fixedCostsPerJob.map(c => c.nimi).join(', ')}`} />
           )}
+          {fin.overheadCost > 0 && (
+            <Money icon={Building2} label="Üldkulud" value={fin.overheadCost} accent="#64748B"
+              sub={`${settings.yldkulud.map(o => o.nimi).join(', ')} — perioodi osa`} />
+          )}
           <Money icon={Repeat} label="Muudatuste kahju" value={fin.revisionLossTotal} accent="#EC4899"
             sub="tööjõud + materjal − tasutud" />
         </div>
@@ -156,7 +166,9 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
         <div className="card p-5 flex items-center gap-6 flex-wrap">
           <div>
             <p className="text-xs text-ink-muted mb-1">
-              Kate (arveldatud − tööjõud koos maksudega − materjal)
+              {hasOverheads
+                ? 'Kasum (arveldatud − tööjõud koos maksudega − materjal − üldkulud)'
+                : 'Kate (arveldatud − tööjõud koos maksudega − materjal)'}
             </p>
             <p className={`text-3xl font-bold tabular-nums leading-none ${
               marginAfterTax >= 0 ? 'text-emerald-600' : 'text-red-500'

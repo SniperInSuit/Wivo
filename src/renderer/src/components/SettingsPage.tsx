@@ -1072,7 +1072,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
 
 export function SettingsPage() {
   const {
-    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag,
+    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
   } = useSettings()
@@ -1665,6 +1665,75 @@ export function SettingsPage() {
               setMaterialCost={setMaterialCost}
             />
 
+
+          {/* Monthly overheads — what makes the margin a profit */}
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Euro size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Üldkulud kuus</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
+              Rent, liisingud, tarkvara, side — kulud, mis kehtivad sõltumata sellest,
+              kas sel kuul töid tehti. Ilma nendeta näitab Rahandus katet, mitte kasumit.
+              Perioodile jagatakse päevade järgi, nii et lühem vaade ei näita terve kuu renti.
+            </p>
+            <div className="space-y-1.5 mb-2">
+              {settings.yldkulud.map((o, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={o.nimi}
+                    onChange={e => {
+                      const next = [...settings.yldkulud]
+                      next[idx] = { ...next[idx], nimi: e.target.value }
+                      setYldkulud(next)
+                    }}
+                    placeholder="nt Rent"
+                    className="input py-1.5 text-sm flex-1"
+                  />
+                  <div className="relative w-28">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={o.summa}
+                      onChange={e => {
+                        const next = [...settings.yldkulud]
+                        next[idx] = { ...next[idx], summa: parseFloat(e.target.value) || 0 }
+                        setYldkulud(next)
+                      }}
+                      className="input py-1.5 text-sm pr-7 text-right"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
+                  </div>
+                  <span className="text-xs text-ink-faint">/kuus</span>
+                  <button
+                    type="button"
+                    onClick={() => setYldkulud(settings.yldkulud.filter((_, i) => i !== idx))}
+                    className="p-1 text-ink-faint hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setYldkulud([...settings.yldkulud, { nimi: '', summa: 0 }])}
+              className="btn-ghost text-xs border border-ink-faint/25"
+            >
+              <Plus size={12} /> Lisa üldkulu
+            </button>
+            {settings.yldkulud.length > 0 && (
+              <p className="text-xs text-ink-muted mt-2">
+                Kokku{' '}
+                <strong className="text-ink tabular-nums">
+                  {settings.yldkulud.reduce((s, o) => s + (o.summa || 0), 0).toFixed(2)} €
+                </strong>{' '}
+                kuus
+              </p>
+            )}
+          </section>
 
           {/* Fixed costs per job */}
           <section>
