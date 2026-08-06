@@ -388,6 +388,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const { stages } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
+  const [editingRevId, setEditingRevId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
@@ -656,9 +657,17 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               )
             )}
             {job && !editing && (
-              <button type="button" onClick={() => setEditing(true)} className="btn-ghost">
+              <button type="button" onClick={() => {
+                if (activeRev) {
+                  // Switch to edit mode and auto-open revision edit
+                  setEditingRevId(activeRev.id)
+                  setEditing(true)
+                } else {
+                  setEditing(true)
+                }
+              }} className="btn-ghost">
                 <Pencil size={14} />
-                Muuda
+                {activeRev ? 'Muuda muudatust' : 'Muuda'}
               </button>
             )}
             <button type="button" onClick={onClose} className="btn-ghost p-2">
@@ -812,8 +821,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
               </div>
 
-              {/* Töö — multi-select grid + shared odontogram */}
-              <div>
+              {/* Töö — multi-select grid (in fullscreen, this moves to center column) */}
+              <div className={isFullscreen ? 'hidden' : ''}>
                 <label className="label">Töö tüüp (vali üks või mitu)</label>
                 <div className="grid grid-cols-3 gap-1.5 mb-2">
                   {settings.tooTuubid.map(t => {
@@ -1179,12 +1188,72 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
             </div>
 
-            {/* ── CENTER COLUMN (fullscreen: odontogram) ── */}
+            {/* ── CENTER COLUMN (fullscreen: work types + odontogram) ── */}
             {isFullscreen && (
               <div className="space-y-3 sticky top-0">
+                {/* Work type grid — moved here in fullscreen for proximity to odontogram */}
+                <div>
+                  <label className="label">Töö tüüp (vali üks või mitu)</label>
+                  <div className="grid grid-cols-4 gap-1.5 mb-2">
+                    {settings.tooTuubid.map(t => {
+                      const hasItem = form.work_items.some(i => i.too === t.nimi)
+                      return (
+                        <button
+                          key={t.nimi}
+                          type="button"
+                          onClick={() => {
+                            if (hasItem) {
+                              const next = form.work_items.filter(i => i.too !== t.nimi)
+                              setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
+                            } else {
+                              const isBridge = /sild|bridge/i.test(t.nimi)
+                              const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
+                              const next = [...form.work_items, item]
+                              setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
+                              setActiveWorkItemId(item.id)
+                            }
+                          }}
+                          className={`text-xs px-2 py-1.5 rounded-lg border-2 font-medium transition-all ${
+                            hasItem ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25 text-ink-muted hover:border-accent/40'
+                          }`}
+                        >
+                          {t.nimi}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Chips for activating work items */}
+                {form.work_items.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {form.work_items.map(item => {
+                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+                      const isActive = item.id === activeWorkItemId
+                      const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+                      return (
+                        <button key={item.id} type="button"
+                          onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
+                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border-2 transition-all ${
+                            isActive ? 'border-accent bg-accent/10' : 'border-transparent'
+                          }`}
+                          style={{ backgroundColor: isActive ? undefined : `${hex}15` }}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hex }} />
+                          <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
+                          {teethCount > 0 && <span className="text-[10px] text-ink-faint">{teethCount}</span>}
+                        </button>
+                      )
+                    })}
+                    <p className="text-[10px] text-ink-faint">
+                      {activeWorkItemId ? 'Klõpsa hammastel' : 'Vali tüüp'}
+                    </p>
+                  </div>
+                )}
+
                 {form.work_items.length === 0 ? (
                   <div className="bg-bg-sidebar rounded-xl p-8 text-center">
-                    <p className="text-sm text-ink-faint">Vali vasakult töötüüp, et hambaid märkida</p>
+                    <p className="text-sm text-ink-faint">Vali töötüüp, et hambaid märkida</p>
                   </div>
                 ) : (
                   <div className="bg-bg-sidebar rounded-xl p-4">
@@ -1294,9 +1363,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* Muudatused */}
               <RevisionBlock
                 value={form.revisions}
-                // Whichever variant was on screen in view mode — so pressing
-                // Muuda while looking at a revision opens that revision expanded.
                 autoExpandId={activeRevId ?? highlightRevisionId}
+                autoEditId={editingRevId}
+                onAutoEditDone={() => setEditingRevId(null)}
                 onChange={revs => set('revisions', revs)}
               />
             </div>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package, CalendarClock } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
-import type { Revision, StageKey } from '../../types/job'
+import type { Revision, StageKey, WorkItem } from '../../types/job'
 import {
   MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
 } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
+import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
@@ -16,12 +17,15 @@ interface RevisionBlockProps {
   onChange: (revisions: Revision[]) => void
   disabled?: boolean
   autoExpandId?: string   // expand + scroll to this revision on mount
+  autoEditId?: string | null  // auto-open this revision in edit mode
+  onAutoEditDone?: () => void
 }
 
 const EMPTY_DRAFT = {
   note: '',
   reasons: [] as string[],
   hambad: '',
+  work_items: [] as WorkItem[],
   varv: '' as string | null,
   materjal: '' as string,
   deadline: '',
@@ -33,7 +37,7 @@ const EMPTY_DRAFT = {
 
 type Draft = typeof EMPTY_DRAFT
 
-export function RevisionBlock({ value, onChange, disabled, autoExpandId }: RevisionBlockProps) {
+export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone }: RevisionBlockProps) {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -41,6 +45,15 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<Draft>(EMPTY_DRAFT)
   const targetRef = useRef<HTMLDivElement | null>(null)
+
+  // Auto-edit a specific revision (triggered from "Muuda muudatust" button)
+  useEffect(() => {
+    if (!autoEditId) return
+    const rev = value.find(r => r.id === autoEditId)
+    if (rev) startEdit(rev)
+    onAutoEditDone?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEditId])
 
   // Auto-expand and scroll to a specific revision (e.g. opened from calendar)
   useEffect(() => {
@@ -59,7 +72,10 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
       ts: new Date().toISOString(),
       note: draft.note.trim(),
       reasons: draft.reasons.length > 0 ? draft.reasons : undefined,
-      hambad: draft.hambad || undefined,
+      work_items: draft.work_items.length > 0 ? draft.work_items : undefined,
+      hambad: draft.work_items.length > 0
+        ? [...new Set(draft.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
+        : (draft.hambad || undefined),
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
       deadline: draft.deadline ? new Date(draft.deadline).toISOString() : undefined,
@@ -78,6 +94,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
     setEditDraft({
       note: rev.note,
       reasons: revisionReasons(rev),
+      work_items: Array.isArray(rev.work_items) ? rev.work_items.map(i => ({ ...i })) : [],
       hambad: rev.hambad ? rev.hambad.split(',').map(t => t.trim()).filter(Boolean).join(',') : '',
       varv: rev.varv ?? null,
       materjal: rev.materjal ?? '',
@@ -97,7 +114,10 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
       ...r,
       note: d.note.trim() || r.note,
       reasons: d.reasons.length > 0 ? d.reasons : undefined,
-      hambad: d.hambad || undefined,
+      work_items: d.work_items.length > 0 ? d.work_items : undefined,
+      hambad: d.work_items.length > 0
+        ? [...new Set(d.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
+        : (d.hambad || undefined),
       varv: d.varv || undefined,
       materjal: d.materjal || undefined,
       deadline: d.deadline ? new Date(d.deadline).toISOString() : undefined,
@@ -154,15 +174,26 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
         )}
       </div>
 
-      {/* ── Add form ── */}
+      {/* ── Add form — fullscreen dark modal ── */}
       {adding && (
-        <RevisionForm
-          draft={draft}
-          setDraft={setDraft}
-          onSubmit={addRevision}
-          onCancel={() => { setAdding(false); setDraft(EMPTY_DRAFT) }}
-          submitLabel="Lisa"
-        />
+        <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
+            <h2 className="text-sm font-bold text-slate-100">Lisa muudatus</h2>
+            <button type="button" onClick={() => { setAdding(false); setDraft(EMPTY_DRAFT) }}
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors">
+              <XIcon size={16} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <RevisionForm
+              draft={draft}
+              setDraft={setDraft}
+              onSubmit={addRevision}
+              onCancel={() => { setAdding(false); setDraft(EMPTY_DRAFT) }}
+              submitLabel="Lisa"
+            />
+          </div>
+        </div>
       )}
 
       {/* ── Empty state ── */}
@@ -302,18 +333,31 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
               </div>
             </div>
 
-            {/* ── Expanded: edit form or read-only view ── */}
-            {expanded && (
-              isEditing ? (
-                <RevisionForm
-                  draft={editDraft}
-                  setDraft={setEditDraft}
-                  onSubmit={() => saveEdit(rev.id)}
-                  onCancel={cancelEdit}
-                  submitLabel="Salvesta"
-                  isEdit
-                />
-              ) : (
+            {/* ── Edit form — fullscreen dark modal ── */}
+            {isEditing && (
+              <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
+                  <h2 className="text-sm font-bold text-slate-100">Muuda muudatust</h2>
+                  <button type="button" onClick={cancelEdit}
+                    className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors">
+                    <XIcon size={16} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <RevisionForm
+                    draft={editDraft}
+                    setDraft={setEditDraft}
+                    onSubmit={() => saveEdit(rev.id)}
+                    onCancel={cancelEdit}
+                    submitLabel="Salvesta"
+                    isEdit
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── Expanded: read-only view ── */}
+            {expanded && !isEditing && (
                 <div className="px-4 pb-4 pt-3 space-y-3 bg-slate-900 border-t border-slate-700/40">
                   {rev.note.length > 60 && (
                     <p className="text-sm text-slate-200 leading-relaxed">{rev.note}</p>
@@ -358,7 +402,6 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
                     </button>
                   )}
                 </div>
-              )
             )}
           </div>
         )
@@ -371,7 +414,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId }: Revis
 function RevisionForm({
   draft, setDraft, onSubmit, onCancel, submitLabel, isEdit = false,
 }: {
-  draft: { note: string; reasons: string[]; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
+  draft: { note: string; reasons: string[]; work_items: WorkItem[]; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
   setDraft: React.Dispatch<React.SetStateAction<typeof draft>>
   onSubmit: () => void
   onCancel: () => void
@@ -380,6 +423,8 @@ function RevisionForm({
 }) {
   const { stages } = usePipeline()
   const { settings } = useSettings()
+  const wt = settings.tooTuubid
+  const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
   // Auto-price: on for new revisions, or when editing a revision that has no price yet
   const [priceIsAuto, setPriceIsAuto] = useState(!isEdit || draft.price === '')
 
@@ -393,7 +438,7 @@ function RevisionForm({
   }, [draft.hambad, priceIsAuto, settings.muudatusHambaHind])
 
   return (
-    <div className="px-4 py-4 space-y-3 bg-slate-900/80 border-b border-slate-700/50">
+    <div className="px-6 py-5 space-y-3 bg-slate-900/80 border-b border-slate-700/50 max-w-3xl mx-auto">
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1">Kirjeldus *</label>
         <textarea
@@ -609,13 +654,91 @@ function RevisionForm({
         <ShadePicker value={draft.varv} onChange={v => setDraft(d => ({ ...d, varv: v }))} />
       </div>
 
+      {/* Work type multi-select for revision */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Uued hambad</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">Töötüüp ja hambad</label>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {wt.map(t => {
+            const hasItem = draft.work_items.some(i => i.too === t.nimi)
+            return (
+              <button
+                key={t.nimi}
+                type="button"
+                onClick={() => {
+                  if (hasItem) {
+                    const next = draft.work_items.filter(i => i.too !== t.nimi)
+                    setDraft(d => ({ ...d, work_items: next }))
+                  } else {
+                    const isBridge = /sild|bridge/i.test(t.nimi)
+                    const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
+                    setDraft(d => ({ ...d, work_items: [...d.work_items, item] }))
+                    setActiveWorkItemId(item.id)
+                  }
+                }}
+                className={`text-xs px-2 py-1 rounded-lg border transition-all font-medium ${
+                  hasItem
+                    ? 'bg-accent text-white border-accent'
+                    : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
+                }`}
+              >
+                {t.nimi}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Selected type chips */}
+        {draft.work_items.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {draft.work_items.map(item => {
+              const hex = wt.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+              const isActive = item.id === activeWorkItemId
+              const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+              return (
+                <button key={item.id} type="button"
+                  onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
+                  className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-all ${
+                    isActive ? 'bg-accent/20 text-accent' : 'text-slate-400'
+                  }`}
+                  style={{ backgroundColor: isActive ? undefined : `${hex}20` }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
+                  {item.too} {teethCount > 0 && `(${teethCount})`}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Odontogram */}
         <div className="rounded-xl p-3 bg-slate-800/60">
-          <OdontogramPicker
-            value={draft.hambad}
-            onChange={v => setDraft(d => ({ ...d, hambad: v }))}
-          />
+          {draft.work_items.length > 0 ? (
+            <MultiOdontogramPicker
+              items={draft.work_items}
+              activeItemId={activeWorkItemId}
+              colorMap={Object.fromEntries(wt.map(t => [t.nimi, t.hex]))}
+              onToggleTooth={tooth => {
+                if (!activeWorkItemId) return
+                const s = String(tooth)
+                const otherOwner = draft.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
+                if (otherOwner) return
+                setDraft(d => ({
+                  ...d,
+                  work_items: d.work_items.map(item => {
+                    if (item.id !== activeWorkItemId) return item
+                    const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
+                    teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                    return { ...item, hambad: [...teeth].join(',') }
+                  })
+                }))
+              }}
+            />
+          ) : (
+            <OdontogramPicker
+              value={draft.hambad}
+              onChange={v => setDraft(d => ({ ...d, hambad: v }))}
+            />
+          )}
         </div>
       </div>
 

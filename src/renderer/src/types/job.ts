@@ -25,6 +25,8 @@ export interface Revision {
   reasons?: string[]
   /** Legacy single reason, written before 1.24.0. Read through revisionReasons(). */
   reason?: string
+  /** Work items affected by this revision — same structure as Job.work_items */
+  work_items?: WorkItem[]
 }
 
 /** Every reason on a revision, old shape or new. Use this, never `rev.reason`. */
