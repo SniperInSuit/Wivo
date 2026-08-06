@@ -1608,6 +1608,12 @@ export function SettingsPage() {
                 hint="Kiirtöö puhul korrutatakse arvutatud hind selle arvuga."
               />
               <NumField
+                label="Mudeli hind" suffix="€" min={0} max={500} step={5}
+                value={settings.mudeliHind}
+                onChange={v => setNumber('mudeliHind', v)}
+                hint="Lisatakse automaatselt hinnale kui tööl on mudel märgitud."
+              />
+              <NumField
                 label="Käibemaksumäär" suffix="%" min={0} max={30} step={0.5}
                 value={settings.kmMaar}
                 onChange={v => setNumber('kmMaar', v)}

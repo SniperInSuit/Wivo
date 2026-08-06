@@ -123,6 +123,7 @@ export interface WivoSettings {
   hambaHind: number       // Vaikimisi €/hammas, kui materjalil hinda pole
   muudatusHambaHind: number // €/hammas muudatuse puhul
   kiirtooKordaja: number  // Kiirtöö hinnakordaja
+  mudeliHind: number      // Mudeli hind € (automaatselt lisatakse kui mudel=true)
   // ─── Arved ─────────────────────────────────────────────────────────────────
   // Default only. Each invoice stores the rate it was issued with, so changing
   // this never restates a document that has already gone out.
@@ -181,6 +182,7 @@ function defaultSettings(): WivoSettings {
     hambaHind: 15,
     muudatusHambaHind: 8,
     kiirtooKordaja: 2,
+    mudeliHind: 0,
     // 0 by default on purpose: a clinic that is not VAT-registered must not
     // start issuing invoices with tax on them because the app guessed a rate.
     // Set it in Seaded → Hinnad once, and confirm the rate that applies to you.
@@ -331,6 +333,7 @@ function loadSettings(): WivoSettings {
       hambaHind: stored.hambaHind ?? 15,
       muudatusHambaHind: stored.muudatusHambaHind ?? 8,
       kiirtooKordaja: stored.kiirtooKordaja ?? 2,
+      mudeliHind: stored.mudeliHind ?? 0,
       kmMaar: stored.kmMaar ?? 0,
       makseTahtaegPaevades: stored.makseTahtaegPaevades ?? 14,
       tooandjaMaksudProtsent: stored.tooandjaMaksudProtsent ?? 0,

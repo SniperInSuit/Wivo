@@ -4,9 +4,10 @@
  */
 import { motion } from 'framer-motion'
 import { CornerDownLeft, ChevronLeft, ChevronRight, Euro, Zap } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
 import type { Job, StageKey, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { useWorkTypes } from '../../stores/useSettings'
+import { DeadlineChip } from '../ui/DeadlineChip'
 
 interface RevisionBoardCardProps {
   job: Job
@@ -20,7 +21,8 @@ interface RevisionBoardCardProps {
 export function RevisionBoardCard({
   job, revision, revIndex, onClick, onRevisionStageChange, isDragging,
 }: RevisionBoardCardProps) {
-  const { stages } = usePipeline()
+  const { stages, doneStageKey } = usePipeline()
+  const wt = useWorkTypes()
   const revStage  = revision.status ?? stages[0]?.key ?? 'disain'
   const stageIdx  = stages.findIndex(s => s.key === revStage)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -37,7 +39,8 @@ export function RevisionBoardCard({
       onClick={onClick}
       className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-slate-300/40
         hover:border-slate-400/40 hover:shadow-card-hover transition-all duration-150
-        border-l-slate-600 ${isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''}`}
+        ${isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''}`}
+      style={{ borderLeftColor: wt.hex(job.too) }}
     >
       {/* ── Navy muudatus badge ── */}
       <div className="flex items-center gap-1.5 mb-2">
@@ -46,6 +49,9 @@ export function RevisionBoardCard({
           <CornerDownLeft size={9} />
           Muudatus #{revIndex}
         </span>
+        {(revision.mudel || job.mudel) && (
+          <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">M</span>
+        )}
         {revision.kiirtoo && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded
             bg-orange-500/20 text-orange-400">
@@ -68,9 +74,7 @@ export function RevisionBoardCard({
 
       {/* Deadline */}
       {revision.deadline && (
-        <p className="text-[10px] text-ink-faint font-mono">
-          → {format(parseISO(revision.deadline), 'dd.MM.yy HH:mm')}
-        </p>
+        <DeadlineChip deadline={revision.deadline} compact isDone={revStage === doneStageKey} />
       )}
 
       {/* Stage nav — same job moves through pipeline */}

@@ -8,6 +8,7 @@ import {
 import { OdontogramPicker } from './OdontogramPicker'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'
+import { debugLog } from '../Workers/DebugConsole'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
@@ -330,8 +331,13 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
               <RevisionEditFullscreen
                 revision={rev}
                 onSave={updated => {
-                  onChange(value.map(r => r.id === rev.id ? updated : r))
-                  setEditingId(null)
+                  try {
+                    debugLog('info', 'Revision save', { id: rev.id, mudel: updated.mudel, keys: Object.keys(updated) })
+                    onChange(value.map(r => r.id === rev.id ? updated : r))
+                    setEditingId(null)
+                  } catch (err) {
+                    debugLog('error', 'Revision save CRASHED', (err as Error)?.message ?? err)
+                  }
                 }}
                 onCancel={cancelEdit}
               />

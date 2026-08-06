@@ -14,6 +14,7 @@ export interface Revision {
   deadline?: string   // new deadline (ISO datetime)
   price?: number      // cost charged for this revision (€)
   kiirtoo?: boolean   // fast/rush revision — price × 2
+  mudel?: boolean     // revision requires a model
   status?: StageKey   // pipeline stage for this revision (default: 'disain')
   // Millal muudatus tegelikult valmis sai. Nagu tööl: deadline on plaan, palka
   // makstakse selle järgi, mis juhtus. Pannakse valmis-etappi liikumisel.
@@ -136,6 +137,7 @@ export interface Job {
   // selle järgi, mis juhtus, mitte selle järgi, mis oli plaanis (migratsioon 025).
   valmis_kuupaev: string | null
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
+  mudel?: boolean           // Mudel — requires a printed model for try-in
   // Where the work physically is. The pipeline ending at "done" says the bench
   // has finished with it, not that the practice has it (migration 035).
   delivery_status: DeliveryStatus

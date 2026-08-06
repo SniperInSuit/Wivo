@@ -61,6 +61,7 @@ const EMPTY_FORM: JobInput = {
   valmis_aeg: '',
   valmis_kuupaev: null,
   kiirtoo: false,
+  mudel: false,
   revisions: [],
   hind: null,
   disain_hind: null,
@@ -441,6 +442,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
+        mudel: job.mudel ?? false,
         revisions,
         hind: job.hind,
         disain_hind: job.disain_hind ?? null,
@@ -754,8 +756,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
               </div>
 
-              {/* Kiirtöö toggle */}
-              <div>
+              {/* Kiirtöö + Mudel toggles */}
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => set('kiirtoo', !form.kiirtoo)}
@@ -767,6 +769,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 >
                   <Zap size={14} className={form.kiirtoo ? 'text-orange-500 fill-orange-400' : ''} />
                   {form.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set('mudel', !form.mudel)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-150 ${
+                    form.mudel
+                      ? 'bg-amber-50 border-amber-400 text-amber-700'
+                      : 'bg-bg-sidebar border-ink-faint/30 text-ink-muted hover:border-ink-faint/60'
+                  }`}
+                >
+                  <Cpu size={14} className={form.mudel ? 'text-amber-500' : ''} />
+                  {form.mudel ? `Mudel${settings.mudeliHind > 0 ? ` — ${settings.mudeliHind}€` : ''}` : 'Mudel'}
                 </button>
               </div>
 

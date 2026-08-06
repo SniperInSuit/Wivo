@@ -2,7 +2,8 @@
  * Full-screen revision editor — same layout as job edit but dark themed.
  * Uses the same components (MultiOdontogramPicker, ShadePicker, etc).
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { debugLog } from '../Workers/DebugConsole'
 import { X, Save, Loader2, Zap, Euro, Cpu } from 'lucide-react'
 import type { Revision, StageKey, WorkItem } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
@@ -36,6 +37,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     deadline: revision.deadline ? revision.deadline.replace('Z', '').slice(0, 16) : '',
     price: revision.price != null ? String(revision.price) : '',
     kiirtoo: revision.kiirtoo ?? false,
+    mudel: revision.mudel ?? false,
     print_id: revision.print_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
   })
@@ -45,6 +47,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   )
 
   const set = useCallback(<K extends keyof typeof form>(key: K, val: (typeof form)[K]) => {
+    debugLog('info', `RevisionEdit set: ${String(key)}`, val)
     setForm(f => ({ ...f, [key]: val }))
   }, [])
 
@@ -64,6 +67,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
       price: form.price !== '' ? parseFloat(form.price) * (form.kiirtoo ? 2 : 1) : undefined,
       kiirtoo: form.kiirtoo || undefined,
+      mudel: form.mudel || undefined,
       print_id: form.print_id || undefined,
       status: form.status || 'disain',
     })
@@ -119,15 +123,25 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               </div>
             </div>
 
-            {/* Kiirtöö */}
-            <button type="button" onClick={() => set('kiirtoo', !form.kiirtoo)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
-                form.kiirtoo ? 'bg-orange-900/30 border-orange-500 text-orange-300' : 'bg-slate-800 border-slate-600 text-slate-400'
-              }`}
-            >
-              <Zap size={14} className={form.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
-              {form.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
-            </button>
+            {/* Kiirtöö + Mudel */}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => set('kiirtoo', !form.kiirtoo)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                  form.kiirtoo ? 'bg-orange-900/30 border-orange-500 text-orange-300' : 'bg-slate-800 border-slate-600 text-slate-400'
+                }`}
+              >
+                <Zap size={14} className={form.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
+                {form.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
+              </button>
+              <button type="button" onClick={() => set('mudel', !form.mudel)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                  form.mudel ? 'bg-amber-900/30 border-amber-500 text-amber-300' : 'bg-slate-800 border-slate-600 text-slate-400'
+                }`}
+              >
+                <Cpu size={14} className={form.mudel ? 'text-amber-400' : ''} />
+                {form.mudel ? 'Mudel' : 'Mudel'}
+              </button>
+            </div>
 
             {/* Kirjeldus (note) */}
             <div>

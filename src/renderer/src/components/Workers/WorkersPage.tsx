@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Users, UserPlus, Shield, Loader2, Trash2, Mail, Check, Lock, Copy } from 'lucide-react'
 import { supabase, createSignupClient, isEmailAddress, usernameToEmail, displayIdentity } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { DebugConsole } from './DebugConsole'
 import type { Profile } from '../../lib/supabase'
 import {
   ALL_PERMISSIONS, PERMISSION_LABELS, type PermissionKey
@@ -728,6 +729,7 @@ export function WorkersPage() {
             </div>
           </>
         )}
+        <DebugConsole />
       </div>
     </div>
   )

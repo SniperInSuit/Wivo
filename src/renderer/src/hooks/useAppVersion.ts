@@ -106,7 +106,7 @@ export function useAppVersion() {
     window.wivo?.installUpdate()
   }, [])
 
-  const hasUpdate = available !== null || remoteAvailable || updateVersion !== null
+  const hasUpdate = available !== null || updateVersion !== null
 
   return {
     running,

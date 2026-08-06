@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
+import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO, isValid, differenceInDays } from 'date-fns'
 import type { Job } from '../../types/job'
 import { revisionReasons } from '../../types/job'
 import type { Visit } from '../../types/visit'

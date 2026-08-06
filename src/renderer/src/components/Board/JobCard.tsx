@@ -35,24 +35,34 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
-      className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${
+      className={`card p-3.5 cursor-pointer select-none relative border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${
         isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''
       }`}
-      style={{ borderLeftColor: isMultiType ? 'transparent' : wt.hex(job.too) }}
+      style={{ borderLeftColor: (isMultiType || job.mudel) ? 'transparent' : wt.hex(job.too) }}
       onClick={() => onClick(job)}
     >
-      {/* Multi-type color strip */}
-      {isMultiType && (
+      {/* Color strip: multi-type stacked, or dual (job + orange for mudel) */}
+      {(isMultiType || job.mudel) && (
         <div className="absolute left-0 top-0 bottom-0 w-[3px] flex flex-col rounded-l-card overflow-hidden">
-          {workItems.map(item => (
-            <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
-          ))}
+          {isMultiType ? (
+            workItems.map(item => (
+              <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
+            ))
+          ) : (
+            <span className="flex-1" style={{ backgroundColor: wt.hex(job.too) }} />
+          )}
+          {job.mudel && <span className="flex-1" style={{ backgroundColor: '#F59E0B' }} />}
         </div>
       )}
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {job.mudel && (
+            <span title="Mudel" className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
+              M
+            </span>
+          )}
           {job.kiirtoo && (
             <span title="Kiirtöö">
               <Zap size={13} className="text-orange-500" />
