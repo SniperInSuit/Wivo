@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from 'react'
 import { debugLog } from '../Workers/DebugConsole'
-import { X, Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
+import { Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
 import type { Revision, StageKey, WorkItem } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
@@ -55,8 +55,8 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     setForm(f => ({ ...f, [key]: val }))
   }, [])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function handleSubmit(e?: React.FormEvent | React.MouseEvent) {
+    e?.preventDefault()
     if (!form.note.trim()) return
     onSave({
       ...revision,
@@ -93,22 +93,19 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
             Tühista
           </button>
           <button
-            type="submit"
-            form="rev-edit-form"
+            type="button"
+            onClick={handleSubmit}
             disabled={saving || !form.note.trim()}
             className="btn-primary disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Salvesta
           </button>
-          <button type="button" onClick={onCancel} className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors">
-            <X size={16} />
-          </button>
         </div>
       </div>
 
       {/* Form — 3 column layout like job edit */}
-      <form id="rev-edit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-[1fr_minmax(400px,2fr)_1fr] gap-x-6 items-start">
 
           {/* ── LEFT COLUMN ── */}
@@ -449,7 +446,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
           {/* ── RIGHT COLUMN — empty for now, can add extras later ── */}
           <div />
         </div>
-      </form>
+      </div>
     </div>
   )
 }

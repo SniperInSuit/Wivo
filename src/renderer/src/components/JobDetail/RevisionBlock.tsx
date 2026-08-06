@@ -49,10 +49,16 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
   const targetRef = useRef<HTMLDivElement | null>(null)
 
   // Auto-edit a specific revision (triggered from "Muuda muudatust" button)
+  // __new__ = open the "add new revision" form directly
   useEffect(() => {
     if (!autoEditId) return
-    const rev = value.find(r => r.id === autoEditId)
-    if (rev) startEdit(rev)
+    if (autoEditId === '__new__') {
+      setAdding(true)
+      setDraft(EMPTY_DRAFT)
+    } else {
+      const rev = value.find(r => r.id === autoEditId)
+      if (rev) startEdit(rev)
+    }
     onAutoEditDone?.()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoEditId])

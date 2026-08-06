@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2, Plus, Copy, Printer } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
@@ -21,6 +21,8 @@ interface JobReadViewProps {
   activeRevisionId: string | null
   onSelectVariant: (revisionId: string | null) => void
   onMarkPaid?: () => void
+  onAddRevision?: () => void
+  onDuplicate?: () => void
   highlightNoteId?: string
   onOpenPatient?: (patientId: string) => void
 }
@@ -43,8 +45,10 @@ const toothCount = (s: string | null | undefined) =>
  * without leaving the panel.
  */
 export function JobReadView({
-  job, isBottom, activeRevisionId, onSelectVariant, onMarkPaid, highlightNoteId, onOpenPatient
+  job, isBottom, activeRevisionId, onSelectVariant, onMarkPaid,
+  onAddRevision, onDuplicate, highlightNoteId, onOpenPatient
 }: JobReadViewProps) {
+  const printRef = useRef<HTMLDivElement>(null)
   const { data: patients = [] } = usePatients()
   // Imported jobs still have patient_id = null, so fall back to the name — the
   // same match the patient page uses to attribute their job history.
@@ -101,26 +105,64 @@ export function JobReadView({
 
   return (
     <div className="px-5 py-4 space-y-3">
-      {/* ─── Variant switcher — only when there is something to switch to ── */}
-      {revisions.length > 0 && (
+      {/* ─── Variant switcher + actions ───────────────────────────────── */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Variants + Lisa muudatus inline */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <Chip active={activeRevisionId === null} onClick={() => onSelectVariant(null)}>
-            Originaal
-          </Chip>
+          {revisions.length > 0 && (
+            <Chip active={activeRevisionId === null} onClick={() => onSelectVariant(null)}>
+              Originaal
+            </Chip>
+          )}
           {revisions.map((r, i) => (
             <Chip key={r.id} active={activeRevisionId === r.id} onClick={() => onSelectVariant(r.id)}>
               Muudatus {i + 1}
             </Chip>
           ))}
-          {rev && (
-            <span className="text-[10px] text-nav-muted ml-1">
-              Näidatud on muudatuse andmed, mitte originaali
-            </span>
+          {onAddRevision && (
+            <button type="button" onClick={onAddRevision}
+              className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 px-2 py-1 rounded-lg border border-accent/30 hover:bg-accent/10 transition-colors"
+            >
+              <Plus size={12} />
+              Lisa muudatus
+            </button>
           )}
         </div>
-      )}
 
-      <div className={isBottom ? 'grid grid-cols-2 gap-3 items-start' : 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start'}>
+        {/* Other actions */}
+        <div className="flex items-center gap-1 ml-auto">
+          {onDuplicate && (
+            <button type="button" onClick={onDuplicate}
+              className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg hover:bg-bg-sidebar transition-colors"
+              title="Dubleeri töö"
+            >
+              <Copy size={12} />
+              Dubleeri
+            </button>
+          )}
+          <button type="button"
+            onClick={() => {
+              const el = printRef.current
+              if (!el) return
+              const w = window.open('', '_blank', 'width=800,height=600')
+              if (!w) return
+              w.document.write(`<html><head><title>${job.patsient} — ${job.too || 'Töö'}</title>
+                <style>body{font-family:Inter,system-ui,sans-serif;padding:24px;font-size:13px;color:#1a1a1a}
+                section{border:1px solid #e5e5e5;border-radius:8px;padding:12px;margin-bottom:12px}
+                h3{font-size:11px;text-transform:uppercase;color:#0AB6C4;margin:0 0 8px}
+                </style></head><body>${el.innerHTML}</body></html>`)
+              w.document.close()
+              w.print()
+            }}
+            className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg hover:bg-bg-sidebar transition-colors"
+            title="Prindi"
+          >
+            <Printer size={12} />
+          </button>
+        </div>
+      </div>
+
+      <div ref={printRef} className={isBottom ? 'grid grid-cols-2 gap-3 items-start' : 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start'}>
         {/* ─── Left: production data ─────────────────────────────────────── */}
         <div className="space-y-3">
           <Card title={rev ? 'MUUDATUSE ANDMED' : 'TÖÖ ANDMED'} icon={FileText}>
@@ -408,6 +450,9 @@ function WorkItemsReadBlock({ job }: { job: Job }) {
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
             <span className="text-sm font-semibold text-ink">{item.too}</span>
             {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">sild</span>}
+            {item.materjal && (
+              <span className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[120px]">{item.materjal}</span>
+            )}
             <span className="text-xs text-ink-muted ml-auto">{teethCount} hammast</span>
             <ToothBadges hambad={item.hambad} max={8} />
           </div>

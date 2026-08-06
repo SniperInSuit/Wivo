@@ -11,6 +11,7 @@ import { OdontogramPicker } from './OdontogramPicker'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
+import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
 import { JobTimeline } from './JobTimeline'
@@ -390,6 +391,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
   const [editingRevId, setEditingRevId] = useState<string | null>(null)
+  // Revision overlay on read view: '__new__' = add, revision id = edit, null = hidden
+  const [quickRevisionId, setQuickRevisionId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
@@ -663,8 +666,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             {job && !editing && (
               <button type="button" onClick={() => {
                 if (activeRev) {
-                  setEditingRevId(activeRev.id)
-                  setEditing(true)
+                  setQuickRevisionId(activeRev.id)
                 } else {
                   setEditing(true)
                 }
@@ -717,6 +719,20 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 highlightNoteId={highlightNoteId}
                 onOpenPatient={onOpenPatient}
                 onMarkPaid={() => setPaidDialog(true)}
+                onAddRevision={() => setQuickRevisionId('__new__')}
+                onDuplicate={() => {
+                  setForm(f => ({
+                    ...f,
+                    ...job,
+                    revisions: [],
+                    makstud: false,
+                    makse_kuupaev: null,
+                    valmis_kuupaev: null,
+                    status: stages[0]?.key ?? 'disain',
+                    kuupaev: new Date().toISOString().split('T')[0],
+                  }))
+                  setEditing(true)
+                }}
               />
             </div>
           </>
@@ -1446,6 +1462,35 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
           </div>
         )}
       </motion.aside>
+
+      {/* Revision overlay — add or edit from read view without entering edit mode */}
+      {quickRevisionId && job && (() => {
+        const isNew = quickRevisionId === '__new__'
+        const existingRev = isNew ? null : (job.revisions ?? []).find(r => r.id === quickRevisionId)
+        const revision = existingRev
+          ?? { id: crypto.randomUUID(), ts: new Date().toISOString(), note: '', status: stages[0]?.key ?? 'disain' } as Revision
+        return (
+          <RevisionEditFullscreen
+            revision={revision}
+            onSave={async rev => {
+              if (!rev.note.trim()) return
+              try {
+                const updatedRevisions = isNew
+                  ? [...(job.revisions ?? []), rev]
+                  : (job.revisions ?? []).map(r => r.id === rev.id ? rev : r)
+                const { id: _id, created_at: _c, updated_at: _u, markused: _m, ...input } = job as Job & { markused?: unknown }
+                await onSave({ ...input, revisions: updatedRevisions })
+                setActiveRevId(rev.id)
+                setQuickRevisionId(null)
+              } catch (err) {
+                console.error('Revision save failed:', err)
+              }
+            }}
+            onCancel={() => setQuickRevisionId(null)}
+            saving={saving}
+          />
+        )
+      })()}
 
       {/* Marking paid always records HOW — never a bare boolean flip. */}
       {paidDialog && job && (() => {
