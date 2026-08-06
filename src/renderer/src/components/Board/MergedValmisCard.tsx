@@ -9,7 +9,7 @@ import type { Job } from '../../types/job'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
-import { useWorkTypes } from '../../stores/useSettings'
+import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
 
 interface MergedValmisCardProps {
@@ -20,6 +20,7 @@ interface MergedValmisCardProps {
 export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
   const { doneStageKey } = usePipeline()
   const wt = useWorkTypes()
+  const { settings } = useSettings()
   const revisions = job.revisions ?? []
   // Show the most recently completed revision as the "active" one
   const latest = [...revisions]
@@ -54,7 +55,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
             {latest.kiirtoo && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5
                 rounded bg-orange-500/20 text-orange-400">
-                <Zap size={8} /> 2×
+                <Zap size={8} /> {settings.kiirtooKordaja}×
               </span>
             )}
             {latest.price != null && (

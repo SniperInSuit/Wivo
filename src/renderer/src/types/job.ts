@@ -31,6 +31,18 @@ export interface Revision {
   purunenud_hambad?: string
   /** Work items affected by this revision — same structure as Job.work_items */
   work_items?: WorkItem[]
+  /**
+   * Who redid it, and who redesigned it. Undefined means "whoever is on the
+   * job" — which is what every revision written before these existed meant,
+   * so nothing had to be backfilled.
+   *
+   * They exist because a remake is often not done by the person who did the
+   * original: the pay engine used to hand every revision to `job.assigned_to`,
+   * so the wrong technician was paid whenever someone else picked it up.
+   * `revisions` is a JSONB column, so this needed no migration.
+   */
+  assigned_to?: string | null
+  designed_by?: string | null
 }
 
 /** Every reason on a revision, old shape or new. Use this, never `rev.reason`. */
@@ -92,6 +104,23 @@ export function jobWorkItems(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): W
 export function jobWorkTypeNames(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): string[] {
   return jobWorkItems(job).map(i => i.too).filter(Boolean)
 }
+
+/**
+ * The date a job counts as happening on. THE answer for every period filter.
+ *
+ * The COMPLETION date first, because that is when the work happened. The
+ * deadline is the fallback for anything still on the bench — a job due on
+ * Thursday belongs in Thursday's week even though nobody has finished it — and
+ * the received date the fallback after that, for rows predating both.
+ *
+ * One function because three screens were each deciding this for themselves:
+ * the Ülevaade counted by arrival date, Rahandus and Töötasud by completion.
+ * The same "See kuu" button therefore meant two different things depending on
+ * which tab you were on, and neither was labelled.
+ */
+export const jobPeriodDate = (
+  job: Pick<Job, 'valmis_kuupaev' | 'valmis_aeg' | 'kuupaev'>
+): string => (job.valmis_kuupaev ?? job.valmis_aeg ?? job.kuupaev ?? '').slice(0, 10)
 
 /** All teeth from all work items, deduplicated. */
 export function jobAllTeeth(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): string {

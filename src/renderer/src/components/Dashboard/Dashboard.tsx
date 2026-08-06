@@ -87,6 +87,7 @@ const truncateName = (v: string): string =>
   v.length > NAME_MAX_CHARS ? `${v.slice(0, NAME_MAX_CHARS - 1)}…` : v
 
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
+  { key: 'week', label: 'See nädal' },
   { key: 'month', label: 'See kuu' },
   { key: 'quarter', label: 'See kvartal' },
   { key: 'year', label: 'See aasta' },

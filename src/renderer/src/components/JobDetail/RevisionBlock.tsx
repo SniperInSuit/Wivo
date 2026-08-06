@@ -6,7 +6,8 @@ import {
   MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
 } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
-import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { WorkItemsField } from './WorkItemsField'
+import { WorkerSelect } from './WorkerSelect'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { debugLog } from '../Workers/DebugConsole'
 import { ShadePicker } from './ShadePicker'
@@ -28,6 +29,10 @@ const EMPTY_DRAFT = {
   reasons: [] as string[],
   hambad: '',
   work_items: [] as WorkItem[],
+  // null = whoever is on the job. A remake is often picked up by someone else,
+  // and the pay engine used to hand every one of them to the job's technician.
+  assigned_to: null as string | null,
+  designed_by: null as string | null,
   varv: '' as string | null,
   materjal: '' as string,
   deadline: '',
@@ -40,6 +45,7 @@ const EMPTY_DRAFT = {
 type Draft = typeof EMPTY_DRAFT
 
 export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone }: RevisionBlockProps) {
+  const { settings } = useSettings()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -80,6 +86,8 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       ts: new Date().toISOString(),
       note: draft.note.trim(),
       reasons: draft.reasons.length > 0 ? draft.reasons : undefined,
+      assigned_to: draft.assigned_to ?? undefined,
+      designed_by: draft.designed_by ?? undefined,
       work_items: draft.work_items.length > 0 ? draft.work_items : undefined,
       hambad: draft.work_items.length > 0
         ? [...new Set(draft.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
@@ -87,7 +95,11 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
       deadline: draft.deadline ? new Date(draft.deadline).toISOString() : undefined,
-      price: draft.price !== '' ? parseFloat(draft.price) * (draft.kiirtoo ? 2 : 1) : undefined,
+      // The multiplier comes from Seaded → Hinnad. It was hardcoded 2, so a lab
+      // that charges 1.5× for rush had its revisions silently billed at double.
+      price: draft.price !== ''
+        ? parseFloat(draft.price) * (draft.kiirtoo ? settings.kiirtooKordaja : 1)
+        : undefined,
       kiirtoo: draft.kiirtoo || undefined,
       print_id: draft.print_id || undefined,
       status: draft.status || 'disain',
@@ -102,6 +114,8 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
     setEditDraft({
       note: rev.note,
       reasons: revisionReasons(rev),
+      assigned_to: rev.assigned_to ?? null,
+      designed_by: rev.designed_by ?? null,
       work_items: Array.isArray(rev.work_items) ? rev.work_items.map(i => ({ ...i })) : [],
       hambad: rev.hambad ? rev.hambad.split(',').map(t => t.trim()).filter(Boolean).join(',') : '',
       varv: rev.varv ?? null,
@@ -122,6 +136,8 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       ...r,
       note: d.note.trim() || r.note,
       reasons: d.reasons.length > 0 ? d.reasons : undefined,
+      assigned_to: d.assigned_to ?? undefined,
+      designed_by: d.designed_by ?? undefined,
       work_items: d.work_items.length > 0 ? d.work_items : undefined,
       hambad: d.work_items.length > 0
         ? [...new Set(d.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
@@ -232,7 +248,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   )}
                   {rev.kiirtoo && (
                     <span className="text-[10px] bg-orange-500/30 text-orange-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
-                      <Zap size={8} /> 2×
+                      <Zap size={8} /> {settings.kiirtooKordaja}×
                     </span>
                   )}
                   {rev.price != null && (
@@ -417,7 +433,10 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
 function RevisionForm({
   draft, setDraft, onSubmit, onCancel, submitLabel, isEdit = false,
 }: {
-  draft: { note: string; reasons: string[]; work_items: WorkItem[]; hambad: string; varv: string | null; materjal: string; deadline: string; price: string; kiirtoo: boolean; print_id: string; status: StageKey }
+  // `Draft`, not a hand-copied field list: the inline literal had already
+  // drifted from EMPTY_DRAFT once, so adding a field to the draft broke this
+  // signature instead of flowing through it.
+  draft: Draft
   setDraft: React.Dispatch<React.SetStateAction<typeof draft>>
   onSubmit: () => void
   onCancel: () => void
@@ -426,19 +445,28 @@ function RevisionForm({
 }) {
   const { stages } = usePipeline()
   const { settings } = useSettings()
-  const wt = settings.tooTuubid
-  const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
+  // Start on the first item so an opened revision takes tooth clicks straight
+  // away, rather than silently ignoring them until a chip is selected.
+  const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(
+    draft.work_items[0]?.id ?? null
+  )
   // Auto-price: on for new revisions, or when editing a revision that has no price yet
   const [priceIsAuto, setPriceIsAuto] = useState(!isEdit || draft.price === '')
 
+  // Every tooth on the revision, whichever way it was entered. This used to read
+  // `draft.hambad` alone — which is only filled when NO work item exists — so a
+  // revision entered through the work-item field was silently never auto-priced.
+  const draftTeeth = draft.work_items.length > 0
+    ? new Set(draft.work_items.flatMap(i => i.hambad.split(',').map(t => t.trim()).filter(Boolean))).size
+    : (draft.hambad ?? '').split(',').filter(t => t.trim()).length
+
   useEffect(() => {
     if (!priceIsAuto) return
-    const toothCount = (draft.hambad ?? '').split(',').filter(t => t.trim()).length
-    if (toothCount === 0) return
+    if (draftTeeth === 0) return
     // €/tooth for a revision — Seaded → Hinnad
-    setDraft(d => ({ ...d, price: (toothCount * settings.muudatusHambaHind).toFixed(2) }))
+    setDraft(d => ({ ...d, price: (draftTeeth * settings.muudatusHambaHind).toFixed(2) }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.hambad, priceIsAuto, settings.muudatusHambaHind])
+  }, [draftTeeth, priceIsAuto, settings.muudatusHambaHind])
 
   return (
     <div className="px-6 py-5 space-y-3 bg-slate-900/80 border-b border-slate-700/50 max-w-3xl mx-auto">
@@ -573,7 +601,7 @@ function RevisionForm({
         }`}
       >
         <Zap size={12} className={draft.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
-        {draft.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
+        {draft.kiirtoo ? `Kiirtöö — hind ${settings.kiirtooKordaja}×` : 'Kiirtöö'}
       </button>
 
       {/* Print ID */}
@@ -594,22 +622,51 @@ function RevisionForm({
           <Package size={10} /> Uus materjal
         </label>
         {(() => {
+          // Per work item once there is more than one, exactly as the job page
+          // does it: two bridges in one remake can be pressed in two materials,
+          // while a single-item revision keeps the plain revision-level field.
+          const activeItem = draft.work_items.find(i => i.id === activeWorkItemId)
+          const perItem = draft.work_items.length > 1
+          const currentMat = perItem && activeItem ? (activeItem.materjal ?? '') : draft.materjal
+          const setMat = (val: string) => {
+            if (perItem && activeItem) {
+              setDraft(d => ({
+                ...d,
+                work_items: d.work_items.map(i =>
+                  i.id === activeItem.id ? { ...i, materjal: val || undefined } : i
+                ),
+                // The first item's material doubles as the revision's own, so
+                // anything reading `rev.materjal` still sees something true.
+                materjal: d.work_items[0]?.id === activeItem.id ? val : d.materjal,
+              }))
+            } else {
+              setDraft(d => ({ ...d, materjal: val }))
+            }
+          }
           const baseMat = [...settings.materjalid]
             .sort((a, b) => b.length - a.length)
-            .find(m => draft.materjal === m || draft.materjal.startsWith(m + ' ')) ?? null
+            .find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
           const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
-          const currentShade = baseMat && draft.materjal !== baseMat
-            ? draft.materjal.slice(baseMat.length + 1)
+          const currentShade = baseMat && currentMat !== baseMat
+            ? currentMat.slice(baseMat.length + 1)
             : null
           return (
             <>
+              {perItem && (
+                <p className="text-[10px] mb-1.5">
+                  {activeItem
+                    ? <span className="text-accent">Materjal tööosale — {activeItem.too}</span>
+                    : <span className="text-slate-500">Vali ülalt tööosa, et sellele materjal määrata</span>}
+                </p>
+              )}
               <div className="flex gap-1.5 flex-wrap mb-1.5">
                 {settings.materjalid.map(m => (
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setDraft(d => ({ ...d, materjal: d.materjal === m ? '' : m }))}
-                    className={`text-xs px-2 py-1 rounded-lg border transition-all duration-100 font-medium ${
+                    disabled={perItem && !activeItem}
+                    onClick={() => setMat(baseMat === m ? '' : m)}
+                    className={`text-xs px-2 py-1 rounded-lg border transition-all duration-100 font-medium disabled:opacity-40 ${
                       baseMat === m
                         ? 'bg-accent text-white border-accent'
                         : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
@@ -626,7 +683,7 @@ function RevisionForm({
                     <button
                       key={shade}
                       type="button"
-                      onClick={() => setDraft(d => ({ ...d, materjal: currentShade === shade ? baseMat! : `${baseMat} ${shade}` }))}
+                      onClick={() => setMat(currentShade === shade ? baseMat! : `${baseMat} ${shade}`)}
                       className={`text-xs px-2 py-0.5 rounded border transition-all duration-100 font-medium ${
                         currentShade === shade
                           ? 'bg-accent text-white border-accent'
@@ -638,10 +695,10 @@ function RevisionForm({
                   ))}
                 </div>
               )}
-              {draft.materjal && (
+              {currentMat && (
                 <button
                   type="button"
-                  onClick={() => setDraft(d => ({ ...d, materjal: '' }))}
+                  onClick={() => setMat('')}
                   className="text-[10px] text-slate-500 hover:text-red-400 transition-colors"
                 >
                   Tühjenda
@@ -652,97 +709,44 @@ function RevisionForm({
         })()}
       </div>
 
+      {/* Who redid it. Empty means the people already on the job — the common
+          case, and what every revision written before these fields meant. */}
+      <div className="grid grid-cols-2 gap-3">
+        <WorkerSelect
+          label="Teostaja"
+          value={draft.assigned_to}
+          onChange={v => setDraft(d => ({ ...d, assigned_to: v }))}
+          emptyLabel="Sama mis tööl"
+          dark
+        />
+        <WorkerSelect
+          label="Disainija"
+          value={draft.designed_by}
+          onChange={v => setDraft(d => ({ ...d, designed_by: v }))}
+          emptyLabel="Sama mis tööl"
+          dark
+        />
+      </div>
+
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1">Uus värv</label>
         <ShadePicker value={draft.varv} onChange={v => setDraft(d => ({ ...d, varv: v }))} />
       </div>
 
-      {/* Work type multi-select for revision */}
+      {/* The same field the job page uses — see WorkItemsField. A remake can
+          now hold two bridges with teeth of their own, which the revision's
+          own editor could not express: its type buttons toggled, so a second
+          "Sild" deleted the first instead of adding one. */}
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1">Töötüüp ja hambad</label>
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {wt.map(t => {
-            const hasItem = draft.work_items.some(i => i.too === t.nimi)
-            return (
-              <button
-                key={t.nimi}
-                type="button"
-                onClick={() => {
-                  if (hasItem) {
-                    const next = draft.work_items.filter(i => i.too !== t.nimi)
-                    setDraft(d => ({ ...d, work_items: next }))
-                  } else {
-                    const isBridge = /sild|bridge/i.test(t.nimi)
-                    const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
-                    setDraft(d => ({ ...d, work_items: [...d.work_items, item] }))
-                    setActiveWorkItemId(item.id)
-                  }
-                }}
-                className={`text-xs px-2 py-1 rounded-lg border transition-all font-medium ${
-                  hasItem
-                    ? 'bg-accent text-white border-accent'
-                    : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
-                }`}
-              >
-                {t.nimi}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Selected type chips */}
-        {draft.work_items.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {draft.work_items.map(item => {
-              const hex = wt.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
-              const isActive = item.id === activeWorkItemId
-              const teethCount = item.hambad.split(',').filter(t => t.trim()).length
-              return (
-                <button key={item.id} type="button"
-                  onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
-                  className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-all ${
-                    isActive ? 'bg-accent/20 text-accent' : 'text-slate-400'
-                  }`}
-                  style={{ backgroundColor: isActive ? undefined : `${hex}20` }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
-                  {item.too} {teethCount > 0 && `(${teethCount})`}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Odontogram */}
-        <div className="rounded-xl p-3 bg-slate-800/60">
-          {draft.work_items.length > 0 ? (
-            <MultiOdontogramPicker
-              items={draft.work_items}
-              activeItemId={activeWorkItemId}
-              colorMap={Object.fromEntries(wt.map(t => [t.nimi, t.hex]))}
-              onToggleTooth={tooth => {
-                if (!activeWorkItemId) return
-                const s = String(tooth)
-                const otherOwner = draft.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
-                if (otherOwner) return
-                setDraft(d => ({
-                  ...d,
-                  work_items: d.work_items.map(item => {
-                    if (item.id !== activeWorkItemId) return item
-                    const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
-                    teeth.has(s) ? teeth.delete(s) : teeth.add(s)
-                    return { ...item, hambad: [...teeth].join(',') }
-                  })
-                }))
-              }}
-            />
-          ) : (
-            <OdontogramPicker
-              value={draft.hambad}
-              onChange={v => setDraft(d => ({ ...d, hambad: v }))}
-            />
-          )}
-        </div>
+        <WorkItemsField
+          value={draft.work_items}
+          onChange={items => setDraft(d => ({ ...d, work_items: items }))}
+          activeId={activeWorkItemId}
+          onActiveChange={setActiveWorkItemId}
+          looseTeeth={draft.hambad}
+          onLooseTeethChange={v => setDraft(d => ({ ...d, hambad: v }))}
+        />
       </div>
 
       <div className="flex gap-2 pt-1">

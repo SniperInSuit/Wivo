@@ -21,16 +21,26 @@
  *   Hourly and monthly are period-level: they have nothing to do with any
  *   single job, so they are computed from logged hours and from the period.
  */
-import type { Job, Revision } from '../types/job'
+import type { Job, Revision, WorkItem } from '../types/job'
+import { jobWorkItems, jobPeriodDate } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
 // to sit in this list, which is a category error — design is a kind of work, not
 // a way of paying for it, and having it here meant design could only ever be a
 // flat fee. Scope moved to `applies_to`.
+//
 export type RateKind = 'tund' | 'hammas' | 'too' | 'protsent' | 'kuu'
 
-/** What the rule pays for: the work, its design, or redoing it. */
+/**
+ * What the rule pays FOR. Not how it is calculated — that is `kind`, and not
+ * whether it stacks — that is `additive`.
+ *
+ * Three questions, three fields. An earlier attempt made "extra service" a
+ * fourth scope, which forced a choice nobody should have to make: gum DESIGN is
+ * design, and a rule that had to declare itself "extra" instead of "design"
+ * left the lab with nowhere to put the ordinary design rule. See sql/040.
+ */
 export type RateScope = 'too' | 'disain' | 'muudatus'
 
 export const RATE_SCOPE_LABEL: Record<RateScope, string> = {
@@ -59,7 +69,12 @@ export const RATE_KIND_SUFFIX: Record<RateKind, string> = {
   tund: '€/h', hammas: '€/hammas', too: '€/töö', protsent: '%', kuu: '€/kuu',
 }
 
-/** Rules that price a job. The rest are period-level or additive. */
+/**
+ * Rules that price a piece of work, of which exactly one wins per work item.
+ *
+ * Only ONE wins WITHIN a scope. Scopes never compete with each other, which is
+ * how an extra service is paid alongside the work rather than instead of it.
+ */
 const PRODUCTION_KINDS: RateKind[] = ['hammas', 'too', 'protsent']
 
 export interface WorkerRate {
@@ -71,6 +86,17 @@ export interface WorkerRate {
   amount: number
   work_type: string | null
   priority: number
+  /**
+   * Paid ON TOP of the scope's production rule instead of competing with it.
+   *
+   * Exactly one non-additive rule wins per work item, which is right for "how
+   * is this work paid" and wrong for "and there is also gum design on it". An
+   * additive rule never enters that contest, so a job can carry the arch rate,
+   * the design rate and a gum-design rate at once — three lines, three answers.
+   */
+  additive: boolean
+  /** What to call it on the payslip: "Igeme disain". Null on older rules. */
+  label: string | null
   pay_revisions: boolean
   // Hourly rules only: fill the period from the working calendar instead of
   // making someone type an identical row every day.
@@ -136,57 +162,224 @@ function activeOn(rate: WorkerRate, isoDate: string): boolean {
   return true
 }
 
+/** One piece of work to pay for: a type and the teeth it covers. */
+export interface PayItem { too: string; hambad: string }
+
+/** The items on a job. A job with no `work_items` yields exactly one, built
+ *  from its legacy `too`/`hambad`, so old rows are paid exactly as before. */
+const payItemsOf = (job: Job): PayItem[] =>
+  jobWorkItems(job).map(i => ({ too: i.too, hambad: i.hambad }))
+
+/** The items on a revision, falling back to the job's own when it names none. */
+function revisionPayItems(rev: Revision, job: Job): PayItem[] {
+  const items = rev.work_items
+  if (Array.isArray(items) && items.length > 0) {
+    return items.map((i: WorkItem) => ({ too: i.too, hambad: i.hambad }))
+  }
+  return [{ too: job.too ?? '', hambad: rev.hambad ?? job.hambad ?? '' }]
+}
+
 /**
- * The production rule that applies to this job.
+ * The work types a rule is limited to. Empty means it covers every type.
  *
- * Specific beats general: a rule naming the job's work type outranks one that
- * names none, whatever the priorities are. Without that, adding a catch-all
+ * Several names live in the one `work_type` text column separated by '|' — the
+ * same separator the material cost keys already use, and one no work type name
+ * has ever contained. No column was added because none was needed: a rule
+ * written before this holds a single name, which splits to itself, so every
+ * existing rule keeps behaving exactly as it did with nothing to migrate.
+ *
+ * One rule over several types rather than one rule each: "igeme tasu 9 € on
+ * these four types" is ONE decision, and expressing it as four rows means four
+ * places to edit when the price changes and four chances to miss one.
+ */
+export function rateWorkTypes(rate: Pick<WorkerRate, 'work_type'>): string[] {
+  return (rate.work_type ?? '').split('|').map(s => s.trim()).filter(Boolean)
+}
+
+/**
+ * The rule that applies to ONE work type.
+ *
+ * Specific beats general: a rule naming this work type outranks one that names
+ * none, whatever the priorities are. Without that, adding a catch-all
  * "15 €/tooth" rule would silently start competing with the deliberate
  * "Allon4 = 200 € flat" rule the owner set up first.
+ *
+ * Matching per TYPE and not per job is the whole point. This used to read the
+ * job's denormalised `too`, which is only ever the FIRST work item — so on a
+ * case holding crowns and a bridge, a rule scoped to "Sild" was never even
+ * considered, and the bridge was paid at the crown rate or not at all.
  */
-export function pickProductionRate(
-  rates: WorkerRate[], job: Job, isoDate: string, types: WorkType[],
-  scope: RateScope = 'too'
-): WorkerRate | null {
-  const jobType = resolveWorkType(job.too, types).nimi.toLowerCase()
-  const raw = (job.too ?? '').toLowerCase()
+export function rateCovers(
+  rate: WorkerRate, too: string | null | undefined, types: WorkType[]
+): boolean {
+  const wanted = rateWorkTypes(rate)
+  if (wanted.length === 0) return true
+  const resolved = resolveWorkType(too, types).nimi.toLowerCase()
+  const raw = (too ?? '').toLowerCase()
+  return wanted.some(w => {
+    const lw = w.toLowerCase()
+    return lw === resolved || raw.includes(lw)
+  })
+}
 
+export function pickRateFor(
+  rates: WorkerRate[], too: string | null | undefined, isoDate: string,
+  types: WorkType[], scope: RateScope, kinds: RateKind[] = PRODUCTION_KINDS
+): WorkerRate | null {
   const matches = rates.filter(r => {
-    if (!PRODUCTION_KINDS.includes(r.kind)) return false
+    if (r.additive) return false        // additive rules never enter the contest
+    if (!kinds.includes(r.kind)) return false
     if ((r.applies_to ?? 'too') !== scope) return false
     if (!activeOn(r, isoDate)) return false
-    if (!r.work_type) return true
-    const wanted = r.work_type.trim().toLowerCase()
-    return wanted === jobType || raw.includes(wanted)
+    return rateCovers(r, too, types)
   })
   if (matches.length === 0) return null
 
   return matches.sort((a, b) => {
-    const spec = (a.work_type ? 1 : 0) - (b.work_type ? 1 : 0)
+    // A rule that names ANY type is specific, however many it names — the
+    // question is whether it was aimed at this work or is a catch-all.
+    const spec = (rateWorkTypes(a).length > 0 ? 1 : 0) - (rateWorkTypes(b).length > 0 ? 1 : 0)
     if (spec !== 0) return -spec
     return b.priority - a.priority
   })[0]
 }
 
-function amountFor(rate: WorkerRate, opts: { teeth: number; price: number }): { qty: number; amount: number } {
-  switch (rate.kind) {
-    case 'hammas':   return { qty: opts.teeth, amount: round2(opts.teeth * rate.amount) }
-    case 'too':      return { qty: 1, amount: round2(rate.amount) }
-    case 'protsent': return { qty: 1, amount: round2(opts.price * rate.amount / 100) }
-    default:         return { qty: 1, amount: 0 }
-  }
+/** Distinct work types, in order, for a line's description. */
+const itemsLabel = (items: PayItem[]): string => {
+  const names = [...new Set(items.map(i => i.too?.trim()).filter(Boolean))]
+  return names.length > 0 ? names.join(' + ') : 'Töö'
+}
+
+export interface ProductionPay {
+  amount: number
+  qty: number
+  rate: number
+  kind: RateKind
+  /** Work types on this job that no rule covered. Drives the diagnostics. */
+  unmatched: string[]
 }
 
 /**
- * The date a job counts as earned on.
+ * What a set of work items earns under this worker's rules.
  *
- * The COMPLETION date first. `valmis_aeg` is the deadline — a plan — and using
- * it meant a job due in June but finished in July earned nothing in either
- * month. The deadline is only a fallback for rows that predate the completion
- * field, and the received date a fallback after that.
+ * Every item is matched and paid SEPARATELY, then summed. Before this, one rule
+ * was chosen for the whole job and applied to all of its teeth — so ten crowns
+ * plus a four-unit bridge were paid as fourteen crowns, and a lab that priced
+ * the two differently could not express that at all.
+ *
+ * Items that match the SAME rule are pooled first, because a flat "200 € per
+ * job" rule must stay one payment however many items it happens to cover.
  */
-const jobEarnedOn = (job: Job): string =>
-  (job.valmis_kuupaev ?? job.valmis_aeg ?? job.kuupaev ?? '').slice(0, 10)
+/**
+ * The extras: every additive rule that touches this work, each its own line.
+ *
+ * A line each rather than one pooled "extras" total, because the whole point is
+ * that the lab can tell them apart — "Igeme disain 27 €" answers a question
+ * that "Lisatasu 41 €" does not. The rule's `label` is what names it.
+ *
+ * A flat additive rule pays once per COVERED ITEM, so an upper and a lower
+ * All-on-X pay it twice. A percentage pays once against the job's price, since
+ * the price belongs to the job and not to any one item.
+ */
+function payAdditive(
+  mine: WorkerRate[], items: PayItem[], isoDate: string, types: WorkType[],
+  scope: RateScope, price: number
+): { rule: WorkerRate; amount: number; qty: number }[] {
+  const out: { rule: WorkerRate; amount: number; qty: number }[] = []
+  for (const r of mine) {
+    if (!r.additive) continue
+    if (!PRODUCTION_KINDS.includes(r.kind)) continue
+    if ((r.applies_to ?? 'too') !== scope) continue
+    if (!activeOn(r, isoDate)) continue
+
+    const covered = items.filter(i => rateCovers(r, i.too, types))
+    if (covered.length === 0) continue
+    const teeth = covered.reduce((s, i) => s + toothCount(i.hambad), 0)
+
+    let amount = 0
+    let qty = 1
+    switch (r.kind) {
+      case 'hammas':   amount = teeth * r.amount; qty = teeth; break
+      case 'too':      amount = r.amount * covered.length; qty = covered.length; break
+      case 'protsent': amount = price * r.amount / 100; break
+    }
+    if (amount <= 0) continue
+    out.push({ rule: r, amount: round2(amount), qty })
+  }
+  return out
+}
+
+/** What an additive line is called. Falls back for rules written before labels. */
+const additiveLabel = (r: WorkerRate): string =>
+  r.label?.trim() || (r.applies_to === 'disain' ? 'Lisatasu disaini eest' : 'Lisatasu')
+
+function payProduction(
+  mine: WorkerRate[], items: PayItem[], isoDate: string, types: WorkType[],
+  scope: RateScope, price: number
+): ProductionPay | null {
+  const groups = new Map<string, { rate: WorkerRate; teeth: number }>()
+  const unmatched: string[] = []
+  let matchedTeeth = 0
+
+  for (const item of items) {
+    const rate = pickRateFor(mine, item.too, isoDate, types, scope)
+    if (!rate) {
+      unmatched.push(item.too?.trim() || 'Määramata töö')
+      continue
+    }
+    const teeth = toothCount(item.hambad)
+    const g = groups.get(rate.id) ?? { rate, teeth: 0 }
+    g.teeth += teeth
+    groups.set(rate.id, g)
+    matchedTeeth += teeth
+  }
+  if (groups.size === 0) return null
+
+  let amount = 0
+  for (const g of groups.values()) {
+    switch (g.rate.kind) {
+      case 'hammas':
+        amount += g.teeth * g.rate.amount
+        break
+      case 'too':
+        amount += g.rate.amount
+        break
+      case 'protsent': {
+        // A percentage is of the JOB's price, which belongs to the job and not
+        // to any one item. When two different percentage rules cover different
+        // items, the price is split by their share of the teeth — charging each
+        // of them the full price would pay the job out twice over.
+        const share = matchedTeeth > 0 ? g.teeth / matchedTeeth : 1 / groups.size
+        amount += price * g.rate.amount / 100 * share
+        break
+      }
+    }
+  }
+
+  // One line per job, so the payout keys and the freeze that depends on them
+  // are untouched. qty and rate describe it honestly: a job paid entirely per
+  // tooth shows its real tooth count and its real rate; a job where several
+  // rules met shows the total and the effective rate behind it.
+  const groupList = [...groups.values()]
+  const allPerTooth = groupList.every(g => g.rate.kind === 'hammas')
+  const kind = groupList[0].rate.kind
+  // Only a wholly per-tooth job may report a tooth count: the same qty column
+  // also holds hours and job counts, and a mixed job's "14" would be summed
+  // into a total of nothing.
+  const qty = allPerTooth ? matchedTeeth : 1
+  const rate = groupList.length === 1
+    ? groupList[0].rate.amount
+    : (qty > 0 ? round2(amount / qty) : round2(amount))
+
+  return { amount: round2(amount), qty, rate, kind, unmatched }
+}
+
+/**
+ * The date a job counts as earned on — the same date every period filter in the
+ * app uses, so the Ülevaade, Rahandus and this page can never disagree about
+ * which month a job belongs to. See `jobPeriodDate` in types/job.ts.
+ */
+const jobEarnedOn = jobPeriodDate
 
 // Same rule as jobs: when it was FINISHED first, the deadline only as a
 // fallback. A revision due last month but redone this month has to land in the
@@ -230,25 +423,32 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
   for (const job of jobs) {
     const isTech = job.assigned_to === profileId
     const isDesigner = job.designed_by === profileId
-    if (!isTech && !isDesigner) continue
+    // A remake may name someone who touched no other part of the case. Skipping
+    // the job outright would have hidden their rework entirely — the guard has
+    // to ask about the revisions too, not only the job's own two names.
+    const onARevision = (job.revisions ?? []).some(r =>
+      (r.assigned_to ?? job.assigned_to) === profileId
+      || (r.designed_by ?? job.designed_by) === profileId
+    )
+    if (!isTech && !isDesigner && !onARevision) continue
 
     const earnedOn = jobEarnedOn(job)
     const jobDone = job.status === doneStageKey
+    const items = payItemsOf(job)
+    const label = itemsLabel(items)
+    const countable = jobDone && inPeriod(earnedOn)
 
-    if (isTech && jobDone && inPeriod(earnedOn) && !alreadyPaid.has(`job:${job.id}`)) {
-      const rate = pickProductionRate(mine, job, earnedOn, types)
-      if (rate) {
-        const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-        const { qty, amount } = amountFor(rate, { teeth: toothCount(job.hambad), price })
-        if (amount > 0) {
-          lines.push({
-            key: `job:${job.id}`,
-            job_id: job.id, revision_id: null, work_hours_id: null,
-            kind: rate.kind,
-            description: `${job.too?.trim() || 'Töö'} · ${job.patsient}`,
-            qty, rate: rate.amount, amount, earned_on: earnedOn,
-          })
-        }
+    if (isTech && countable && !alreadyPaid.has(`job:${job.id}`)) {
+      const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
+      const pay = payProduction(mine, items, earnedOn, types, 'too', price)
+      if (pay && pay.amount > 0) {
+        lines.push({
+          key: `job:${job.id}`,
+          job_id: job.id, revision_id: null, work_hours_id: null,
+          kind: pay.kind,
+          description: `${label} · ${job.patsient}`,
+          qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
+        })
       }
     }
 
@@ -256,18 +456,42 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // buys design per tooth as often as per job, which the old flat-only design
     // rule could not express. Added on top of the production line, and payable
     // to someone who did no other part of the job.
-    if (isDesigner && jobDone && inPeriod(earnedOn) && !alreadyPaid.has(`design:${job.id}`)) {
-      const design = pickProductionRate(mine, job, earnedOn, types, 'disain')
-      if (design) {
-        const price = Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)
-        const { qty, amount } = amountFor(design, { teeth: toothCount(job.hambad), price })
-        if (amount > 0) {
+    if (isDesigner && countable && !alreadyPaid.has(`design:${job.id}`)) {
+      const price = Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)
+      const pay = payProduction(mine, items, earnedOn, types, 'disain', price)
+      if (pay && pay.amount > 0) {
+        lines.push({
+          key: `design:${job.id}`,
+          job_id: job.id, revision_id: null, work_hours_id: null,
+          kind: pay.kind,
+          description: `Disain: ${label} · ${job.patsient}`,
+          qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
+        })
+      }
+    }
+
+    // Extras — gum design and anything else done on top. Each additive rule
+    // gets its own named line, under the scope it actually belongs to: a gum
+    // DESIGN rule is scoped to design and paid to the designer, alongside that
+    // person's ordinary design rule rather than instead of it.
+    if (countable) {
+      for (const scope of ['too', 'disain'] as const) {
+        if (scope === 'too' ? !isTech : !isDesigner) continue
+        const price = scope === 'disain'
+          ? (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0))
+          : Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
+        for (const extra of payAdditive(mine, items, earnedOn, types, scope, price)) {
+          // Keyed by RULE, so two extras on one job stay two payable lines and
+          // freezing one never suppresses the other.
+          const key = `extra:${extra.rule.id}:${job.id}`
+          if (alreadyPaid.has(key)) continue
           lines.push({
-            key: `design:${job.id}`,
+            key,
             job_id: job.id, revision_id: null, work_hours_id: null,
-            kind: design.kind,
-            description: `Disain: ${job.too?.trim() || 'Töö'} · ${job.patsient}`,
-            qty, rate: design.amount, amount, earned_on: earnedOn,
+            kind: extra.rule.kind,
+            description: `${additiveLabel(extra.rule)}: ${label} · ${job.patsient}`,
+            qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
+            earned_on: earnedOn,
           })
         }
       }
@@ -276,35 +500,82 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // ── Revisions ───────────────────────────────────────────────────────────
     // Only when the matching rule says rework is paid. Default is unpaid: the
     // usual case is a revision caused by the lab's own error.
-    if (!isTech) continue
+    //
+    // A remake is often NOT done by whoever did the original, so each revision
+    // may name its own technician and designer. Left empty it falls back to the
+    // job's, which is what every revision written before those fields existed
+    // meant. The loop is no longer gated on the job's technician: someone who
+    // did none of the original work still has to be paid for redoing it.
     for (const [i, rev] of (job.revisions ?? []).entries()) {
+      const revTech = rev.assigned_to ?? job.assigned_to
+      const revDesigner = rev.designed_by ?? job.designed_by
+      const isRevTech = revTech === profileId
+      const isRevDesigner = revDesigner === profileId
+      if (!isRevTech && !isRevDesigner) continue
+
       const revDate = revisionEarnedOn(rev)
       const revDone = (rev.status ?? '') === doneStageKey
       if (!revDone || !inPeriod(revDate)) continue
-      if (alreadyPaid.has(`rev:${job.id}:${rev.id}`)) continue
       // Explicitly non-billable revision (lab's fault) — skip regardless of rules
       if (rev.taspidev === false) continue
+
+      const revItems = revisionPayItems(rev, job)
+      const revPrice = Number(rev.price ?? 0)
 
       // A revision-specific rule wins. Only when there is none does the job's
       // own rule apply, and then only if it says it covers rework — which is
       // how this behaved before revisions could be priced separately.
-      const revRate = pickProductionRate(mine, job, revDate, types, 'muudatus')
-      const jobRate = pickProductionRate(mine, job, revDate, types, 'too')
-      const rate = revRate ?? (jobRate?.pay_revisions ? jobRate : null)
-      if (!rate) continue
+      if (isRevTech && !alreadyPaid.has(`rev:${job.id}:${rev.id}`)) {
+        const onRevisionScope = payProduction(mine, revItems, revDate, types, 'muudatus', revPrice)
+        const payable = mine.filter(r => r.pay_revisions)
+        const pay = onRevisionScope
+          ?? payProduction(payable, revItems, revDate, types, 'too', revPrice)
+        if (pay && pay.amount > 0) {
+          lines.push({
+            key: `rev:${job.id}:${rev.id}`,
+            job_id: job.id, revision_id: rev.id, work_hours_id: null,
+            kind: pay.kind,
+            description: `Muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}`,
+            qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: revDate,
+          })
+        }
+      }
 
-      const { qty, amount } = amountFor(rate, {
-        teeth: toothCount(rev.hambad ?? job.hambad),
-        price: Number(rev.price ?? 0),
-      })
-      if (amount <= 0) continue
-      lines.push({
-        key: `rev:${job.id}:${rev.id}`,
-        job_id: job.id, revision_id: rev.id, work_hours_id: null,
-        kind: rate.kind,
-        description: `Muudatus #${i + 1}: ${job.too?.trim() || 'Töö'} · ${job.patsient}`,
-        qty, rate: rate.amount, amount, earned_on: revDate,
-      })
+      // Redesigning a remake is its own work and its own person — but it is
+      // still rework, and rework is UNPAID unless a rule says otherwise. Only
+      // design rules with "Katab ka muudatused" ticked apply here, exactly as
+      // on the production side above. Without that filter every design rule
+      // silently started paying for revisions the moment revisions gained a
+      // designer field, which is not something anybody asked for.
+      const designPayable = mine.filter(r => r.pay_revisions)
+      if (isRevDesigner && !alreadyPaid.has(`revdesign:${job.id}:${rev.id}`)) {
+        const design = payProduction(designPayable, revItems, revDate, types, 'disain', revPrice)
+        if (design && design.amount > 0) {
+          lines.push({
+            key: `revdesign:${job.id}:${rev.id}`,
+            job_id: job.id, revision_id: rev.id, work_hours_id: null,
+            kind: design.kind,
+            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}`,
+            qty: design.qty, rate: design.rate, amount: design.amount, earned_on: revDate,
+          })
+        }
+      }
+
+      // Extras on a remake. Scoped to 'muudatus', so redoing the gum work is
+      // paid without the ordinary gum rule firing on every original job too.
+      if (!isRevTech) continue
+      for (const extra of payAdditive(mine, revItems, revDate, types, 'muudatus', revPrice)) {
+        const key = `extra:${extra.rule.id}:${job.id}:${rev.id}`
+        if (alreadyPaid.has(key)) continue
+        lines.push({
+          key,
+          job_id: job.id, revision_id: rev.id, work_hours_id: null,
+          kind: extra.rule.kind,
+          description: `${additiveLabel(extra.rule)} (muudatus #${i + 1}) · ${job.patsient}`,
+          qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
+          earned_on: revDate,
+        })
+      }
     }
   }
 
@@ -411,7 +682,9 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     const b = buckets.get(code) ?? { code, label, count: 0, examples: [] }
     b.count++
     if (b.examples.length < 3) {
-      b.examples.push(`${job.too?.trim() || 'Töö'} · ${job.patsient}`)
+      // Every work type on the job, not just the first — the whole reason a
+      // mixed job earned nothing is usually the type that was not named here.
+      b.examples.push(`${itemsLabel(payItemsOf(job))} · ${job.patsient}`)
     }
     buckets.set(code, b)
   }
@@ -435,16 +708,27 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       continue
     }
     if (isTech) {
-      const rate = pickProductionRate(mine, job, earnedOn, types, 'too')
-      if (!rate) {
+      const items = payItemsOf(job)
+      const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
+      const pay = payProduction(mine, items, earnedOn, types, 'too', price)
+      if (!pay) {
         add('reegel', 'Ühtegi tasureeglit ei sobi selle tööga (kontrolli "Mille eest" ja "Ainult töö tüübile")', job)
         continue
       }
-      if (rate.kind === 'hammas' && toothCount(job.hambad) === 0) {
-        add('hambad', 'Tasu on hamba kohta, aga tööl ei ole hambaid valitud', job)
+      // A job can now be PARTLY paid: the crowns match a rule and the bridge
+      // does not. That used to be invisible because one rule covered the whole
+      // job either way, and it is the failure worth naming loudest — the total
+      // looks plausible and is short by one work item.
+      if (pay.unmatched.length > 0) {
+        add('reegel',
+          `Osa tööosi jääb tasustamata — neile ei sobi ükski reegel: ${[...new Set(pay.unmatched)].join(', ')}`,
+          job)
+      }
+      if (pay.amount === 0 && pay.kind === 'hammas') {
+        add('hambad', 'Tasu on hamba kohta, aga tööosadel ei ole hambaid valitud', job)
         continue
       }
-      if (rate.kind === 'protsent' && Number(job.hind ?? 0) === 0) {
+      if (pay.amount === 0 && pay.kind === 'protsent') {
         add('hind', 'Tasu on protsent hinnast, aga tööl ei ole hinda', job)
         continue
       }
@@ -465,29 +749,32 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
           continue
         }
         if (alreadyPaid.has(`rev:${job.id}:${rev.id}`)) continue
-        const revRate = pickProductionRate(mine, job, revDate, types, 'muudatus')
-        const jobRate = pickProductionRate(mine, job, revDate, types, 'too')
-        const rate = revRate ?? (jobRate?.pay_revisions ? jobRate : null)
-        if (!rate) {
+        const revItems = revisionPayItems(rev, job)
+        const revPrice = Number(rev.price ?? 0)
+        const revPay = payProduction(mine, revItems, revDate, types, 'muudatus', revPrice)
+          ?? payProduction(mine.filter(r => r.pay_revisions), revItems, revDate, types, 'too', revPrice)
+        if (!revPay) {
           add('reegel', 'Muudatuste eest ei maksta — lisa "Muudatus" reegel või märgi tööreeglil "Muudatused tasustatud"', revJob)
           continue
         }
-        if (rate.kind === 'hammas' && toothCount(rev.hambad ?? job.hambad) === 0) {
+        if (revPay.amount === 0 && revPay.kind === 'hammas') {
           add('hambad', 'Muudatuse tasu on hamba kohta, aga hambaid ei ole valitud', revJob)
         }
-        if (rate.kind === 'protsent' && Number(rev.price ?? 0) === 0) {
+        if (revPay.amount === 0 && revPay.kind === 'protsent') {
           add('hind', 'Muudatuse tasu on protsent hinnast, aga muudatusel ei ole hinda', revJob)
         }
       }
     } else if (isDesigner) {
       // A designer with no design-scoped rule earns nothing and would otherwise
       // vanish from the reckoning without a word.
-      const design = pickProductionRate(mine, job, earnedOn, types, 'disain')
+      const items = payItemsOf(job)
+      const price = Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)
+      const design = payProduction(mine, items, earnedOn, types, 'disain', price)
       if (!design) {
         add('reegel', 'Disainijaks on määratud, aga disaini eest makstavat reeglit ei ole', job)
         continue
       }
-      if (design.kind === 'hammas' && toothCount(job.hambad) === 0) {
+      if (design.amount === 0 && design.kind === 'hammas') {
         add('hambad', 'Disaini tasu on hamba kohta, aga tööl ei ole hambaid valitud', job)
         continue
       }

@@ -106,19 +106,30 @@ export function MultiOdontogramPicker({
     try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
   }
 
-  // Build tooth → { itemId, color, itemNum } lookup
-  const toothOwner = new Map<string, { itemId: string; color: string; itemNum: number }>()
-  // Track how many items share each work type (for hue shifting)
-  const typeCount = new Map<string, number>()
-  for (let ii = 0; ii < items.length; ii++) {
-    const item = items[ii]
-    const idx = typeCount.get(item.too) ?? 0
-    typeCount.set(item.too, idx + 1)
+  // How many items share each work type. Decides both the hue shift and whether
+  // an instance needs a number at all — a lone crown is not "crown 1".
+  const perTypeTotal = new Map<string, number>()
+  for (const i of items) perTypeTotal.set(i.too, (perTypeTotal.get(i.too) ?? 0) + 1)
+
+  // Build tooth → owner lookup.
+  //
+  // `itemNum` is the instance's ordinal WITHIN ITS TYPE, which is what the chip
+  // above the chart calls it. It used to be the item's position across the
+  // whole list, so a job of one crown and four bridges labelled its chips
+  // "Sild 1..4" while the teeth read 2..5 — the fourth bridge was marked 5.
+  const toothOwner = new Map<string, {
+    itemId: string; color: string; itemNum: number; showNum: boolean
+  }>()
+  const seen = new Map<string, number>()
+  for (const item of items) {
+    const idx = seen.get(item.too) ?? 0
+    seen.set(item.too, idx + 1)
     const baseHex = colorMap[item.too] ?? '#94A3B8'
     const color = shiftHex(baseHex, idx)
+    const showNum = (perTypeTotal.get(item.too) ?? 1) > 1
     for (const t of item.hambad.split(',')) {
       const trimmed = t.trim()
-      if (trimmed) toothOwner.set(trimmed, { itemId: item.id, color, itemNum: ii + 1 })
+      if (trimmed) toothOwner.set(trimmed, { itemId: item.id, color, itemNum: idx + 1, showNum })
     }
   }
 
@@ -170,8 +181,9 @@ export function MultiOdontogramPicker({
             <line x1={2} y1={upper ? 2 : rectY + 2} x2={2} y2={upper ? h - 2 : -2} stroke={isOwned ? 'rgba(255,255,255,0.5)' : '#E0CECE'} strokeWidth={0.8} />
           </>
         )}
-        {/* Work item number inside the tooth */}
-        {isOwned && items.length > 1 && (
+        {/* Which instance of its type this tooth belongs to. Only shown when
+            the type actually repeats — the colour already says which type. */}
+        {isOwned && owner!.showNum && (
           <text
             x={0}
             y={upper ? h / 2 + 1 : rectY + h / 2 + 1}

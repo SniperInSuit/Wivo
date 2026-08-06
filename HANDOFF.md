@@ -1,6 +1,6 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.30.0
+## Current version: 1.31.0
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
@@ -81,15 +81,41 @@ look arbitrary until the day someone undoes it.
   what they are paid cannot diverge.
 - Payout lines are **copied** at payout time. Correct a wrong payout by deleting
   and redoing it — deleting returns its lines to the unpaid pool automatically.
-- `RateKind` is a billing method ONLY (`tund | hammas | too | protsent | kuu`).
-  Scope is `applies_to` (`too | disain | muudatus`). "Design" is a kind of work,
-  not a way of paying for it.
+- **Three fields, three questions.** `kind` = how it is calculated
+  (`tund | hammas | too | protsent | kuu`). `applies_to` = what it pays for
+  (`too | disain | muudatus`). `additive` = whether it stacks. Squashing any two
+  of these into one field has now been tried twice and failed twice: "design"
+  was once a `kind`, so design could only ever be a flat fee; "extra service"
+  was briefly a fourth `applies_to`, which left gum DESIGN with nowhere to sit
+  because it had to declare itself an extra instead of design. See `sql/040`.
+- **Rules match per WORK ITEM, not per job.** `pickRateFor()` takes a type name.
+  Reading `job.too` matched only the FIRST item, so a case of crowns plus a
+  bridge never consulted the bridge rule and charged the crown rate across every
+  tooth. Items sharing one rule are pooled first, so a flat per-job rule stays
+  one payment however many items it covers.
+- Exactly one NON-ADDITIVE rule wins per item per scope. Additive rules never
+  enter that contest — that is the whole point of the flag.
+- `rate.work_type` holds SEVERAL names joined by `|`. Read it through
+  `rateWorkTypes()`, never raw. A pre-1.31 rule holds one name and splits to
+  itself, so nothing needed migrating.
 - A revision-specific rule wins; `pay_revisions` on the job's rule is only the
-  fallback when none exists. Rework is unpaid by default.
+  fallback when none exists. **Rework is unpaid by default, and design is not an
+  exception** — the revision design line also requires `pay_revisions`. It
+  shipped without that gate for two hours in 1.31 and paid every revision.
+- Revisions carry their OWN `assigned_to` / `designed_by` (JSONB, undefined =
+  the job's). The job loop's "is this my job" guard must therefore ask about the
+  revisions too, or someone who only did the remake is invisible to payroll.
 - Only work in the DONE stage earns. There are no negative lines anywhere in
   this system, so paying early would need a claw-back that does not exist.
 - **`valmis_aeg` is a DEADLINE; `valmis_kuupaev` is when it was finished.**
-  Payroll periods use the latter. Revisions carry their own in the JSONB.
+  Revisions carry their own in the JSONB. Every period filter in the app —
+  Ülevaade, Rahandus, Töötasud — goes through **`jobPeriodDate()` in
+  `types/job.ts`**: completion date, then deadline, then received date. Three
+  screens each deciding this for themselves is why the same "See kuu" button
+  used to give two different answers.
+- The rush multiplier is `settings.kiirtooKordaja`, never a literal 2. It was
+  hardcoded in two revision SAVE paths, so a lab charging 1.5× billed rush
+  remakes at double.
 - `profiles.toosuhe`: `tootaja` (gross wage, employer tax applies) vs `ettevote`
   (purchase invoice, **no** employer tax). Adding employer tax to a contractor's
   invoice invents a liability the clinic does not have.
@@ -190,6 +216,15 @@ went behind a flag.
 
 **Exports and overheads (1.30.0)** — CSV out of every list, monthly overheads.
 
+**Payroll, corrected (1.31.0)** — three bugs that moved real money and none of
+which were visible on screen: rules matched only the first work item, revisions
+were always paid to the job's technician, and the rush multiplier was hardcoded
+to 2 in two save paths. Plus additive pay, multi-type rules, and the first tests
+this module has ever had.
+
+**Guided "Lisa uus töö" (1.31.0)** — six steps instead of every field at once,
+handing over to the existing Edit page once the job exists.
+
 ### Migrations to run, in order
 
 Supabase SQL editor, **Wivo closed**. Everything through `033` was already run.
@@ -198,6 +233,12 @@ Supabase SQL editor, **Wivo closed**. Everything through `033` was already run.
 24. `035_customers.sql` — customers, `jobs.customer_id`/`customer_ref`/`delivery_status`, `invoices.customer_id`/`bill_to_kind`
 25. `036_customers_realtime.sql` — **run alone**, see the deadlock note in the file
 26. `037_features.sql` — `clinic_settings.features`
+27. `038_job_mudel.sql` — `jobs.mudel`
+28. `039_worker_pay_extra_scope.sql` — **already run.** It was the wrong shape and
+    `040` undoes it. Kept because a migration that has run is history.
+29. `040_worker_pay_additive.sql` — `worker_rates.additive` + `.label`, and the
+    `applies_to` check back to three values. **Without this, an additive rule
+    cannot be saved at all** — Postgres rejects it on the CHECK constraint.
 
 Each file ends with a verification query. Run them.
 
@@ -228,14 +269,35 @@ having it in one place instead of forty.
 ## What's next
 
 ### Immediately outstanding
-- **Run the four migrations above.** Nothing from 1.27–1.30 works fully without
-  them. The app will show empty customer lists and fail on `features` reads.
+- **Run `040`.** Until it runs, saving an additive pay rule fails on the CHECK
+  constraint. `034`–`037` are still outstanding too: without them the app shows
+  empty customer lists and fails on `features` reads.
+- **Check the current period's payroll before confirming any payout.** 1.31
+  changed what mixed-work-item jobs earn (each item under its own rule, summed)
+  and who gets paid for a revision. Already-confirmed payouts are safe — their
+  lines are copies — but anything not yet confirmed will differ from what was on
+  screen yesterday.
 - **Run Seaded → Hinnad → tööde ümberhindamine in PREVIEW** against real data.
   Mixed-work-item jobs get a different price now (the sum of their items rather
   than one type across all teeth). Review before writing. Issued invoices are
   safe by construction — their lines are copies.
 - **Enter overheads** (Seaded → Hinnad → Üldkulud kuus) or Rahandus keeps
   reporting contribution rather than profit, correctly labelled but less useful.
+
+### Reviewed by nobody yet
+The 1.31 wizard (`shared/wizard/`, `components/NewJobWizard/`, ~50 files) was
+written by agents and has not had a human read it end to end. Its logic layer is
+tested; its UI is not. The payroll rework and the revision editors have tests but
+no independent review either — an adversarial pass was started and abandoned.
+
+### Two open decisions
+- **Ülevaade's "Makstud" figures ignore `makse_kuupaev`.** They use the `makstud`
+  flag and bucket the job by its own date, so a job received in June and paid in
+  August reports as paid revenue in June. Rahandus already counts payments by
+  `paid_at` and is correct. Fixing it changes historical months.
+- **`JobDetailPanel` still has two inline copies of the work-item chip strip**
+  that `WorkItemsField` now replaces everywhere else. They have not diverged yet.
+  They will.
 
 ### Faas 2 — public job-status link
 Design is in the plan. **Supabase Pro is NOT required for this**, contrary to an

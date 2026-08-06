@@ -1,29 +1,59 @@
 import { useMemo } from 'react'
-import { startOfMonth, startOfQuarter, startOfYear, isAfter, isBefore, parseISO, isValid, differenceInDays } from 'date-fns'
+import {
+  startOfWeek, startOfMonth, startOfQuarter, startOfYear,
+  endOfWeek, endOfMonth, endOfQuarter, endOfYear,
+  isAfter, isBefore, parseISO, isValid, differenceInDays,
+} from 'date-fns'
 import type { Job } from '../../types/job'
-import { revisionReasons } from '../../types/job'
+import { revisionReasons, jobPeriodDate } from '../../types/job'
 import type { Visit } from '../../types/visit'
 import type { Patient } from '../../types/patient'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
 
-export type Period = 'month' | 'quarter' | 'year' | 'all'
+export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all'
+
+// Monday, matching the board, the table filter and the payroll working week.
+const WEEK: { weekStartsOn: 1 } = { weekStartsOn: 1 }
 
 function periodStart(p: Period): Date | null {
   const now = new Date()
+  if (p === 'week') return startOfWeek(now, WEEK)
   if (p === 'month') return startOfMonth(now)
   if (p === 'quarter') return startOfQuarter(now)
   if (p === 'year') return startOfYear(now)
   return null
 }
 
+function periodEnd(p: Period): Date | null {
+  const now = new Date()
+  if (p === 'week') return endOfWeek(now, WEEK)
+  if (p === 'month') return endOfMonth(now)
+  if (p === 'quarter') return endOfQuarter(now)
+  if (p === 'year') return endOfYear(now)
+  return null
+}
+
 function filterByPeriod(jobs: Job[], period: Period): Job[] {
   const start = periodStart(period)
   if (!start) return jobs
-  // Use kuupaev (the actual received date) — not created_at which is the import timestamp.
-  // Inclusive of the first day: a strict isAfter dropped every job dated 1. of the
-  // month/quarter/year from the stats entirely, while the patient page counted it.
-  return jobs.filter((j) => j.kuupaev && !isBefore(parseISO(j.kuupaev), start))
+  const end = periodEnd(period)
+  // jobPeriodDate, not `kuupaev`: this screen used to count by the day a job
+  // ARRIVED while Rahandus and Töötasud counted by the day it was FINISHED, so
+  // the same period button gave two different answers and neither said which.
+  // Work in progress falls back to its deadline, so it is bucketed by when it
+  // is due rather than dropped for having no completion date yet.
+  //
+  // The upper bound matters now that a week is selectable. Without it "this
+  // period" meant "from its first day onwards", so a job due next week landed
+  // in this week's figures — invisible over a year, obvious over seven days.
+  return jobs.filter((j) => {
+    const iso = jobPeriodDate(j)
+    if (!iso) return false
+    const d = parseISO(iso)
+    if (!isValid(d) || isBefore(d, start)) return false
+    return !end || !isAfter(d, end)
+  })
 }
 
 // Parse comma-sep tooth string → count

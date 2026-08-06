@@ -21,6 +21,7 @@ import { quoteJob } from '@shared/pricing/quote'
 
 const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { WorkerSelect } from './WorkerSelect'
 import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
@@ -76,31 +77,6 @@ const EMPTY_FORM: JobInput = {
 // Reads the clinic's profiles. Empty is a real answer — plenty of work is done
 // by someone who is not in the system, or outsourced, and forcing a name would
 // put fictional people on payroll reports.
-function WorkerSelect({ label, value, onChange }: {
-  label: string
-  value: string | null
-  onChange: (v: string | null) => void
-}) {
-  const { data: workers = [] } = useClinicProfiles()
-  return (
-    <div>
-      <label className="label flex items-center gap-1.5">
-        <UserRound size={11} /> {label}
-      </label>
-      <select
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value || null)}
-        className="input"
-      >
-        <option value="">—</option>
-        {workers.map(w => (
-          <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
 // ─── Customer select ──────────────────────────────────────────────────────────
 // Archived customers are still shown when one is already selected, so opening
 // an old job does not silently blank the practice it was ordered by.
@@ -278,7 +254,9 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                   <span className="text-xs font-semibold text-ink flex items-center gap-1">
                     Kokku
                     {form.kiirtoo && (
-                      <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">2×</span>
+                      <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                        {settings.kiirtooKordaja}×
+                      </span>
                     )}
                   </span>
                   <span className="text-sm font-bold text-accent">{total.toFixed(2)} €</span>
@@ -387,7 +365,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const [paidDialog, setPaidDialog] = useState(false)
   const markPaid = useMarkJobsPaid()
   const { data: jobPayments = [] } = usePayments()
-  const { stages } = usePipeline()
+  const { stages, doneStageKey } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
   const [editingRevId, setEditingRevId] = useState<string | null>(null)
@@ -758,7 +736,19 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     <button
                       key={s.key}
                       type="button"
-                      onClick={() => set('status', s.key as StageKey)}
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        status: s.key as StageKey,
+                        // Fill the completion date the moment the job lands on
+                        // the done stage, so it is visible and correctable here
+                        // rather than being stamped invisibly on save. Never
+                        // cleared on the way back out — a date that was true
+                        // once does not stop being true because someone
+                        // reopened the job.
+                        valmis_kuupaev: s.key === doneStageKey && !f.valmis_kuupaev
+                          ? new Date().toISOString().slice(0, 10)
+                          : f.valmis_kuupaev,
+                      }))}
                       // Selected state comes from the stage's hex, so a recoloured
                       // stage reads the same here as on the board and in the pills.
                       style={form.status === s.key ? stageChipStyle(s.hex) : undefined}
@@ -786,7 +776,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   }`}
                 >
                   <Zap size={14} className={form.kiirtoo ? 'text-orange-500 fill-orange-400' : ''} />
-                  {form.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
+                  {/* The multiplier is configurable (Seaded → Hinnad). A fixed
+                      "2×" here contradicted the price the same panel shows. */}
+                  {form.kiirtoo ? `Kiirtöö — hind ${settings.kiirtooKordaja}×` : 'Kiirtöö'}
                 </button>
                 <button
                   type="button"
@@ -873,34 +865,63 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
               </div>
 
-              {/* Where the work physically is. The pipeline ending at "valmis"
-                  says the bench has finished with it — not that the practice
-                  has it in their hands. Those are different days. */}
-              <div>
-                <label className="label">Väljastus</label>
-                <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
-                  {(['labor', 'teel', 'yle_antud'] as const).map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setForm(f => ({
-                        ...f,
-                        delivery_status: d,
-                        // Stamped when it leaves, cleared if that is undone —
-                        // a handover date on work still at the lab is a lie.
-                        delivered_at: d === 'yle_antud'
-                          ? (f.delivered_at ?? new Date().toISOString())
-                          : null,
-                      }))}
-                      className={`text-xs font-medium px-3 py-1 rounded-md transition-colors ${
-                        form.delivery_status === d ? 'chip-active' : 'text-ink-muted hover:text-ink'
-                      }`}
-                    >
-                      {DELIVERY_LABEL[d]}
-                    </button>
-                  ))}
+              {/* Everything that only exists once the bench is finished.
+                  Shown at the done stage and nowhere else: on work still in
+                  progress a completion date is a guess and a handover state is
+                  noise, and asking for either at that point was the thing that
+                  made this form confusing. */}
+              {form.status === doneStageKey && (
+                <div className="rounded-xl border border-ink-faint/25 bg-bg-sidebar/40 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-ink-soft">Valmis</p>
+
+                  {/* The date payroll pays on. It is stamped automatically when
+                      the job reaches this stage, but it was never editable —
+                      so a job finished on the 30th could not be moved into the
+                      next month's wages, which is a correction a lab makes. */}
+                  <div>
+                    <label className="label">Valmimiskuupäev</label>
+                    <input
+                      type="date"
+                      value={form.valmis_kuupaev ?? ''}
+                      onChange={e => set('valmis_kuupaev', e.target.value || null)}
+                      className="input w-auto"
+                    />
+                    <p className="text-[10px] text-ink-faint mt-1">
+                      Millal töö päriselt valmis sai. Töötasu arvestatakse selle kuupäeva järgi,
+                      mitte tähtaja järgi.
+                    </p>
+                  </div>
+
+                  {/* Where the work physically is. The pipeline ending here says
+                      the bench has finished with it — not that the practice has
+                      it in their hands. Those are different days. */}
+                  <div>
+                    <label className="label">Väljastus</label>
+                    <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
+                      {(['labor', 'teel', 'yle_antud'] as const).map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setForm(f => ({
+                            ...f,
+                            delivery_status: d,
+                            // Stamped when it leaves, cleared if that is undone —
+                            // a handover date on work still at the lab is a lie.
+                            delivered_at: d === 'yle_antud'
+                              ? (f.delivered_at ?? new Date().toISOString())
+                              : null,
+                          }))}
+                          className={`text-xs font-medium px-3 py-1 rounded-md transition-colors ${
+                            form.delivery_status === d ? 'chip-active' : 'text-ink-muted hover:text-ink'
+                          }`}
+                        >
+                          {DELIVERY_LABEL[d]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Töö — multi-select grid (in fullscreen, this moves to center column) */}
               <div className={isFullscreen ? 'hidden' : ''}>

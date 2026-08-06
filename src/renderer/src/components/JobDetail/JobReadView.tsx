@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2, Plus, Copy, Printer } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
-import type { Job, Revision } from '../../types/job'
+import type { Job, Revision, WorkItem } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
@@ -64,6 +64,19 @@ export function JobReadView({
   const rev: Revision | null = activeRevisionId
     ? revisions.find(r => r.id === activeRevisionId) ?? null
     : null
+
+  // The work items belonging to whatever is on screen. A revision shows its
+  // OWN items, never the job's — which is the same rule the rest of this view
+  // follows, and the reason the switcher exists.
+  //
+  // A revision shows the block from one item up, because a revision has no
+  // "Töö tüüp" field of its own (that slot holds its description), so without
+  // it the type was nowhere on screen. On a job, one item is already named in
+  // the type field and the block would only repeat it.
+  const shownItems = rev
+    ? (Array.isArray(rev.work_items) ? rev.work_items : [])
+    : jobWorkItems(job)
+  const showItemsBlock = rev ? shownItems.length > 0 : shownItems.length > 1
 
   const revTotal = revisions.reduce((s, r) => s + (r.price ?? 0), 0)
   const extras = job.disain_hind ?? 0
@@ -198,11 +211,12 @@ export function JobReadView({
                 </div>
               )}
               {/* Work items breakdown */}
-              {!rev && jobWorkItems(job).length > 1 && (
-                <WorkItemsReadBlock job={job} />
-              )}
-              {/* Legacy single tooth display */}
-              {jobWorkItems(job).length <= 1 && (
+              {showItemsBlock && <WorkItemsReadBlock items={shownItems} />}
+              {/* Flat tooth list, when there is no breakdown to show instead.
+                  This used to be gated on the JOB's item count even while a
+                  revision was on screen, so a revision of a multi-item job
+                  showed no teeth at all — neither block was rendered. */}
+              {!showItemsBlock && (
               <div>
                 <Label>Hambad (FDI)</Label>
                 {teeth > 0
@@ -436,9 +450,8 @@ function PaymentRow({ payment: p, onDelete }: {
   )
 }
 
-function WorkItemsReadBlock({ job }: { job: Job }) {
+function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
   const wt = useWorkTypes()
-  const items = jobWorkItems(job)
   return (
     <div className="col-span-2 space-y-1.5">
       <Label>Tööosad ({items.length})</Label>

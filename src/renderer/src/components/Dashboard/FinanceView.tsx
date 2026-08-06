@@ -11,8 +11,9 @@ import {
   TrendingUp, TrendingDown, Euro, Wallet, Package, AlertTriangle, Clock,
   FileWarning, Repeat, Users, Info, Building2
 } from 'lucide-react'
-import { startOfMonth, startOfQuarter, startOfYear, endOfMonth, format } from 'date-fns'
+import { startOfWeek, startOfMonth, startOfQuarter, startOfYear, format } from 'date-fns'
 import type { Job } from '../../types/job'
+import { jobPeriodDate } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, useWorkTypes } from '../../stores/useSettings'
 import { useInvoices, usePayments } from '../../hooks/useInvoices'
@@ -29,7 +30,11 @@ interface FinanceViewProps {
 
 function periodRange(period: Period): { start: string; end: string } {
   const now = new Date()
-  const end = format(endOfMonth(now) > now ? now : now, 'yyyy-MM-dd')
+  // Always today, never the end of the period: money that has not arrived yet
+  // is not revenue, and a month-to-date figure compared against a full month's
+  // overheads would read as a loss for the first three weeks of every month.
+  const end = format(now, 'yyyy-MM-dd')
+  if (period === 'week')    return { start: format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'), end }
   if (period === 'month')   return { start: format(startOfMonth(now), 'yyyy-MM-dd'), end }
   if (period === 'quarter') return { start: format(startOfQuarter(now), 'yyyy-MM-dd'), end }
   if (period === 'year')    return { start: format(startOfYear(now), 'yyyy-MM-dd'), end }
@@ -49,8 +54,11 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
 
   const range = useMemo(() => periodRange(period), [period])
 
+  // jobPeriodDate — see types/job.ts. This used to lead with the deadline, so a
+  // job due in July and finished in August put its material and labour cost on
+  // July's finance page while its wages landed in August's payroll.
   const jobsInPeriod = useMemo(() => jobs.filter(j => {
-    const d = (j.valmis_aeg ?? j.kuupaev ?? '').slice(0, 10)
+    const d = jobPeriodDate(j)
     return d >= range.start && d <= range.end
   }), [jobs, range])
 

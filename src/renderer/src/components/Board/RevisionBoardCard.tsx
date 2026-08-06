@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { CornerDownLeft, ChevronLeft, ChevronRight, Euro, Zap } from 'lucide-react'
 import type { Job, StageKey, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
-import { useWorkTypes } from '../../stores/useSettings'
+import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
 
 interface RevisionBoardCardProps {
@@ -23,6 +23,7 @@ export function RevisionBoardCard({
 }: RevisionBoardCardProps) {
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
+  const { settings } = useSettings()
   const revStage  = revision.status ?? stages[0]?.key ?? 'disain'
   const stageIdx  = stages.findIndex(s => s.key === revStage)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -60,7 +61,7 @@ export function RevisionBoardCard({
         {revision.kiirtoo && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded
             bg-orange-500/20 text-orange-400">
-            <Zap size={8} /> 2×
+            <Zap size={8} /> {settings.kiirtooKordaja}×
           </span>
         )}
         {revision.price != null && (

@@ -12,6 +12,7 @@ import { CalendarTopControls } from './components/CalendarView/CalendarTopContro
 import { PatientsView } from './components/Patients/PatientsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
+import { NewJobWizard } from './components/NewJobWizard/NewJobWizard'
 import { SettingsPage } from './components/SettingsPage'
 import { InvoicesView } from './components/Invoices/InvoicesView'
 import { CustomersView } from './components/Customers/CustomersView'
@@ -40,10 +41,21 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const [view, setView] = useState<ViewMode>('overview')
+  // The 'new' member is now UNREACHABLE from the UI — creating a job goes
+  // through NewJobWizard. The branches that test for it (handleSave, the panel
+  // key, the onDelete gate) are kept for one release as an escape hatch in case
+  // the wizard has to be switched off in a hurry; delete them deliberately
+  // after that, not by accident.
   const [panelJob, setPanelJob] = useState<Job | null | 'new'>(null)
   const [panelRevisionId, setPanelRevisionId] = useState<string | undefined>()
   const [panelNoteId, setPanelNoteId] = useState<string | undefined>()
   const [newJobDate, setNewJobDate] = useState<string | undefined>()
+  // Creating a job goes through the guided wizard; JobDetailPanel stays the
+  // full management interface for jobs that already exist. The wizard is a
+  // separate overlay rather than another panel mode because it owns its own
+  // six-step state, its own draft and its own insert.
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardDate, setWizardDate] = useState<string | undefined>()
   const [bottomJob, setBottomJob] = useState<Job | null>(null)
   const [bottomRevisionId, setBottomRevisionId] = useState<string | undefined>()
   // One search box in the top bar, shared by the views that filter (R7) — each
@@ -87,7 +99,13 @@ function AppContent() {
   const deleteJob = useDeleteJob()
   const markJobsPaid = useMarkJobsPaid()
 
-  const openNew = useCallback(() => { setNewJobDate(undefined); setPanelJob('new'); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
+  // "Uus töö" opens the WIZARD. The job panel is closed first: both are fixed
+  // full-height overlays (panel z-40/z-50, wizard z-60) and two of them stacked
+  // means the user is filling a form on top of another form.
+  const openNew = useCallback(() => {
+    setPanelJob(null); setPanelRevisionId(undefined); setPanelNoteId(undefined); setNewJobDate(undefined)
+    setWizardDate(undefined); setWizardOpen(true)
+  }, [])
   const openEdit = useCallback((job: Job) => { setPanelJob(job); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
   const openEditWithRevision = useCallback((job: Job, revId: string) => { setPanelJob(job); setPanelRevisionId(revId); setPanelNoteId(undefined) }, [])
   // Opening a job note from the patient's Märkused panel — scrolls to and
@@ -96,9 +114,26 @@ function AppContent() {
     setPanelJob(job); setPanelRevisionId(undefined); setPanelNoteId(noteId)
   }, [])
   const closePanel = useCallback(() => { setPanelJob(null); setNewJobDate(undefined); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
+  // Clicking an empty slot in the calendar. The moment picked there is the
+  // job's DEADLINE, which is what the wizard seeds from it.
   const openNewOnDate = useCallback((isoDatetime: string) => {
-    setNewJobDate(isoDatetime)
-    setPanelJob('new')
+    setPanelJob(null); setPanelRevisionId(undefined); setPanelNoteId(undefined); setNewJobDate(undefined)
+    setWizardDate(isoDatetime); setWizardOpen(true)
+  }, [])
+
+  const closeWizard = useCallback(() => {
+    // The wizard has already cleared the unsaved-changes dialog by this point.
+    setWizardOpen(false); setWizardDate(undefined)
+  }, [])
+
+  // Created → hand straight over to the existing Edit page, on the real row.
+  // JobDetailPanel's `editing` initialises to `job == null`, so a non-null job
+  // lands on the READ view: the user sees the finished job, not another form.
+  // `live()` re-resolves it against the ['jobs'] cache, so handing over the
+  // pre-refetch object is safe.
+  const handleWizardCreated = useCallback((job: Job) => {
+    setWizardOpen(false); setWizardDate(undefined)
+    setPanelJob(job); setPanelRevisionId(undefined); setPanelNoteId(undefined); setNewJobDate(undefined)
   }, [])
   const openBottom = useCallback((job: Job) => { setBottomJob(job); setBottomRevisionId(undefined) }, [])
   const openBottomRevision = useCallback((job: Job, revisionId: string) => { setBottomJob(job); setBottomRevisionId(revisionId) }, [])
@@ -365,6 +400,20 @@ function AppContent() {
             highlightRevisionId={panelRevisionId}
             highlightNoteId={panelNoteId}
             onOpenPatient={openPatient}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mounted only while open, so every "Uus töö" starts from a fresh hook
+          (and re-reads any saved draft) instead of resuming whatever the last
+          session left in memory. */}
+      <AnimatePresence>
+        {wizardOpen && (
+          <NewJobWizard
+            open
+            initialDate={wizardDate}
+            onClose={closeWizard}
+            onCreated={handleWizardCreated}
           />
         )}
       </AnimatePresence>

@@ -1,5 +1,122 @@
 # Changelog
 
+## [1.31.0] — 2026-08-07
+**Andmebaasi muudatused:** `sql/039_worker_pay_extra_scope.sql` (jooksutatud),
+`sql/040_worker_pay_additive.sql` — **jooksuta see**, Wivo kinni. 039 oli vale
+lahendus ja 040 parandab selle ära; 039 jääb alles, sest jooksnud migratsiooni
+ei muudeta.
+
+Suurem osa sellest versioonist on **töötasud**. Kolm viga liigutasid raha vale
+inimesele või vale summas ja ükski neist ei olnud ekraanil näha.
+
+**Tasureegel sobitatakse iga tööosa kaupa, mitte töö kaupa**
+- Reegel valiti `job.too` järgi, mis on **ainult esimene tööosa**. Kroonid + sild
+  ühel tööl tähendas, et sillareeglit ei vaadatud kunagi ja krooni määr korrutati
+  kõigi hammastega. 2 krooni à 15 € + 3-lüliline sild à 25 € andis 75 €, mitte 105 €
+- Iga tööosa saab nüüd oma reegli ja summeeritakse. Sama reegli alla kuuluvad
+  osad koondatakse enne maksmist, nii et fikseeritud "200 €/töö" jääb üheks
+  makseks ükskõik mitut osa ta katab
+- Protsendireegel jagatakse hammaste osakaalu järgi. Kaks protsendireeglit eri
+  tööosadel maksid varem mõlemad täishinnast — töö oleks makstud kaks korda välja
+- Diagnostika ütleb nüüd ka **osalist** puudujääki: "Osa tööosi jääb tasustamata —
+  Sild". Varem oli see nähtamatu, sest üks reegel kattis töö niikuinii
+- **Segatööde summad muutuvad.** Vaata jooksva perioodi töötasud üle enne
+  kinnitamist. Kinnitatud väljamaksed on kaitstud — need on koopiad
+
+**Lisanduv tasu ja reegli nimi** (`sql/040`)
+- Uus lipp **"Lisandub"**: tasu makstakse tootmistasu **kõrvale**, mitte selle
+  asemel. Ilma selleta ei saanud öelda "igeme disain 9 €/hammas All-on-X-i peale",
+  sest ühe tööosa kohta võidab täpselt üks reegel — 9 € oleks makstud kaare
+  tasu asemel
+- Lisanduvus on **lipp**, mitte "mille eest" väärtus. Igeme disain ON disain;
+  kui ta peaks end "lisateenuseks" kuulutama, ei jääks tavalisel disainireeglil
+  enam kohta. Kolm küsimust, kolm välja: *kuidas arvutatakse* (Liik), *mille eest*
+  (töö/disain/muudatus), *kas lisandub*
+- Reeglil on nüüd **nimi**, mis kandub palgalehe reale. Kolm ühesugust "Lisatasu"
+  rida ei ütle kellelegi midagi; "Igeme disain 27 €" ütleb
+
+**Üks reegel, mitu töötüüpi**
+- "Ainult töö tüübile" rippmenüü asemel on kiibirida, kus saab valida mitu.
+  Sama hinna jaoks ei pea enam kirjutama kümmet ühesugust reeglit
+- Salvestatakse olemasolevas `work_type` veerus, eraldajaks `|` — sama eraldaja,
+  mida materjalikulude võtmed juba kasutavad. Migratsiooni ei olnud vaja ja vana
+  ühe nimega reegel käitub täpselt nagu enne
+
+**Muudatusel on oma teostaja ja disainija**
+- Palgamootor andis **iga** muudatuse töö `assigned_to` inimesele. Kui ümbertegemise
+  võttis keegi teine, maksti originaali tegijale
+- Mõlemas muudatuse redaktoris on nüüd Teostaja ja Disainija, vaikimisi "Sama mis
+  tööl". `revisions` on JSONB, migratsiooni ei olnud vaja
+- Töö tsükkel viskas inimese välja enne muudatusteni jõudmist, kui ta ei olnud
+  töö enda teostaja ega disainija — kolmas inimene oli palgaarvestusele nähtamatu
+- Muudatuse **disaini** eest ei makstud varem üldse; nüüd makstakse, aga ainult
+  kui disainireeglil on "Katab ka muudatused". Ümbertegemine on vaikimisi
+  tasustamata ja disain ei ole erand
+
+**Kiirtöö kordaja tuleb Seadetest**
+- Kahes kohas oli **arvutuses** kõvakodeeritud 2: muudatuse lisamisel ja täisekraanil
+  salvestamisel. Labor, kellel on seades 1,5, arveldas kiirmuudatusi topelthinnaga
+- Sildid näitasid samuti alati "2×", ka siis kui hind oli teine. Seitse kohta
+  loevad nüüd `settings.kiirtooKordaja`
+
+**Valmimiskuupäev on muudetav; Väljastus käib Valmis-oleku külge**
+- `valmis_kuupaev` on kuupäev, mille järgi palka makstakse, ja seda ei saanud
+  vormil üldse muuta — 30. juulil valminud tööd ei saanud augustisse tõsta
+- Töö vormil on nüüd **"Valmis" plokk**, mis ilmub ainult Valmis-etapis ja hoiab
+  koos valmimiskuupäeva ja väljastuse. Kuupäev täidetakse etapile liikumisel
+  nähtavalt, mitte vaikselt salvestamisel
+- **Väljastus kadus uue töö vormist.** Loodav töö on definitsiooni järgi laboris —
+  samm, millel on üks võimalik vastus, õpetab mõtlematult edasi klõpsima
+
+**Üks kuupäev kõigile perioodifiltritele**
+- Ülevaade luges `kuupaev` (saabumine), Rahandus ja töötasud `valmis_kuupaev`
+  (valmimine). Sama "See kuu" nupp andis kahel lehel eri vastuse ja kumbki ei
+  öelnud, kumba ta mõtleb
+- Nüüd on `jobPeriodDate()` failis `types/job.ts` ja seda kasutavad kõik kolm:
+  valmimiskuupäev, siis tähtaeg, siis saabumiskuupäev
+- **Ülevaate numbrid nihkuvad.** Juulis saabunud, augustis valminud töö liigub
+  juulist augustisse
+
+**"See nädal" statistikas**
+- Uus periood mõlemal statistikalehel, esmaspäevast — sama nädal mis tahvlil,
+  tabelifiltris ja palgaarvestuses
+- Perioodil ei olnud **ülemist piiri**: "See kuu" tähendas "1. kuupäevast alates
+  lõpmatuseni". Aasta peale nähtamatu, seitsme päeva peale mitte
+
+**Muudatuse leht sai originaali funktsioonid**
+- Tüübinupp muudatuse lehel **lülitas sisse-välja**, nii et teine "Sild" kustutas
+  esimese. Mitut silda ei saanud muudatusele üldse märkida
+- Uus ühine `WorkItemsField` teenindab mõlemat muudatuse redaktorit: nummerdus,
+  `+` teise sama tüübi lisamiseks, `×` eemaldamiseks, silla lüliti, tööosade
+  kaupa materjal
+- **Muudatuse vaates ei näidatud hambaid üldse mitte**, kui tööl oli mitu tööosa:
+  tööosade plokk oli peidetud muudatuse taha ja lame hambaloend töö tööosade arvu
+  taha. Mõlemad kukkusid välja ja ekraanile ei jäänud midagi
+- Hambakaardil oli **kaks eri nummerdust**: kiip luges tüübi sees ("Sild 4"),
+  hambakaart üle kogu nimekirja (5). Nüüd loevad mõlemad sama moodi ja number
+  ilmub ainult siis, kui tüüp päriselt kordub
+- Muudatuse täisekraanil oli tühi kolmas veerg, mis võttis veerandi laiusest ja
+  lükkas hambakaardi kerimise taha
+
+**"Lisa uus töö" — juhendatud vorm**
+- Uue töö loomine näitas kõiki välju korraga. Nüüd on kuuesammuline vorm:
+  töö tüüp → hambad → materjal ja toon → tootmine → patsient ja tellija → kontroll
+- Pärast loomist antakse töö üle olemasolevale Muuda-lehele
+- Loogika on `shared/wizard/` all, sõltuvusteta ja testitud
+
+**Töötasudel on testid**
+- `earnings.ts` oli rakenduse rahaliselt raskeim puhas moodul ja tal ei olnud
+  ühtegi testi. Nüüd on 34, sealhulgas regressioonid vanale käitumisele
+- `vitest.config.mts` lisatud, sest ilma `@shared` aliaseta ei saanud `src/` all
+  üldse testida
+
+**Väiksemad**
+- `PayrollView` võrdles `scope !== 'revision'`, mida `RateScope`-s ei ole — tingimus
+  oli alati tõene ja "Katab ka muudatused" kastike ilmus ka muudatusreeglitele
+- `WorkerSelect` tõsteti `JobDetailPanel`-ist välja: see kontroll otsustab, kes saab
+  raha, ja kaks veidi erinevat koopiat liigutaksid seda vale inimesele
+- Surnud `WorkItemsEditor.tsx` kustutatud (ei olnud kusagil kasutusel)
+
 ## [1.30.0] — 2026-08-05
 Andmebaasi muudatusi ei ole. `clinic_settings.pricing` saab kaks uut välja,
 mis tekivad iseenesest (jsonb).

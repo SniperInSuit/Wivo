@@ -25,7 +25,7 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL,
+  RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
 } from '../../lib/earnings'
 import { useQueryClient } from '@tanstack/react-query'
@@ -37,6 +37,10 @@ import { exportCsv, payoutColumns, payoutLineColumns } from '../../lib/exports'
 
 const KINDS: RateKind[] = ['hammas', 'too', 'protsent', 'tund', 'kuu']
 const SCOPES: RateScope[] = ['too', 'disain', 'muudatus']
+
+/** Kinds that pay for a piece of work, so they can be scoped and type-targeted.
+ *  'tund' and 'kuu' belong to the period and have nothing to point at. */
+const SCOPED_KINDS: RateKind[] = ['hammas', 'too', 'protsent']
 
 interface PayrollViewProps {
   jobs: Job[]
@@ -705,7 +709,14 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
   const [kind, setKind] = useState<RateKind>('hammas')
   const [scope, setScope] = useState<RateScope>('too')
   const [amount, setAmount] = useState('')
-  const [workType, setWorkType] = useState('')
+  // A list, not one name: "igeme tasu on these four types" is one decision and
+  // was previously four near-identical rules to write and keep in step.
+  const [workTypes, setWorkTypes] = useState<string[]>([])
+  // "Lisandub" and "mille eest" are different questions: gum design IS design,
+  // it just stacks instead of competing. Forcing one dropdown to say both left
+  // the ordinary design rule with nowhere to go.
+  const [additive, setAdditive] = useState(false)
+  const [label, setLabel] = useState('')
   const [payRevisions, setPayRevisions] = useState(false)
   const [autoHours, setAutoHours] = useState(true)
   const [hoursPerDay, setHoursPerDay] = useState('8')
@@ -721,15 +732,17 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         kind,
         applies_to: scope,
         amount: value,
-        work_type: workType || null,
-        priority: workType ? 10 : 0,
+        work_type: workTypes.length > 0 ? workTypes.join('|') : null,
+        priority: workTypes.length > 0 ? 10 : 0,
+        additive,
+        label: label.trim() || null,
         pay_revisions: payRevisions,
         auto_hours: kind === 'tund' ? autoHours : false,
         hours_per_day: kind === 'tund' ? parseFloat(hoursPerDay) || null : null,
         work_days: '12345',
         active_from: null, active_to: null, note: null,
       })
-      setAmount(''); setWorkType('')
+      setAmount(''); setWorkTypes([]); setLabel(''); setAdditive(false)
     } catch (err) { setError(describeError(err)) }
   }
 
@@ -740,7 +753,8 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
       </h4>
       <p className="text-[11px] text-ink-faint mb-2 leading-relaxed">
         Töö tüübiga reegel on ülimuslik üldise reegli ees — nii saab "15 €/hammas, aga
-        Allon4 on 200 € töö kohta".
+        Allon4 on 200 € töö kohta". Ühele reeglile võib valida mitu tüüpi, nii et
+        sama hinna jaoks ei pea kirjutama kümmet ühesugust reeglit.
         <br />
         <strong className="text-ink-muted">Mille eest</strong> ütleb, mida reegel katab:
         teostatud töö, disain või muudatus. Muudatustele oma hinna panekuks lisa eraldi
@@ -752,10 +766,19 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         {rates.length === 0 && <p className="text-xs text-ink-faint">Reegleid ei ole.</p>}
         {rates.map(r => (
           <div key={r.id} className="flex items-center gap-2 text-xs rounded-lg border border-ink-faint/20 px-2.5 py-1.5">
-            <span className="font-medium text-ink">{RATE_KIND_LABEL[r.kind]}</span>
+            {/* The rule's own name leads when it has one — that is the whole
+                reason it exists, so "Igeme disain" is read before the method. */}
+            {r.label?.trim()
+              ? <span className="font-semibold text-ink">{r.label.trim()}</span>
+              : <span className="font-medium text-ink">{RATE_KIND_LABEL[r.kind]}</span>}
             <span className="tabular-nums font-semibold text-accent">
               {Number(r.amount).toFixed(2)} {RATE_KIND_SUFFIX[r.kind]}
             </span>
+            {r.additive && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                lisandub
+              </span>
+            )}
             {(r.applies_to ?? 'too') === 'disain' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
                 disaini eest
@@ -771,11 +794,13 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
                 auto {Number(r.hours_per_day ?? 0)} h/päev
               </span>
             )}
-            {r.work_type && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-sidebar text-ink-muted">
-                {r.work_type}
+            {/* Through rateWorkTypes, never the raw column — it holds several
+                names joined by '|' and printing it raw would show the plumbing. */}
+            {rateWorkTypes(r).map(name => (
+              <span key={name} className="text-[10px] px-1.5 py-0.5 rounded bg-bg-sidebar text-ink-muted">
+                {name}
               </span>
-            )}
+            ))}
             {r.pay_revisions && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
                 muudatused tasustatud
@@ -812,7 +837,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             </span>
           </div>
         </div>
-        {(kind === 'hammas' || kind === 'too' || kind === 'protsent') && (
+        {SCOPED_KINDS.includes(kind) && (
           <div>
             <label className="label">Mille eest</label>
             <select value={scope} onChange={e => setScope(e.target.value as RateScope)} className="input py-1.5 text-sm w-40">
@@ -842,16 +867,25 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             )}
           </>
         )}
-        {(kind === 'hammas' || kind === 'too' || kind === 'protsent') && (
-          <div>
-            <label className="label">Ainult töö tüübile</label>
-            <select value={workType} onChange={e => setWorkType(e.target.value)} className="input py-1.5 text-sm w-44">
-              <option value="">Kõik tööd</option>
-              {wt.types.map(t => <option key={t.nimi} value={t.nimi}>{t.nimi}</option>)}
-            </select>
-          </div>
+        {SCOPED_KINDS.includes(kind) && (
+          <label
+            className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer"
+            title="Makstakse tootmistasu KÕRVALE, mitte selle asemel"
+          >
+            <input
+              type="checkbox" checked={additive}
+              onChange={e => setAdditive(e.target.checked)}
+              className="accent-accent"
+            />
+            Lisandub
+          </label>
         )}
-        {(kind === 'hammas' || kind === 'too' || kind === 'protsent') && scope !== 'revision' && (
+        {/* 'muudatus', not 'revision': RateScope has no such member, so this
+            condition was always true and the checkbox showed on the very rules
+            it makes no sense for — a revision rule covering revisions. An
+            additive rule never competes either, so the question does not
+            arise for it. */}
+        {SCOPED_KINDS.includes(kind) && scope !== 'muudatus' && !additive && (
           <label
             className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer"
             title="Kehtib ainult siis, kui eraldi 'Muudatus' reeglit ei ole"
@@ -868,6 +902,80 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
           <Plus size={13} /> Lisa reegel
         </button>
       </div>
+
+      {/* Work types on their own line, all of them visible at once. A dropdown
+          would hide which are picked behind a click, and picking several is the
+          normal case — one rule for the four types that carry gum work beats
+          four rules that have to be kept in step by hand. */}
+      {SCOPED_KINDS.includes(kind) && (
+        <div className="mt-2">
+          <label className="label">
+            Ainult töö tüüpidele
+            {workTypes.length === 0 && (
+              <span className="font-normal text-ink-faint ml-1">— valimata tähendab kõiki töid</span>
+            )}
+          </label>
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setWorkTypes([])}
+              className={`text-[11px] px-2 py-1 rounded-lg border transition-colors ${
+                workTypes.length === 0
+                  ? 'bg-accent text-white border-accent font-medium'
+                  : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+              }`}
+            >
+              Kõik tööd
+            </button>
+            {wt.types.map(t => {
+              const picked = workTypes.includes(t.nimi)
+              return (
+                <button
+                  key={t.nimi}
+                  type="button"
+                  onClick={() => setWorkTypes(prev =>
+                    picked ? prev.filter(n => n !== t.nimi) : [...prev, t.nimi]
+                  )}
+                  className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border transition-colors ${
+                    picked
+                      ? 'border-accent bg-accent/10 text-ink font-medium'
+                      : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: t.hex }} />
+                  {t.nimi}
+                </button>
+              )
+            })}
+          </div>
+          {/* An additive rule with no type named would pay on every piece of
+              work there is. Legal, almost never meant, and expensive to
+              discover at the end of the month. */}
+          {additive && workTypes.length === 0 && (
+            <p className="text-[10px] text-amber-600 mt-1">
+              Vali töötüübid — praegu lisanduks see tasu iga töö peale.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* A name, because "Lisatasu 9 €" three times over is a list nobody can
+          read. It follows the money onto the payslip line. */}
+      {additive && (
+        <div className="mt-2">
+          <label className="label">Nimi</label>
+          <input
+            value={label}
+            onChange={e => setLabel(e.target.value)}
+            placeholder="nt Igeme disain"
+            className="input py-1.5 text-sm w-56"
+          />
+          <p className="text-[10px] text-ink-faint mt-1">
+            Kuvatakse töötasude real, et sarnaseid lisatasusid saaks eristada.
+          </p>
+        </div>
+      )}
+
       <p className="text-[10px] text-ink-faint mt-1.5">
         {RATE_KIND_HINT[kind]}
         {kind === 'tund' && autoHours && ' Esmaspäevast reedeni; käsitsi sisestatud päev on ülimuslik.'}

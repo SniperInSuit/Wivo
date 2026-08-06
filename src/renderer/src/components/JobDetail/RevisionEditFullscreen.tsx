@@ -5,10 +5,11 @@
 import { useState, useCallback } from 'react'
 import { debugLog } from '../Workers/DebugConsole'
 import { Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
-import type { Revision, StageKey, WorkItem } from '../../types/job'
+import type { Revision, StageKey } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
-import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { WorkItemsField } from './WorkItemsField'
+import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
@@ -30,6 +31,9 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const [form, setForm] = useState({
     note: revision.note,
     reasons: revisionReasons(revision),
+    // null = whoever is on the job. A remake is often picked up by someone else.
+    assigned_to: revision.assigned_to ?? null as string | null,
+    designed_by: revision.designed_by ?? null as string | null,
     work_items: Array.isArray(revision.work_items) ? revision.work_items.map(i => ({ ...i })) : [],
     hambad: revision.hambad ?? '',
     varv: revision.varv ?? null as string | null,
@@ -62,6 +66,8 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
       ...revision,
       note: form.note.trim(),
       reasons: form.reasons.length > 0 ? form.reasons : undefined,
+      assigned_to: form.assigned_to ?? undefined,
+      designed_by: form.designed_by ?? undefined,
       work_items: form.work_items.length > 0 ? form.work_items : undefined,
       hambad: form.work_items.length > 0
         ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
@@ -71,7 +77,10 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
         ? form.work_items[0]?.materjal ?? form.materjal
         : form.materjal) || undefined,
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
-      price: form.price !== '' ? parseFloat(form.price) * (form.kiirtoo ? 2 : 1) : undefined,
+      // From Seaded → Hinnad, not a hardcoded 2 — see RevisionBlock.
+      price: form.price !== ''
+        ? parseFloat(form.price) * (form.kiirtoo ? settings.kiirtooKordaja : 1)
+        : undefined,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
       taspidev: form.taspidev ? undefined : false,
@@ -106,7 +115,10 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
 
       {/* Form — 3 column layout like job edit */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-[1fr_minmax(400px,2fr)_1fr] gap-x-6 items-start">
+        {/* Two columns, not three. The third was empty and cost a quarter of
+            the width, which pushed the odontogram far enough down the page to
+            need scrolling on a laptop. */}
+        <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] gap-x-6 items-start">
 
           {/* ── LEFT COLUMN ── */}
           <div className="space-y-5">
@@ -136,7 +148,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                 }`}
               >
                 <Zap size={14} className={form.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
-                {form.kiirtoo ? 'Kiirtöö — hind 2×' : 'Kiirtöö'}
+                {form.kiirtoo ? `Kiirtöö — hind ${settings.kiirtooKordaja}×` : 'Kiirtöö'}
               </button>
               <button type="button" onClick={() => set('mudel', !form.mudel)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
@@ -296,6 +308,25 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               })()}
             </div>
 
+            {/* Who redid it — what the rework pay is calculated from. Empty
+                means the people already on the job. */}
+            <div className="grid grid-cols-2 gap-3">
+              <WorkerSelect
+                label="Teostaja"
+                value={form.assigned_to}
+                onChange={v => set('assigned_to', v)}
+                emptyLabel="Sama mis tööl"
+                dark
+              />
+              <WorkerSelect
+                label="Disainija"
+                value={form.designed_by}
+                onChange={v => set('designed_by', v)}
+                emptyLabel="Sama mis tööl"
+                dark
+              />
+            </div>
+
             {/* Värv */}
             <div>
               <label className="label text-slate-400">Uus värv</label>
@@ -350,101 +381,22 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
           </div>
 
           {/* ── CENTER COLUMN — work types + odontogram ── */}
+          {/* The same field as the job page and the inline revision form. This
+              used to be its own copy, and it was the copy that could not add a
+              second item of one type — the chip strip here had no + and no ×. */}
           <div className="space-y-3 sticky top-0">
-            {/* Work type grid */}
-            <div>
-              <label className="label text-slate-400">Töötüüp (vali üks või mitu)</label>
-              <div className="grid grid-cols-4 gap-1.5 mb-2">
-                {wt.map(t => {
-                  const hasItem = form.work_items.some(i => i.too === t.nimi)
-                  return (
-                    <button key={t.nimi} type="button"
-                      onClick={() => {
-                        if (hasItem) {
-                          const next = form.work_items.filter(i => i.too !== t.nimi)
-                          set('work_items', next)
-                        } else {
-                          const isBridge = /sild|bridge/i.test(t.nimi)
-                          const item: WorkItem = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
-                          const next = [...form.work_items, item]
-                          set('work_items', next)
-                          setActiveWorkItemId(item.id)
-                        }
-                      }}
-                      className={`text-xs px-2 py-1.5 rounded-lg border-2 font-medium transition-all ${
-                        hasItem ? 'border-accent bg-accent/10 text-accent' : 'border-slate-600 text-slate-400 hover:border-slate-400'
-                      }`}
-                    >
-                      {t.nimi}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Chips */}
-            {form.work_items.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {form.work_items.map(item => {
-                  const hex = colorMap[item.too] ?? '#94A3B8'
-                  const isActive = item.id === activeWorkItemId
-                  const teethCount = item.hambad.split(',').filter(t => t.trim()).length
-                  return (
-                    <button key={item.id} type="button"
-                      onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
-                      className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border-2 transition-all ${
-                        isActive ? 'border-accent bg-accent/10' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: isActive ? undefined : `${hex}20` }}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hex }} />
-                      <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
-                      {teethCount > 0 && <span className="text-[10px] text-slate-500">{teethCount}</span>}
-                      {item.materjal && (
-                        <span className="text-[9px] text-slate-500 bg-slate-700/50 px-1 py-0.5 rounded truncate max-w-[80px]">
-                          {item.materjal}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Odontogram */}
-            <div className="bg-slate-800/60 rounded-xl p-4">
-              {form.work_items.length > 0 ? (
-                <MultiOdontogramPicker
-                  items={form.work_items}
-                  activeItemId={activeWorkItemId}
-                  colorMap={colorMap}
-                  onToggleTooth={tooth => {
-                    if (!activeWorkItemId) return
-                    const s = String(tooth)
-                    const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
-                    if (otherOwner) return
-                    setForm(f => ({
-                      ...f,
-                      work_items: f.work_items.map(item => {
-                        if (item.id !== activeWorkItemId) return item
-                        const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
-                        teeth.has(s) ? teeth.delete(s) : teeth.add(s)
-                        return { ...item, hambad: [...teeth].join(',') }
-                      })
-                    }))
-                  }}
-                />
-              ) : (
-                <OdontogramPicker
-                  value={form.hambad}
-                  onChange={v => set('hambad', v)}
-                />
-              )}
-            </div>
+            <label className="label text-slate-400">Töötüüp ja hambad</label>
+            <WorkItemsField
+              value={form.work_items}
+              onChange={items => set('work_items', items)}
+              activeId={activeWorkItemId}
+              onActiveChange={setActiveWorkItemId}
+              looseTeeth={form.hambad}
+              onLooseTeethChange={v => set('hambad', v)}
+              dark
+              typeColumns={6}
+            />
           </div>
-
-          {/* ── RIGHT COLUMN — empty for now, can add extras later ── */}
-          <div />
         </div>
       </div>
     </div>
