@@ -528,7 +528,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         : (form.hambad || null),
       work_items: form.work_items,
       kirjeldus: form.kirjeldus || null,
-      materjal: form.materjal || null,
+      materjal: (form.work_items.length > 1
+        ? form.work_items[0]?.materjal ?? form.materjal
+        : form.materjal) || null,
       masina: form.masina || null,
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
@@ -974,6 +976,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             {teethCount > 0 && (
                               <span className="text-[10px] text-ink-faint">{teethCount}</span>
                             )}
+                            {item.materjal && (
+                              <span className="text-[9px] text-ink-faint bg-bg-sidebar/50 px-1 py-0.5 rounded truncate max-w-[80px]">
+                                {item.materjal}
+                              </span>
+                            )}
                             {/* Bridge toggle */}
                             <span
                               role="button"
@@ -1086,20 +1093,40 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 />
               </div>
 
-              {/* Materjal */}
+              {/* Materjal — per-work-item when items exist, otherwise global */}
               <div>
-                <label className="label">Materjal</label>
                 {(() => {
-                  // Sort longest-first so "Ceramic Crown HT" always wins over "Ceramic Crown"
-                  const baseMat = [...settings.materjalid]
-                    .sort((a, b) => b.length - a.length)
-                    .find(m => form.materjal === m || (form.materjal ?? '').startsWith(m + ' ')) ?? null
+                  const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
+                  const hasItems = form.work_items.length > 1
+                  const currentMat = hasItems && activeItem ? (activeItem.materjal ?? '') : (form.materjal ?? '')
+                  const setMat = (val: string) => {
+                    if (hasItems && activeItem) {
+                      setForm(f => ({
+                        ...f,
+                        work_items: f.work_items.map(i => i.id === activeItem.id ? { ...i, materjal: val || undefined } : i),
+                        materjal: f.work_items[0]?.id === activeItem.id ? val : f.materjal,
+                      }))
+                    } else {
+                      set('materjal', val)
+                    }
+                  }
+                  const sortedMats = [...settings.materjalid].sort((a, b) => b.length - a.length)
+                  const baseMat = sortedMats.find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
                   const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
-                  const currentShade = baseMat && form.materjal !== baseMat
-                    ? (form.materjal ?? '').slice(baseMat.length + 1)
-                    : null
+                  const currentShade = baseMat && currentMat !== baseMat ? currentMat.slice(baseMat.length + 1) : null
                   return (
                     <>
+                      <label className="label">
+                        Materjal
+                        {hasItems && activeItem && (
+                          <span className="text-accent font-normal ml-1">
+                            — {activeItem.too}
+                          </span>
+                        )}
+                        {hasItems && !activeItem && (
+                          <span className="text-ink-faint font-normal ml-1">— vali tööosa</span>
+                        )}
+                      </label>
                       <div className="flex gap-2 mb-2 flex-wrap">
                         {settings.materjalid.map(m => {
                           const active = baseMat === m
@@ -1107,19 +1134,19 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             <button
                               key={m}
                               type="button"
-                              onClick={() => set('materjal', active ? '' : m)}
+                              disabled={hasItems && !activeItem}
+                              onClick={() => setMat(active ? '' : m)}
                               className={`text-xs px-3 py-1.5 rounded-lg border transition-all duration-100 font-medium ${
                                 active
                                   ? 'bg-accent text-white border-accent'
                                   : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
-                              }`}
+                              } disabled:opacity-30 disabled:cursor-not-allowed`}
                             >
                               {m}
                             </button>
                           )
                         })}
                       </div>
-                      {/* Shade sub-selector */}
                       {shades && (
                         <div className="flex items-center gap-1.5 flex-wrap mb-2 pl-1">
                           <span className="text-[10px] text-ink-faint font-semibold uppercase tracking-wide">Toon:</span>
@@ -1127,7 +1154,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             <button
                               key={shade}
                               type="button"
-                              onClick={() => set('materjal', currentShade === shade ? baseMat! : `${baseMat} ${shade}`)}
+                              onClick={() => setMat(currentShade === shade ? baseMat! : `${baseMat} ${shade}`)}
                               className={`text-xs px-2 py-0.5 rounded border transition-all duration-100 font-medium ${
                                 currentShade === shade
                                   ? 'bg-accent text-white border-accent'
@@ -1139,16 +1166,17 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                           ))}
                         </div>
                       )}
+                      <input
+                        type="text"
+                        value={currentMat}
+                        disabled={hasItems && !activeItem}
+                        onChange={e => setMat(e.target.value)}
+                        placeholder={hasItems && !activeItem ? 'Vali kõigepealt tööosa…' : 'Või sisesta vabalt…'}
+                        className="input disabled:opacity-30"
+                      />
                     </>
                   )
                 })()}
-                <input
-                  type="text"
-                  value={form.materjal ?? ''}
-                  onChange={e => set('materjal', e.target.value)}
-                  placeholder="Või sisesta vabalt…"
-                  className="input"
-                />
               </div>
 
               {/* Masin */}

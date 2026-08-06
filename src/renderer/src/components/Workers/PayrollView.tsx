@@ -851,7 +851,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             </select>
           </div>
         )}
-        {(kind === 'hammas' || kind === 'too' || kind === 'protsent') && scope === 'too' && (
+        {(kind === 'hammas' || kind === 'too' || kind === 'protsent') && scope !== 'revision' && (
           <label
             className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer"
             title="Kehtib ainult siis, kui eraldi 'Muudatus' reeglit ei ole"

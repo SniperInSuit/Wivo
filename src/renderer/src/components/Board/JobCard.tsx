@@ -35,25 +35,23 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
-      className={`card p-3.5 cursor-pointer select-none relative border-l-[3px] border border-transparent hover:border-accent/20 hover:shadow-card-hover transition-all duration-150 ${
+      className={`card cursor-pointer select-none relative overflow-hidden hover:shadow-card-hover transition-all duration-150 ${
         isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''
       }`}
-      style={{ borderLeftColor: (isMultiType || job.mudel) ? 'transparent' : wt.hex(job.too) }}
       onClick={() => onClick(job)}
     >
-      {/* Color strip: multi-type stacked, or dual (job + orange for mudel) */}
-      {(isMultiType || job.mudel) && (
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] flex flex-col rounded-l-card overflow-hidden">
-          {isMultiType ? (
-            workItems.map(item => (
-              <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
-            ))
-          ) : (
-            <span className="flex-1" style={{ backgroundColor: wt.hex(job.too) }} />
-          )}
-          {job.mudel && <span className="flex-1" style={{ backgroundColor: '#F59E0B' }} />}
-        </div>
-      )}
+      {/* Color strip — absolute, clips to card's border-radius via overflow-hidden */}
+      <div className="absolute left-0 top-0 bottom-0 w-[4px] flex flex-col">
+        {isMultiType ? (
+          workItems.map(item => (
+            <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
+          ))
+        ) : (
+          <span className="flex-1" style={{ backgroundColor: wt.hex(job.too) }} />
+        )}
+        {job.mudel && <span className="flex-1" style={{ backgroundColor: '#F59E0B' }} />}
+      </div>
+      <div className="p-3.5 pl-[18px]">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
@@ -143,6 +141,7 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
           )}
         </div>
       )}
+      </div>
     </motion.div>
   )
 }

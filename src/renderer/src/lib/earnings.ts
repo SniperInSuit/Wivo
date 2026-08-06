@@ -282,6 +282,8 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       const revDone = (rev.status ?? '') === doneStageKey
       if (!revDone || !inPeriod(revDate)) continue
       if (alreadyPaid.has(`rev:${job.id}:${rev.id}`)) continue
+      // Explicitly non-billable revision (lab's fault) — skip regardless of rules
+      if (rev.taspidev === false) continue
 
       // A revision-specific rule wins. Only when there is none does the job's
       // own rule apply, and then only if it says it covers rework — which is
@@ -450,6 +452,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       // own date and now their own rate, so a job that earned fine can still
       // have rework that silently earned nothing.
       for (const [i, rev] of (job.revisions ?? []).entries()) {
+        if (rev.taspidev === false) continue  // explicitly non-billable
         const label = `Muudatus #${i + 1}: ${job.too?.trim() || 'Töö'} · ${job.patsient}`
         const revJob = { ...job, too: label } as Job
         if ((rev.status ?? '') !== doneStageKey) {

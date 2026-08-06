@@ -219,6 +219,11 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   <span className="text-[10px] text-slate-300 font-mono tabular-nums">
                     #{sorted.length - idx} · {format(parseISO(rev.ts), 'dd.MM.yy HH:mm')}
                   </span>
+                  {rev.taspidev === false && (
+                    <span className="text-[10px] bg-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-bold">
+                      Tasustamata
+                    </span>
+                  )}
                   {rev.kiirtoo && (
                     <span className="text-[10px] bg-orange-500/30 text-orange-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
                       <Zap size={8} /> 2×
@@ -252,6 +257,11 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   {revisionReasonLabel(rev) && (
                     <span className="text-[10px] bg-pink-500/30 text-pink-200 px-1.5 py-0.5 rounded font-medium">
                       {revisionReasonLabel(rev)}
+                    </span>
+                  )}
+                  {rev.purunenud_hambad && (
+                    <span className="text-[10px] bg-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-medium">
+                      Purunenud: {rev.purunenud_hambad}
                     </span>
                   )}
                   {rev.deadline && (

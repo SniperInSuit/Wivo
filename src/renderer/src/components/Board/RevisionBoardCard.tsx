@@ -37,11 +37,13 @@ export function RevisionBoardCard({
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
       onClick={onClick}
-      className={`card p-3.5 cursor-pointer select-none border-l-[3px] border border-slate-300/40
-        hover:border-slate-400/40 hover:shadow-card-hover transition-all duration-150
+      className={`card cursor-pointer select-none relative overflow-hidden
+        hover:shadow-card-hover transition-all duration-150
         ${isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''}`}
-      style={{ borderLeftColor: wt.hex(job.too) }}
     >
+      {/* Color strip */}
+      <div className="absolute left-0 top-0 bottom-0 w-[4px]" style={{ backgroundColor: wt.hex(job.too) }} />
+      <div className="p-3.5 pl-[18px]">
       {/* ── Navy muudatus badge ── */}
       <div className="flex items-center gap-1.5 mb-2">
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded
@@ -51,6 +53,9 @@ export function RevisionBoardCard({
         </span>
         {(revision.mudel || job.mudel) && (
           <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">M</span>
+        )}
+        {revision.taspidev === false && (
+          <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1 py-0.5 rounded">Tasustamata</span>
         )}
         {revision.kiirtoo && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded
@@ -103,6 +108,7 @@ export function RevisionBoardCard({
           )}
         </div>
       )}
+      </div>
     </motion.div>
   )
 }

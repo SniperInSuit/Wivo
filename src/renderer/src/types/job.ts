@@ -15,6 +15,7 @@ export interface Revision {
   price?: number      // cost charged for this revision (€)
   kiirtoo?: boolean   // fast/rush revision — price × 2
   mudel?: boolean     // revision requires a model
+  taspidev?: boolean  // billable? undefined/true = paid per rules, false = lab fault, skip earnings
   status?: StageKey   // pipeline stage for this revision (default: 'disain')
   // Millal muudatus tegelikult valmis sai. Nagu tööl: deadline on plaan, palka
   // makstakse selle järgi, mis juhtus. Pannakse valmis-etappi liikumisel.
@@ -26,6 +27,8 @@ export interface Revision {
   reasons?: string[]
   /** Legacy single reason, written before 1.24.0. Read through revisionReasons(). */
   reason?: string
+  /** Teeth that broke — recorded when "Purunemine" reason is selected */
+  purunenud_hambad?: string
   /** Work items affected by this revision — same structure as Job.work_items */
   work_items?: WorkItem[]
 }
@@ -71,6 +74,7 @@ export interface WorkItem {
   too: string             // work type name (matches WorkType.nimi)
   hambad: string          // FDI comma-separated for this item, e.g. "14,15,16"
   bridge?: boolean        // true = teeth form a connected bridge unit
+  materjal?: string       // material for this specific work item
   note?: string           // optional per-item note
 }
 

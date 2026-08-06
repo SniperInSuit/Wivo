@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from 'react'
 import { debugLog } from '../Workers/DebugConsole'
-import { X, Save, Loader2, Zap, Euro, Cpu } from 'lucide-react'
+import { X, Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
 import type { Revision, StageKey, WorkItem } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
@@ -38,9 +38,13 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     price: revision.price != null ? String(revision.price) : '',
     kiirtoo: revision.kiirtoo ?? false,
     mudel: revision.mudel ?? false,
+    taspidev: revision.taspidev !== false,  // default true (billable)
+    purunenud_hambad: revision.purunenud_hambad ?? '',
     print_id: revision.print_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
   })
+
+  const [showBreakageOdonto, setShowBreakageOdonto] = useState(false)
 
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(
     form.work_items[0]?.id ?? null
@@ -63,11 +67,15 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
         ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
         : (form.hambad || undefined),
       varv: form.varv || undefined,
-      materjal: form.materjal || undefined,
+      materjal: (form.work_items.length > 1
+        ? form.work_items[0]?.materjal ?? form.materjal
+        : form.materjal) || undefined,
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
       price: form.price !== '' ? parseFloat(form.price) * (form.kiirtoo ? 2 : 1) : undefined,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
+      taspidev: form.taspidev ? undefined : false,
+      purunenud_hambad: form.purunenud_hambad || undefined,
       print_id: form.print_id || undefined,
       status: form.status || 'disain',
     })
@@ -141,6 +149,14 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                 <Cpu size={14} className={form.mudel ? 'text-amber-400' : ''} />
                 {form.mudel ? 'Mudel' : 'Mudel'}
               </button>
+              <button type="button" onClick={() => set('taspidev', !form.taspidev)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
+                  form.taspidev ? 'bg-emerald-900/30 border-emerald-500 text-emerald-300' : 'bg-red-900/30 border-red-500 text-red-300'
+                }`}
+              >
+                <Banknote size={14} className={form.taspidev ? 'text-emerald-400' : 'text-red-400'} />
+                {form.taspidev ? 'Tasustatud' : 'Tasustamata'}
+              </button>
             </div>
 
             {/* Kirjeldus (note) */}
@@ -153,12 +169,17 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
             </div>
 
             {/* Reasons */}
-            <div>
+            <div className="relative">
               <label className="label text-slate-400">Põhjus</label>
               <div className="flex flex-wrap gap-1.5">
                 {REVISION_REASONS.map(r => (
                   <button key={r} type="button"
-                    onClick={() => set('reasons', form.reasons.includes(r) ? form.reasons.filter(x => x !== r) : [...form.reasons, r])}
+                    onClick={() => {
+                      const has = form.reasons.includes(r)
+                      set('reasons', has ? form.reasons.filter(x => x !== r) : [...form.reasons, r])
+                      if (r === 'Purunemine' && !has) setShowBreakageOdonto(true)
+                      if (r === 'Purunemine' && has) set('purunenud_hambad', '')
+                    }}
                     className={`text-xs px-2.5 py-1 rounded-lg border transition-all font-medium ${
                       form.reasons.includes(r) ? 'bg-pink-500 text-white border-pink-500' : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
                     }`}
@@ -167,15 +188,115 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                   </button>
                 ))}
               </div>
+
+              {/* Breakage teeth shown after popup is closed */}
+              {form.reasons.includes('Purunemine') && form.purunenud_hambad && !showBreakageOdonto && (
+                <div className="mt-2">
+                  <button type="button" onClick={() => setShowBreakageOdonto(true)}
+                    className="flex items-center gap-1.5 flex-wrap text-xs text-slate-300 hover:text-white transition-colors"
+                  >
+                    <span className="text-red-400 font-medium">Purunenud:</span>
+                    {form.purunenud_hambad.split(',').filter(t => t.trim()).map(t => (
+                      <span key={t} className="bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
+                        {t.trim()}
+                      </span>
+                    ))}
+                  </button>
+                </div>
+              )}
+
+              {/* Breakage odontogram popup */}
+              {showBreakageOdonto && (
+                <div className="absolute z-50 left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-panel">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-semibold text-red-400">Märgi purunenud hambad</label>
+                    <button type="button" onClick={() => setShowBreakageOdonto(false)}
+                      className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded-lg bg-emerald-500/10 transition-colors"
+                    >
+                      <Check size={12} /> Valmis
+                    </button>
+                  </div>
+                  <OdontogramPicker
+                    value={form.purunenud_hambad}
+                    onChange={v => set('purunenud_hambad', v)}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Materjal */}
+            {/* Materjal — per-work-item when multiple items exist */}
             <div>
-              <label className="label text-slate-400">Materjal</label>
-              <input type="text" value={form.materjal} onChange={e => set('materjal', e.target.value)}
-                placeholder="Uus materjal…"
-                className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
-              />
+              {(() => {
+                const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
+                const hasItems = form.work_items.length > 1
+                const currentMat = hasItems && activeItem ? (activeItem.materjal ?? '') : form.materjal
+                const setMat = (val: string) => {
+                  if (hasItems && activeItem) {
+                    setForm(f => ({
+                      ...f,
+                      work_items: f.work_items.map(i => i.id === activeItem.id ? { ...i, materjal: val || undefined } : i),
+                      materjal: f.work_items[0]?.id === activeItem.id ? val : f.materjal,
+                    }))
+                  } else {
+                    set('materjal', val)
+                  }
+                }
+                const sortedMats = [...settings.materjalid].sort((a, b) => b.length - a.length)
+                const baseMat = sortedMats.find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
+                const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
+                const currentShade = baseMat && currentMat !== baseMat ? currentMat.slice(baseMat.length + 1) : null
+                return (
+                  <>
+                    <label className="label text-slate-400">
+                      Materjal
+                      {hasItems && activeItem && (
+                        <span className="text-accent font-normal ml-1">— {activeItem.too}</span>
+                      )}
+                      {hasItems && !activeItem && (
+                        <span className="text-slate-500 font-normal ml-1">— vali tööosa</span>
+                      )}
+                    </label>
+                    <div className="flex gap-1.5 mb-2 flex-wrap">
+                      {settings.materjalid.map(m => {
+                        const active = baseMat === m
+                        return (
+                          <button key={m} type="button"
+                            disabled={hasItems && !activeItem}
+                            onClick={() => setMat(active ? '' : m)}
+                            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all font-medium ${
+                              active
+                                ? 'bg-accent/15 border-accent text-accent'
+                                : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-400'
+                            } disabled:opacity-30 disabled:cursor-not-allowed`}
+                          >
+                            {m}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {shades && shades.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap">
+                        {shades.map(s => {
+                          const full = `${baseMat} ${s}`
+                          const active = currentMat === full || currentShade === s
+                          return (
+                            <button key={s} type="button"
+                              onClick={() => setMat(active ? (baseMat ?? '') : full)}
+                              className={`text-[10px] px-2 py-1 rounded-md border font-medium transition-all ${
+                                active
+                                  ? 'bg-accent/15 border-accent text-accent'
+                                  : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-400'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
 
             {/* Värv */}
@@ -282,6 +403,11 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hex }} />
                       <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
                       {teethCount > 0 && <span className="text-[10px] text-slate-500">{teethCount}</span>}
+                      {item.materjal && (
+                        <span className="text-[9px] text-slate-500 bg-slate-700/50 px-1 py-0.5 rounded truncate max-w-[80px]">
+                          {item.materjal}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
