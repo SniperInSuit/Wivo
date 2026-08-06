@@ -354,7 +354,49 @@ export function useDashboardStats(
       byDoctor,
       byWorkType,
       revisionReasons: revisionReasonStats,
-      patientSummary: patientStatsSummary
+      patientSummary: patientStatsSummary,
+
+      // ── Durability / breakage stats ─────────────────────────────────────
+      // For revisions with reason "Purunemine" — how long did the work last?
+      durability: (() => {
+        const entries: { days: number; materjal: string; too: string; tehnik: string }[] = []
+        for (const j of filtered) {
+          if (!j.valmis_kuupaev) continue
+          const doneDate = parseISO(j.valmis_kuupaev)
+          if (!isValid(doneDate)) continue
+          for (const r of j.revisions ?? []) {
+            const reasons = revisionReasons(r)
+            if (!reasons.some(x => x.toLowerCase().includes('purunemine') || x.toLowerCase().includes('katki'))) continue
+            const breakDate = parseISO(r.ts)
+            if (!isValid(breakDate)) continue
+            const days = Math.max(0, Math.round((breakDate.getTime() - doneDate.getTime()) / (1000 * 60 * 60 * 24)))
+            entries.push({
+              days,
+              materjal: j.materjal ?? 'Määramata',
+              too: j.too ?? 'Määramata',
+              tehnik: j.assigned_to ?? '',
+            })
+          }
+        }
+        // Group by material
+        const byMaterial = new Map<string, number[]>()
+        const byWorkType = new Map<string, number[]>()
+        for (const e of entries) {
+          byMaterial.set(e.materjal, [...(byMaterial.get(e.materjal) ?? []), e.days])
+          byWorkType.set(e.too, [...(byWorkType.get(e.too) ?? []), e.days])
+        }
+        const avg = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : 0
+        return {
+          total: entries.length,
+          avgDays: avg(entries.map(e => e.days)),
+          byMaterial: [...byMaterial.entries()]
+            .map(([name, days]) => ({ name, count: days.length, avgDays: avg(days) }))
+            .sort((a, b) => a.avgDays - b.avgDays),
+          byWorkType: [...byWorkType.entries()]
+            .map(([name, days]) => ({ name, count: days.length, avgDays: avg(days) }))
+            .sort((a, b) => a.avgDays - b.avgDays),
+        }
+      })(),
     }
   // wt.types, not wt: the hook returns fresh closures every render, so depending
   // on it would recompute every stat on every render. The list identity only

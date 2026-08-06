@@ -629,6 +629,65 @@ export function Dashboard({ jobs }: DashboardProps) {
         </div>
       </section>
 
+      {/* ─── Vastupidavus / purunemine ─── */}
+      {stats.durability.total > 0 && (
+      <section>
+        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+          <TrendingUp size={13} /> Vastupidavus
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+          <div className="card p-4 flex flex-col">
+            <p className="text-sm font-semibold text-ink mb-1">Kokkuvõte</p>
+            <p className="text-xs text-ink-faint mb-3">Purunemised ja keskmine eluiga</p>
+            <div className="space-y-2 flex-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-ink-muted">Purunemisi kokku</span>
+                <span className="font-bold text-ink">{stats.durability.total}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-ink-muted">Keskmine eluiga</span>
+                <span className="font-bold text-ink">{stats.durability.avgDays} päeva</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-4 flex flex-col">
+            <p className="text-sm font-semibold text-ink mb-1">Materjali järgi</p>
+            <p className="text-xs text-ink-faint mb-3">Keskmine vastupidavus materjali kaupa</p>
+            <div className="space-y-1.5 flex-1">
+              {stats.durability.byMaterial.map(m => (
+                <div key={m.name} className="flex items-center justify-between text-xs">
+                  <span className="text-ink-muted truncate flex-1">{m.name}</span>
+                  <span className="tabular-nums text-ink-faint w-8 text-right">{m.count}×</span>
+                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{m.avgDays} p</span>
+                </div>
+              ))}
+              {stats.durability.byMaterial.length === 0 && (
+                <p className="text-xs text-ink-faint">Andmed puuduvad</p>
+              )}
+            </div>
+          </div>
+
+          <div className="card p-4 flex flex-col">
+            <p className="text-sm font-semibold text-ink mb-1">Töötüübi järgi</p>
+            <p className="text-xs text-ink-faint mb-3">Keskmine vastupidavus töötüübi kaupa</p>
+            <div className="space-y-1.5 flex-1">
+              {stats.durability.byWorkType.map(t => (
+                <div key={t.name} className="flex items-center justify-between text-xs">
+                  <span className="text-ink-muted truncate flex-1">{t.name}</span>
+                  <span className="tabular-nums text-ink-faint w-8 text-right">{t.count}×</span>
+                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{t.avgDays} p</span>
+                </div>
+              ))}
+              {stats.durability.byWorkType.length === 0 && (
+                <p className="text-xs text-ink-faint">Andmed puuduvad</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+      )}
+
       <div className="h-4" /> {/* bottom spacer */}
 
       {/* ─── Visiidid ─── */}

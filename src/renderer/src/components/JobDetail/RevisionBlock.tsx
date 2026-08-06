@@ -7,6 +7,7 @@ import {
 } from '../../types/job'
 import { OdontogramPicker } from './OdontogramPicker'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
@@ -174,26 +175,17 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
         )}
       </div>
 
-      {/* ── Add form — fullscreen dark modal ── */}
+      {/* ── Add — fullscreen dark layout ── */}
       {adding && (
-        <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
-            <h2 className="text-sm font-bold text-slate-100">Lisa muudatus</h2>
-            <button type="button" onClick={() => { setAdding(false); setDraft(EMPTY_DRAFT) }}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors">
-              <XIcon size={16} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <RevisionForm
-              draft={draft}
-              setDraft={setDraft}
-              onSubmit={addRevision}
-              onCancel={() => { setAdding(false); setDraft(EMPTY_DRAFT) }}
-              submitLabel="Lisa"
-            />
-          </div>
-        </div>
+        <RevisionEditFullscreen
+          revision={{ id: crypto.randomUUID(), ts: new Date().toISOString(), note: '', status: 'disain' }}
+          onSave={rev => {
+            if (!rev.note.trim()) return
+            onChange([...value, rev])
+            setAdding(false)
+          }}
+          onCancel={() => setAdding(false)}
+        />
       )}
 
       {/* ── Empty state ── */}
@@ -333,27 +325,16 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
               </div>
             </div>
 
-            {/* ── Edit form — fullscreen dark modal ── */}
+            {/* ── Edit — fullscreen dark layout ── */}
             {isEditing && (
-              <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
-                  <h2 className="text-sm font-bold text-slate-100">Muuda muudatust</h2>
-                  <button type="button" onClick={cancelEdit}
-                    className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors">
-                    <XIcon size={16} />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <RevisionForm
-                    draft={editDraft}
-                    setDraft={setEditDraft}
-                    onSubmit={() => saveEdit(rev.id)}
-                    onCancel={cancelEdit}
-                    submitLabel="Salvesta"
-                    isEdit
-                  />
-                </div>
-              </div>
+              <RevisionEditFullscreen
+                revision={rev}
+                onSave={updated => {
+                  onChange(value.map(r => r.id === rev.id ? updated : r))
+                  setEditingId(null)
+                }}
+                onCancel={cancelEdit}
+              />
             )}
 
             {/* ── Expanded: read-only view ── */}

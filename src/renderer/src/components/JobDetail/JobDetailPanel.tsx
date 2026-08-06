@@ -659,7 +659,6 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             {job && !editing && (
               <button type="button" onClick={() => {
                 if (activeRev) {
-                  // Switch to edit mode and auto-open revision edit
                   setEditingRevId(activeRev.id)
                   setEditing(true)
                 } else {
@@ -669,6 +668,27 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 <Pencil size={14} />
                 {activeRev ? 'Muuda muudatust' : 'Muuda'}
               </button>
+            )}
+            {/* Save/Cancel in header when editing */}
+            {editing && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => (job ? setEditing(false) : onClose())}
+                  className="btn-ghost text-sm"
+                >
+                  Tühista
+                </button>
+                <button
+                  type="submit"
+                  form="job-form"
+                  disabled={saving || !form.patsient}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {job ? 'Salvesta' : 'Loo töö'}
+                </button>
+              </>
             )}
             <button type="button" onClick={onClose} className="btn-ghost p-2">
               <X size={15} />
@@ -750,8 +770,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </button>
               </div>
 
-              {/* Kuupäev + Patsient */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Kuupäev + Tähtaeg */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Kuupäev</label>
                   <input
@@ -762,13 +782,42 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     className="input"
                   />
                 </div>
-                <PatientPicker
-                  name={form.patsient}
-                  patientId={form.patient_id}
-                  onChange={(nimi, pid) => setForm(f => ({ ...f, patsient: nimi, patient_id: pid }))}
-                  required
-                />
+                <div>
+                  <label className="label">Tähtaeg</label>
+                  <div className="flex gap-1">
+                    <input
+                      type="date"
+                      value={(form.valmis_aeg ?? '').split('T')[0] || ''}
+                      onChange={e => {
+                        const time = (form.valmis_aeg ?? '').split('T')[1] || '12:00'
+                        set('valmis_aeg', e.target.value ? `${e.target.value}T${time}` : '')
+                      }}
+                      className="input flex-1"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      value={(form.valmis_aeg ?? '').split('T')[1]?.slice(0, 5) || ''}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/[^0-9:]/g, '')
+                        const date = (form.valmis_aeg ?? '').split('T')[0]
+                        if (date) set('valmis_aeg', `${date}T${raw}`)
+                      }}
+                      className="input w-20"
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Patsient */}
+              <PatientPicker
+                name={form.patsient}
+                patientId={form.patient_id}
+                onChange={(nimi, pid) => setForm(f => ({ ...f, patsient: nimi, patient_id: pid }))}
+                required
+              />
 
               {/* Who ordered it. The customer is the paying party — the patient
                   is who the work is for. A lab bills the practice, not the
@@ -1157,34 +1206,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 <ShadePicker value={form.varv ?? null} onChange={v => set('varv', v)} />
               </div>
 
-              {/* Valmis aeg */}
-              <div>
-                <label className="label">Valmis aeg (tähtaeg)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={(form.valmis_aeg ?? '').split('T')[0] || ''}
-                    onChange={e => {
-                      const time = (form.valmis_aeg ?? '').split('T')[1] || '12:00'
-                      set('valmis_aeg', e.target.value ? `${e.target.value}T${time}` : '')
-                    }}
-                    className="input flex-1"
-                  />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="HH:MM"
-                    maxLength={5}
-                    value={(form.valmis_aeg ?? '').split('T')[1]?.slice(0, 5) || ''}
-                    onChange={e => {
-                      const raw = e.target.value.replace(/[^0-9:]/g, '')
-                      const date = (form.valmis_aeg ?? '').split('T')[0]
-                      if (date) set('valmis_aeg', `${date}T${raw}`)
-                    }}
-                    className="input w-24"
-                  />
-                </div>
-              </div>
+              {/* Valmis aeg moved to top row with Kuupäev */}
 
             </div>
 
@@ -1375,40 +1397,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         )}
 
         {/* Footer */}
-        {(editing || !job) && (
-        <div className="flex flex-col gap-2 px-6 py-4 border-t border-nav/10 flex-shrink-0 bg-nav-bg">
-          {saveError && (
-            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>
-          )}
-          <div className="flex items-center justify-between">
-            {(
-              <>
-                <button
-                  type="button"
-                  // Editing an existing job returns to its view; a new job has
-                  // nothing to return to, so it closes the panel.
-                  onClick={() => (job ? setEditing(false) : onClose())}
-                  className="btn-ghost"
-                >
-                  Tühista
-                </button>
-                <button
-                  type="submit"
-                  form="job-form"
-                  disabled={saving || !form.patsient}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Save size={14} />
-                  )}
-                  {job ? 'Salvesta' : 'Loo töö'}
-                </button>
-              </>
-            )}
+        {/* Save error shown at the top of the form */}
+        {saveError && (
+          <div className="px-6 py-2 bg-red-50 border-b border-red-200 flex-shrink-0">
+            <p className="text-xs text-red-600">{saveError}</p>
           </div>
-        </div>
         )}
       </motion.aside>
 

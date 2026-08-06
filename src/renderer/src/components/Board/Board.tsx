@@ -56,7 +56,11 @@ export function Board({
       }
     })
 
-    // Original job card
+    // Original job card — skip if any active (non-done) revision is shown,
+    // because the revision card already represents this job on the board.
+    const hasActiveRevCard = revs.some(r => (r.status ?? stages[0]?.key ?? doneStageKey) !== doneStageKey)
+    if (hasActiveRevCard) return
+
     if (job.status === doneStageKey) {
       // Week filter: show if original job OR any completed revision falls in this week
       const inWeek = (dateStr: string) => {
