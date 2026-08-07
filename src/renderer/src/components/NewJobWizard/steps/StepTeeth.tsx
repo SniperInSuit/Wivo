@@ -291,7 +291,6 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
           activeType={activeType}
           colorMap={colorMap}
           onToggleTooth={toggleTooth}
-          legend={legend}
           reservedByArch={archOwners}
         />
 
