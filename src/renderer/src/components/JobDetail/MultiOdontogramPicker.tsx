@@ -19,7 +19,7 @@ const LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]
 // Curve offsets (px) — create the U-shape. Centrals sit at the deepest point.
 // index 0 = leftmost molar, 7–8 = centrals, 15 = rightmost molar.
 const UPPER_Y = [33, 30, 26, 20, 14, 8, 3, 0, 0, 3, 8, 14, 20, 26, 30, 33]
-const LOWER_Y = [0, 3, 8, 14, 20, 26, 30, 33, 33, 30, 26, 20, 14, 8, 3, 0]
+const LOWER_Y = [33, 30, 26, 20, 14, 8, 3, 0, 0, 3, 8, 14, 20, 26, 30, 33]
 
 // Slight X spread — molars wider apart, centrals tighter
 const X_NUDGE = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]
