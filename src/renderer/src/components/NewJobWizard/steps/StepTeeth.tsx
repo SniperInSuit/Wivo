@@ -219,8 +219,8 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         fromArch: r?.toothMode === 'arch',
       })
     }
-    return [...byName.values()].filter(l => l.count > 0 || toothTypes.includes(l.nimi))
-  }, [items, rulesByName, colorMap, toothTypes])
+    return [...byName.values()].filter(l => l.count > 0 || toothTypeKeys.some(k => baseTypeName(k) === l.nimi))
+  }, [items, rulesByName, colorMap, toothTypeKeys])
 
   // ─── 'none' — defensive only ───────────────────────────────────────────────
   if (rules.teethStepMode === 'none') {
