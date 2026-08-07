@@ -123,6 +123,18 @@ export const todayISO = (): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * Duplicated type keys use `Sild§2` format. The § separator never appears in
+ * a work type name.
+ */
+export const baseTypeName = (key: string): string => key.split('§')[0]
+export const typeKeyIndex = (key: string): number => {
+  const parts = key.split('§')
+  return parts.length > 1 ? parseInt(parts[1], 10) : 1
+}
+export const makeTypeKey = (nimi: string, index: number): string =>
+  index <= 1 ? nimi : `${nimi}§${index}`
+
 export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState {
   return {
     jobTypes: [],

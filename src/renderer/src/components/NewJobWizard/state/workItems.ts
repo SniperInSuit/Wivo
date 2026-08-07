@@ -11,7 +11,7 @@ import type { WorkItem } from '@/types/job'
 import type { QuoteInput } from '@shared/pricing/quote'
 import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
-import { archTeeth, archesOf, teethToHambad, workTypeRules } from '@shared/wizard'
+import { archTeeth, archesOf, teethToHambad, workTypeRules, baseTypeName } from '@shared/wizard'
 
 /**
  * ONE work item per selected type, in selection order.
@@ -22,7 +22,8 @@ import { archTeeth, archesOf, teethToHambad, workTypeRules } from '@shared/wizar
  * within jobTypes, so it is a perfectly good key.
  */
 export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]): WorkItem[] {
-  return state.jobTypes.flatMap(nimi => {
+  return state.jobTypes.flatMap(key => {
+    const nimi = baseTypeName(key)
     const rules = workTypeRules(nimi, types)
 
     // An arch type on BOTH jaws is two pieces of work, so it is two items — see
@@ -30,12 +31,10 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     // item it was a single row carrying 32 teeth, and a per-job-priced All-on-X
     // came out at the single-arch price whichever answer the user gave.
     if (rules.toothMode === 'arch') {
-      if (!state.selectedArch) return [{ id: `wiz:${nimi}`, too: nimi, hambad: '' }]
+      if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '' }]
       const arches = archesOf(state.selectedArch)
       return arches.map(arch => ({
-        // The id stays stable across renders — see above — and stays unique by
-        // carrying the arch.
-        id: arches.length > 1 ? `wiz:${nimi}:${arch}` : `wiz:${nimi}`,
+        id: arches.length > 1 ? `wiz:${key}:${arch}` : `wiz:${key}`,
         too: nimi,
         hambad: teethToHambad(archTeeth(arch)),
       }))
@@ -44,11 +43,10 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     // An appliance owns no teeth at all. Only tooth-mode work reads the
     // per-type selection.
     const hambad =
-      rules.toothMode === 'none' ? '' : teethToHambad(state.selectedTeeth[nimi] ?? [])
+      rules.toothMode === 'none' ? '' : teethToHambad(state.selectedTeeth[key] ?? [])
 
     return [{
-      id: `wiz:${nimi}`,
-      // Verbatim, so colorMap[item.too] and resolveWorkType() both hit exactly.
+      id: `wiz:${key}`,
       too: nimi,
       hambad,
       ...(rules.isBridge ? { bridge: true } : {}),

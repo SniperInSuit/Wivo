@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Info } from 'lucide-react'
 import type { ArchSelection, ValidationError } from '@shared/wizard'
-import { hambadToTeeth, sortTeeth } from '@shared/wizard'
+import { hambadToTeeth, sortTeeth, baseTypeName, makeTypeKey } from '@shared/wizard'
 import { useWorkTypes } from '@/stores/useSettings'
 import type { WizardStepComponent } from '../types'
 import { wizardWorkItems } from '../state/workItems'
@@ -55,31 +55,28 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     () => Object.fromEntries(types.map(t => [t.nimi, t.hex])),
     [types]
   )
-  // Keyed by `too` — the jobTypes entry — and NOT by the resolved `nimi`:
-  // resolveWorkType() is a substring matcher, so a lab type "Zirkoonkroon"
-  // resolves to "Kroon". Keying on the resolved name would look up rules for a
-  // type this job does not contain. See WorkTypeRules.too.
   const rulesByName = useMemo(
     () => new Map(rules.perType.map(r => [r.too, r])),
     [rules]
   )
 
-  // ─── Which type receives clicks ────────────────────────────────────────────
-  // MultiOdontogramPicker no-ops on every click when nothing is active, so this
-  // must never be null while a tooth-mode type exists.
-  const toothTypes = rules.toothTypes
-  const toothKey = toothTypes.join('|')
-  const [activeType, setActiveType] = useState<string | null>(() => toothTypes[0] ?? null)
+  // Keys from jobTypes that are tooth-mode (includes duplicates like Sild§2)
+  const toothTypeKeys = useMemo(
+    () => state.jobTypes.filter(key => {
+      const nimi = baseTypeName(key)
+      return rulesByName.get(nimi)?.toothMode === 'tooth'
+    }),
+    [state.jobTypes, rulesByName]
+  )
+  const toothKey = toothTypeKeys.join('|')
+  const [activeType, setActiveType] = useState<string | null>(() => toothTypeKeys[0] ?? null)
 
   useEffect(() => {
-    if (toothTypes.length === 0) {
+    if (toothTypeKeys.length === 0) {
       setActiveType(null)
       return
     }
-    // Covers both "nothing chosen yet" and "the active type was deselected on
-    // step 1 and no longer exists".
-    setActiveType(prev => (prev && toothTypes.includes(prev) ? prev : toothTypes[0]))
-    // toothKey, not toothTypes: jobRules() rebuilds the array every render.
+    setActiveType(prev => (prev && toothTypeKeys.includes(prev) ? prev : toothTypeKeys[0]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toothKey])
 
@@ -89,15 +86,18 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   // crown could be assigned to a tooth the All-on-X already owned: the same FDI
   // shipped on two work items and was priced twice. The arch teeth are still
   // not PAINTED (see toothItems above) — they are only reserved.
+  // Map each tooth to the key (not base name) that owns it
   const owners = useMemo(() => {
     const m = new Map<number, string>()
-    for (const item of items) for (const t of hambadToTeeth(item.hambad)) m.set(t, item.too)
+    for (const key of state.jobTypes) {
+      for (const t of hambadToTeeth(state.selectedTeeth[key] ?? [])) m.set(t, key)
+    }
     return m
-  }, [items])
+  }, [state.jobTypes, state.selectedTeeth])
 
   const blocked = useMemo(() => {
     const s = new Set<number>()
-    for (const [fdi, too] of owners) if (too !== activeType) s.add(fdi)
+    for (const [fdi, key] of owners) if (key !== activeType) s.add(fdi)
     return s
   }, [owners, activeType])
 
@@ -107,9 +107,9 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
    *  counting them would promise a Tühjenda that cannot remove them. */
   const pickedCount = useMemo(() => {
     const s = new Set<number>()
-    for (const item of toothItems) for (const t of hambadToTeeth(item.hambad)) s.add(t)
+    for (const key of toothTypeKeys) for (const t of (state.selectedTeeth[key] ?? [])) s.add(t)
     return s.size
-  }, [toothItems])
+  }, [toothTypeKeys, state.selectedTeeth])
 
   /** Teeth an arch-level type has reserved, and the type that reserved them.
    *  Named separately so the refusal can say "terve lõualuu" rather than
@@ -183,13 +183,21 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   }
 
   // ─── View data ─────────────────────────────────────────────────────────────
-  const tabs: WorkTypeTab[] = toothTypes.map(nimi => ({
-    nimi,
-    hex: colorMap[nimi] ?? rulesByName.get(nimi)?.hex ?? WIZARD_FALLBACK_HEX,
-    count: (state.selectedTeeth[nimi] ?? []).length,
-    isBridge: rulesByName.get(nimi)?.isBridge ?? false,
-    error: errorFor(nimi),
-  }))
+  const tabs: WorkTypeTab[] = toothTypeKeys.map(key => {
+    const nimi = baseTypeName(key)
+    // Count how many of this base type exist for labeling (Sild 1, Sild 2)
+    const sameType = toothTypeKeys.filter(k => baseTypeName(k) === nimi)
+    const idx = sameType.indexOf(key) + 1
+    const label = sameType.length > 1 ? `${nimi} ${idx}` : nimi
+    return {
+      key,
+      nimi: label,
+      hex: colorMap[nimi] ?? rulesByName.get(nimi)?.hex ?? WIZARD_FALLBACK_HEX,
+      count: (state.selectedTeeth[key] ?? []).length,
+      isBridge: rulesByName.get(nimi)?.isBridge ?? false,
+      error: errorFor(nimi),
+    }
+  })
 
   // One entry PER WORK TYPE, not per work item: an arch type on both jaws is
   // two items and the legend must still name it once, with the teeth added up.
@@ -252,7 +260,25 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
       {tabs.length > 1 && (
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-ink-soft">Millisele tööle hambaid märgid?</h3>
-          <WorkTypeTabs tabs={tabs} activeType={activeType} onSelect={setActiveType} />
+          <WorkTypeTabs
+            tabs={tabs}
+            activeType={activeType}
+            onSelect={setActiveType}
+            onDuplicate={key => {
+              const nimi = baseTypeName(key)
+              const existing = state.jobTypes.filter(k => baseTypeName(k) === nimi)
+              const nextIdx = existing.length + 1
+              const newKey = makeTypeKey(nimi, nextIdx)
+              patch({ jobTypes: [...state.jobTypes, newKey] })
+              setActiveType(newKey)
+            }}
+            onRemove={key => {
+              const next = state.jobTypes.filter(k => k !== key)
+              const { [key]: _, ...rest } = state.selectedTeeth
+              patch({ jobTypes: next, selectedTeeth: rest })
+              if (activeType === key) setActiveType(next[0] ?? null)
+            }}
+          />
           <p className="text-base text-ink-muted">
             Üks hammas saab kuuluda korraga ainult ühele tööle.
           </p>

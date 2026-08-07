@@ -11,29 +11,29 @@ import { AlertCircle, Check, Link2 } from 'lucide-react'
 import { FOCUS_RING, WIZARD_HIT_MIN } from '../wizardTheme'
 
 export interface WorkTypeTab {
-  /** WorkType.nimi verbatim — the key into selectedTeeth and colorMap. */
+  /** Unique key — may include §2 suffix for duplicates. */
+  key?: string
+  /** Display name (may include number: "Sild 2"). */
   nimi: string
   hex: string
-  /** How many teeth this type currently owns. */
   count: number
-  /** Draws the bridge marker; bridges also carry the consecutiveness rule. */
   isBridge: boolean
-  /** Estonian blocking message for this type, or null. Shown as an icon here;
-   *  the full sentence lives in the WizardErrors list under the odontogram. */
   error?: string | null
 }
 
 export interface WorkTypeTabsProps {
   tabs: WorkTypeTab[]
   activeType: string | null
-  onSelect: (nimi: string) => void
+  onSelect: (key: string) => void
+  onDuplicate?: (key: string) => void
+  onRemove?: (key: string) => void
   disabled?: boolean
 }
 
 /** Estonian counts the singular on 1 and the partitive on everything else. */
 export const teethCountLabel = (n: number): string => (n === 1 ? '1 hammas' : `${n} hammast`)
 
-export function WorkTypeTabs({ tabs, activeType, onSelect, disabled }: WorkTypeTabsProps) {
+export function WorkTypeTabs({ tabs, activeType, onSelect, onDuplicate, onRemove, disabled }: WorkTypeTabsProps) {
   if (tabs.length === 0) return null
 
   return (
@@ -43,58 +43,78 @@ export function WorkTypeTabs({ tabs, activeType, onSelect, disabled }: WorkTypeT
       className="flex flex-wrap gap-2"
     >
       {tabs.map(t => {
-        const active = t.nimi === activeType
+        const tabKey = t.key ?? t.nimi
+        const active = tabKey === activeType
         return (
-          <button
-            key={t.nimi}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            disabled={disabled}
-            onClick={() => onSelect(t.nimi)}
-            className={[
-              WIZARD_HIT_MIN,
-              FOCUS_RING,
-              'flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-base transition-colors',
-              'disabled:cursor-not-allowed disabled:opacity-50',
-              // Selected state is carried by the tick, the border COLOUR, the
-              // weight and the "Valitud" label — never by the tint alone. The
-              // border stays border-2 in both states so the row does not reflow
-              // by a pixel every time the active chip changes.
-              'border-2',
-              active
-                ? 'border-accent bg-accent/10 font-semibold text-ink'
-                : 'border-ink-faint/40 bg-bg-card font-medium text-ink-soft hover:text-ink',
-            ].join(' ')}
-          >
-            {active && <span className="sr-only">Valitud. </span>}
-            {active && <Check className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />}
-            <span
-              // ring-ink-faint and not ring-black: a black hairline disappears
-              // on the navy card of 'cloudy-navy', taking the darkest dots'
-              // outlines with it.
-              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-ink-faint/50"
-              style={{ background: t.hex }}
-              aria-hidden="true"
-            />
-            <span>{t.nimi}</span>
-            {t.isBridge && (
+          <div key={tabKey} className="flex items-center gap-0">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={disabled}
+              onClick={() => onSelect(tabKey)}
+              className={[
+                WIZARD_HIT_MIN,
+                FOCUS_RING,
+                'flex items-center gap-2 rounded-l-xl px-3 py-2 text-sm transition-colors',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+                'border-2 border-r-0',
+                active
+                  ? 'border-accent bg-accent/10 font-semibold text-ink'
+                  : 'border-ink-faint/40 bg-bg-card font-medium text-ink-soft hover:text-ink',
+              ].join(' ')}
+            >
+              {active && <Check className="h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />}
               <span
-                className="flex items-center gap-1 rounded-md bg-bg-sidebar px-2 py-0.5 text-sm font-medium text-ink-muted"
-                title="Silla hambad peavad olema järjestikused"
+                className="h-3 w-3 shrink-0 rounded-full ring-1 ring-ink-faint/50"
+                style={{ background: t.hex }}
+                aria-hidden="true"
+              />
+              <span>{t.nimi}</span>
+              {t.isBridge && (
+                <Link2 className="h-3 w-3 shrink-0 text-ink-muted" aria-hidden="true" />
+              )}
+              <span className="text-sm text-ink-muted">{teethCountLabel(t.count)}</span>
+              {t.error && (
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" aria-hidden="true" />
+              )}
+            </button>
+            {onDuplicate && (
+              <button
+                type="button"
+                title="Lisa veel üks"
+                disabled={disabled}
+                onClick={() => onDuplicate(tabKey)}
+                className={`text-xs font-bold px-1.5 py-2 border-2 border-r-0 transition-colors ${
+                  active
+                    ? 'border-accent bg-accent/5 text-accent hover:bg-accent/15'
+                    : 'border-ink-faint/40 bg-bg-card text-ink-faint hover:text-ink-muted'
+                }`}
               >
-                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-                Sild
-              </span>
+                +
+              </button>
             )}
-            <span className="text-base text-ink-muted">{teethCountLabel(t.count)}</span>
-            {t.error && (
-              <>
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" aria-hidden="true" />
-                <span className="sr-only">Puudulik: {t.error}</span>
-              </>
+            {onRemove && (t.key?.includes('§') ?? false) && (
+              <button
+                type="button"
+                title="Eemalda"
+                disabled={disabled}
+                onClick={() => onRemove(tabKey)}
+                className={`text-xs font-bold px-1.5 py-2 border-2 border-l-0 rounded-r-xl transition-colors ${
+                  active
+                    ? 'border-accent bg-accent/5 text-red-400 hover:text-red-500'
+                    : 'border-ink-faint/40 bg-bg-card text-ink-faint hover:text-red-400'
+                }`}
+              >
+                ×
+              </button>
             )}
-          </button>
+            {!(onRemove && (t.key?.includes('§') ?? false)) && (
+              <span className={`w-px h-6 border-r-2 rounded-r-xl ${
+                active ? 'border-accent' : 'border-ink-faint/40'
+              }`} />
+            )}
+          </div>
         )
       })}
     </div>
