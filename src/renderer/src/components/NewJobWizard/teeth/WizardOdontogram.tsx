@@ -150,7 +150,7 @@ export function WizardOdontogram({
             '[&_button]:outline-none [&_button:focus-visible]:ring-2 ' +
             '[&_button:focus-visible]:ring-stage-varvi'
           }
-          style={{ maxWidth: 460 }}
+          style={{ maxWidth: 600 }}
         >
           <MultiOdontogramPicker
             items={items}
