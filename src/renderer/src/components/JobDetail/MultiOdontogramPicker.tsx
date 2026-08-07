@@ -1,27 +1,43 @@
 /**
- * MultiOdontogramPicker — clean grid-based dental arch
+ * Odontogram — modern dental production planning map.
  *
- * Each tooth is a rounded square with the FDI number inside.
- * Selected teeth get the work type's color as background.
- * Upper arch = U-shape at top, lower arch = U-shape at bottom.
+ * Not a clinical chart. A clean, professional tool where technicians assign
+ * work types to specific teeth. Inspired by Apple Health / Linear / Figma.
+ *
+ * Layout: two U-shaped arches with FDI-numbered tooth buttons, legend chips
+ * above, action bar below. Large targets, minimal borders, smooth feedback.
  */
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import { FlipHorizontal2, Trash2 } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 
+// ─── FDI numbering ──────────────────────────────────────────────────────────
 const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
 const LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]
 
+// Curve offsets (px) — create the U-shape. Centrals sit at the deepest point.
+// index 0 = leftmost molar, 7–8 = centrals, 15 = rightmost molar.
+const UPPER_Y = [0, 3, 8, 14, 20, 26, 30, 33, 33, 30, 26, 20, 14, 8, 3, 0]
+const LOWER_Y = [33, 30, 26, 20, 14, 8, 3, 0, 0, 3, 8, 14, 20, 26, 30, 33]
+
+// Slight X spread — molars wider apart, centrals tighter
+const X_NUDGE = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]
+
+// Slight rotation to follow the arch curve
+const ROTATIONS = [-18, -14, -10, -6, -3, -1, 0, 0, 0, 0, 1, 3, 6, 10, 14, 18]
+
+// ─── Color helpers ──────────────────────────────────────────────────────────
 function shiftHex(hex: string, index: number): string {
   if (index === 0) return hex
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   const shift = index * 25
-  const nr = Math.min(255, Math.max(0, r + (index % 2 === 0 ? shift : -shift)))
-  const ng = Math.min(255, Math.max(0, g + (index % 2 === 1 ? shift : -shift / 2)))
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  return `#${Math.min(255, Math.max(0, r + (index % 2 === 0 ? shift : -shift))).toString(16).padStart(2, '0')}${Math.min(255, Math.max(0, g + (index % 2 === 1 ? shift : -shift / 2))).toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }
 
+// ─── Component ──────────────────────────────────────────────────────────────
 interface Props {
   items: WorkItem[]
   activeItemId: string | null
@@ -35,27 +51,41 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
   })
 
-  // Build tooth ownership map
+  const toggleMirror = useCallback(() => {
+    setMirror(prev => {
+      const next = !prev
+      try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
+      return next
+    })
+  }, [])
+
+  // ── Ownership map ─────────────────────────────────────────────────────────
   const perTypeTotal = new Map<string, number>()
   for (const i of items) perTypeTotal.set(i.too, (perTypeTotal.get(i.too) ?? 0) + 1)
 
-  const toothOwner = new Map<string, { itemId: string; color: string; itemNum: number; showNum: boolean }>()
+  const toothOwner = new Map<string, { itemId: string; color: string; num: number; showNum: boolean }>()
   const seen = new Map<string, number>()
   for (const item of items) {
     const idx = seen.get(item.too) ?? 0
     seen.set(item.too, idx + 1)
-    const baseHex = colorMap[item.too] ?? '#94A3B8'
-    const color = shiftHex(baseHex, idx)
+    const color = shiftHex(colorMap[item.too] ?? '#94A3B8', idx)
     const showNum = (perTypeTotal.get(item.too) ?? 1) > 1
     for (const t of item.hambad.split(',')) {
-      const trimmed = t.trim()
-      if (trimmed) toothOwner.set(trimmed, { itemId: item.id, color, itemNum: idx + 1, showNum })
+      const s = t.trim()
+      if (s) toothOwner.set(s, { itemId: item.id, color, num: idx + 1, showNum })
     }
   }
 
-  // Count per arch
-  const upperCount = UPPER.filter(n => toothOwner.has(String(n))).length
-  const lowerCount = LOWER.filter(n => toothOwner.has(String(n))).length
+  // ── Legend data ───────────────────────────────────────────────────────────
+  type LegendItem = { too: string; color: string; count: number }
+  const legendMap = new Map<string, LegendItem>()
+  for (const item of items) {
+    const existing = legendMap.get(item.too)
+    const count = item.hambad.split(',').filter(t => t.trim()).length
+    if (existing) { existing.count += count }
+    else { legendMap.set(item.too, { too: item.too, color: colorMap[item.too] ?? '#94A3B8', count }) }
+  }
+  const legend = [...legendMap.values()]
   const totalTeeth = toothOwner.size
 
   function handleClick(num: number) {
@@ -64,151 +94,209 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
   }
 
   const order = (arr: number[]) => mirror ? [...arr].reverse() : arr
+  const orderIdx = (i: number) => mirror ? 15 - i : i
 
-  function Tooth({ num }: { num: number }) {
+  // ── Tooth button ──────────────────────────────────────────────────────────
+  function Tooth({ num, yOffset, xNudge, rotation, isUpper }: {
+    num: number; yOffset: number; xNudge: number; rotation: number; isUpper: boolean
+  }) {
     const s = String(num)
     const owner = toothOwner.get(s)
     const isOwned = !!owner
     const isActive = owner?.itemId === activeItemId
+    const canClick = !disabled && !!activeItemId
 
     return (
-      <button
+      <motion.button
         type="button"
         onClick={() => handleClick(num)}
-        disabled={disabled}
-        className={`relative flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-100 select-none
-          ${isOwned
+        whileHover={canClick ? { scale: 1.12, y: isUpper ? -2 : 2 } : undefined}
+        whileTap={canClick ? { scale: 0.95 } : undefined}
+        className={[
+          'relative flex items-center justify-center rounded-lg transition-colors duration-100 select-none',
+          'outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+          isOwned
             ? 'text-white shadow-sm'
-            : 'bg-slate-100 text-slate-400 hover:bg-slate-200 border border-slate-200'
-          }
-          ${isActive ? 'ring-2 ring-offset-1 ring-slate-900/30 scale-110' : ''}
-          ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
-        `}
+            : 'bg-white text-slate-400 border border-slate-200/80 hover:border-accent/40',
+          isActive ? 'ring-2 ring-white/80 shadow-md' : '',
+          disabled ? 'opacity-40 cursor-not-allowed' : canClick ? 'cursor-pointer' : 'cursor-default',
+        ].join(' ')}
         style={{
-          width: 32, height: 32,
+          width: 34,
+          height: 40,
+          marginTop: isUpper ? yOffset : undefined,
+          marginBottom: !isUpper ? yOffset : undefined,
+          marginLeft: xNudge > 0 ? xNudge : undefined,
+          marginRight: xNudge > 0 ? xNudge : undefined,
+          transform: `rotate(${rotation}deg)`,
           ...(isOwned ? { backgroundColor: owner!.color } : {}),
         }}
       >
-        {isOwned && owner!.showNum ? owner!.itemNum : num}
-      </button>
+        <span className="text-[11px] font-bold" style={{ transform: `rotate(${-rotation}deg)` }}>
+          {num}
+        </span>
+      </motion.button>
     )
   }
 
-  // Bridge connectors — thin line between consecutive bridge teeth
-  function BridgeBar({ arch }: { arch: 'upper' | 'lower' }) {
+  // ── Bridge connectors ─────────────────────────────────────────────────────
+  function Connectors({ arch }: { arch: 'upper' | 'lower' }) {
     const nums = arch === 'upper' ? order(UPPER) : order(LOWER)
-    const bars: React.ReactNode[] = []
-
+    const nodes: React.ReactNode[] = []
     for (const item of items) {
       if (!item.bridge) continue
-      const idx = (seen.get(item.too) ?? 1) - 1
-      const baseHex = colorMap[item.too] ?? '#94A3B8'
-      const color = shiftHex(baseHex, idx)
       const teeth = item.hambad.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n))
       if (teeth.length < 2) continue
-
-      // Find consecutive positions in the displayed arch
+      const color = colorMap[item.too] ?? '#94A3B8'
       const positions = teeth.map(t => nums.indexOf(t)).filter(p => p >= 0).sort((a, b) => a - b)
       for (let j = 0; j < positions.length - 1; j++) {
         if (positions[j + 1] - positions[j] === 1) {
-          // Adjacent teeth — show connector
-          const left = positions[j]
-          bars.push(
-            <div
-              key={`bridge-${item.id}-${j}`}
-              className="absolute h-1 rounded-full"
+          nodes.push(
+            <div key={`br-${item.id}-${j}`} className="absolute rounded-full"
               style={{
                 backgroundColor: color,
-                left: `calc(${(left + 0.5) / 16 * 100}% + 16px)`,
-                width: `calc(${1 / 16 * 100}% - 4px)`,
-                top: '50%',
-                transform: 'translateY(-50%)',
+                height: 3,
+                left: `${(positions[j] * 38) + 34}px`,
+                width: '6px',
+                top: arch === 'upper' ? '20px' : undefined,
+                bottom: arch === 'lower' ? '20px' : undefined,
               }}
             />
           )
         }
       }
     }
-    return <>{bars}</>
+    return <>{nodes}</>
   }
 
   return (
     <div className="space-y-3">
-      {/* Header: counts + mirror */}
+      {/* ── Legend chips ──────────────────────────────────────────────────── */}
+      {legend.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {legend.map(l => (
+            <span key={l.too} className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+              <span className="w-2.5 h-2.5 rounded-full ring-1 ring-black/10" style={{ backgroundColor: l.color }} />
+              {l.too}
+              <span className="text-ink-faint">{l.count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Arch card ────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl bg-gradient-to-b from-rose-50/50 to-pink-50/30 border border-pink-100/60 px-6 py-5">
+        {/* Mirror toggle */}
+        <div className="flex justify-end mb-2">
+          <button type="button" onClick={toggleMirror}
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
+          >
+            <FlipHorizontal2 size={12} />
+            {mirror ? 'Patsiendi vaade' : 'Arsti vaade'}
+          </button>
+        </div>
+
+        {/* ── Upper arch ─────────────────────────────────────────────────── */}
+        <div className="flex justify-center mb-1">
+          <div className="relative flex items-start gap-[2px]">
+            {order(UPPER).map((num, displayIdx) => {
+              const origIdx = orderIdx(displayIdx)
+              return (
+                <Tooth key={num} num={num}
+                  yOffset={UPPER_Y[origIdx]}
+                  xNudge={X_NUDGE[origIdx]}
+                  rotation={ROTATIONS[origIdx] * (mirror ? -1 : 1)}
+                  isUpper
+                />
+              )
+            })}
+            <Connectors arch="upper" />
+          </div>
+        </div>
+
+        {/* ── Center labels ──────────────────────────────────────────────── */}
+        <div className="flex items-center gap-4 px-2 my-2">
+          <span className="text-[10px] font-bold text-pink-300/70 tracking-wider">
+            {mirror ? 'L' : 'R'}
+          </span>
+          <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 border-t border-dashed border-pink-200/50" />
+            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">UPPER</span>
+            <div className="flex-1 border-t border-dashed border-pink-200/50" />
+          </div>
+          <span className="text-[10px] font-bold text-pink-300/70 tracking-wider">
+            {mirror ? 'R' : 'L'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 px-2 mb-2">
+          <span className="text-[10px] font-bold text-pink-300/70 tracking-wider invisible">R</span>
+          <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 border-t border-dashed border-pink-200/50" />
+            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">LOWER</span>
+            <div className="flex-1 border-t border-dashed border-pink-200/50" />
+          </div>
+          <span className="text-[10px] font-bold text-pink-300/70 tracking-wider invisible">L</span>
+        </div>
+
+        {/* ── Lower arch ─────────────────────────────────────────────────── */}
+        <div className="flex justify-center mt-1">
+          <div className="relative flex items-end gap-[2px]">
+            {order(LOWER).map((num, displayIdx) => {
+              const origIdx = orderIdx(displayIdx)
+              return (
+                <Tooth key={num} num={num}
+                  yOffset={LOWER_Y[origIdx]}
+                  xNudge={X_NUDGE[origIdx]}
+                  rotation={-ROTATIONS[origIdx] * (mirror ? -1 : 1)}
+                  isUpper={false}
+                />
+              )
+            })}
+            <Connectors arch="lower" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom toolbar ───────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs">
-          {upperCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-pink-400" />
-              Upper {upperCount}
+        <div className="flex items-center gap-3">
+          {totalTeeth > 0 ? (
+            <span className="inline-flex items-center gap-1.5 text-xs">
+              <span className="font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md tabular-nums">{totalTeeth}</span>
+              <span className="text-ink-muted">hammast valitud</span>
+            </span>
+          ) : (
+            <span className="text-xs text-ink-faint">
+              {activeItemId ? 'Klõpsa hambaid' : 'Vali tööosa'}
             </span>
           )}
-          {lowerCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500" />
-              Lower {lowerCount}
-            </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={toggleMirror}
+            className="p-1.5 rounded-lg text-ink-faint hover:text-ink-muted hover:bg-bg-sidebar transition-colors"
+            title="Peegelda"
+          >
+            <FlipHorizontal2 size={14} />
+          </button>
+          {totalTeeth > 0 && (
+            <button type="button"
+              className="p-1.5 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="Tühjenda"
+              onClick={() => {
+                // Clear all teeth from active item by toggling each one off
+                if (!activeItemId) return
+                const activeItem = items.find(i => i.id === activeItemId)
+                if (!activeItem) return
+                for (const t of activeItem.hambad.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))) {
+                  onToggleTooth(t)
+                }
+              }}
+            >
+              <Trash2 size={14} />
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const next = !mirror
-            setMirror(next)
-            try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
-          }}
-          className="text-[11px] text-ink-faint hover:text-ink-muted px-2 py-1 rounded-lg hover:bg-bg-sidebar transition-colors"
-        >
-          {mirror ? '👤 Patsiendi' : '🩺 Arsti vaade'}
-        </button>
-      </div>
-
-      {/* Dental arch */}
-      <div className="bg-pink-50/60 rounded-2xl px-4 py-5 space-y-2">
-        {/* Upper arch */}
-        <div className="relative">
-          <div className="flex justify-center gap-1">
-            {order(UPPER).map(num => <Tooth key={num} num={num} />)}
-          </div>
-          <BridgeBar arch="upper" />
-        </div>
-
-        {/* Center labels */}
-        <div className="flex items-center justify-between px-2 py-0.5">
-          <span className="text-[10px] font-semibold text-pink-300/80">{mirror ? 'L' : 'R'}</span>
-          <span className="text-[10px] font-medium text-pink-300/60">UPPER</span>
-          <span className="text-[10px] font-medium text-pink-300/60 invisible">UPPER</span>
-        </div>
-
-        <div className="border-t border-dashed border-pink-200/60" />
-
-        <div className="flex items-center justify-between px-2 py-0.5">
-          <span className="text-[10px] font-semibold text-pink-300/80 invisible">R</span>
-          <span className="text-[10px] font-medium text-pink-300/60">LOWER</span>
-          <span className="text-[10px] font-semibold text-pink-300/80">{mirror ? 'R' : 'L'}</span>
-        </div>
-
-        {/* Lower arch */}
-        <div className="relative">
-          <div className="flex justify-center gap-1">
-            {order(LOWER).map(num => <Tooth key={num} num={num} />)}
-          </div>
-          <BridgeBar arch="lower" />
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs">
-        {totalTeeth > 0 ? (
-          <p className="text-ink-muted">
-            <span className="font-bold text-accent bg-accent/10 px-2 py-0.5 rounded">{totalTeeth}</span>
-            <span className="ml-1.5">teeth selected</span>
-          </p>
-        ) : (
-          <p className="text-ink-faint">
-            {activeItemId ? 'Klõpsa hambaid' : 'Vali tööosa'}
-          </p>
-        )}
       </div>
     </div>
   )
