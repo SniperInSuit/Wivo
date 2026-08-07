@@ -17,7 +17,7 @@
  * underneath — the legend now lives on the chart itself, where the colours are.
  */
 import { useState } from 'react'
-import { Eraser, FlipHorizontal2, Info } from 'lucide-react'
+import { Eraser } from 'lucide-react'
 import upperImg from '@/assets/jobs/Upper.png'
 import lowerImg from '@/assets/jobs/Lower.png'
 import { FDI_LOWER, FDI_UPPER, archIndex, archOf, sortTeeth } from '@shared/wizard'
@@ -139,26 +139,41 @@ export function ToothControls({
         {total} hammast valitud
       </span>
 
-      {/* Bulk buttons */}
-      <div className="flex flex-wrap gap-1">
-        <button type="button" className={seg} onClick={guarded(() => selectArch('upper'))} aria-disabled={locked || undefined}>
-          <img src={upperImg} alt="" className="h-4 w-4 object-contain" /> Ülemine
+      {/* Arch buttons — card style like work types */}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={guarded(() => selectArch('upper'))} aria-disabled={locked || undefined}
+          className={`rounded-xl border-2 overflow-hidden text-center transition-all duration-150 aria-disabled:opacity-40 aria-disabled:cursor-not-allowed ${
+            FOCUS_RING
+          } border-ink-faint/25 bg-white hover:border-accent/40 hover:shadow-sm`}
+        >
+          <span className="flex h-12 items-center justify-center p-1">
+            <img src={upperImg} alt="" className="h-full object-contain" />
+          </span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">Ülemine</span>
         </button>
-        <button type="button" className={seg} onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}>
-          <img src={lowerImg} alt="" className="h-4 w-4 object-contain" /> Alumine
+        <button type="button" onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}
+          className={`rounded-xl border-2 overflow-hidden text-center transition-all duration-150 aria-disabled:opacity-40 aria-disabled:cursor-not-allowed ${
+            FOCUS_RING
+          } border-ink-faint/25 bg-white hover:border-accent/40 hover:shadow-sm`}
+        >
+          <span className="flex h-12 items-center justify-center p-1">
+            <img src={lowerImg} alt="" className="h-full object-contain" />
+          </span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">Alumine</span>
         </button>
-        <button type="button" className={seg} onClick={guarded(mirrorSelection)} aria-disabled={locked || activeTeeth.length === 0 || undefined}>
-          <FlipHorizontal2 className="h-3.5 w-3.5" /> Peegelda
-        </button>
+      </div>
+
+      {/* Tühjenda */}
+      {total > 0 && (
         <button
           type="button"
           className={`${seg} !text-rose-500 !border-rose-200 hover:!bg-rose-50`}
-          onClick={() => { if (total > 0 && !disabled) setConfirmClear(true) }}
-          aria-disabled={Boolean(disabled) || total === 0 || undefined}
+          onClick={() => { if (!disabled) setConfirmClear(true) }}
+          aria-disabled={Boolean(disabled) || undefined}
         >
           <Eraser className="h-3.5 w-3.5" /> Tühjenda
         </button>
-      </div>
+      )}
 
       {activeType && (
         <p className="text-[11px] text-ink-muted">
