@@ -7,7 +7,7 @@
  * Layout: two U-shaped arches with FDI-numbered tooth buttons, legend chips
  * above, action bar below. Large targets, minimal borders, smooth feedback.
  */
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FlipHorizontal2, Trash2 } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
@@ -105,9 +105,38 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     return null
   }
 
-  function handleClick(num: number) {
+  // ── Drag-to-paint ──────────────────────────────────────────────────────────
+  // mousedown starts painting, mouseenter on other teeth continues, mouseup stops.
+  // paintMode: 'add' = selecting teeth, 'remove' = deselecting teeth
+  const paintingRef = useRef<'add' | 'remove' | null>(null)
+  const paintedRef = useRef(new Set<number>())
+
+  useEffect(() => {
+    function stopPaint() {
+      paintingRef.current = null
+      paintedRef.current = new Set()
+    }
+    window.addEventListener('mouseup', stopPaint)
+    return () => window.removeEventListener('mouseup', stopPaint)
+  }, [])
+
+  function handlePointerDown(num: number) {
     if (disabled || !activeItemId) return
+    const s = String(num)
+    const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
+    paintingRef.current = isOwned ? 'remove' : 'add'
+    paintedRef.current = new Set([num])
     onToggleTooth(num)
+  }
+
+  function handlePointerEnter(num: number) {
+    if (!paintingRef.current || disabled || !activeItemId) return
+    if (paintedRef.current.has(num)) return
+    paintedRef.current.add(num)
+    const s = String(num)
+    const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
+    if (paintingRef.current === 'add' && !isOwned) onToggleTooth(num)
+    if (paintingRef.current === 'remove' && isOwned) onToggleTooth(num)
   }
 
   const order = (arr: number[]) => mirror ? [...arr].reverse() : arr
@@ -127,7 +156,8 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     return (
       <motion.button
         type="button"
-        onClick={() => handleClick(num)}
+        onMouseDown={e => { e.preventDefault(); handlePointerDown(num) }}
+        onMouseEnter={() => handlePointerEnter(num)}
         whileHover={canClick ? { scale: 1.12, y: isUpper ? -2 : 2 } : undefined}
         whileTap={canClick ? { scale: 0.95 } : undefined}
         className={[
