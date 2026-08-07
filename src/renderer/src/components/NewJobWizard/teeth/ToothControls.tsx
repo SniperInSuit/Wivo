@@ -121,99 +121,57 @@ export function ToothControls({
   }
 
   const seg = [
-    'flex min-h-[44px] items-center gap-2 rounded-full px-3.5 text-base font-medium',
-    'text-ink-soft transition-colors hover:bg-bg-sidebar',
-    'aria-disabled:opacity-50 aria-disabled:cursor-not-allowed',
+    'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium',
+    'text-ink-soft transition-colors hover:bg-bg-sidebar border border-ink-faint/20',
+    'aria-disabled:opacity-40 aria-disabled:cursor-not-allowed',
     FOCUS_RING,
   ].join(' ')
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-center gap-1 rounded-full border border-ink-faint/25 bg-bg-card px-2 py-1.5 shadow-card">
-        {/* The count, first and loudest — the answer to "did that click
-            register?". aria-live so it is also the answer without looking. */}
-        <span
-          className="flex min-h-[36px] items-center gap-2 rounded-full bg-orange-500/15 px-3 text-base font-semibold text-orange-500"
-          aria-live="polite"
-        >
-          {total}
-          <span className="font-medium text-ink-soft">hammast valitud</span>
-        </span>
+    <div className="space-y-2">
+      {/* Count */}
+      <span
+        className="inline-flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent"
+        aria-live="polite"
+      >
+        {total} hammast valitud
+      </span>
 
+      {/* Bulk buttons */}
+      <div className="flex flex-wrap gap-1">
         <button type="button" className={seg} onClick={guarded(() => selectArch('upper'))} aria-disabled={locked || undefined}>
-          <MoveUp className="h-5 w-5" aria-hidden="true" />
-          Ülemine
+          <MoveUp className="h-3.5 w-3.5" /> Ülemine
         </button>
         <button type="button" className={seg} onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}>
-          <MoveDown className="h-5 w-5" aria-hidden="true" />
-          Alumine
+          <MoveDown className="h-3.5 w-3.5" /> Alumine
+        </button>
+        <button type="button" className={seg} onClick={guarded(mirrorSelection)} aria-disabled={locked || activeTeeth.length === 0 || undefined}>
+          <FlipHorizontal2 className="h-3.5 w-3.5" /> Peegelda
         </button>
         <button
           type="button"
-          className={seg}
-          onClick={guarded(mirrorSelection)}
-          aria-disabled={locked || activeTeeth.length === 0 || undefined}
-        >
-          <FlipHorizontal2 className="h-5 w-5" aria-hidden="true" />
-          Peegelda
-        </button>
-
-        <button
-          type="button"
-          className={`${seg} !text-rose-500 hover:bg-rose-500/10`}
+          className={`${seg} !text-rose-500 !border-rose-200 hover:!bg-rose-50`}
           onClick={() => { if (total > 0 && !disabled) setConfirmClear(true) }}
           aria-disabled={Boolean(disabled) || total === 0 || undefined}
         >
-          <Eraser className="h-5 w-5" aria-hidden="true" />
-          Tühjenda
+          <Eraser className="h-3.5 w-3.5" /> Tühjenda
         </button>
       </div>
 
       {activeType && (
-        <p className="text-center text-base text-ink-muted">
+        <p className="text-[11px] text-ink-muted">
           Märgid hambaid tööle „{activeType}"
         </p>
       )}
 
-      {/* Destructive: confirmed inline rather than with window.confirm, which
-          in Electron is a modal the user cannot style, read or undo. Alpha
-          tints, not rose-50 — a light cream strip on the navy card of
-          'cloudy-navy' is a hole in the page. */}
       {confirmClear && (
-        <div
-          role="alertdialog"
-          aria-label="Kinnita hambavaliku tühjendamine"
-          className="flex flex-wrap items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2"
-        >
-          <span className="text-base font-semibold text-rose-500">
-            Kustutada kõik {teethCountLabel(total)}?
-          </span>
-          <button
-            type="button"
-            className={`${WIZARD_BTN} bg-rose-600 text-white hover:bg-rose-700`}
-            onClick={() => {
-              onClearAll()
-              setConfirmClear(false)
-              setAnnouncement('Kõik hambavalikud on tühjendatud.')
-            }}
-          >
-            Jah, tühjenda
-          </button>
-          <button
-            type="button"
-            className={`${WIZARD_BTN} border border-ink-faint/40 text-ink-soft hover:text-ink`}
-            onClick={() => setConfirmClear(false)}
-          >
-            Loobu
-          </button>
+        <div role="alertdialog" className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-50 px-2.5 py-1.5">
+          <span className="text-xs font-semibold text-rose-500">Tühjendada {teethCountLabel(total)}?</span>
+          <button type="button" className="text-xs font-semibold bg-rose-500 text-white px-2 py-0.5 rounded"
+            onClick={() => { onClearAll(); setConfirmClear(false); setAnnouncement('Tühjendatud.') }}>Jah</button>
+          <button type="button" className="text-xs text-ink-muted" onClick={() => setConfirmClear(false)}>Ei</button>
         </div>
       )}
-
-      <p className={`${WIZARD_HELP} flex items-start justify-center gap-1.5 text-center`}>
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        Nupud lisavad hambaid, ei eemalda neid. Üksiku hamba eemaldamiseks klõpsa
-        seda skeemil uuesti. Hammas, mis kuulub juba teisele tööle, jäetakse vahele.
-      </p>
 
       <p className="sr-only" aria-live="polite">{announcement}</p>
     </div>
