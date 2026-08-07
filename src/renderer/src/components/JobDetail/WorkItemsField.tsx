@@ -17,6 +17,8 @@
  * field — the job page drives its material selector from it, and the fullscreen
  * layout renders the odontogram in a different column entirely.
  */
+import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
@@ -69,6 +71,7 @@ export function WorkItemsField({
   dark = false, typeColumns = 3,
 }: WorkItemsFieldProps) {
   const wt = useWorkTypes()
+  const [showAllTypes, setShowAllTypes] = useState(false)
 
   const colorMap: Record<string, string> = {}
   for (const t of wt.types) colorMap[t.nimi] = t.hex
@@ -164,9 +167,16 @@ export function WorkItemsField({
 
   return (
     <div className="space-y-2">
-      {showTypePicker && (
+      {showTypePicker && (() => {
+        const hasSelected = value.length > 0
+        const visibleTypes = showAllTypes || !hasSelected
+          ? wt.types
+          : wt.types.filter(t => value.some(i => i.too === t.nimi))
+
+        return (
+        <>
         <div className={`grid gap-2 ${TYPE_GRID_COLS[typeColumns]}`}>
-          {wt.types.map(t => {
+          {visibleTypes.map(t => {
             const picked = value.some(i => i.too === t.nimi)
             const img = workTypeImage(t.nimi, t.pilt)
             return (
@@ -211,7 +221,21 @@ export function WorkItemsField({
             )
           })}
         </div>
-      )}
+        {hasSelected && (
+          <button
+            type="button"
+            onClick={() => setShowAllTypes(!showAllTypes)}
+            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg transition-colors ${
+              dark ? 'text-slate-400 hover:text-slate-200' : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {showAllTypes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {showAllTypes ? 'Peida' : `Näita kõiki (${wt.types.length})`}
+          </button>
+        )}
+        </>
+        )
+      })()}
 
       {value.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">

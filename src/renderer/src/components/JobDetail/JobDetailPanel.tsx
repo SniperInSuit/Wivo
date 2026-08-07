@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2
+  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2, ChevronDown, ChevronUp
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
 import { MATERIAL_SHADES, jobWorkItems } from '../../types/job'
@@ -372,6 +372,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const [editingRevId, setEditingRevId] = useState<string | null>(null)
   // Revision overlay on read view: '__new__' = add, revision id = edit, null = hidden
   const [quickRevisionId, setQuickRevisionId] = useState<string | null>(null)
+  const [showAllTypes, setShowAllTypes] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
@@ -931,7 +932,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               <div className={isFullscreen ? 'hidden' : ''}>
                 <label className="label">Töö tüüp (vali üks või mitu)</label>
                 <div className="grid grid-cols-3 gap-2 mb-2">
-                  {settings.tooTuubid.map(t => {
+                  {(showAllTypes || form.work_items.length === 0
+                    ? settings.tooTuubid
+                    : settings.tooTuubid.filter(t => form.work_items.some(i => i.too === t.nimi))
+                  ).map(t => {
                     const hasItem = form.work_items.some(i => i.too === t.nimi)
                     const img = workTypeImage(t.nimi, t.pilt)
                     return (
@@ -981,6 +985,16 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     )
                   })}
                 </div>
+                {form.work_items.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTypes(!showAllTypes)}
+                    className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg transition-colors mb-2"
+                  >
+                    {showAllTypes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {showAllTypes ? 'Peida' : `Näita kõiki (${settings.tooTuubid.length})`}
+                  </button>
+                )}
 
                 {/* Selected types as chips — click to activate, + to duplicate */}
                 {form.work_items.length > 0 && (() => {
