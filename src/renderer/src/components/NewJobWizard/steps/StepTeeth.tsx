@@ -90,7 +90,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   const owners = useMemo(() => {
     const m = new Map<number, string>()
     for (const key of state.jobTypes) {
-      for (const t of hambadToTeeth(state.selectedTeeth[key] ?? [])) m.set(t, key)
+      for (const t of (state.selectedTeeth[key] ?? [])) m.set(t, key)
     }
     return m
   }, [state.jobTypes, state.selectedTeeth])
