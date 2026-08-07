@@ -256,70 +256,71 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   // two-column split put the buttons a chart's width away from the thing they
   // act on.
   return (
-    <div className="space-y-6">
-      {tabs.length > 1 && (
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-ink-soft">Millisele tööle hambaid märgid?</h3>
-          <WorkTypeTabs
-            tabs={tabs}
+    <div className="space-y-4">
+      <div className="grid grid-cols-[minmax(200px,1fr)_minmax(380px,2fr)] gap-6 items-start">
+        {/* ── Left: tabs + controls ── */}
+        <div className="space-y-4">
+          {tabs.length > 1 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-ink-soft">Millisele tööle?</h3>
+              <WorkTypeTabs
+                tabs={tabs}
+                activeType={activeType}
+                onSelect={setActiveType}
+                onDuplicate={key => {
+                  const nimi = baseTypeName(key)
+                  const existing = state.jobTypes.filter(k => baseTypeName(k) === nimi)
+                  const nextIdx = existing.length + 1
+                  const newKey = makeTypeKey(nimi, nextIdx)
+                  patch({ jobTypes: [...state.jobTypes, newKey] })
+                  setActiveType(newKey)
+                }}
+                onRemove={key => {
+                  const next = state.jobTypes.filter(k => k !== key)
+                  const { [key]: _, ...rest } = state.selectedTeeth
+                  patch({ jobTypes: next, selectedTeeth: rest })
+                  if (activeType === key) setActiveType(next[0] ?? null)
+                }}
+              />
+              <p className="text-xs text-ink-muted">
+                Üks hammas kuulub korraga ainult ühele tööle.
+              </p>
+            </div>
+          )}
+
+          <ToothControls
             activeType={activeType}
-            onSelect={setActiveType}
-            onDuplicate={key => {
-              const nimi = baseTypeName(key)
-              const existing = state.jobTypes.filter(k => baseTypeName(k) === nimi)
-              const nextIdx = existing.length + 1
-              const newKey = makeTypeKey(nimi, nextIdx)
-              patch({ jobTypes: [...state.jobTypes, newKey] })
-              setActiveType(newKey)
-            }}
-            onRemove={key => {
-              const next = state.jobTypes.filter(k => k !== key)
-              const { [key]: _, ...rest } = state.selectedTeeth
-              patch({ jobTypes: next, selectedTeeth: rest })
-              if (activeType === key) setActiveType(next[0] ?? null)
-            }}
+            activeTeeth={activeTeeth}
+            blocked={blocked}
+            total={pickedCount}
+            onSetActiveTeeth={teeth => activeType && setTeethFor(activeType, teeth)}
+            onClearAll={clearAll}
           />
-          <p className="text-base text-ink-muted">
-            Üks hammas saab kuuluda korraga ainult ühele tööle.
-          </p>
+
+          {/* Arch selector if needed */}
+          {rules.archTypes.length > 0 && (
+            <div className="space-y-2 border-t border-ink-faint/30 pt-3">
+              <h3 className="text-sm font-semibold text-ink-soft">
+                Lõualuu — {rules.archTypes.join(', ')}
+              </h3>
+              <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
+            </div>
+          )}
+
+          <WizardErrors errors={visibleErrors} />
         </div>
-      )}
 
-      <div className="mx-auto w-full max-w-[620px] space-y-4">
-        <WizardOdontogram
-          items={toothItems}
-          activeType={activeType}
-          colorMap={colorMap}
-          onToggleTooth={toggleTooth}
-          reservedByArch={archOwners}
-        />
-
-        <ToothControls
-          activeType={activeType}
-          activeTeeth={activeTeeth}
-          blocked={blocked}
-          total={pickedCount}
-          onSetActiveTeeth={teeth => activeType && setTeethFor(activeType, teeth)}
-          onClearAll={clearAll}
-        />
+        {/* ── Right: odontogram ── */}
+        <div>
+          <WizardOdontogram
+            items={toothItems}
+            activeType={activeType}
+            colorMap={colorMap}
+            onToggleTooth={toggleTooth}
+            reservedByArch={archOwners}
+          />
+        </div>
       </div>
-
-      {/* An arch-level type riding along with tooth work still needs its
-          jaw answered — the odontogram cannot express "terve ülemine". */}
-      {rules.archTypes.length > 0 && (
-        <div className="space-y-3 border-t border-ink-faint/30 pt-5">
-          <h3 className="text-base font-semibold text-ink-soft">
-            Lõualuu — {rules.archTypes.join(', ')}
-          </h3>
-          <p className="text-base text-ink-muted">
-            Terve lõualuu kuulub sellele tööle, seega neid hambaid teisele tööle
-            märkida ei saa.
-          </p>
-          <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
-        </div>
-      )}
-
-      <WizardErrors errors={visibleErrors} />
     </div>
   )
 }
