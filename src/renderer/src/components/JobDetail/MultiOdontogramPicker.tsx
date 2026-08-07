@@ -153,7 +153,7 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
         <span className="text-[11px] font-bold" style={{ transform: `rotate(${-rotation}deg)` }}>
           {num}
         </span>
-        {/* Bridge connector — bar extending to the right neighbor */}
+        {/* Bridge connector — bar below (upper arch) or above (lower arch) */}
         {bridgeColor && (
           <span
             className="absolute rounded-full pointer-events-none"
@@ -162,9 +162,10 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
               width: 10,
               height: 4,
               right: -7,
-              top: '50%',
-              marginTop: -2,
               zIndex: 1,
+              ...(isUpper
+                ? { bottom: -3 }
+                : { top: -3 }),
             }}
           />
         )}
