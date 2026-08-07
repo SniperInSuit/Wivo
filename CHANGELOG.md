@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.31.1] — 2026-08-07
+
+**Töötüübi pildid ja vormi parandused**
+- Töötüübi PNG ikoonid (`assets/jobs/`) nüüd nähtavad kõikjal — edit form, wizard,
+  seadete hinnakaardid. Alias map seob eesti nimed inglise failinimedega (Kroon→Crown,
+  Sild→Bridge, Implantkroon→Implant_crown jne)
+- Fullscreen keskkolumn kasutab nüüd `WorkItemsField`'i: + nupp (lisa sama tüüpi
+  tööosa juurde, nt Sild 1, Sild 2), × (eemalda), silla toggle, materjali badge
+- **Masin per-tööosa** — igale tööosale saab oma masina valida (nt Kroon→Midas,
+  Sild→Pro2). Sama muster mis materjalil
+- Kuupäev/tähtaeg/kell ühel real (3 kolumni), enam ei jää HH:MM kast piiridest välja
+- Wizard header kompaktne — step progress samal real pealkirjaga, "Samm X/6" badge.
+  Enam ei pea kerima et sisu näha
+- Akna kõrgus 900→960px, miinimum 700→750px
+- NSIS `oneClick: true` — uuendus installib vaikselt, enam pole installeri viisardit
+
+## [1.30.19] — 2026-08-07
+
+**Read view tegevused ja muudatuse overlay**
+- **Lisa muudatus**, **Dubleeri**, **Prindi** nupud otse read view'l
+- Lisa muudatus on variant chipide real: `[Originaal] [Muudatus 1] [+ Lisa muudatus]`
+- Muudatuse lisamine ja redigeerimine overlay'na read view peal — ei mine enam
+  edit mode'i. Pärast salvestamist jääd read view'le, muudatus automaatselt aktiivne
+- Nested form fix: `RevisionEditFullscreen` kasutab `<div>` mitte `<form>`, vältides
+  pesastatud vormide probleemi mis saatis kasutaja dashboardi
+- Eemaldatud duplikaat X nupp muudatuse vormilt (jäi ainult Tühista)
+
+## [1.30.18] — 2026-08-07
+
+**Per-tööosa materjal, purunemise hambavalija, tasustamata lüliti**
+- `WorkItem` sai `materjal` välja — sillale ja kroonile saab eri materjali valida.
+  Materjali valik kehtib aktiivsele tööosale, chip näitab materjali nime
+- Materjal on nüüd nupuvalik (mitte vabatekst) nii töö kui muudatuse vormil,
+  koos materjali alamtoonidega (nt Crown HT → A1, A2, A3)
+- **Purunemise hambavalija**: "Purunemine" põhjuse valimisel avaneb odontogram popup
+  purunenud hammaste märkimiseks. Salvestatakse eraldi `purunenud_hambad` väljale
+- **Tasustatud/Tasustamata lüliti** muudatuse vormil — labori vea puhul jätab
+  palgareeglid vahele (`taspidev: false`). Badge nähtav board-kaardil ja ajaloos
+- Kaardi värvid `overflow-hidden` kaudu — kärbuvad ümarate nurkadega ilusti
+- "Katab ka muudatused" checkbox nähtav ka Disain reegliga (mitte ainult Teostatud töö)
+
+## [1.30.15] — 2026-08-06
+
+**Revision card värvid, mudeli badge, debug konsool**
+- Muudatuse board-kaardi vasak äär kasutab töötüübi värvi (oli hall)
+- Mudeli "M" badge nähtav nii töö- kui muudatuskaardil
+- Board peidab originaalkaardi kui aktiivne muudatuskaart on olemas
+- `DeadlineChip` muudatuskaardil (oli väike tekst)
+- Debug konsool (`DebugConsole`) Meeskond lehe all — püüab `console.error`,
+  `unhandledrejection` ja `error` sündmused. `debugLog()` manuaalseks logimiseks
+
 ## [1.31.0] — 2026-08-07
 **Andmebaasi muudatused:** `sql/039_worker_pay_extra_scope.sql` (jooksutatud),
 `sql/040_worker_pay_additive.sql` — **jooksuta see**, Wivo kinni. 039 oli vale
