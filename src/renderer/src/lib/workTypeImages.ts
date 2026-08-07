@@ -12,10 +12,17 @@
  * cannot express.
  */
 
-const modules = import.meta.glob(
+const worktypeModules = import.meta.glob(
   '../assets/worktypes/*.{png,jpg,jpeg,webp,svg,PNG,JPG,JPEG,WEBP,SVG}',
   { eager: true, query: '?url', import: 'default' }
 ) as Record<string, string>
+
+const jobModules = import.meta.glob(
+  '../assets/jobs/*.{png,jpg,jpeg,webp,svg,PNG,JPG,JPEG,WEBP,SVG}',
+  { eager: true, query: '?url', import: 'default' }
+) as Record<string, string>
+
+const modules = { ...worktypeModules, ...jobModules }
 
 /** "Kaitse / splint" → "kaitse-splint", "Täidis" → "taidis" */
 export function slugifyWorkType(nimi: string): string {
@@ -35,13 +42,37 @@ for (const [path, url] of Object.entries(modules)) {
   byFileName.set(base, url)
 }
 
+// Map Estonian work type names → image file base names so slugified lookups work
+const ALIASES: Record<string, string> = {
+  'kroon':           'crown',
+  'implantkroon':    'implant_crown',
+  'abutmendile-kroon': 'abutment_crown',
+  'sild':            'bridge',
+  'viniir':          'veneer',
+  'laminaat':        'laminate',
+  'inlay':           'inlay',
+  'onlay':           'onlay',
+  'taidis':          'filling',
+  'proteez':         'denture',
+  'all-on-x':        'allon4',
+  'allon-x':         'allon4',
+  'all-on-4':        'allon4',
+  'all-on-5':        'allon5',
+  'all-on-6':        'allon6',
+  'kaitse-splint':   'splint',
+  'retainer':        'retainer',
+  'ookaitse':        'nightguard',
+  'mudel':           'model',
+}
+
 /** The image for a work type, or null when no file matches. */
 export function workTypeImage(nimi: string, explicitFile?: string | null): string | null {
   if (explicitFile?.trim()) {
     const key = explicitFile.trim().toLowerCase()
     return byFileName.get(key) ?? byFileName.get(key.replace(/\.[^.]+$/, '')) ?? null
   }
-  return byFileName.get(slugifyWorkType(nimi)) ?? null
+  const slug = slugifyWorkType(nimi)
+  return byFileName.get(slug) ?? byFileName.get(ALIASES[slug] ?? '') ?? null
 }
 
 /** File names actually present, for the settings hint. */

@@ -12,9 +12,9 @@ app.commandLine.appendSwitch('lang', 'et-EE')
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1440,
-    height: 900,
+    height: 960,
     minWidth: 1024,
-    minHeight: 700,
+    minHeight: 750,
     show: false,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#F7F9FA',

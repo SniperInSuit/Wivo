@@ -11,6 +11,7 @@ import { OdontogramPicker } from './OdontogramPicker'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
+import { WorkItemsField } from './WorkItemsField'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
@@ -512,7 +513,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       materjal: (form.work_items.length > 1
         ? form.work_items[0]?.materjal ?? form.materjal
         : form.materjal) || null,
-      masina: form.masina || null,
+      masina: (form.work_items.length > 1
+        ? form.work_items[0]?.masina ?? form.masina
+        : form.masina) || null,
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
       varv: form.varv || null,
@@ -794,8 +797,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </button>
               </div>
 
-              {/* Kuupäev + Tähtaeg */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Kuupäev + Tähtaeg + Kellaaeg */}
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <div>
                   <label className="label">Kuupäev</label>
                   <input
@@ -808,30 +811,31 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
                 <div>
                   <label className="label">Tähtaeg</label>
-                  <div className="flex gap-1">
-                    <input
-                      type="date"
-                      value={(form.valmis_aeg ?? '').split('T')[0] || ''}
-                      onChange={e => {
-                        const time = (form.valmis_aeg ?? '').split('T')[1] || '12:00'
-                        set('valmis_aeg', e.target.value ? `${e.target.value}T${time}` : '')
-                      }}
-                      className="input flex-1"
-                    />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="HH:MM"
-                      maxLength={5}
-                      value={(form.valmis_aeg ?? '').split('T')[1]?.slice(0, 5) || ''}
-                      onChange={e => {
-                        const raw = e.target.value.replace(/[^0-9:]/g, '')
-                        const date = (form.valmis_aeg ?? '').split('T')[0]
-                        if (date) set('valmis_aeg', `${date}T${raw}`)
-                      }}
-                      className="input w-20"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={(form.valmis_aeg ?? '').split('T')[0] || ''}
+                    onChange={e => {
+                      const time = (form.valmis_aeg ?? '').split('T')[1] || '12:00'
+                      set('valmis_aeg', e.target.value ? `${e.target.value}T${time}` : '')
+                    }}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Kell</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="HH:MM"
+                    maxLength={5}
+                    value={(form.valmis_aeg ?? '').split('T')[1]?.slice(0, 5) || ''}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/[^0-9:]/g, '')
+                      const date = (form.valmis_aeg ?? '').split('T')[0]
+                      if (date) set('valmis_aeg', `${date}T${raw}`)
+                    }}
+                    className="input w-[70px]"
+                  />
                 </div>
               </div>
 
@@ -1216,27 +1220,54 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 })()}
               </div>
 
-              {/* Masin */}
+              {/* Masin — per-work-item when multiple items exist */}
               <div>
-                <label className="label flex items-center gap-1.5">
-                  <Cpu size={11} /> Masin
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {settings.masinad.map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => set('masina', form.masina === m ? '' : m)}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all duration-100 ${
-                        form.masina === m
-                          ? 'bg-accent text-white border-accent'
-                          : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
+                {(() => {
+                  const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
+                  const hasItems = form.work_items.length > 1
+                  const currentMachine = hasItems && activeItem ? (activeItem.masina ?? '') : (form.masina ?? '')
+                  const setMachine = (val: string) => {
+                    if (hasItems && activeItem) {
+                      setForm(f => ({
+                        ...f,
+                        work_items: f.work_items.map(i => i.id === activeItem.id ? { ...i, masina: val || undefined } : i),
+                        masina: f.work_items[0]?.id === activeItem.id ? val : f.masina,
+                      }))
+                    } else {
+                      set('masina', val)
+                    }
+                  }
+                  return (
+                    <>
+                      <label className="label flex items-center gap-1.5">
+                        <Cpu size={11} /> Masin
+                        {hasItems && activeItem && (
+                          <span className="text-accent font-normal ml-1">— {activeItem.too}</span>
+                        )}
+                        {hasItems && !activeItem && (
+                          <span className="text-ink-faint font-normal ml-1">— vali tööosa</span>
+                        )}
+                      </label>
+                      <div className="flex gap-2 flex-wrap">
+                        {settings.masinad.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            disabled={hasItems && !activeItem}
+                            onClick={() => setMachine(currentMachine === m ? '' : m)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all duration-100 ${
+                              currentMachine === m
+                                ? 'bg-accent text-white border-accent'
+                                : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+                            } disabled:opacity-30 disabled:cursor-not-allowed`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
 
               {/* Teostaja + Disainija — what worker pay is calculated from.
@@ -1292,94 +1323,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             {/* ── CENTER COLUMN (fullscreen: work types + odontogram) ── */}
             {isFullscreen && (
               <div className="space-y-3 sticky top-0">
-                {/* Work type grid — moved here in fullscreen for proximity to odontogram */}
-                <div>
-                  <label className="label">Töö tüüp (vali üks või mitu)</label>
-                  <div className="grid grid-cols-4 gap-1.5 mb-2">
-                    {settings.tooTuubid.map(t => {
-                      const hasItem = form.work_items.some(i => i.too === t.nimi)
-                      return (
-                        <button
-                          key={t.nimi}
-                          type="button"
-                          onClick={() => {
-                            if (hasItem) {
-                              const next = form.work_items.filter(i => i.too !== t.nimi)
-                              setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
-                            } else {
-                              const isBridge = /sild|bridge/i.test(t.nimi)
-                              const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
-                              const next = [...form.work_items, item]
-                              setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
-                              setActiveWorkItemId(item.id)
-                            }
-                          }}
-                          className={`text-xs px-2 py-1.5 rounded-lg border-2 font-medium transition-all ${
-                            hasItem ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25 text-ink-muted hover:border-accent/40'
-                          }`}
-                        >
-                          {t.nimi}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Chips for activating work items */}
-                {form.work_items.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {form.work_items.map(item => {
-                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
-                      const isActive = item.id === activeWorkItemId
-                      const teethCount = item.hambad.split(',').filter(t => t.trim()).length
-                      return (
-                        <button key={item.id} type="button"
-                          onClick={() => setActiveWorkItemId(isActive ? null : item.id)}
-                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border-2 transition-all ${
-                            isActive ? 'border-accent bg-accent/10' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: isActive ? undefined : `${hex}15` }}
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hex }} />
-                          <span style={{ color: isActive ? '#0AB6C4' : hex }}>{item.too}</span>
-                          {teethCount > 0 && <span className="text-[10px] text-ink-faint">{teethCount}</span>}
-                        </button>
-                      )
-                    })}
-                    <p className="text-[10px] text-ink-faint">
-                      {activeWorkItemId ? 'Klõpsa hammastel' : 'Vali tüüp'}
-                    </p>
-                  </div>
-                )}
-
-                {form.work_items.length === 0 ? (
-                  <div className="bg-bg-sidebar rounded-xl p-8 text-center">
-                    <p className="text-sm text-ink-faint">Vali töötüüp, et hambaid märkida</p>
-                  </div>
-                ) : (
-                  <div className="bg-bg-sidebar rounded-xl p-4">
-                    <MultiOdontogramPicker
-                      items={form.work_items}
-                      activeItemId={activeWorkItemId}
-                      colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}
-                      onToggleTooth={tooth => {
-                        if (!activeWorkItemId) return
-                        const s = String(tooth)
-                        const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
-                        if (otherOwner) return
-                        setForm(f => ({
-                          ...f,
-                          work_items: f.work_items.map(item => {
-                            if (item.id !== activeWorkItemId) return item
-                            const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
-                            teeth.has(s) ? teeth.delete(s) : teeth.add(s)
-                            return { ...item, hambad: [...teeth].join(',') }
-                          })
-                        }))
-                      }}
-                    />
-                  </div>
-                )}
+                <label className="label">Töö tüüp ja hambad</label>
+                <WorkItemsField
+                  value={form.work_items}
+                  onChange={items => {
+                    setForm(f => ({ ...f, work_items: items, too: items[0]?.too ?? '' }))
+                  }}
+                  activeId={activeWorkItemId}
+                  onActiveChange={setActiveWorkItemId}
+                  looseTeeth={form.hambad}
+                  onLooseTeethChange={v => set('hambad', v)}
+                  typeColumns={5}
+                />
               </div>
             )}
 

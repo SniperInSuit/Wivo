@@ -37,38 +37,33 @@ export function WizardProgress({
 
   return (
     <nav aria-label="Töö loomise sammud">
-      {/* ── Desktop: the full tracker ─────────────────────────────────────── */}
-      <ol className="hidden md:flex items-start justify-center">
+      {/* ── Desktop: compact inline tracker ──────────────────────────────── */}
+      <ol className="hidden md:flex items-center justify-center">
         {WIZARD_STEPS.map((meta, i) => {
           const status = statuses[meta.id]
           const isCurrent = status === 'current'
           const isDone = status === 'done'
           const isSkipped = status === 'skipped'
-          // A skipped step has nothing to ask, so navigating to it would show a
-          // dead-end panel explaining why it is empty. It stays visible and
-          // labelled — the numbering never shifts — but it is not a destination.
           const reachable = meta.id <= maxStep && !isSkipped
 
           return (
-            <li key={meta.key} className="flex items-start min-w-0">
+            <li key={meta.key} className="flex items-center min-w-0">
               <button
                 type="button"
                 aria-current={isCurrent ? 'step' : undefined}
                 aria-disabled={!reachable || undefined}
                 onClick={() => { if (reachable) onStepClick(meta.id) }}
                 className={[
-                  'group flex w-[104px] shrink-0 flex-col items-center gap-1.5 rounded-xl px-1 py-1',
+                  'group flex shrink-0 items-center gap-1.5 rounded-lg px-1.5 py-1',
                   'transition-colors duration-150',
-                  !reachable ? 'cursor-not-allowed' : 'cursor-pointer',
+                  !reachable ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
                   FOCUS_RING,
                 ].join(' ')}
               >
-                {/* The number stays visible on done steps too — the tick is an
-                    extra signal, not a replacement for "which step is this". */}
                 <span
                   className={[
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                    'text-base font-semibold transition-colors duration-150 border-2',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                    'text-xs font-bold transition-colors duration-150 border-2',
                     isCurrent
                       ? 'bg-stage-varvi border-stage-varvi text-white'
                       : isDone
@@ -80,11 +75,11 @@ export function WizardProgress({
                   ].join(' ')}
                   aria-hidden="true"
                 >
-                  {isDone ? <Check className="h-5 w-5" /> : meta.id}
+                  {isDone ? <Check className="h-3.5 w-3.5" /> : meta.id}
                 </span>
                 <span
                   className={[
-                    'w-full truncate text-center text-base leading-tight',
+                    'text-xs leading-tight whitespace-nowrap',
                     isCurrent
                       ? 'text-stage-varvi font-semibold'
                       : isDone
@@ -94,18 +89,12 @@ export function WizardProgress({
                 >
                   {meta.short}
                 </span>
-                {isSkipped && (
-                  <span className="text-sm text-ink-faint">(vahele jäetud)</span>
-                )}
               </button>
 
-              {/* The joining line. It runs at the circle's centre height, and it
-                  is magenta up to the step the user has reached so the row reads
-                  as a path travelled rather than six equal marks. */}
               {i < WIZARD_STEPS.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className={`mt-[21px] h-0.5 w-6 shrink-0 rounded-full ${
+                  className={`h-0.5 w-4 shrink-0 rounded-full ${
                     meta.id < current ? 'bg-stage-varvi/60' : 'bg-ink-faint/30'
                   }`}
                 />
@@ -115,7 +104,7 @@ export function WizardProgress({
         })}
       </ol>
 
-      {/* ── Narrow: a six-segment bar, no labels but the current one ──────── */}
+      {/* ── Narrow: a six-segment bar ────────────────────────────────────── */}
       <div className="md:hidden flex items-center gap-1" aria-hidden="true">
         {WIZARD_STEPS.map(meta => {
           const status = statuses[meta.id]
@@ -133,10 +122,8 @@ export function WizardProgress({
         })}
       </div>
 
-      {/* Renders at BOTH breakpoints. On desktop it is the plain-language
-          readout beside the tracker; on mobile it is the only step label there
-          is. Either way it is what a screen reader announces on a step change. */}
-      <p aria-live="polite" className="mt-2 text-base font-medium text-ink-soft md:text-center">
+      {/* Screen reader announcement */}
+      <p aria-live="polite" className="sr-only">
         Samm {current}/6 · {currentMeta.short}
       </p>
     </nav>

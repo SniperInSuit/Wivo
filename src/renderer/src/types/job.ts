@@ -87,6 +87,7 @@ export interface WorkItem {
   hambad: string          // FDI comma-separated for this item, e.g. "14,15,16"
   bridge?: boolean        // true = teeth form a connected bridge unit
   materjal?: string       // material for this specific work item
+  masina?: string         // machine for this specific work item
   note?: string           // optional per-item note
 }
 

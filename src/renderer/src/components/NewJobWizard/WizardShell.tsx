@@ -189,54 +189,41 @@ export function WizardShell({
               below it is the same white surface as the rest of the app. */}
           <div className="h-[3px] flex-shrink-0 bg-stage-varvi" aria-hidden="true" />
 
-          <header className="flex-shrink-0 px-5 md:px-8 pt-4 pb-4 border-b border-ink-faint/20 bg-bg-card">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                {/* The blush tile from the mockup. It is the only place the
-                    wizard says what this product is about before the user has
-                    chosen anything. */}
+          <header className="flex-shrink-0 px-5 md:px-8 pt-3 pb-3 border-b border-ink-faint/20 bg-bg-card">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-stage-varvi"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stage-varvi"
                   style={{ background: WIZARD_BLUSH }}
                   aria-hidden="true"
                 >
-                  <ToothGlyph name="tooth" size={26} />
+                  <ToothGlyph name="tooth" size={22} />
                 </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 id="wizard-title" className="text-xl font-semibold text-ink">
-                      Lisa uus töö
-                    </h1>
-                    <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-sm font-medium text-indigo-400">
-                      Samm {state.currentStep}/6
-                    </span>
-                  </div>
-                  <p aria-live="polite" className="text-sm text-ink-faint min-h-[20px]">
-                    {wizard.draftSavedAt ? `Mustand salvestatud ${hhmm(wizard.draftSavedAt)}` : ''}
-                  </p>
-                </div>
+                <h1 id="wizard-title" className="text-lg font-semibold text-ink whitespace-nowrap">
+                  Lisa uus töö
+                </h1>
+                <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400 whitespace-nowrap">
+                  {state.currentStep}/6
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 hidden md:block">
+                <WizardProgress
+                  current={state.currentStep}
+                  statuses={statuses}
+                  maxStep={wizard.maxStep}
+                  onStepClick={goToStep}
+                />
               </div>
               <button
                 type="button"
                 onClick={onRequestClose}
-                // Closing mid-insert would leave the row being written with
-                // nobody listening for it — see NewJobWizard.requestClose.
                 disabled={saving}
                 title="Sulge"
-                className={`flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS_RING}`}
+                className={`flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS_RING}`}
               >
-                <X size={20} aria-hidden="true" />
+                <X size={18} aria-hidden="true" />
                 <span className="sr-only">Sulge</span>
               </button>
-            </div>
-
-            <div className="mt-4">
-              <WizardProgress
-                current={state.currentStep}
-                statuses={statuses}
-                maxStep={wizard.maxStep}
-                onStepClick={goToStep}
-              />
             </div>
           </header>
 
