@@ -406,11 +406,6 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                       </span>
                     </div>
                   )}
-                  {rev.hambad && (
-                    <div className="rounded-xl p-2 bg-slate-800/60 mt-1">
-                      <OdontogramPicker value={rev.hambad} onChange={() => {}} disabled />
-                    </div>
-                  )}
                   {!disabled && (
                     <button
                       type="button"
