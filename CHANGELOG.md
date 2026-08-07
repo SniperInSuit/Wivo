@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.31.3] — 2026-08-07
+
+**Uus odontogram ja wizard parandused**
+- **Uus odontogram** — SVG asendatud CSS grid layoutiga. Hambad on ümarad kastid
+  FDI numbriga sees, U-kujuline arch marginTop offsetiga, kerge rotatsioon.
+  Gradient rose-50 taust, bridge connector hambaste servast, legend chips üleval
+- **Drag-to-paint** — hambaid saab valida lohistades, mitte ainult klõpsates.
+  Mousedown alustab, lohista üle hammaste, mouseup lõpetab
+- **Wizard sildade duplikaadid** — + nupp hambaste sammus lisab sama tüübi tööosa
+  (Sild 1, Sild 2). × nupp eemaldab duplikaadi. `selectedTeeth` kasutab `Sild§2` võtmeid
+- **Wizard 2-kolumni layout** — tabid ja nupud vasakul, odontogram paremal.
+  Kõik mahub ühele ekraanile ilma kerimiseta
+- **Töötüübi nupud uus disain** — suurem pilt (h-14), check badge ülal paremal,
+  hind all. Vaikimisi näidatakse ainult valitud tüüpe, "Näita kõiki" laiendab
+- **Ülemine/Alumine kaardi nupud** — Upper.png/Lower.png piltidega, sama disain
+  mis töötüübi nupud. Peegelda nupp eemaldatud (odontogramil on juba mirror toggle)
+- Muudatuse read-only odontogram eemaldatud RevisionBlock'ist (topelt info)
+- Wizard header kompaktne, step progress samal real
+- Wizard roosa taust vähendatud, odontogram suurem (max-width 600px)
+
 ## [1.31.1] — 2026-08-07
 
 **Töötüübi pildid ja vormi parandused**
