@@ -930,7 +930,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* Töö — multi-select grid (in fullscreen, this moves to center column) */}
               <div className={isFullscreen ? 'hidden' : ''}>
                 <label className="label">Töö tüüp (vali üks või mitu)</label>
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                <div className="grid grid-cols-3 gap-2 mb-2">
                   {settings.tooTuubid.map(t => {
                     const hasItem = form.work_items.some(i => i.too === t.nimi)
                     const img = workTypeImage(t.nimi, t.pilt)
@@ -940,41 +940,41 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         type="button"
                         onClick={() => {
                           if (hasItem) {
-                            // Remove this type
                             const next = form.work_items.filter(i => i.too !== t.nimi)
                             setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
                           } else {
-                            // Add this type
-                            // Auto-mark as bridge if the type name contains "sild" or "bridge"
                             const isBridge = /sild|bridge/i.test(t.nimi)
                             const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
                             const next = [...form.work_items, item]
                             setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
                           }
                         }}
-                        title={t.hind != null
-                          ? `${t.hind.toFixed(2)} € ${t.hinnaTyyp === 'hammas' ? '/ hammas' : '/ töö'}`
-                          : t.nimi}
-                        className={`relative rounded-lg border-2 overflow-hidden text-left transition-all duration-100 ${
-                          hasItem ? 'border-accent shadow-card' : 'border-ink-faint/25 hover:border-accent/40'
+                        className={`relative rounded-xl border-2 overflow-hidden text-center transition-all duration-150 ${
+                          hasItem
+                            ? 'border-accent bg-accent/5 shadow-card'
+                            : 'border-ink-faint/25 bg-white hover:border-accent/40 hover:shadow-sm'
                         }`}
                       >
-                        <span
-                          className="flex h-10 items-center justify-center"
-                          style={{ backgroundColor: `${t.hex}${hasItem ? '30' : '1f'}` }}
-                        >
+                        {hasItem && (
+                          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center z-10">
+                            <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </span>
+                        )}
+                        <span className="flex h-14 items-center justify-center p-1.5">
                           {img
-                            ? <img src={img} alt="" className="h-full w-full object-cover" />
-                            : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.hex }} />}
+                            ? <img src={img} alt="" className="h-full object-contain" />
+                            : <span className="w-5 h-5 rounded-full" style={{ backgroundColor: t.hex }} />}
                         </span>
-                        <span className={`block px-1.5 py-1 text-[11px] font-medium truncate ${
+                        <span className={`block px-1 pb-1.5 text-[11px] font-semibold truncate ${
                           hasItem ? 'text-accent' : 'text-ink'
                         }`}>
                           {t.nimi}
                         </span>
                         {t.hind != null && (
-                          <span className="absolute top-0.5 right-0.5 text-[9px] font-bold px-1 rounded bg-bg-card/90 text-ink-muted tabular-nums">
-                            {t.hind.toFixed(0)}€{t.hinnaTyyp === 'hammas' ? '/h' : ''}
+                          <span className={`block px-1 pb-1 text-[9px] tabular-nums ${
+                            hasItem ? 'text-accent/70' : 'text-ink-faint'
+                          }`}>
+                            {t.hind.toFixed(0)} € / {t.hinnaTyyp === 'hammas' ? 'hammas' : 'töö'}
                           </span>
                         )}
                       </button>

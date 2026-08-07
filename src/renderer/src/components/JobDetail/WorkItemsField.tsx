@@ -165,7 +165,7 @@ export function WorkItemsField({
   return (
     <div className="space-y-2">
       {showTypePicker && (
-        <div className={`grid gap-1.5 ${TYPE_GRID_COLS[typeColumns]}`}>
+        <div className={`grid gap-2 ${TYPE_GRID_COLS[typeColumns]}`}>
           {wt.types.map(t => {
             const picked = value.some(i => i.too === t.nimi)
             const img = workTypeImage(t.nimi, t.pilt)
@@ -178,22 +178,35 @@ export function WorkItemsField({
                 title={t.hind != null
                   ? `${t.hind.toFixed(2)} € ${t.hinnaTyyp === 'hammas' ? '/ hammas' : '/ töö'}`
                   : t.nimi}
-                className={`relative rounded-lg border-2 overflow-hidden text-left transition-all duration-100 disabled:opacity-50 ${
-                  picked ? 'border-accent shadow-card' : c.typeBorder
+                className={`relative rounded-xl border-2 overflow-hidden text-center transition-all duration-150 disabled:opacity-50 ${
+                  picked
+                    ? 'border-accent bg-accent/5 shadow-card'
+                    : `${c.typeBorder} bg-white hover:shadow-sm`
                 }`}
               >
-                <span
-                  className="flex h-10 items-center justify-center"
-                  style={{ backgroundColor: `${t.hex}${picked ? '30' : '1f'}` }}
-                >
+                {picked && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
+                    <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                )}
+                <span className="flex h-14 items-center justify-center p-1.5">
                   {img
-                    ? <img src={img} alt="" className="h-full w-full object-cover" />
-                    : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.hex }} />
+                    ? <img src={img} alt="" className="h-full object-contain" />
+                    : <span className="w-5 h-5 rounded-full" style={{ backgroundColor: t.hex }} />
                   }
                 </span>
-                <span className={`block px-1.5 py-1 text-[11px] font-medium truncate ${c.typeLabel}`}>
+                <span className={`block px-1 pb-1.5 text-[11px] font-semibold truncate ${
+                  picked ? 'text-accent' : c.typeLabel
+                }`}>
                   {t.nimi}
                 </span>
+                {t.hind != null && (
+                  <span className={`block px-1 pb-1 text-[9px] tabular-nums ${
+                    picked ? 'text-accent/70' : 'text-ink-faint'
+                  }`}>
+                    {t.hind.toFixed(0)} € / {t.hinnaTyyp === 'hammas' ? 'hammas' : 'töö'}
+                  </span>
+                )}
               </button>
             )
           })}
