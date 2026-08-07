@@ -70,13 +70,14 @@ export function WizardOdontogram({
   const [refusal, setRefusal] = useState<string | null>(null)
   const [gridOpen, setGridOpen] = useState(false)
 
-  const activeItem = items.find(i => i.too === activeType) ?? null
+  // activeType is a key like 'Sild' or 'Sild§2'. wizardWorkItems sets id to 'wiz:{key}'.
+  const activeItem = items.find(i => i.id === `wiz:${activeType}`) ?? items.find(i => i.too === activeType) ?? null
 
-  /** FDI → owning work type name. Later items win, exactly like the picker. */
+  /** FDI → owning item id. Used to check if a tooth belongs to another item. */
   const owners = useMemo(() => {
     const m = new Map<number, string>()
-    for (const item of items) for (const t of hambadToTeeth(item.hambad)) m.set(t, item.too)
-    for (const [fdi, too] of reservedByArch ?? []) m.set(fdi, too)
+    for (const item of items) for (const t of hambadToTeeth(item.hambad)) m.set(t, item.id)
+    for (const [fdi, too] of reservedByArch ?? []) m.set(fdi, `arch:${too}`)
     return m
   }, [items, reservedByArch])
 
@@ -91,9 +92,10 @@ export function WizardOdontogram({
       setRefusal(`Hammas ${fdi} kuulub juba tööle „${arch}" (terve lõualuu). Muuda lõualuu valikut või eemalda see töö tüüp.`)
       return
     }
-    const owner = owners.get(fdi)
-    if (owner && owner !== activeType) {
-      setRefusal(`Hammas ${fdi} kuulub juba tööle „${owner}".`)
+    const ownerId = owners.get(fdi)
+    if (ownerId && ownerId !== activeItem?.id) {
+      const ownerItem = items.find(i => i.id === ownerId)
+      setRefusal(`Hammas ${fdi} kuulub juba tööle „${ownerItem?.too ?? ownerId}".`)
       return
     }
     setRefusal(null)
