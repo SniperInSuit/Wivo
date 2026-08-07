@@ -139,35 +139,6 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     )
   }
 
-  // ── Bridge connectors ─────────────────────────────────────────────────────
-  function Connectors({ arch }: { arch: 'upper' | 'lower' }) {
-    const nums = arch === 'upper' ? order(UPPER) : order(LOWER)
-    const nodes: React.ReactNode[] = []
-    for (const item of items) {
-      if (!item.bridge) continue
-      const teeth = item.hambad.split(',').map(t => parseInt(t.trim())).filter(n => !isNaN(n))
-      if (teeth.length < 2) continue
-      const color = colorMap[item.too] ?? '#94A3B8'
-      const positions = teeth.map(t => nums.indexOf(t)).filter(p => p >= 0).sort((a, b) => a - b)
-      for (let j = 0; j < positions.length - 1; j++) {
-        if (positions[j + 1] - positions[j] === 1) {
-          nodes.push(
-            <div key={`br-${item.id}-${j}`} className="absolute rounded-full"
-              style={{
-                backgroundColor: color,
-                height: 3,
-                left: `${(positions[j] * 38) + 34}px`,
-                width: '6px',
-                top: arch === 'upper' ? '20px' : undefined,
-                bottom: arch === 'lower' ? '20px' : undefined,
-              }}
-            />
-          )
-        }
-      }
-    }
-    return <>{nodes}</>
-  }
 
   return (
     <div className="space-y-3">
@@ -210,7 +181,6 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
                 />
               )
             })}
-            <Connectors arch="upper" />
           </div>
         </div>
 
@@ -253,7 +223,6 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
                 />
               )
             })}
-            <Connectors arch="lower" />
           </div>
         </div>
       </div>
