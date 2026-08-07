@@ -63,6 +63,8 @@ const ALIASES: Record<string, string> = {
   'retainer':        'retainer',
   'ookaitse':        'nightguard',
   'mudel':           'model',
+  'ulemine':         'upper',
+  'alumine':         'lower',
 }
 
 /** The image for a work type, or null when no file matches. */

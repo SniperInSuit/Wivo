@@ -9,10 +9,12 @@
  * arches gets split into two work items.
  */
 import type { ReactNode } from 'react'
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import type { ArchSelection } from '@shared/wizard'
 import { SelectableCard } from '../ui/SelectableCard'
 import { WIZARD_ERROR } from '../wizardTheme'
+import upperImg from '@/assets/jobs/Upper.png'
+import lowerImg from '@/assets/jobs/Lower.png'
 
 export interface ArchSelectorProps {
   value: ArchSelection | null
@@ -26,19 +28,24 @@ const OPTIONS: { value: ArchSelection; label: string; sublabel: string; icon: Re
     value: 'upper',
     label: 'Ülemine lõualuu',
     sublabel: 'Hambad 18–28',
-    icon: <ArrowUp className="h-7 w-7" aria-hidden="true" />,
+    icon: <img src={upperImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'lower',
     label: 'Alumine lõualuu',
     sublabel: 'Hambad 48–38',
-    icon: <ArrowDown className="h-7 w-7" aria-hidden="true" />,
+    icon: <img src={lowerImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'both',
     label: 'Mõlemad lõualuud',
     sublabel: 'Kõik 32 hammast',
-    icon: <ArrowUpDown className="h-7 w-7" aria-hidden="true" />,
+    icon: (
+      <div className="flex flex-col items-center gap-0.5" aria-hidden="true">
+        <img src={upperImg} alt="" className="h-7 w-7 object-contain" />
+        <img src={lowerImg} alt="" className="h-7 w-7 object-contain" />
+      </div>
+    ),
   },
 ]
 

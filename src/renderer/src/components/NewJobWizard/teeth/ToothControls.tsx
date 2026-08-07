@@ -17,7 +17,9 @@
  * underneath — the legend now lives on the chart itself, where the colours are.
  */
 import { useState } from 'react'
-import { Eraser, FlipHorizontal2, Info, MoveDown, MoveUp } from 'lucide-react'
+import { Eraser, FlipHorizontal2, Info } from 'lucide-react'
+import upperImg from '@/assets/jobs/Upper.png'
+import lowerImg from '@/assets/jobs/Lower.png'
 import { FDI_LOWER, FDI_UPPER, archIndex, archOf, sortTeeth } from '@shared/wizard'
 import { FOCUS_RING, WIZARD_BTN, WIZARD_HELP } from '../wizardTheme'
 import { teethCountLabel } from './WorkTypeTabs'
@@ -140,10 +142,10 @@ export function ToothControls({
       {/* Bulk buttons */}
       <div className="flex flex-wrap gap-1">
         <button type="button" className={seg} onClick={guarded(() => selectArch('upper'))} aria-disabled={locked || undefined}>
-          <MoveUp className="h-3.5 w-3.5" /> Ülemine
+          <img src={upperImg} alt="" className="h-4 w-4 object-contain" /> Ülemine
         </button>
         <button type="button" className={seg} onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}>
-          <MoveDown className="h-3.5 w-3.5" /> Alumine
+          <img src={lowerImg} alt="" className="h-4 w-4 object-contain" /> Alumine
         </button>
         <button type="button" className={seg} onClick={guarded(mirrorSelection)} aria-disabled={locked || activeTeeth.length === 0 || undefined}>
           <FlipHorizontal2 className="h-3.5 w-3.5" /> Peegelda
