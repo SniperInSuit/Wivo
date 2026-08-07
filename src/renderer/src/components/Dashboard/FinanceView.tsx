@@ -21,15 +21,30 @@ import { useWorkerRates, useWorkHours, useWorkerPayouts } from '../../hooks/useW
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { calculateFinance, type Coverage } from '../../lib/finance'
 import { employerCost, employerTaxAmount } from '../../lib/earnings'
-import type { Period } from './useDashboardStats'
+import type { Period, DateRange } from './useDashboardStats'
+import { customIsUsable, orderRange } from './useDashboardStats'
 
 interface FinanceViewProps {
   jobs: Job[]
   period: Period
+  /** Only read when `period` is 'custom'. */
+  custom?: DateRange | null
 }
 
-function periodRange(period: Period): { start: string; end: string } {
+/**
+ * The window every figure on this page is measured over.
+ *
+ * "Kõik" gets `null` rather than a sentinel span. It used to return
+ * 1900-01-01 → 2999-12-31, and overheads are charged BY THE MONTH and prorated
+ * across the period — so 2 000 €/kuus rent came out as 13 199 months of it,
+ * 26 397 306 €, and the profit line read minus twenty-six million. The caller
+ * fills the null from the data's own span, which is the only honest answer to
+ * "how long has this lab been running".
+ */
+function periodRange(period: Period, custom?: DateRange | null): { start: string; end: string } | null {
   const now = new Date()
+  // An explicit range is taken exactly as typed, both ends inclusive.
+  if (period === 'custom') return customIsUsable(custom) ? orderRange(custom) : null
   // Always today, never the end of the period: money that has not arrived yet
   // is not revenue, and a month-to-date figure compared against a full month's
   // overheads would read as a loss for the first three weeks of every month.
@@ -38,10 +53,10 @@ function periodRange(period: Period): { start: string; end: string } {
   if (period === 'month')   return { start: format(startOfMonth(now), 'yyyy-MM-dd'), end }
   if (period === 'quarter') return { start: format(startOfQuarter(now), 'yyyy-MM-dd'), end }
   if (period === 'year')    return { start: format(startOfYear(now), 'yyyy-MM-dd'), end }
-  return { start: '1900-01-01', end: '2999-12-31' }
+  return null
 }
 
-export function FinanceView({ jobs, period }: FinanceViewProps) {
+export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
   const { doneStageKey } = usePipeline()
   const { settings } = useSettings()
   const wt = useWorkTypes()
@@ -52,7 +67,19 @@ export function FinanceView({ jobs, period }: FinanceViewProps) {
   const { data: payouts = [] } = useWorkerPayouts()
   const { data: workers = [] } = useClinicProfiles()
 
-  const range = useMemo(() => periodRange(period), [period])
+  // "Kõik" spans whatever the data actually covers: the earliest thing on
+  // record through today. Every other period is a real calendar window.
+  const range = useMemo(() => {
+    const fixed = periodRange(period, custom)
+    if (fixed) return fixed
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const earliest = [
+      ...jobs.map(jobPeriodDate),
+      ...invoices.map(i => i.issue_date ?? ''),
+      ...payments.map(p => p.paid_at ?? ''),
+    ].filter(Boolean).sort()[0]
+    return { start: earliest ?? today, end: today }
+  }, [period, custom?.start, custom?.end, jobs, invoices, payments])
 
   // jobPeriodDate — see types/job.ts. This used to lead with the deadline, so a
   // job due in July and finished in August put its material and labour cost on

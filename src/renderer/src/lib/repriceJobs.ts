@@ -108,10 +108,13 @@ export function planReprice(
       })
     }
 
-    // Each work item is priced on its own. A job still carrying only the old
-    // `too`/`hambad` fields yields one legacy item and is quoted as before.
+    // Each work item is priced on its own, in the material it names. A job
+    // still carrying only the old `too`/`hambad` fields yields one legacy item
+    // with no material of its own and is quoted from `job.materjal` as before.
     const quote = quoteJob({
-      items: jobWorkItems(job).map(i => ({ too: i.too, hambad: i.hambad })),
+      items: jobWorkItems(job).map(i => ({
+        too: i.too, hambad: i.hambad, materjal: i.materjal ?? null,
+      })),
       materjal: job.materjal,
       kiirtoo: job.kiirtoo ?? false,
     }, book)

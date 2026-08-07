@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react'
-import { Layers, Plus, Star, X } from 'lucide-react'
+import { Layers, Plus } from 'lucide-react'
 import { useSettings } from '@/stores/useSettings'
 import { SelectableCard } from '../ui/SelectableCard'
 import { WizardField } from '../ui/WizardField'
 import { WizardSearch } from '../ui/WizardSearch'
-import { FOCUS_RING, WIZARD_HELP, WIZARD_INPUT, WIZARD_BTN } from '../wizardTheme'
+import { WIZARD_INPUT, WIZARD_BTN } from '../wizardTheme'
 import { pushRecentMaterial, readRecentMaterials } from './recentMaterials'
 
 export interface MaterialPickerProps {
-  /** state.materials. Order is meaningful: [0] is the priced one. */
-  value: string[]
-  onChange: (materials: string[]) => void
+  /** The material assigned to ONE piece of work. */
+  value: string | null
+  onChange: (material: string | null) => void
   /** Paints the group border red and is announced through describedBy. */
   invalid?: boolean
   /** id of the error element rendered by the step, for aria-describedby. */
   describedBy?: string
+  /** id of the label this group is named by. */
+  labelledBy?: string
 }
 
 /** '15 € / hammas' or '15–22 € / hammas' — only when the lab actually priced it. */
@@ -25,15 +27,19 @@ function priceLabel(small: number, large: number): string | undefined {
 }
 
 /**
- * The material step's chip grid.
+ * One material for one piece of work.
  *
- * Multi-select, but only materials[0] can ever be priced: quoteJob looks
- * materialPrices up by an EXACT string, so a second material has nowhere to go
- * in the quote. Rather than hide that, the picker names the primary one and
- * says in plain Estonian what happens to the rest — a technician who picks two
- * priced materials and then sees one price would otherwise assume a bug.
+ * Single-select, and that is the fix rather than a restriction: it used to be a
+ * multi-select where only the first entry could ever be priced and the rest
+ * became a line in the description, because `quoteJob` took one job-level
+ * material. A lab that makes the crowns in Ceramic Crown and the bridges in OnX
+ * Tough 2 had no way to say so, and got the whole case quoted at the first
+ * material's rate. Materials now belong to work items, which is where the
+ * difference actually lives — see `materialByType` in shared/wizard/types.
  */
-export function MaterialPicker({ value, onChange, invalid, describedBy }: MaterialPickerProps) {
+export function MaterialPicker({
+  value, onChange, invalid, describedBy, labelledBy,
+}: MaterialPickerProps) {
   const { settings } = useSettings()
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState('')
@@ -50,30 +56,25 @@ export function MaterialPicker({ value, onChange, invalid, describedBy }: Materi
     ]
     // Anything already chosen must stay visible even if it is a free-text
     // material that was never in Seaded, or was deleted from it since.
-    return [...value.filter(m => !recentFirst.includes(m)), ...recentFirst]
+    return value && !recentFirst.includes(value) ? [value, ...recentFirst] : recentFirst
   }, [settings.materjalid, recents, value])
 
   const q = query.trim().toLowerCase()
   const visible = q ? options.filter(m => m.toLowerCase().includes(q)) : options
 
-  const toggle = (material: string) => {
-    if (value.includes(material)) {
-      onChange(value.filter(m => m !== material))
-      return
-    }
+  // Clicking the chosen one clears it, so a wrong pick is one click to undo
+  // rather than a state you cannot leave.
+  const pick = (material: string) => {
+    if (value === material) { onChange(null); return }
     pushRecentMaterial(material)
-    onChange([...value, material])
-  }
-
-  const makePrimary = (material: string) => {
-    onChange([material, ...value.filter(m => m !== material)])
+    onChange(material)
   }
 
   const addCustom = () => {
     const name = custom.trim()
-    if (!name || value.includes(name)) { setCustom(''); return }
+    if (!name) return
     pushRecentMaterial(name)
-    onChange([...value, name])
+    onChange(name)
     setCustom('')
   }
 
@@ -93,21 +94,19 @@ export function MaterialPicker({ value, onChange, invalid, describedBy }: Materi
           of buttons, and WizardField's aria wiring targets a single input. */}
       <div
         role="group"
-        aria-labelledby="wizard-materjal-label"
+        aria-labelledby={labelledBy}
         aria-describedby={describedBy}
         className={`flex flex-wrap gap-3 rounded-xl ${invalid ? 'ring-2 ring-rose-400/60 p-2 -m-2' : ''}`}
       >
         {visible.map(m => {
           const pricing = settings.materialPrices[m]
-          const isPrimary = value[0] === m
           return (
             <SelectableCard
               key={m}
-              selected={value.includes(m)}
-              onToggle={() => toggle(m)}
+              selected={value === m}
+              onToggle={() => pick(m)}
               label={m}
               sublabel={priceLabel(pricing?.small ?? 0, pricing?.large ?? 0)}
-              badge={isPrimary && value.length > 1 ? 'Peamine' : undefined}
               icon={<Layers className="w-5 h-5 text-ink-muted" aria-hidden="true" />}
             />
           )
@@ -118,47 +117,6 @@ export function MaterialPicker({ value, onChange, invalid, describedBy }: Materi
           </p>
         )}
       </div>
-
-      {/* Selected list — the only place the priced/informational split is
-          spelled out, and the only way to change which material is priced. */}
-      {value.length > 0 && (
-        <div className="rounded-xl border border-ink-faint/30 bg-bg-sidebar p-4 space-y-2">
-          <p className="text-base font-semibold text-ink-soft">Valitud materjalid</p>
-          <ul className="space-y-2">
-            {value.map((m, i) => (
-              <li key={m} className="flex flex-wrap items-center gap-2">
-                <span className="text-base text-ink font-medium">{m}</span>
-                {i === 0 ? (
-                  <span className="text-base font-semibold text-accent">Hinna aluseks</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => makePrimary(m)}
-                    className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 text-base font-medium text-ink-soft rounded-lg hover:bg-bg-card ${FOCUS_RING}`}
-                  >
-                    <Star className="w-4 h-4" aria-hidden="true" />
-                    Tee peamiseks
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onChange(value.filter(x => x !== m))}
-                  className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 text-base font-medium text-ink-muted rounded-lg hover:bg-bg-card hover:text-rose-500 ${FOCUS_RING}`}
-                >
-                  <X className="w-4 h-4" aria-hidden="true" />
-                  <span>Eemalda<span className="sr-only"> materjal {m}</span></span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {value.length > 1 && (
-            <p className={WIZARD_HELP}>
-              Hind arvutatakse ainult peamise materjali järgi. Ülejäänud materjalid
-              lisatakse töö kirjeldusse.
-            </p>
-          )}
-        </div>
-      )}
 
       <WizardField
         label="Lisa oma materjal"

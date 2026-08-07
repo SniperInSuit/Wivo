@@ -27,12 +27,22 @@ import type { PriceBook } from './priceBook'
 import { calcProduction, workTypePriceFor } from './priceBook'
 import { toothCount } from './teeth'
 
-/** One piece of work: a type and the teeth it covers. */
+/** One piece of work: a type, the teeth it covers, and what it is made of. */
 export interface QuoteItem {
   /** Free text as typed — resolved against the work-type list, not matched exactly. */
   too: string
   /** FDI numbers, comma separated. */
   hambad: string
+  /**
+   * What THIS piece of work is made of. Falls back to the job-level material.
+   *
+   * `WorkItem.materjal` has existed since work items did, and nothing priced it:
+   * a case of crowns in Ceramic Crown and bridges in OnX Tough 2 was quoted as
+   * if all of it were the first material. Same class of mistake as pricing every
+   * item as one work TYPE, which this file already fixed — the material half was
+   * simply left behind.
+   */
+  materjal?: string | null
 }
 
 export interface QuoteInput {
@@ -100,9 +110,11 @@ function priceItem(
   const typePrice = workTypePriceFor(item.too, book.workTypes, teeth, useDiscount)
   if (typePrice) return { amount: typePrice.amount, source: 'tüüp' }
 
-  // 2. What this material costs across these teeth.
-  if (materjal && teeth > 0) {
-    const p = calcProduction(item.hambad, materjal, book.materialPrices)
+  // 2. What this material costs across these teeth. The item's own material
+  //    first — the job-level one is only the answer for items that name none.
+  const mat = item.materjal?.trim() || materjal
+  if (mat && teeth > 0) {
+    const p = calcProduction(item.hambad, mat, book.materialPrices)
     if (p > 0) return { amount: p, source: 'materjal' }
   }
 

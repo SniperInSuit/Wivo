@@ -35,11 +35,14 @@ export function slugifyWorkType(nimi: string): string {
 }
 
 const byFileName = new Map<string, string>()
+/** base name → the real file name, for pinning a picture onto a work type. */
+const fileByBase = new Map<string, string>()
 for (const [path, url] of Object.entries(modules)) {
   const file = path.split('/').pop() ?? ''
   const base = file.replace(/\.[^.]+$/, '').toLowerCase()
   byFileName.set(file.toLowerCase(), url)
   byFileName.set(base, url)
+  fileByBase.set(base, file)
 }
 
 // Map Estonian work type names → image file base names so slugified lookups work
@@ -75,6 +78,18 @@ export function workTypeImage(nimi: string, explicitFile?: string | null): strin
   }
   const slug = slugifyWorkType(nimi)
   return byFileName.get(slug) ?? byFileName.get(ALIASES[slug] ?? '') ?? null
+}
+
+/**
+ * The FILE NAME a bare work-type name resolves to, or null.
+ *
+ * Exists so a rename can pin the picture it already had. Matching is by name,
+ * so renaming "Implantkroon" to anything else silently dropped its image —
+ * the picture was never a property of the name, it just defaulted from it.
+ */
+export function workTypeImageFile(nimi: string): string | null {
+  const slug = slugifyWorkType(nimi)
+  return fileByBase.get(slug) ?? fileByBase.get(ALIASES[slug] ?? '') ?? null
 }
 
 /** File names actually present, for the settings hint. */

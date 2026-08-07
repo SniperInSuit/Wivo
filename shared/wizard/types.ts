@@ -69,8 +69,18 @@ export interface NewJobState {
   selectedTeeth: Record<string, number[]>
   /** One arch answer shared by every arch-level / appliance type on the job. */
   selectedArch: ArchSelection | null
-  /** materials[0] is the priced material. Extra entries are informational. */
-  materials: string[]
+  /**
+   * key = a jobTypes entry. value = what THAT work is made of.
+   *
+   * Was a flat `materials: string[]` where only the first was priced and the
+   * rest were a note in the description. That could not say the thing a lab
+   * says every day — the crowns are Ceramic Crown and the bridges are OnX
+   * Tough 2 — and it quoted the whole case at the first material's rate.
+   *
+   * A key with no entry falls back to the job-level material (the first one
+   * assigned), which is what a single-material job has always done.
+   */
+  materialByType: Record<string, string>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
   glaze: string | null
@@ -135,12 +145,34 @@ export const typeKeyIndex = (key: string): number => {
 export const makeTypeKey = (nimi: string, index: number): string =>
   index <= 1 ? nimi : `${nimi}§${index}`
 
+/**
+ * Every distinct material on the job, in the order its work types were picked.
+ *
+ * `[0]` is the job-level material: it reaches `job.materjal` and prices any
+ * work item that names none. Derived rather than stored, so the list and the
+ * per-type assignment can never disagree about what this job is made of.
+ */
+export function materialsOf(state: Pick<NewJobState, 'jobTypes' | 'materialByType'>): string[] {
+  const out: string[] = []
+  for (const key of state.jobTypes) {
+    const m = state.materialByType[key]?.trim()
+    if (m && !out.includes(m)) out.push(m)
+  }
+  return out
+}
+
+/** What one work type is made of, falling back to the job's first material. */
+export const materialFor = (
+  state: Pick<NewJobState, 'jobTypes' | 'materialByType'>, key: string
+): string | null =>
+  state.materialByType[key]?.trim() || materialsOf(state)[0] || null
+
 export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState {
   return {
     jobTypes: [],
     selectedTeeth: {},
     selectedArch: null,
-    materials: [],
+    materialByType: {},
     defaultShade: null,
     glaze: null,
     texture: null,

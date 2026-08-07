@@ -24,7 +24,7 @@ const state = (over: Partial<NewJobState> = {}): NewJobState => ({
 const valid = (over: Partial<NewJobState> = {}): NewJobState => state({
   jobTypes: ['Kroon'],
   selectedTeeth: { Kroon: [11] },
-  materials: ['Crown HT'],
+  materialByType: { Kroon: 'Crown HT' },
   patient: { name: 'Mari Maasikas', patientId: null },
   ...over,
 })
@@ -112,8 +112,9 @@ describe('step 3 — materjal', () => {
   })
 
   it('does not accept whitespace as a material', () => {
-    expect(canContinue(3, state({ materials: ['  '] }), TYPES)).toBe(false)
-    expect(canContinue(3, state({ materials: ['Crown HT'] }), TYPES)).toBe(true)
+    const one = { jobTypes: ['Kroon'] }
+    expect(canContinue(3, state({ ...one, materialByType: { Kroon: '  ' } }), TYPES)).toBe(false)
+    expect(canContinue(3, state({ ...one, materialByType: { Kroon: 'Crown HT' } }), TYPES)).toBe(true)
   })
 })
 

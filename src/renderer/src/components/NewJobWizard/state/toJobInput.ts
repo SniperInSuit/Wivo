@@ -19,7 +19,9 @@ import type { JobInput, StageKey } from '@/types/job'
 import type { Quote } from '@shared/pricing/quote'
 import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
-import { composeKirjeldus, hambadToTeeth, jobRules, teethToHambad, todayISO } from '@shared/wizard'
+import {
+  composeKirjeldus, hambadToTeeth, jobRules, materialsOf, teethToHambad, todayISO,
+} from '@shared/wizard'
 import { wizardWorkItems } from './workItems'
 
 export interface ToJobInputContext {
@@ -65,7 +67,9 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     too: workItems[0]?.too ?? null,
     // orNull, not `?? null`: a free-text material entered as whitespace would
     // otherwise be stored as '' and quote against nothing.
-    materjal: orNull(state.materials[0]),
+    // The denormalised job-level material — the FIRST one assigned. Each work
+    // item carries its own, which is what the Edit page and the price read.
+    materjal: orNull(materialsOf(state)[0] ?? ''),
     masina: orNull(state.machine),
     print_id: orNull(state.printId),
     disain_id: orNull(state.designId),

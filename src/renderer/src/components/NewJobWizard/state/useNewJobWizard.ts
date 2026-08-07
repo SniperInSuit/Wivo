@@ -104,7 +104,9 @@ function sanitize(
   const dropped = asked.filter(t => !known.has(t))
 
   merged.selectedTeeth = merged.selectedTeeth ?? {}
-  merged.materials = Array.isArray(merged.materials) ? merged.materials : []
+  merged.materialByType = (merged.materialByType && typeof merged.materialByType === 'object')
+    ? merged.materialByType
+    : {}
   merged.pricing = { ...base.pricing, ...(merged.pricing ?? {}) }
   // A draft is never resumed mid-insert.
   merged.status = 'draft'

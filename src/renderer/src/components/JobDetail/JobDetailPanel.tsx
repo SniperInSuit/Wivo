@@ -137,7 +137,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
       work_items: form.work_items,
       too: form.too,
       hambad: form.hambad,
-    }).map(i => ({ too: i.too, hambad: i.hambad })),
+    }).map(i => ({ too: i.too, hambad: i.hambad, materjal: i.materjal ?? null })),
     materjal: form.materjal,
     kiirtoo: form.kiirtoo,
     useDiscount,
@@ -463,7 +463,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       work_items: form.work_items,
       too: form.too,
       hambad: form.hambad,
-    }).map(i => ({ too: i.too, hambad: i.hambad })),
+    }).map(i => ({ too: i.too, hambad: i.hambad, materjal: i.materjal ?? null })),
     materjal: form.materjal,
     kiirtoo: form.kiirtoo,
     useDiscount,
@@ -1345,7 +1345,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   }}
                   activeId={activeWorkItemId}
                   onActiveChange={setActiveWorkItemId}
-                  looseTeeth={form.hambad}
+                  looseTeeth={form.hambad ?? ''}
                   onLooseTeethChange={v => set('hambad', v)}
                   typeColumns={5}
                 />

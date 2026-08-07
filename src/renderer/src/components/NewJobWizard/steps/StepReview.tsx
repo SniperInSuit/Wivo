@@ -4,6 +4,7 @@ import { AlertCircle } from 'lucide-react'
 import type {
   ArchSelection, WizardPriority, WizardField as WizardFieldKey,
 } from '@shared/wizard'
+import { baseTypeName, materialsOf } from '@shared/wizard'
 import { quoteJob } from '@shared/pricing/quote'
 import type { WizardStepComponent } from '../types'
 import { WizardSummaryRow } from '../ui/WizardSummaryRow'
@@ -214,17 +215,28 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
         </ReviewSection>
 
         {/* ── 3. Materjal ─────────────────────────────────────────────────── */}
+        {/* One row per piece of work, because they can differ. A single-material
+            job still reads as one line, which is the common case. */}
         <ReviewSection title="Materjal" step={3} onEdit={goToStep} errors={pick('materials')}>
-          <WizardSummaryRow
-            label="Materjal"
-            value={state.materials[0] ?? ''}
-            empty={!state.materials[0]}
-          />
-          {state.materials.length > 1 && (
+          {state.jobTypes.length <= 1 ? (
             <WizardSummaryRow
-              label="Lisamaterjalid"
-              value={state.materials.slice(1).join(', ')}
+              label="Materjal"
+              value={materialsOf(state)[0] ?? ''}
+              empty={materialsOf(state).length === 0}
             />
+          ) : (
+            state.jobTypes.map(key => {
+              const assigned = state.materialByType[key]?.trim()
+              const fallback = materialsOf(state)[0]
+              return (
+                <WizardSummaryRow
+                  key={key}
+                  label={baseTypeName(key)}
+                  value={assigned || (fallback ? `${fallback} (esimese järgi)` : '')}
+                  empty={!assigned && !fallback}
+                />
+              )
+            })
           )}
         </ReviewSection>
 

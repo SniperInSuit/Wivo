@@ -800,6 +800,10 @@ function WorkTypePriceCard({ type, onPatch }: {
           ))}
         </div>
 
+        {/* Named, because the card carries two kinds of number and the costs
+            below are NOT added to these. Someone reading "400" next to "300"
+            reasonably assumes the client is billed 700. They are billed 400. */}
+        <p className="text-[10px] font-semibold text-ink-soft">Kliendi hind</p>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-[10px] font-medium text-ink-muted mb-0.5">Täishind</label>
@@ -832,7 +836,11 @@ function WorkTypePriceCard({ type, onPatch }: {
 
         {/* Consumables — a cost, not a price. Never reaches an invoice. */}
         <div className="pt-1.5 border-t border-ink-faint/15">
-          <p className="text-[10px] font-medium text-ink-muted mb-1">Kulud (tarvikud)</p>
+          <p className="text-[10px] font-semibold text-ink-soft">Meie kulu</p>
+          <p className="text-[10px] text-ink-faint mb-1">
+            Tarvikud, mis see töö alati vajab. <strong className="text-ink-muted">Ei lisandu
+            kliendi hinnale</strong> — lahutatakse marginaalist.
+          </p>
           {(type.kulud ?? []).map((k, i) => (
             <div key={`${k.nimi}-${i}`} className="flex items-center gap-1 mb-1">
               <input
@@ -1538,6 +1546,19 @@ export function SettingsPage() {
               columns keep the reprice tool and the type cards together on the
               left instead of scattering five cards across the width. */}
           {activeGroup === 'hinnad' && (
+            <div className="col-span-full space-y-8">
+
+              {/* Two groups, because this tab holds two kinds of number and a
+                  work-type card shows both side by side: 400 € the client pays
+                  and a 300 € abutment that does NOT reach the invoice. Reading
+                  them as one list is how "so we bill 700" happens. */}
+              <div>
+                <h2 className="text-base font-semibold text-ink mb-1">Kliendi hinnad</h2>
+                <p className="text-xs text-ink-faint mb-3 max-w-2xl leading-relaxed">
+                  Mida klient maksab. Töö tüübi hind on peamine; ülejäänu siin on selle
+                  varuvariandid ja kordajad, mis rakenduvad siis, kui tüübil hinda ei ole
+                  või töö on kiirtöö.
+                </p>
             <div className="col-span-full grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4 items-start [&_section]:card [&_section]:p-4">
               <div className="space-y-4 min-w-0">
           {/* Bulk reprice — owner only: it rewrites financial fields on rows that
@@ -1672,6 +1693,81 @@ export function SettingsPage() {
             />
 
 
+
+          {/* Extra services price list */}
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Euro size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Lisateenused (hinnakirja valik)</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3">
+              Teenused mida saab tööle juurde lisada (nt ülesehitus, ajutine kroon, wax-up).
+              Ilmuvad töö vormil valitavate nuppudena.
+            </p>
+            <div className="space-y-1.5 mb-2">
+              {settings.lisateenused.map((svc, idx) => (
+                <div key={svc.id} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={svc.nimi}
+                    onChange={e => {
+                      const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, nimi: e.target.value } : s)
+                      setLisateenused(next)
+                    }}
+                    placeholder="Teenuse nimi"
+                    className="input py-1.5 text-sm flex-1"
+                  />
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={svc.hind}
+                      onChange={e => {
+                        const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, hind: parseFloat(e.target.value) || 0 } : s)
+                        setLisateenused(next)
+                      }}
+                      className="input py-1.5 text-sm pr-7 text-right"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLisateenused(settings.lisateenused.filter((_, i) => i !== idx))}
+                    className="p-1 text-ink-faint hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLisateenused([...settings.lisateenused, { id: crypto.randomUUID(), nimi: '', hind: 0 }])}
+              className="text-xs text-accent font-medium hover:underline"
+            >
+              + Lisa teenus
+            </button>
+          </section>
+
+          {/* Example */}
+          <div className="p-3 bg-bg-sidebar rounded-xl text-xs text-ink-muted leading-relaxed">
+            <span className="font-semibold text-ink block mb-1">Näide autoarvutusest:</span>
+            OnX Tough 2 (väike 45€, suur 60€) + 3 väikest + 1 suur hammas + disain 20€<br />
+            = 3×45 + 1×60 + 20 = <span className="font-semibold text-ink">215.00 €</span>
+          </div>
+          </section>
+              </div>
+            </div>
+              </div>
+
+              <div>
+                <h2 className="text-base font-semibold text-ink mb-1">Kliiniku kulud</h2>
+                <p className="text-xs text-ink-faint mb-3 max-w-2xl leading-relaxed">
+                  Mida töö meile maksma läheb. Ükski number siin ei jõua kliendi arvele —
+                  need lahutatakse marginaalist, et Rahandus näitaks kasumit, mitte käivet.
+                </p>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start [&_section]:card [&_section]:p-4">
           {/* Monthly overheads — what makes the margin a profit */}
           <section>
             <div className="flex items-center gap-2 mb-1">
@@ -1809,71 +1905,9 @@ export function SettingsPage() {
               </p>
             )}
           </section>
-
-          {/* Extra services price list */}
-          <section>
-            <div className="flex items-center gap-2 mb-1">
-              <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Lisateenused (hinnakirja valik)</h3>
-            </div>
-            <p className="text-xs text-ink-faint mb-3">
-              Teenused mida saab tööle juurde lisada (nt ülesehitus, ajutine kroon, wax-up).
-              Ilmuvad töö vormil valitavate nuppudena.
-            </p>
-            <div className="space-y-1.5 mb-2">
-              {settings.lisateenused.map((svc, idx) => (
-                <div key={svc.id} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={svc.nimi}
-                    onChange={e => {
-                      const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, nimi: e.target.value } : s)
-                      setLisateenused(next)
-                    }}
-                    placeholder="Teenuse nimi"
-                    className="input py-1.5 text-sm flex-1"
-                  />
-                  <div className="relative w-24">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={svc.hind}
-                      onChange={e => {
-                        const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, hind: parseFloat(e.target.value) || 0 } : s)
-                        setLisateenused(next)
-                      }}
-                      className="input py-1.5 text-sm pr-7 text-right"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLisateenused(settings.lisateenused.filter((_, i) => i !== idx))}
-                    className="p-1 text-ink-faint hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={12} />
-                  </button>
                 </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setLisateenused([...settings.lisateenused, { id: crypto.randomUUID(), nimi: '', hind: 0 }])}
-              className="text-xs text-accent font-medium hover:underline"
-            >
-              + Lisa teenus
-            </button>
-          </section>
-
-          {/* Example */}
-          <div className="p-3 bg-bg-sidebar rounded-xl text-xs text-ink-muted leading-relaxed">
-            <span className="font-semibold text-ink block mb-1">Näide autoarvutusest:</span>
-            OnX Tough 2 (väike 45€, suur 60€) + 3 väikest + 1 suur hammas + disain 20€<br />
-            = 3×45 + 1×60 + 20 = <span className="font-semibold text-ink">215.00 €</span>
-          </div>
-          </section>
               </div>
+
             </div>
           )}
 

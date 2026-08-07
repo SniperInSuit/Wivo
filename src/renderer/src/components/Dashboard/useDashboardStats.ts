@@ -11,13 +11,27 @@ import type { Patient } from '../../types/patient'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
 
-export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all'
+export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom'
+
+/** 'YYYY-MM-DD' both ends, inclusive. */
+export interface DateRange { start: string; end: string }
 
 // Monday, matching the board, the table filter and the payroll working week.
 const WEEK: { weekStartsOn: 1 } = { weekStartsOn: 1 }
 
-function periodStart(p: Period): Date | null {
+/** A half-typed custom range is not a filter yet — treat it as "all". */
+export function customIsUsable(r: DateRange | null | undefined): r is DateRange {
+  return !!r?.start && !!r?.end
+}
+
+/** Normalised so a range typed end-first still works. */
+export function orderRange(r: DateRange): DateRange {
+  return r.start <= r.end ? r : { start: r.end, end: r.start }
+}
+
+function periodStart(p: Period, custom?: DateRange | null): Date | null {
   const now = new Date()
+  if (p === 'custom') return customIsUsable(custom) ? parseISO(orderRange(custom).start) : null
   if (p === 'week') return startOfWeek(now, WEEK)
   if (p === 'month') return startOfMonth(now)
   if (p === 'quarter') return startOfQuarter(now)
@@ -25,8 +39,9 @@ function periodStart(p: Period): Date | null {
   return null
 }
 
-function periodEnd(p: Period): Date | null {
+function periodEnd(p: Period, custom?: DateRange | null): Date | null {
   const now = new Date()
+  if (p === 'custom') return customIsUsable(custom) ? parseISO(orderRange(custom).end) : null
   if (p === 'week') return endOfWeek(now, WEEK)
   if (p === 'month') return endOfMonth(now)
   if (p === 'quarter') return endOfQuarter(now)
@@ -34,10 +49,10 @@ function periodEnd(p: Period): Date | null {
   return null
 }
 
-function filterByPeriod(jobs: Job[], period: Period): Job[] {
-  const start = periodStart(period)
+function filterByPeriod(jobs: Job[], period: Period, custom?: DateRange | null): Job[] {
+  const start = periodStart(period, custom)
   if (!start) return jobs
-  const end = periodEnd(period)
+  const end = periodEnd(period, custom)
   // jobPeriodDate, not `kuupaev`: this screen used to count by the day a job
   // ARRIVED while Rahandus and Töötasud counted by the day it was FINISHED, so
   // the same period button gave two different answers and neither said which.
@@ -68,7 +83,9 @@ export function useDashboardStats(
   jobs: Job[],
   period: Period,
   visits: Visit[] = [],
-  patients: Patient[] = []
+  patients: Patient[] = [],
+  /** Only read when `period` is 'custom'. */
+  custom?: DateRange | null
 ) {
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
@@ -78,7 +95,7 @@ export function useDashboardStats(
     const jobTotal = (j: Job) =>
       (j.hind ?? 0) + (j.revisions ?? []).reduce((s, r) => s + (r.price ?? 0), 0)
 
-    const filtered = filterByPeriod(jobs, period)
+    const filtered = filterByPeriod(jobs, period, custom)
     const completed = filtered.filter((j) => j.status === doneStageKey)
     const inProduction = filtered.filter((j) => j.status !== doneStageKey)
     const now = new Date()
@@ -208,7 +225,7 @@ export function useDashboardStats(
       }))
 
     // ─── Visits ───────────────────────────────────────────────────────────
-    const start = periodStart(period)
+    const start = periodStart(period, custom)
     const visitsIn = start
       ? visits.filter(v => v.algus && !isBefore(parseISO(v.algus), start))
       : visits
@@ -432,5 +449,5 @@ export function useDashboardStats(
   // on it would recompute every stat on every render. The list identity only
   // changes when a work type is actually edited.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, period, stages, doneStageKey, visits, patients, wt.types])
+  }, [jobs, period, custom?.start, custom?.end, stages, doneStageKey, visits, patients, wt.types])
 }

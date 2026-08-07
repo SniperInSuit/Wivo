@@ -5,7 +5,9 @@ import {
 } from 'recharts'
 import { TrendingUp, Users, Clock, AlertCircle, Euro, CheckCircle, Package, Layers, Zap, Cpu, Timer, CalendarClock, UserX, UserPlus, Stethoscope, Repeat } from 'lucide-react'
 import type { Job } from '../../types/job'
-import { type Period, useDashboardStats } from './useDashboardStats'
+import {
+  type Period, type DateRange, useDashboardStats, customIsUsable,
+} from './useDashboardStats'
 import { useVisits } from '../../hooks/useVisits'
 import { usePatients } from '../../hooks/usePatients'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
@@ -91,7 +93,8 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'month', label: 'See kuu' },
   { key: 'quarter', label: 'See kvartal' },
   { key: 'year', label: 'See aasta' },
-  { key: 'all', label: 'Kõik' }
+  { key: 'all', label: 'Kõik' },
+  { key: 'custom', label: 'Vahemik' },
 ]
 
 interface DashboardProps {
@@ -100,12 +103,15 @@ interface DashboardProps {
 
 export function Dashboard({ jobs }: DashboardProps) {
   const [period, setPeriod] = useState<Period>('month')
+  // Both ends empty until the user types them. An incomplete range is not a
+  // filter, so the stats fall back to "all" rather than showing nothing.
+  const [custom, setCustom] = useState<DateRange>({ start: '', end: '' })
   const [tab, setTab] = useState<'tootmine' | 'rahandus'>('tootmine')
   // Visits and patients may not exist yet (migrations 001/007) — the hook takes
   // empty arrays and simply reports zeroes rather than breaking the page.
   const { data: visits = [] } = useVisits()
   const { data: patients = [] } = usePatients()
-  const stats = useDashboardStats(jobs, period, visits, patients)
+  const stats = useDashboardStats(jobs, period, visits, patients, custom)
   const wt = useWorkTypes()
 
   const paidPct =
@@ -151,9 +157,36 @@ export function Dashboard({ jobs }: DashboardProps) {
             {p.label}
           </button>
         ))}
+
+        {/* Shown only once "Vahemik" is chosen — two date fields sitting there
+            permanently would read as filters that are already applied. */}
+        {period === 'custom' && (
+          <div className="flex items-center gap-2 ml-1">
+            <input
+              type="date"
+              value={custom.start}
+              onChange={e => setCustom(c => ({ ...c, start: e.target.value }))}
+              aria-label="Alates"
+              className="input py-1.5 text-sm w-auto"
+            />
+            <span className="text-sm text-ink-faint">–</span>
+            <input
+              type="date"
+              value={custom.end}
+              onChange={e => setCustom(c => ({ ...c, end: e.target.value }))}
+              aria-label="Kuni"
+              className="input py-1.5 text-sm w-auto"
+            />
+            {!customIsUsable(custom) && (
+              <span className="text-xs text-ink-faint">
+                Vali mõlemad kuupäevad — seni näidatakse kõiki töid.
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} />}
+      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} custom={custom} />}
 
       {tab === 'tootmine' && (<>
       {/* ─── Summary cards ─── */}

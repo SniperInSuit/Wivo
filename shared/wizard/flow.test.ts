@@ -17,12 +17,22 @@ import { jobRules } from './workTypeRules'
 const TYPES = DEFAULT_WORK_TYPES
 
 /** A state that answers everything steps 3-5 ask, so tests can focus on 1-2. */
-const filled = (patch: Partial<NewJobState>): NewJobState => ({
-  ...createEmptyNewJobState({ date: '2026-01-10' }),
-  materials: ['Zirkoon'],
-  patient: { name: 'Mari Maasikas', patientId: null },
-  ...patch,
-})
+const filled = (patch: Partial<NewJobState>): NewJobState => {
+  const base = {
+    ...createEmptyNewJobState({ date: '2026-01-10' }),
+    patient: { name: 'Mari Maasikas', patientId: null },
+    ...patch,
+  }
+  // Materials are per work type now, so the fixture has to answer for whatever
+  // types the test happens to select — a fixed key would leave step 3 blocking
+  // tests that are about steps 1 and 2.
+  return {
+    ...base,
+    materialByType: Object.keys(base.materialByType).length > 0
+      ? base.materialByType
+      : Object.fromEntries(base.jobTypes.map(k => [k, 'Zirkoon'])),
+  }
+}
 
 describe('a job can always be finished', () => {
   it('crown on one tooth', () => {

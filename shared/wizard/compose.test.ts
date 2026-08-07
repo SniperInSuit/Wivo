@@ -22,14 +22,15 @@ describe('composeKirjeldus', () => {
   it('keeps the fixed line order', () => {
     const out = composeKirjeldus(state({
       description: 'Ülemine esihammas',
-      materials: ['Crown HT', 'Ceramic Crown', 'OnX Tough 2'],
+      jobTypes: ['Kroon', 'Sild'],
+      materialByType: { Kroon: 'Crown HT', Sild: 'Ceramic Crown' },
       glaze: 'Matt',
       texture: 'Kerge',
       notes: 'Patsient tuleb reedel',
     }))
     expect(out).toBe([
       'Ülemine esihammas',
-      'Lisamaterjalid: Ceramic Crown, OnX Tough 2',
+      'Materjalid: Kroon — Crown HT, Sild — Ceramic Crown',
       'Glasuur: Matt',
       'Tekstuur: Kerge',
       'Märkus: Patsient tuleb reedel',
@@ -40,8 +41,11 @@ describe('composeKirjeldus', () => {
     expect(composeKirjeldus(state({ glaze: 'Matt' }))).toBe('Glasuur: Matt')
   })
 
-  it('never repeats the priced material', () => {
-    expect(composeKirjeldus(state({ materials: ['Crown HT'] }))).toBeNull()
+  it('says nothing when the whole job is one material', () => {
+    expect(composeKirjeldus(state({
+      jobTypes: ['Kroon', 'Sild'],
+      materialByType: { Kroon: 'Crown HT', Sild: 'Crown HT' },
+    }))).toBeNull()
   })
 
   it('trims what the user typed', () => {

@@ -11,7 +11,10 @@ import type { WorkItem } from '@/types/job'
 import type { QuoteInput } from '@shared/pricing/quote'
 import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
-import { archTeeth, archesOf, teethToHambad, workTypeRules, baseTypeName } from '@shared/wizard'
+import {
+  archTeeth, archesOf, teethToHambad, workTypeRules, baseTypeName,
+  materialFor, materialsOf,
+} from '@shared/wizard'
 
 /**
  * ONE work item per selected type, in selection order.
@@ -25,18 +28,24 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
   return state.jobTypes.flatMap(key => {
     const nimi = baseTypeName(key)
     const rules = workTypeRules(nimi, types)
+    // What THIS work is made of. Carried onto the item so the crowns can be
+    // Ceramic Crown while the bridges are OnX Tough 2 — both in the price and
+    // on the Edit page afterwards.
+    const materjal = materialFor(state, key)
+    const mat = materjal ? { materjal } : {}
 
     // An arch type on BOTH jaws is two pieces of work, so it is two items — see
     // archesOf() for why that is a pricing rule and not a display one. As one
     // item it was a single row carrying 32 teeth, and a per-job-priced All-on-X
     // came out at the single-arch price whichever answer the user gave.
     if (rules.toothMode === 'arch') {
-      if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '' }]
+      if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '', ...mat }]
       const arches = archesOf(state.selectedArch)
       return arches.map(arch => ({
         id: arches.length > 1 ? `wiz:${key}:${arch}` : `wiz:${key}`,
         too: nimi,
         hambad: teethToHambad(archTeeth(arch)),
+        ...mat,
       }))
     }
 
@@ -49,6 +58,7 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
       id: `wiz:${key}`,
       too: nimi,
       hambad,
+      ...mat,
       ...(rules.isBridge ? { bridge: true } : {}),
     }]
   })
@@ -66,10 +76,12 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
  */
 export function wizardQuoteInput(state: NewJobState, types: readonly WorkType[]): QuoteInput {
   return {
-    items: wizardWorkItems(state, types).map(i => ({ too: i.too, hambad: i.hambad })),
-    // Only materials[0] can be priced: quoteJob looks materialPrices up by an
-    // exact single string. The material step says so in plain Estonian.
-    materjal: state.materials[0] ?? null,
+    // materjal travels with the item: quoteJob prices each one by what it is
+    // actually made of, and only falls back to the job-level material below.
+    items: wizardWorkItems(state, types).map(i => ({
+      too: i.too, hambad: i.hambad, materjal: i.materjal ?? null,
+    })),
+    materjal: materialsOf(state)[0] ?? null,
     kiirtoo: state.priority === 'kiirtoo',
     useDiscount: state.pricing.useDiscount,
   }

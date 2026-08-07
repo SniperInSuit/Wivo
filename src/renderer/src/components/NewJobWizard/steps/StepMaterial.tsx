@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { Eraser, Info } from 'lucide-react'
+import { baseTypeName } from '@shared/wizard'
+import { useWorkTypes } from '@/stores/useSettings'
 import type { WizardStepComponent } from '../types'
 import { fieldErrors } from '../types'
 import { MaterialPicker } from '../material/MaterialPicker'
 import { WizardShadePicker } from '../material/WizardShadePicker'
 import { SelectableCard } from '../ui/SelectableCard'
-import { WIZARD_BTN, WIZARD_ERROR, WIZARD_HELP } from '../wizardTheme'
+import { FOCUS_RING, WIZARD_BTN, WIZARD_ERROR, WIZARD_HELP } from '../wizardTheme'
 
 // The contract fixes `glaze` and `texture` as free strings but names no option
 // list, so these are the smallest set a finisher actually asks for. They stay
@@ -64,6 +67,20 @@ function OptionRow({ label, options, value, onChange }: {
  */
 export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
   const materialError = showErrors ? fieldErrors(errors, 'materials')[0] : undefined
+  const { hex } = useWorkTypes()
+
+  // Which piece of work the picker below assigns to. Defaults to the first, so
+  // a single-type job behaves exactly as it did — pick a material, continue.
+  const [activeKey, setActiveKey] = useState(state.jobTypes[0] ?? '')
+  const active = state.jobTypes.includes(activeKey) ? activeKey : state.jobTypes[0] ?? ''
+  const multi = state.jobTypes.length > 1
+
+  const assign = (material: string | null) => {
+    const next = { ...state.materialByType }
+    if (material) next[active] = material
+    else delete next[active]
+    patch({ materialByType: next })
+  }
 
   return (
     <div className="space-y-10">
@@ -71,14 +88,62 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <SectionHeading
           id="wizard-materjal-label"
           title="Materjal"
-          help="Vali materjal, millest töö valmistatakse. Vajadusel võid lisada mitu."
+          help={multi
+            ? 'Iga tööosa võib olla eri materjalist. Vali ülalt tööosa ja siis selle materjal.'
+            : 'Vali materjal, millest töö valmistatakse.'}
         />
+
+        {/* One row per piece of work. Without it the wizard could only say what
+            the WHOLE case was made of, so crowns in one material and bridges in
+            another was unsayable — and priced at the first material's rate. */}
+        {multi && (
+          <div role="tablist" aria-label="Tööosad" className="flex flex-wrap gap-2 mb-4">
+            {state.jobTypes.map(key => {
+              const nimi = baseTypeName(key)
+              const assigned = state.materialByType[key]?.trim()
+              const isActive = key === active
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveKey(key)}
+                  className={`flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl border-2 text-base transition-colors ${FOCUS_RING} ${
+                    isActive
+                      ? 'border-accent bg-accent/10 text-ink font-semibold'
+                      : 'border-ink-faint/30 bg-bg-card text-ink-soft hover:border-accent/40'
+                  }`}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ background: hex(nimi) }}
+                    aria-hidden="true"
+                  />
+                  {nimi}
+                  <span className={assigned ? 'text-accent font-medium' : 'text-ink-faint'}>
+                    {assigned ?? 'materjal valimata'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         <MaterialPicker
-          value={state.materials}
-          onChange={materials => patch({ materials })}
+          value={state.materialByType[active] ?? null}
+          onChange={assign}
           invalid={!!materialError}
+          labelledBy="wizard-materjal-label"
           describedBy={materialError ? 'wizard-materjal-error' : undefined}
         />
+        {/* Said plainly rather than left to be discovered on the price page:
+            unassigned work is quoted with the job's first material. */}
+        {multi && state.jobTypes.some(k => !state.materialByType[k]?.trim()) && (
+          <p className={WIZARD_HELP}>
+            Määramata tööosad hinnastatakse esimese valitud materjali järgi.
+          </p>
+        )}
         {materialError && (
           <p id="wizard-materjal-error" className={WIZARD_ERROR} role="alert">
             {materialError.message}

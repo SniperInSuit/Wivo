@@ -15,6 +15,7 @@
 import type { WorkType } from '../pricing/workTypes'
 import { checkConsecutive } from './archRules'
 import type { NewJobState, StepId } from './types'
+import { materialsOf } from './types'
 import { jobRules } from './workTypeRules'
 
 export type WizardField =
@@ -112,7 +113,11 @@ export function validateStep(
   }
 
   if (step === 3) {
-    if (state.materials.filter(m => m.trim()).length === 0) {
+    // At least one, not one PER TYPE. Unassigned work falls back to the job's
+    // first material, which is how a single-material case has always behaved —
+    // demanding an answer per row would make the common job harder to enter
+    // than it was before per-type materials existed.
+    if (materialsOf(state).length === 0) {
       out.push(err('materials', 'Vali materjal või lisa oma materjal.'))
     }
     return out

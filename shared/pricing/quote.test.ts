@@ -19,11 +19,58 @@ const TYPES: WorkType[] = [
 
 const book = (over: Partial<PriceBook> = {}): PriceBook => ({
   workTypes: TYPES,
-  materialPrices: { 'OnX Tough 2': { small: 20, large: 30 } },
+  materialPrices: {
+    'OnX Tough 2': { small: 20, large: 30 },
+    'Ceramic Crown': { small: 50, large: 70 },
+  },
   hambaHind: 15,
   kiirtooKordaja: 2,
   designFee: 0,
   ...over,
+})
+
+describe('a work item is made of its OWN material', () => {
+  // WorkItem.materjal existed long before anything priced it, so a case of
+  // crowns in one material and bridges in another was quoted entirely at the
+  // first material's rate.
+  it('prices each item by the material it names', () => {
+    const q = quoteJob({
+      items: [
+        { too: 'Laminaat', hambad: '11,12', materjal: 'Ceramic Crown' },
+        { too: 'Laminaat', hambad: '16', materjal: 'OnX Tough 2' },
+      ],
+    }, book())
+    // 11 and 12 are small (2 x 50), 16 is large (1 x 30).
+    expect(q.production).toBe(130)
+  })
+
+  it('falls back to the job-level material for an item that names none', () => {
+    const q = quoteJob({
+      items: [
+        { too: 'Laminaat', hambad: '11', materjal: 'Ceramic Crown' },
+        { too: 'Laminaat', hambad: '12' },
+      ],
+      materjal: 'OnX Tough 2',
+    }, book())
+    expect(q.production).toBe(70)   // 50 + 20
+  })
+
+  it('does not let a material override a configured work-type price', () => {
+    // The type price wins first, exactly as before — otherwise naming a
+    // material on an All-on-X would quietly reprice the whole arch.
+    const q = quoteJob({
+      items: [{ too: 'Kroon', hambad: '11,12', materjal: 'Ceramic Crown' }],
+    }, book())
+    expect(q.production).toBe(400)
+  })
+
+  it('reports the item as unpriced when its own material has no price', () => {
+    const q = quoteJob({
+      items: [{ too: 'Laminaat', hambad: '11', materjal: 'Tundmatu vaik' }],
+    }, book({ hambaHind: 0 }))
+    expect(q.production).toBe(0)
+    expect(q.unpriced).toHaveLength(1)
+  })
 })
 
 describe('single item — the legacy shape must be quoted exactly as before', () => {

@@ -12,6 +12,7 @@
  * become first-class data, that is a migration, not a change here.
  */
 import type { NewJobState } from './types'
+import { baseTypeName } from './types'
 
 export function composeKirjeldus(state: NewJobState): string | null {
   const lines: string[] = []
@@ -19,10 +20,16 @@ export function composeKirjeldus(state: NewJobState): string | null {
   const description = state.description.trim()
   if (description) lines.push(description)
 
-  // materials[0] is the priced one and reaches job.materjal; the rest would
-  // otherwise vanish, because quoteJob looks prices up by an exact single name.
-  const extraMaterials = state.materials.slice(1).map(m => m.trim()).filter(Boolean)
-  if (extraMaterials.length > 0) lines.push(`Lisamaterjalid: ${extraMaterials.join(', ')}`)
+  // Only the first material reaches `job.materjal`. The rest live on their own
+  // work items and are visible there, but a printed job sheet reads the
+  // description — so they are named here too, next to the work they belong to.
+  const perType = state.jobTypes
+    .map(key => ({ key, m: state.materialByType[key]?.trim() }))
+    .filter((x): x is { key: string; m: string } => !!x.m)
+  const distinct = new Set(perType.map(x => x.m))
+  if (distinct.size > 1) {
+    lines.push(`Materjalid: ${perType.map(x => `${baseTypeName(x.key)} — ${x.m}`).join(', ')}`)
+  }
 
   const glaze = state.glaze?.trim()
   if (glaze) lines.push(`Glasuur: ${glaze}`)

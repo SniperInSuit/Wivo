@@ -20,6 +20,7 @@ export {
   type MaterialPricing, type FixedCost, type ExtraService, type Overhead,
   type PriceBook, type WorkTypePriceResult
 } from '@shared/pricing/priceBook'
+import { workTypeImageFile } from '../lib/workTypeImages'
 import { workTypePriceFor } from '@shared/pricing/priceBook'
 import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } from '@shared/pricing/priceBook'
 
@@ -603,7 +604,20 @@ export function useSettings() {
       tooTuubid: prev.tooTuubid.map(t => {
         if (t.nimi !== nimi) return t
         const next = { ...t, ...patch }
-        return { ...next, nimi: next.nimi.trim() || t.nimi }
+        const renamedTo = next.nimi.trim() || t.nimi
+        // Pin the picture BEFORE the name stops resolving to it. Images match
+        // on the slugified name, so renaming "Implantkroon" to anything else
+        // silently dropped its picture — the picture was never a property of
+        // the name, it only defaulted from it. Only when the type has no
+        // explicit file already, and only on an actual rename.
+        const pinned = !next.pilt && renamedTo !== t.nimi
+          ? workTypeImageFile(t.nimi)
+          : null
+        return {
+          ...next,
+          nimi: renamedTo,
+          ...(pinned ? { pilt: pinned } : {}),
+        }
       })
     }), ['work_types'])
   }, [setSettings])
