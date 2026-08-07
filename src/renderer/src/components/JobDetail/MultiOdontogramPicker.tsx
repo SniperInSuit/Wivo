@@ -88,6 +88,23 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
   const legend = [...legendMap.values()]
   const totalTeeth = toothOwner.size
 
+  // Which tooth has a bridge connection to its RIGHT neighbor in display order
+  function bridgeToRight(num: number, archNums: number[]): string | null {
+    const displayOrder = order(archNums)
+    const idx = displayOrder.indexOf(num)
+    if (idx < 0 || idx >= displayOrder.length - 1) return null
+    const nextNum = displayOrder[idx + 1]
+    // Both must belong to the same bridge item
+    for (const item of items) {
+      if (!item.bridge) continue
+      const teeth = new Set(item.hambad.split(',').map(t => t.trim()))
+      if (teeth.has(String(num)) && teeth.has(String(nextNum))) {
+        return colorMap[item.too] ?? '#94A3B8'
+      }
+    }
+    return null
+  }
+
   function handleClick(num: number) {
     if (disabled || !activeItemId) return
     onToggleTooth(num)
@@ -97,14 +114,15 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
   const orderIdx = (i: number) => mirror ? 15 - i : i
 
   // ── Tooth button ──────────────────────────────────────────────────────────
-  function Tooth({ num, yOffset, xNudge, rotation, isUpper }: {
-    num: number; yOffset: number; xNudge: number; rotation: number; isUpper: boolean
+  function Tooth({ num, yOffset, xNudge, rotation, isUpper, archNums }: {
+    num: number; yOffset: number; xNudge: number; rotation: number; isUpper: boolean; archNums: number[]
   }) {
     const s = String(num)
     const owner = toothOwner.get(s)
     const isOwned = !!owner
     const isActive = owner?.itemId === activeItemId
     const canClick = !disabled && !!activeItemId
+    const bridgeColor = bridgeToRight(num, archNums)
 
     return (
       <motion.button
@@ -135,6 +153,21 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
         <span className="text-[11px] font-bold" style={{ transform: `rotate(${-rotation}deg)` }}>
           {num}
         </span>
+        {/* Bridge connector — bar extending to the right neighbor */}
+        {bridgeColor && (
+          <span
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              backgroundColor: bridgeColor,
+              width: 10,
+              height: 4,
+              right: -7,
+              top: '50%',
+              marginTop: -2,
+              zIndex: 1,
+            }}
+          />
+        )}
       </motion.button>
     )
   }
@@ -178,6 +211,7 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
                   xNudge={X_NUDGE[origIdx]}
                   rotation={ROTATIONS[origIdx] * (mirror ? -1 : 1)}
                   isUpper
+                  archNums={UPPER}
                 />
               )
             })}
@@ -220,6 +254,7 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
                   xNudge={X_NUDGE[origIdx]}
                   rotation={-ROTATIONS[origIdx] * (mirror ? -1 : 1)}
                   isUpper={false}
+                  archNums={LOWER}
                 />
               )
             })}
