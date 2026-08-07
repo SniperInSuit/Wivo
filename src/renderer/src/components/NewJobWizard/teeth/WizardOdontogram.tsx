@@ -103,8 +103,7 @@ export function WizardOdontogram({
   return (
     <div className="space-y-3">
       <div
-        className="relative rounded-2xl p-4 pt-3"
-        style={{ background: WIZARD_BLUSH }}
+        className="relative rounded-2xl p-2 pt-1"
       >
         {/* The legend belongs ON the chart, where the colours it explains are.
             Fixed light colours and not tokens on purpose: this sits on the
