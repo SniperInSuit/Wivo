@@ -316,6 +316,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                 value={form.assigned_to}
                 onChange={v => set('assigned_to', v)}
                 emptyLabel="Sama mis tööl"
+                showNone
                 dark
               />
               <WorkerSelect
@@ -323,6 +324,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                 value={form.designed_by}
                 onChange={v => set('designed_by', v)}
                 emptyLabel="Sama mis tööl"
+                showNone
                 dark
               />
             </div>

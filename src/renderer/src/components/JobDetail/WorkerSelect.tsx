@@ -20,7 +20,10 @@ export interface WorkerSelectProps {
   dark?: boolean
 }
 
-export function WorkerSelect({ label, value, onChange, emptyLabel = '—', dark }: WorkerSelectProps) {
+/** Sentinel value meaning "explicitly nobody" — distinct from null which means "inherit from job". */
+export const WORKER_NONE = '__none__'
+
+export function WorkerSelect({ label, value, onChange, emptyLabel = '—', dark, showNone }: WorkerSelectProps & { showNone?: boolean }) {
   const { data: workers = [] } = useClinicProfiles()
   return (
     <div>
@@ -33,6 +36,7 @@ export function WorkerSelect({ label, value, onChange, emptyLabel = '—', dark 
         className={`input ${dark ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-accent' : ''}`}
       >
         <option value="">{emptyLabel}</option>
+        {showNone && <option value={WORKER_NONE}>Tühi (ei tasustata)</option>}
         {workers.map(w => (
           <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
         ))}
