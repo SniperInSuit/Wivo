@@ -1,4 +1,4 @@
-import { differenceInHours, differenceInDays, format, isPast, isToday } from 'date-fns'
+import { differenceInHours, differenceInCalendarDays, format, isPast, isToday, isTomorrow } from 'date-fns'
 import { Clock, AlertTriangle } from 'lucide-react'
 
 interface DeadlineChipProps {
@@ -11,11 +11,12 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
   if (!deadline) return null
 
   const date = new Date(deadline)
-  const hoursLeft = differenceInHours(date, new Date())
-  const daysLeft = differenceInDays(date, new Date())
+  const now = new Date()
+  const hoursLeft = differenceInHours(date, now)
+  const calDays = differenceInCalendarDays(date, now)
   const overdue = !isDone && isPast(date)
   const urgent = !isDone && !overdue && hoursLeft <= 24
-  const warning = !isDone && !overdue && daysLeft <= 3
+  const warning = !isDone && !overdue && calDays <= 3
 
   const colorClass = overdue
     ? 'bg-red-100 text-red-700 border border-red-200'
@@ -34,10 +35,10 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
       ? format(date, 'dd.MM')
       : isToday(date)
         ? `Täna ${time}`
-        : daysLeft === 1
+        : isTomorrow(date)
           ? `Homme ${time}`
-          : daysLeft <= 7
-            ? `${daysLeft}p ${time}`
+          : calDays <= 7
+            ? `${calDays}p ${time}`
             : `${format(date, 'dd.MM')} ${time}`
 
   if (compact) {
