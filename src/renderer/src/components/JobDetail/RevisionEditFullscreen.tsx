@@ -16,7 +16,9 @@ import { useSettings, countSmallTeeth, countLargeTeeth } from '../../stores/useS
 import { stageChipStyle } from '../../config/pipeline'
 import { MACHINE_OPTIONS } from '../../types/job'
 import { jobMaterialCost } from '../../lib/finance'
-import { workTypeConsumables } from '../../config/workTypes'
+import { pickRateFor, type WorkerRate } from '../../lib/earnings'
+import { useWorkerRates } from '../../hooks/useWorkerPay'
+import { resolveWorkType } from '../../config/workTypes'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -29,6 +31,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const { stages } = usePipeline()
   const { settings } = useSettings()
   const wt = settings.tooTuubid
+  const { data: allRates = [] } = useWorkerRates()
 
   const [form, setForm] = useState({
     note: revision.note,
@@ -68,13 +71,47 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const allHambad = form.work_items.length > 0
     ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
     : form.hambad
-  // Auto cost: material + labour estimate + extra costs
+  // Auto cost: material + actual worker rate + extra costs
   const matCost = jobMaterialCost(
     { materjal: form.materjal, hambad: allHambad, masina: null },
     settings.materialCosts, settings.materialPrices
   ) ?? 0
   const teethCount = allHambad.split(',').filter(t => t.trim()).length
-  const labourCost = teethCount * settings.muudatusHambaHind
+  const today = new Date().toISOString().slice(0, 10)
+  const types = wt
+
+  // Technician labour from their actual pay rules
+  const techId = form.assigned_to
+  const techRates = techId ? allRates.filter(r => r.profile_id === techId) : []
+  const primaryToo = form.work_items[0]?.too ?? null
+  const techRate = techId ? pickRateFor(techRates, primaryToo, today, types, 'muudatus')
+    ?? pickRateFor(techRates, primaryToo, today, types, 'too')
+    : null
+  let techCost = 0
+  let techLabel = ''
+  if (techRate) {
+    switch (techRate.kind) {
+      case 'hammas': techCost = teethCount * techRate.amount; techLabel = `${teethCount} × ${techRate.amount} €/hammas`; break
+      case 'too':    techCost = techRate.amount; techLabel = `${techRate.amount} €/töö`; break
+      default:       break
+    }
+  }
+
+  // Designer labour
+  const designId = form.designed_by
+  const designRates = designId ? allRates.filter(r => r.profile_id === designId) : []
+  const designRate = designId ? pickRateFor(designRates, primaryToo, today, types, 'disain') : null
+  let designCost = 0
+  let designLabel = ''
+  if (designRate) {
+    switch (designRate.kind) {
+      case 'hammas': designCost = teethCount * designRate.amount; designLabel = `${teethCount} × ${designRate.amount} €/hammas`; break
+      case 'too':    designCost = designRate.amount; designLabel = `${designRate.amount} €/töö`; break
+      default:       break
+    }
+  }
+
+  const labourCost = form.taspidev ? Math.round((techCost + designCost) * 100) / 100 : 0
   const extraTotal = form.extra_costs.reduce((s, c) => s + (c.summa || 0), 0)
   const autoPrice = Math.round((matCost + labourCost + extraTotal) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
 
@@ -404,10 +441,14 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
                 {autoPrice > 0 ? `${autoPrice.toFixed(2)} €` : '—'}
               </p>
               <div className="mt-1 space-y-0.5 text-[10px] text-slate-500">
-                {labourCost > 0 && <p>Tööjõud: {teethCount} × {settings.muudatusHambaHind} € = {labourCost.toFixed(2)} €</p>}
+                {techCost > 0 && <p>Tehnik: {techLabel} = {techCost.toFixed(2)} €</p>}
+                {designCost > 0 && <p>Disain: {designLabel} = {designCost.toFixed(2)} €</p>}
+                {!techId && !form.taspidev && <p className="text-slate-600">Tehnik määramata</p>}
+                {techId && techCost === 0 && form.taspidev && <p className="text-slate-600">Tehnikul puudub muudatuse reegel</p>}
                 {matCost > 0 && <p>Materjal: {matCost.toFixed(2)} €</p>}
                 {extraTotal > 0 && <p>Lisakulud: {extraTotal.toFixed(2)} €</p>}
                 {form.kiirtoo && <p>× {settings.kiirtooKordaja} (kiirtöö)</p>}
+                {!form.taspidev && <p className="text-amber-400">Tasustamata — tööjõud ei arvestata</p>}
               </div>
             </div>
 
