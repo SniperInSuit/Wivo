@@ -22,6 +22,7 @@ export interface Revision {
   valmis_kuupaev?: string
   print_id?: string   // SprintRay job number for this revision's print
   disain_id?: string  // Design file reference for this revision
+  extra_cost?: number // Additional cost (e.g. replacement screw) — not auto-calculated
   // Why the revision was needed. A remake often has more than one cause — the
   // shade was wrong AND the fit was poor — and forcing a single choice made the
   // reason statistics quietly lossy.

@@ -45,6 +45,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     mudel: revision.mudel ?? false,
     taspidev: revision.taspidev !== false,  // default true (billable)
     purunenud_hambad: revision.purunenud_hambad ?? '',
+    extra_cost: revision.extra_cost != null ? String(revision.extra_cost) : '',
     print_id: revision.print_id ?? '',
     disain_id: revision.disain_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
@@ -65,17 +66,14 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const allHambad = form.work_items.length > 0
     ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
     : form.hambad
+  // Auto cost: material only (consumables like screws are reused from original job)
+  // Extra cost is for exceptional cases (e.g. broken screw needs replacement)
   const matCost = jobMaterialCost(
     { materjal: form.materjal, hambad: allHambad, masina: null },
     settings.materialCosts, settings.materialPrices
   ) ?? 0
-  const consCost = form.work_items.length > 0
-    ? form.work_items.reduce((s, i) => {
-        const tc = i.hambad.split(',').filter(t => t.trim()).length
-        return s + workTypeConsumables(i.too, wt, tc).total
-      }, 0)
-    : 0
-  const autoPrice = Math.round((matCost + consCost) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
+  const extraCost = parseFloat(form.extra_cost) || 0
+  const autoPrice = Math.round((matCost + extraCost) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
 
   function handleSubmit(e?: React.FormEvent | React.MouseEvent) {
     e?.preventDefault()
@@ -96,6 +94,7 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
         : form.materjal) || undefined,
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
       price: autoPrice > 0 ? autoPrice : undefined,
+      extra_cost: extraCost > 0 ? extraCost : undefined,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
       taspidev: form.taspidev ? undefined : false,
@@ -351,13 +350,22 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               <ShadePicker value={form.varv} onChange={v => set('varv', v)} />
             </div>
 
-            {/* Print ID */}
-            <div>
-              <label className="label text-slate-400">Print ID</label>
-              <input type="text" value={form.print_id} onChange={e => set('print_id', e.target.value)}
-                placeholder="SprintRay töö nr…"
-                className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
-              />
+            {/* Print ID + Disain ID */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label text-slate-400">Print ID</label>
+                <input type="text" value={form.print_id} onChange={e => set('print_id', e.target.value)}
+                  placeholder="SprintRay töö nr…"
+                  className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
+                />
+              </div>
+              <div>
+                <label className="label text-slate-400">Disain ID</label>
+                <input type="text" value={form.disain_id ?? ''} onChange={e => set('disain_id', e.target.value)}
+                  placeholder="Disaini faili viide…"
+                  className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
+                />
+              </div>
             </div>
 
             {/* Deadline */}
@@ -384,30 +392,34 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               </div>
             </div>
 
-            {/* Auto-computed cost */}
+            {/* Auto-computed cost + extra */}
             <div>
               <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> Ümbertegemise kulu</label>
               <p className="text-lg font-bold text-slate-100 tabular-nums">
                 {autoPrice > 0 ? `${autoPrice.toFixed(2)} €` : '—'}
               </p>
-              {autoPrice > 0 && (
+              {(matCost > 0 || extraCost > 0) && (
                 <p className="text-[10px] text-slate-500 mt-0.5">
                   {matCost > 0 ? `Materjal ${matCost.toFixed(2)} €` : ''}
-                  {matCost > 0 && consCost > 0 ? ' · ' : ''}
-                  {consCost > 0 ? `Tarvikud ${consCost.toFixed(2)} €` : ''}
+                  {matCost > 0 && extraCost > 0 ? ' + ' : ''}
+                  {extraCost > 0 ? `Lisakulu ${extraCost.toFixed(2)} €` : ''}
                   {form.kiirtoo ? ` × ${settings.kiirtooKordaja}` : ''}
                 </p>
               )}
             </div>
 
-            {/* Disain ID */}
+            {/* Lisakulu — exceptional costs like replacement screws */}
             <div>
-              <label className="label text-slate-400">Disain ID</label>
-              <input type="text" value={form.disain_id ?? ''}
-                onChange={e => set('disain_id', e.target.value)}
-                placeholder="Disaini faili viide…"
-                className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
-              />
+              <label className="label text-slate-400">Lisakulu (€)</label>
+              <div className="relative w-36">
+                <input type="number" min="0" step="0.01" value={form.extra_cost}
+                  onChange={e => set('extra_cost', e.target.value)}
+                  placeholder="0.00"
+                  className="input pr-7 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">€</span>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-0.5">Nt uus kruvi, abutment — ainult kui vaja asendada</p>
             </div>
           </div>
 
