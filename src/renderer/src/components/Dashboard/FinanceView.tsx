@@ -288,7 +288,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                         </td>
                         <td className={`px-3 py-2 text-right tabular-nums ${
                           t.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
-                          {t.revenue > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
+                          {t.income > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
                           {t.jobs > 0 ? `${avgIncome.toFixed(0)} €` : '—'}
