@@ -321,6 +321,10 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   }
 
   const typeBuckets = new Map<string, WorkTypeFinance>()
+  // Pre-seed all configured work types so every one shows in the table
+  for (const t of types) {
+    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
+  }
   for (const j of done) {
     const name = resolveWorkType(j.too, types).nimi
     const b = typeBuckets.get(name) ?? {
@@ -378,8 +382,10 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const names = revisionReasons(r)
       const reasons = names.length > 0 ? names : ['Määramata']
       const shareOf = (v: number) => v / reasons.length
-      const revMaterial = (jobMaterialCost({ materjal: j.materjal, hambad: r.hambad ?? j.hambad, masina: j.masina }, materialCosts) ?? 0)
-        + workTypeConsumables(j.too, types, toothCount(r.hambad ?? j.hambad)).total
+      const revMat = r.materjal ?? j.materjal
+      const revHambad = r.hambad ?? j.hambad
+      const revMaterial = (jobMaterialCost({ materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts) ?? 0)
+        + workTypeConsumables(j.too, types, toothCount(revHambad)).total
 
       for (const reason of reasons) {
         const b = reasonBuckets.get(reason) ?? {
