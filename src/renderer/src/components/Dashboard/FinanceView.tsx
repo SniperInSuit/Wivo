@@ -251,7 +251,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Tööjõud</th>
                   <th className="px-3 py-2 font-semibold text-right">Materjal</th>
                   <th className="px-3 py-2 font-semibold text-right">Kate</th>
-                  <th className="px-3 py-2 font-semibold text-right">%</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kate %</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. tulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. kulu</th>
                   <th className="px-3 py-2 font-semibold text-right">€/hammas tulu</th>
