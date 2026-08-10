@@ -170,14 +170,16 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               share of payroll taxes is, and that is what has to be funded. */}
           <Money
             icon={Wallet}
-            label="Tööjõukulu koos maksudega"
+            label="Tööjõud + maksud + arve"
             value={fin.labourAccrued + employerTax}
             accent="#8B5CF6"
-            sub={fin.labourContractor > 0
-              ? `sh. maksud ${employerTax.toFixed(2)} € · arve alusel ${fin.labourContractor.toFixed(2)} €`
-              : settings.tooandjaMaksudProtsent > 0
-                ? `sh. maksud ${employerTax.toFixed(2)} €`
-                : 'tööandja maksude määr on 0% — määra Seaded → Hinnad'}
+            sub={[
+              `Bruto ${fin.labourEmployeeGross.toFixed(2)} €`,
+              employerTax > 0 ? `Maksud ${employerTax.toFixed(2)} €` : null,
+              fin.labourContractor > 0 ? `Arve alusel ${fin.labourContractor.toFixed(2)} €` : null,
+            ].filter(Boolean).join(' · ') || (
+              settings.tooandjaMaksudProtsent > 0 ? undefined : 'tööandja maksude määr on 0%'
+            )}
           />
           <Money icon={Package} label="Materjal ja tarvikud" value={fin.materialCost + fin.consumableCost} accent="#F97316"
             sub={fin.consumableCost > 0
