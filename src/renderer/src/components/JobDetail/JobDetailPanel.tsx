@@ -29,6 +29,7 @@ import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { pickRateFor } from '../../lib/earnings'
 import { jobMaterialCost } from '../../lib/finance'
+import { workTypeConsumables } from '../../config/workTypes'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 
@@ -311,7 +312,15 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           else if (dRate.kind === 'too') { dCost = dRate.amount; dLabel = `${dRate.amount} €/töö` }
         }
 
-        const totalCost = Math.round((tCost + dCost + costMat) * 100) / 100
+        // Consumables (screws, abutments etc) from work type settings
+        const items = form.work_items.length > 0 ? form.work_items : [{ too: form.too ?? '', hambad: allHambad }]
+        const consumables = items.flatMap(i => {
+          const tc = toothCountOf(i.hambad)
+          return workTypeConsumables(i.too, settings.tooTuubid, tc).items
+        })
+        const consCost = consumables.reduce((s, c) => s + c.summa, 0)
+
+        const totalCost = Math.round((tCost + dCost + costMat + consCost) * 100) / 100
         if (totalCost === 0 && !tId && !dId) return null
         return (
           <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
@@ -337,6 +346,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 <span className="tabular-nums text-ink">{costMat.toFixed(2)} €</span>
               </div>
             )}
+            {consumables.map((c, i) => (
+              <div key={i} className="flex justify-between text-xs text-ink-muted">
+                <span>{c.nimi}</span>
+                <span className="tabular-nums text-ink">{c.summa.toFixed(2)} €</span>
+              </div>
+            ))}
             <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
               <span className="font-semibold text-ink">Kokku kulu</span>
               <span className="font-bold text-red-500 tabular-nums">{totalCost.toFixed(2)} €</span>
