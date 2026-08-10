@@ -143,6 +143,15 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           <section>
             <div className="grid grid-cols-3 gap-3">
               <div className="card p-4">
+                <p className="text-xs text-ink-muted mb-1">Kasum (tulu − kulu)</p>
+                <p className={`text-2xl font-bold tabular-nums ${totalIncome - totalCosts >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {(totalIncome - totalCosts).toFixed(2)} €
+                </p>
+                <p className="text-[11px] text-ink-faint mt-1">
+                  Kate {totalIncome > 0 ? `${((totalIncome - totalCosts) / totalIncome * 100).toFixed(1)}%` : '—'}
+                </p>
+              </div>
+              <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Tulu (tööde hinnad)</p>
                 <p className="text-2xl font-bold tabular-nums text-ink">{totalIncome.toFixed(2)} €</p>
                 <p className="text-[11px] text-ink-faint mt-1">{fin.byWorkType.reduce((s, t) => s + t.jobs, 0)} tööd · {fin.byWorkType.reduce((s, t) => s + t.teeth, 0)} hammast</p>
@@ -152,15 +161,6 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                 <p className="text-2xl font-bold tabular-nums text-red-500">{totalCosts.toFixed(2)} €</p>
                 <p className="text-[11px] text-ink-faint mt-1">
                   Tööjõud {(fin.labourAccrued + employerTax).toFixed(0)} · Materjal {(fin.materialCost + fin.consumableCost).toFixed(0)} · Üldkulud {fin.overheadCost.toFixed(0)}
-                </p>
-              </div>
-              <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">Kasum (tulu − kulu)</p>
-                <p className={`text-2xl font-bold tabular-nums ${totalIncome - totalCosts >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {(totalIncome - totalCosts).toFixed(2)} €
-                </p>
-                <p className="text-[11px] text-ink-faint mt-1">
-                  Kate {totalIncome > 0 ? `${((totalIncome - totalCosts) / totalIncome * 100).toFixed(1)}%` : '—'}
                 </p>
               </div>
             </div>
