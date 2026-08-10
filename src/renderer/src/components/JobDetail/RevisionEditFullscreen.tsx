@@ -12,9 +12,11 @@ import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
-import { useSettings } from '../../stores/useSettings'
+import { useSettings, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
 import { MACHINE_OPTIONS } from '../../types/job'
+import { jobMaterialCost } from '../../lib/finance'
+import { workTypeConsumables } from '../../config/workTypes'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -39,12 +41,12 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     varv: revision.varv ?? null as string | null,
     materjal: revision.materjal ?? '',
     deadline: revision.deadline ? revision.deadline.replace('Z', '').slice(0, 16) : '',
-    price: revision.price != null ? String(revision.price) : '',
     kiirtoo: revision.kiirtoo ?? false,
     mudel: revision.mudel ?? false,
     taspidev: revision.taspidev !== false,  // default true (billable)
     purunenud_hambad: revision.purunenud_hambad ?? '',
     print_id: revision.print_id ?? '',
+    disain_id: revision.disain_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
   })
 
@@ -58,6 +60,22 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     debugLog('info', `RevisionEdit set: ${String(key)}`, val)
     setForm(f => ({ ...f, [key]: val }))
   }, [])
+
+  // Auto-computed revision cost: material + consumables
+  const allHambad = form.work_items.length > 0
+    ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
+    : form.hambad
+  const matCost = jobMaterialCost(
+    { materjal: form.materjal, hambad: allHambad, masina: null },
+    settings.materialCosts, settings.materialPrices
+  ) ?? 0
+  const consCost = form.work_items.length > 0
+    ? form.work_items.reduce((s, i) => {
+        const tc = i.hambad.split(',').filter(t => t.trim()).length
+        return s + workTypeConsumables(i.too, wt, tc).total
+      }, 0)
+    : 0
+  const autoPrice = Math.round((matCost + consCost) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
 
   function handleSubmit(e?: React.FormEvent | React.MouseEvent) {
     e?.preventDefault()
@@ -77,15 +95,13 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
         ? form.work_items[0]?.materjal ?? form.materjal
         : form.materjal) || undefined,
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
-      // From Seaded → Hinnad, not a hardcoded 2 — see RevisionBlock.
-      price: form.price !== ''
-        ? parseFloat(form.price) * (form.kiirtoo ? settings.kiirtooKordaja : 1)
-        : undefined,
+      price: autoPrice > 0 ? autoPrice : undefined,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
       taspidev: form.taspidev ? undefined : false,
       purunenud_hambad: form.purunenud_hambad || undefined,
       print_id: form.print_id || undefined,
+      disain_id: form.disain_id || undefined,
       status: form.status || 'disain',
     })
   }
@@ -368,17 +384,30 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               </div>
             </div>
 
-            {/* Price */}
+            {/* Auto-computed cost */}
             <div>
-              <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> Hind (€)</label>
-              <div className="relative w-36">
-                <input type="number" min="0" step="0.01" value={form.price}
-                  onChange={e => set('price', e.target.value)}
-                  placeholder="0.00"
-                  className="input pr-7 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">€</span>
-              </div>
+              <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> Ümbertegemise kulu</label>
+              <p className="text-lg font-bold text-slate-100 tabular-nums">
+                {autoPrice > 0 ? `${autoPrice.toFixed(2)} €` : '—'}
+              </p>
+              {autoPrice > 0 && (
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  {matCost > 0 ? `Materjal ${matCost.toFixed(2)} €` : ''}
+                  {matCost > 0 && consCost > 0 ? ' · ' : ''}
+                  {consCost > 0 ? `Tarvikud ${consCost.toFixed(2)} €` : ''}
+                  {form.kiirtoo ? ` × ${settings.kiirtooKordaja}` : ''}
+                </p>
+              )}
+            </div>
+
+            {/* Disain ID */}
+            <div>
+              <label className="label text-slate-400">Disain ID</label>
+              <input type="text" value={form.disain_id ?? ''}
+                onChange={e => set('disain_id', e.target.value)}
+                placeholder="Disaini faili viide…"
+                className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
+              />
             </div>
           </div>
 
