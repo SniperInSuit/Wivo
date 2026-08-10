@@ -101,7 +101,9 @@ export function JobReadView({
         rush: rev.kiirtoo ?? false
       }
     : {
-        title: job.too || '—',
+        title: jobWorkItems(job).length > 1
+          ? [...new Set(jobWorkItems(job).map(i => i.too))].join(' + ')
+          : (job.too || '—'),
         teeth: job.hambad,
         material: job.materjal,
         shade: job.varv,
