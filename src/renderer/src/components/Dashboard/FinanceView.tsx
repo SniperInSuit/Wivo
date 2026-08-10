@@ -20,6 +20,7 @@ import { useInvoices, usePayments } from '../../hooks/useInvoices'
 import { useWorkerRates, useWorkHours, useWorkerPayouts } from '../../hooks/useWorkerPay'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { calculateFinance, type Coverage } from '../../lib/finance'
+import { workTypeImage } from '../../lib/workTypeImages'
 import { employerCost, employerTaxAmount } from '../../lib/earnings'
 import type { Period, DateRange } from './useDashboardStats'
 import { customIsUsable, orderRange } from './useDashboardStats'
@@ -246,30 +247,75 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Materjal</th>
                   <th className="px-3 py-2 font-semibold text-right">Kate</th>
                   <th className="px-3 py-2 font-semibold text-right">%</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kesk. / töö</th>
                 </tr>
               </thead>
               <tbody>
-                {fin.byWorkType.map(t => (
-                  <tr key={t.name} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
-                    <td className="px-3 py-2 flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(t.name) }} />
-                      <span className="text-ink truncate">{t.name}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.jobs}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-ink">{t.revenue.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.labour.toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.material.toFixed(2)}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums font-semibold ${
-                      t.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {t.margin.toFixed(2)}
-                    </td>
-                    <td className={`px-3 py-2 text-right tabular-nums ${
-                      t.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
-                      {t.revenue > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {fin.byWorkType
+                  .sort((a, b) => b.revenue - a.revenue)
+                  .map(t => {
+                    const img = workTypeImage(t.name)
+                    const avgMargin = t.jobs > 0 ? t.margin / t.jobs : 0
+                    return (
+                      <tr key={t.name} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            {img
+                              ? <img src={img} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
+                              : <span className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(t.name) }} />
+                            }
+                            <span className="text-ink font-medium truncate">{t.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.jobs}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium text-ink">{t.revenue.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.labour.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.material.toFixed(2)}</td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${
+                          t.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {t.margin.toFixed(2)}
+                        </td>
+                        <td className={`px-3 py-2 text-right tabular-nums ${
+                          t.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
+                          {t.revenue > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
+                        </td>
+                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${
+                          avgMargin >= 0 ? 'text-ink-muted' : 'text-red-400'}`}>
+                          {t.jobs > 0 ? `${avgMargin.toFixed(2)} €` : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-ink-faint/20 bg-bg-sidebar/60 font-semibold text-xs">
+                  <td className="px-3 py-2 text-ink-muted">Kokku</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    {fin.byWorkType.reduce((s, t) => s + t.jobs, 0)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink">
+                    {fin.byWorkType.reduce((s, t) => s + t.revenue, 0).toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    {fin.byWorkType.reduce((s, t) => s + t.labour, 0).toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    {fin.byWorkType.reduce((s, t) => s + t.material, 0).toFixed(2)}
+                  </td>
+                  <td className={`px-3 py-2 text-right tabular-nums font-bold ${
+                    fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {fin.byWorkType.reduce((s, t) => s + t.margin, 0).toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    {(() => {
+                      const totalRev = fin.byWorkType.reduce((s, t) => s + t.revenue, 0)
+                      const totalMargin = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      return totalRev > 0 ? `${(totalMargin / totalRev * 100).toFixed(0)}%` : '—'
+                    })()}
+                  </td>
+                  <td className="px-3 py-2" />
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

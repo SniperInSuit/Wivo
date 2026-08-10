@@ -1,6 +1,6 @@
 {
   "name": "wivo",
-  "version": "1.31.3",
+  "version": "1.31.4",
   "description": "SprintRay Dental Production Tracker",
   "author": "Wivo",
   "main": "out/main/index.js",
