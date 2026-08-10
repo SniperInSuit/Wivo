@@ -150,16 +150,6 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                 <p className="text-[11px] text-ink-faint mt-1">
                   Kate {totalIncome > 0 ? `${((totalIncome - totalCosts) / totalIncome * 100).toFixed(1)}%` : '—'}
                 </p>
-                {fin.byPaymentMethod.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-ink-faint/15 space-y-0.5">
-                    {fin.byPaymentMethod.map(m => (
-                      <div key={m.method} className="flex items-center justify-between text-[10px]">
-                        <span className="text-ink-faint">{m.label}</span>
-                        <span className="tabular-nums text-ink-muted font-medium">{m.amount.toFixed(2)} €</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Tulu (tööde hinnad)</p>
