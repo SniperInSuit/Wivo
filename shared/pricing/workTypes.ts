@@ -111,10 +111,16 @@ export function workTypeConsumables(
 }
 
 export function resolveWorkType(too: string | null | undefined, types: WorkType[]): WorkType {
-  const t = (too ?? '').toLowerCase()
-  if (!t.trim()) return UNKNOWN_WORK_TYPE
-  return types.find(r =>
-    t.includes(r.nimi.toLowerCase()) || (r.match ?? []).some(m => t.includes(m))
+  const t = (too ?? '').toLowerCase().trim()
+  if (!t) return UNKNOWN_WORK_TYPE
+  // 1. Exact match (case-insensitive)
+  const exact = types.find(r => r.nimi.toLowerCase() === t)
+  if (exact) return exact
+  // 2. Longest name first — "Implantkroon" must match before "Kroon"
+  const sorted = [...types].sort((a, b) => b.nimi.length - a.nimi.length)
+  return sorted.find(r =>
+    t.includes(r.nimi.toLowerCase()) || r.nimi.toLowerCase().includes(t)
+    || (r.match ?? []).some(m => t.includes(m) || m.includes(t))
   ) ?? UNKNOWN_WORK_TYPE
 }
 
