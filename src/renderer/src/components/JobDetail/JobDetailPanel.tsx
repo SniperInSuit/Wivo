@@ -312,6 +312,18 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           else if (dRate.kind === 'too') { dCost = dRate.amount; dLabel = `${dRate.amount} €/töö` }
         }
 
+        // Hourly cost from tund/kuu rate (for info, not included in total yet — needs time tracking)
+        const tHourRate = tId ? tRates.find(r => r.kind === 'tund') : null
+        const tMonthRate = tId ? tRates.find(r => r.kind === 'kuu') : null
+        let tHourlyCost: number | null = null
+        if (tHourRate) {
+          tHourlyCost = tHourRate.amount
+        } else if (tMonthRate && tMonthRate.hours_per_day && tMonthRate.work_days) {
+          const daysPerWeek = tMonthRate.work_days.length
+          const monthlyHours = daysPerWeek * 4.33 * tMonthRate.hours_per_day
+          tHourlyCost = monthlyHours > 0 ? Math.round(tMonthRate.amount / monthlyHours * 100) / 100 : null
+        }
+
         // Consumables (screws, abutments etc) from work type settings
         const items = form.work_items.length > 0 ? form.work_items : [{ too: form.too ?? '', hambad: allHambad }]
         const consumables = items.flatMap(i => {
@@ -331,7 +343,13 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 <span className="tabular-nums text-ink">{tCost.toFixed(2)} € <span className="text-ink-faint text-[10px]">{tLabel}</span></span>
               </div>
             )}
-            {tId && tCost === 0 && (
+            {tHourlyCost != null && (
+              <div className="flex justify-between text-[10px] text-ink-faint">
+                <span>Tehnik tunnihind</span>
+                <span className="tabular-nums">{tHourlyCost.toFixed(2)} €/h</span>
+              </div>
+            )}
+            {tId && tCost === 0 && !tHourlyCost && (
               <div className="text-[10px] text-ink-faint">Tehnikul puudub tasureegel</div>
             )}
             {dCost > 0 && (

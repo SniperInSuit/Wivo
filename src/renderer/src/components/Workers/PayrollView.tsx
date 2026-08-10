@@ -720,6 +720,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
   const [payRevisions, setPayRevisions] = useState(false)
   const [autoHours, setAutoHours] = useState(true)
   const [hoursPerDay, setHoursPerDay] = useState('8')
+  const [workDays, setWorkDays] = useState('1234') // default Mon-Thu (4 days)
   const [error, setError] = useState<string | null>(null)
 
   async function add() {
@@ -737,9 +738,9 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         additive,
         label: label.trim() || null,
         pay_revisions: payRevisions,
-        auto_hours: kind === 'tund' ? autoHours : false,
-        hours_per_day: kind === 'tund' ? parseFloat(hoursPerDay) || null : null,
-        work_days: '12345',
+        auto_hours: kind === 'tund' || kind === 'kuu' ? autoHours : false,
+        hours_per_day: kind === 'tund' || kind === 'kuu' ? parseFloat(hoursPerDay) || null : null,
+        work_days: kind === 'tund' || kind === 'kuu' ? workDays : '12345',
         active_from: null, active_to: null, note: null,
       })
       setAmount(''); setWorkTypes([]); setLabel(''); setAdditive(false)
@@ -794,6 +795,11 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
                 auto {Number(r.hours_per_day ?? 0)} h/päev
               </span>
             )}
+            {(r.kind === 'tund' || r.kind === 'kuu') && r.work_days && r.work_days !== '12345' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                {r.work_days.split('').map(d => ['', 'E', 'T', 'K', 'N', 'R', 'L', 'P'][parseInt(d)] ?? d).join('')}
+              </span>
+            )}
             {/* Through rateWorkTypes, never the raw column — it holds several
                 names joined by '|' and printing it raw would show the plumbing. */}
             {rateWorkTypes(r).map(name => (
@@ -845,17 +851,49 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             </select>
           </div>
         )}
-        {kind === 'tund' && (
+        {(kind === 'tund' || kind === 'kuu') && (
           <>
-            <label className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer">
-              <input
-                type="checkbox" checked={autoHours}
-                onChange={e => setAutoHours(e.target.checked)}
-                className="accent-accent"
-              />
-              Täida tunnid automaatselt
-            </label>
-            {autoHours && (
+            <div>
+              <label className="label">Tööpäevad</label>
+              <div className="flex gap-0.5">
+                {[
+                  { d: '1', l: 'E' }, { d: '2', l: 'T' }, { d: '3', l: 'K' },
+                  { d: '4', l: 'N' }, { d: '5', l: 'R' }, { d: '6', l: 'L' }, { d: '7', l: 'P' },
+                ].map(({ d, l }) => (
+                  <button key={d} type="button"
+                    onClick={() => setWorkDays(workDays.includes(d) ? workDays.replace(d, '') : [...workDays, d].sort().join(''))}
+                    className={`w-7 h-7 rounded text-[10px] font-bold transition-colors ${
+                      workDays.includes(d)
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-sidebar text-ink-faint hover:text-ink-muted'
+                    }`}
+                  >{l}</button>
+                ))}
+              </div>
+            </div>
+            {kind === 'tund' && (
+              <>
+                <label className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer">
+                  <input
+                    type="checkbox" checked={autoHours}
+                    onChange={e => setAutoHours(e.target.checked)}
+                    className="accent-accent"
+                  />
+                  Täida tunnid automaatselt
+                </label>
+                {autoHours && (
+                  <div>
+                    <label className="label">Tunde päevas</label>
+                    <input
+                      type="number" min="0" max="24" step="0.5" value={hoursPerDay}
+                      onChange={e => setHoursPerDay(e.target.value)}
+                      className="input py-1.5 text-sm w-20 text-right"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {kind === 'kuu' && (
               <div>
                 <label className="label">Tunde päevas</label>
                 <input
