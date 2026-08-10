@@ -203,6 +203,9 @@ export function JobReadView({
                   {v.title}
                   {v.rush && <Zap size={11} className="inline ml-1 text-orange-500 fill-orange-400" />}
                 </p>
+                {!rev && jobWorkItems(job).length <= 1 && jobWorkItems(job)[0]?.kruvi && (
+                  <p className="text-[11px] text-indigo-600 mt-0.5">🔩 {jobWorkItems(job)[0].kruvi}</p>
+                )}
               </div>
               {!rev && job.kirjeldus && (
                 <div className="col-span-2 min-w-0">
@@ -467,6 +470,11 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
             {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">sild</span>}
             {item.materjal && (
               <span className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[120px]">{item.materjal}</span>
+            )}
+            {item.kruvi && (
+              <span className="text-[10px] text-ink-muted bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded truncate max-w-[140px]" title={item.kruvi}>
+                🔩 {item.kruvi}
+              </span>
             )}
             <span className="text-xs text-ink-muted ml-auto">{teethCount} hammast</span>
             <ToothBadges hambad={item.hambad} max={8} />
