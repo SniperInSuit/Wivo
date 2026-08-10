@@ -90,6 +90,7 @@ export interface WorkItem {
   bridge?: boolean        // true = teeth form a connected bridge unit
   materjal?: string       // material for this specific work item
   masina?: string         // machine for this specific work item
+  kruvi?: string          // screw/abutment reference for implant work
   note?: string           // optional per-item note
 }
 

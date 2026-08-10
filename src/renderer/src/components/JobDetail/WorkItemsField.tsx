@@ -313,6 +313,28 @@ export function WorkItemsField({
         </div>
       )}
 
+      {/* Screw/abutment field — shown for implant-type work items */}
+      {(() => {
+        const activeItem = value.find(i => i.id === activeId)
+        if (!activeItem) return null
+        const isImplant = /implant|abutment/i.test(activeItem.too)
+        if (!isImplant) return null
+        return (
+          <div>
+            <label className={`text-[10px] font-medium ${dark ? 'text-slate-400' : 'text-ink-muted'}`}>
+              Kruvi / abutment — {activeItem.too}
+            </label>
+            <input
+              type="text"
+              value={activeItem.kruvi ?? ''}
+              onChange={e => onChange(value.map(i => i.id === activeItem.id ? { ...i, kruvi: e.target.value || undefined } : i))}
+              placeholder="Nt: MIS C1 3.75×11.5mm"
+              className={`input text-xs mt-0.5 ${dark ? 'bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500' : ''}`}
+            />
+          </div>
+        )
+      })()}
+
       {showOdontogram && (
         <div className={`${c.surface} rounded-xl p-3`}>
           {value.length > 0 ? (
