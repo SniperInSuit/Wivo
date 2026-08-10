@@ -246,6 +246,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Töid</th>
                   <th className="px-3 py-2 font-semibold text-right">Hambaid</th>
                   <th className="px-3 py-2 font-semibold text-right">Tulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Tööjõud</th>
                   <th className="px-3 py-2 font-semibold text-right">Materjal</th>
                   <th className="px-3 py-2 font-semibold text-right">Kate</th>
@@ -273,6 +274,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                         <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.jobs}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-ink-faint">{t.teeth || '—'}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium text-ink">{t.income.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.costs > 0 ? t.costs.toFixed(2) : '—'}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.labour.toFixed(2)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.material.toFixed(2)}</td>
                         <td className={`px-3 py-2 text-right tabular-nums font-semibold ${
@@ -302,6 +304,9 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink">
                     {fin.byWorkType.reduce((s, t) => s + t.income, 0).toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    {fin.byWorkType.reduce((s, t) => s + t.costs, 0).toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
                     {fin.byWorkType.reduce((s, t) => s + t.labour, 0).toFixed(2)}

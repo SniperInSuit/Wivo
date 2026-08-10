@@ -121,6 +121,7 @@ export interface WorkTypeFinance {
   teeth: number         // total teeth across all jobs of this type
   income: number        // sum of job.hind (what the jobs are worth)
   revenue: number       // invoiced for these jobs
+  costs: number         // consumables (screws etc) + fixed costs per job
   labour: number
   material: number
   margin: number
@@ -325,21 +326,19 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   const typeBuckets = new Map<string, WorkTypeFinance>()
   // Pre-seed all configured work types so every one shows in the table
   for (const t of types) {
-    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
+    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
   }
   for (const j of done) {
     const name = resolveWorkType(j.too, types).nimi
     const b = typeBuckets.get(name) ?? {
-      name, jobs: 0, teeth: 0, income: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
+      name, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
     }
     b.jobs++
     b.teeth += toothCount(j.hambad)
     b.income += Number(j.hind ?? 0)
     b.revenue += revenueByJob.get(j.id) ?? 0
-    // Consumables sit with material in the per-type table: both are "what this
-    // job consumed", and splitting them there would add a column nobody asked for.
     b.material += (jobMaterialCost(j, materialCosts) ?? 0)
-      + workTypeConsumables(j.too, types, toothCount(j.hambad)).total
+    b.costs += workTypeConsumables(j.too, types, toothCount(j.hambad)).total + perJobFixed
     typeBuckets.set(name, b)
   }
   // Labour is attributed per job by re-running the engine for the job's own
@@ -360,11 +359,12 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     }
   }
   const byWorkType = [...typeBuckets.values()].map(b => {
-    const margin = round2(b.income - b.labour - b.material)
+    const margin = round2(b.income - b.labour - b.material - b.costs)
     return {
       ...b,
       income: round2(b.income),
       revenue: round2(b.revenue),
+      costs: round2(b.costs),
       labour: round2(b.labour),
       material: round2(b.material),
       margin,
