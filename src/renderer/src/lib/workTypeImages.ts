@@ -49,6 +49,8 @@ for (const [path, url] of Object.entries(modules)) {
 const ALIASES: Record<string, string> = {
   'kroon':           'crown',
   'implantkroon':    'implant_crown',
+  'implantaat-kroon': 'implant_crown',
+  'implantaatkroon': 'implant_crown',
   'abutmendile-kroon': 'abutment_crown',
   'sild':            'bridge',
   'viniir':          'veneer',
