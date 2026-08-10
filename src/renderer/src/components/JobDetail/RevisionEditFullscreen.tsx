@@ -72,15 +72,17 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
     : form.hambad
   // Auto cost: material + actual worker rate + extra costs
+  // Material: check work_items' materials first, then form.materjal
+  const effectiveMaterjal = form.work_items.find(i => i.materjal)?.materjal ?? form.materjal
   const matCost = jobMaterialCost(
-    { materjal: form.materjal, hambad: allHambad, masina: null },
+    { materjal: effectiveMaterjal, hambad: allHambad, masina: null },
     settings.materialCosts, settings.materialPrices
   ) ?? 0
   const teethCount = allHambad.split(',').filter(t => t.trim()).length
   const today = new Date().toISOString().slice(0, 10)
   const types = wt
 
-  // Technician labour from their actual pay rules
+  // Technician labour from their actual pay rules (or fallback to muudatusHambaHind)
   const techId = form.assigned_to
   const techRates = techId ? allRates.filter(r => r.profile_id === techId) : []
   const primaryToo = form.work_items[0]?.too ?? null
@@ -95,6 +97,10 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
       case 'too':    techCost = techRate.amount; techLabel = `${techRate.amount} €/töö`; break
       default:       break
     }
+  } else if (teethCount > 0 && settings.muudatusHambaHind > 0) {
+    // Fallback: no specific worker selected or no rule — use default rate
+    techCost = teethCount * settings.muudatusHambaHind
+    techLabel = `${teethCount} × ${settings.muudatusHambaHind} €/hammas (vaikimisi)`
   }
 
   // Designer labour
