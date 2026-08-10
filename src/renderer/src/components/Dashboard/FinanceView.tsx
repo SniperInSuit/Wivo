@@ -92,6 +92,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
 
   const fin = useMemo(() => calculateFinance({
     jobs: jobsInPeriod,
+    allJobs: jobs,
     invoices,
     payments,
     payouts,
@@ -106,7 +107,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     doneStageKey,
     periodStart: range.start,
     periodEnd: range.end,
-  }), [jobsInPeriod, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.fixedCostsPerJob, doneStageKey, range])
+  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, doneStageKey, range])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
   // real money leaving the account.
@@ -138,17 +139,26 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── Summary: Tulu vs Kulu ── */}
       {(() => {
         const totalIncome = fin.byWorkType.reduce((s, t) => s + t.income, 0)
-        const totalCosts = fin.labourAccrued + employerTax + fin.materialCost + fin.consumableCost + fin.fixedCostTotal + fin.overheadCost
+        const labourTotal = fin.labourAccrued + employerTax
+        const materialTotal = fin.materialCost + fin.consumableCost
+        const totalCosts = labourTotal + materialTotal + fin.fixedCostTotal + fin.overheadCost
+        const profit = totalIncome - totalCosts
+        const costParts = [
+          labourTotal > 0 ? `Tööjõud ${labourTotal.toFixed(0)}` : null,
+          materialTotal > 0 ? `Materjal ${materialTotal.toFixed(0)}` : null,
+          fin.fixedCostTotal > 0 ? `Fikseeritud ${fin.fixedCostTotal.toFixed(0)}` : null,
+          fin.overheadCost > 0 ? `Üldkulud ${fin.overheadCost.toFixed(0)}` : null,
+        ].filter(Boolean)
         return (
           <section>
             <div className="grid grid-cols-3 gap-3">
               <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Kasum (tulu − kulu)</p>
-                <p className={`text-2xl font-bold tabular-nums ${totalIncome - totalCosts >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {(totalIncome - totalCosts).toFixed(2)} €
+                <p className={`text-2xl font-bold tabular-nums ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {profit.toFixed(2)} €
                 </p>
                 <p className="text-[11px] text-ink-faint mt-1">
-                  Kate {totalIncome > 0 ? `${((totalIncome - totalCosts) / totalIncome * 100).toFixed(1)}%` : '—'}
+                  Kate {totalIncome > 0 ? `${(profit / totalIncome * 100).toFixed(1)}%` : '—'}
                 </p>
               </div>
               <div className="card p-4">
@@ -159,9 +169,34 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Kulu kokku</p>
                 <p className="text-2xl font-bold tabular-nums text-red-500">{totalCosts.toFixed(2)} €</p>
-                <p className="text-[11px] text-ink-faint mt-1">
-                  Tööjõud {(fin.labourAccrued + employerTax).toFixed(0)} · Materjal {(fin.materialCost + fin.consumableCost).toFixed(0)} · Üldkulud {fin.overheadCost.toFixed(0)}
-                </p>
+                {costParts.length > 0 && (
+                  <div className="mt-1.5 space-y-0.5">
+                    {labourTotal > 0 && (
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-ink-faint">Tööjõud + maksud</span>
+                        <span className="tabular-nums text-ink-muted">{labourTotal.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {materialTotal > 0 && (
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-ink-faint">Materjal + tarvikud</span>
+                        <span className="tabular-nums text-ink-muted">{materialTotal.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {fin.fixedCostTotal > 0 && (
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-ink-faint">Fikseeritud</span>
+                        <span className="tabular-nums text-ink-muted">{fin.fixedCostTotal.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {fin.overheadCost > 0 && (
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-ink-faint">Üldkulud</span>
+                        <span className="tabular-nums text-ink-muted">{fin.overheadCost.toFixed(2)} €</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </section>

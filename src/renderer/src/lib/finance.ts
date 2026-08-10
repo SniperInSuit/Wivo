@@ -205,6 +205,8 @@ export interface FinanceStats {
 
 export interface FinanceInput {
   jobs: Job[]                 // already filtered to the period
+  /** ALL jobs — revisions are filtered by their own date, not the job's. */
+  allJobs?: Job[]
   invoices: InvoiceFull[]
   /** ALL payments, including those recorded against a job rather than an
    *  invoice. Counting only invoice payments would under-report every clinic
@@ -229,7 +231,7 @@ export interface FinanceInput {
 export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
-    materialCosts, materialPrices, fixedCosts, overheads, doneStageKey, periodStart, periodEnd,
+    materialCosts, materialPrices, fixedCosts, overheads, doneStageKey, periodStart, periodEnd, allJobs,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -383,7 +385,9 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   // ── Completed revisions — count their work types too ───────────────────────
   // A revision can carry its own work_items (e.g. Allon4 redo on a Crown job).
   // These are real production work and must appear in the per-type table.
-  for (const j of jobs) {
+  // Uses allJobs (unfiltered) because a revision may be completed this period
+  // even if the parent job was created in an earlier period.
+  for (const j of (allJobs ?? jobs)) {
     for (const rev of j.revisions ?? []) {
       if ((rev.status ?? '') !== doneStageKey) continue
       const revDate = (rev.valmis_kuupaev ?? rev.deadline ?? rev.ts ?? '').slice(0, 10)
