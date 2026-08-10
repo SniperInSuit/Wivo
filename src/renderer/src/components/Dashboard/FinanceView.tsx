@@ -338,8 +338,20 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                       return totalIncome > 0 ? `${(totalMargin / totalIncome * 100).toFixed(0)}%` : '—'
                     })()}
                   </td>
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2" />
+                  <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
+                    {(() => {
+                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
+                      const ti = fin.byWorkType.reduce((s, t) => s + t.income, 0)
+                      return tj > 0 ? `${(ti / tj).toFixed(0)} €` : '—'
+                    })()}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
+                    {(() => {
+                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
+                      const tc = fin.byWorkType.reduce((s, t) => s + t.labour + t.material + t.costs, 0)
+                      return tj > 0 ? `${(tc / tj).toFixed(0)} €` : '—'
+                    })()}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-emerald-600">
                     {(() => {
                       const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
