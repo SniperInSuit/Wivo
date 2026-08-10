@@ -65,6 +65,7 @@ const EMPTY_FORM: JobInput = {
   hambad: '',
   work_items: [],
   extras: [],
+  extra_costs: [],
   valmis_aeg: '',
   valmis_kuupaev: null,
   kiirtoo: false,
@@ -332,7 +333,8 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         })
         const consCost = consumables.reduce((s, c) => s + c.summa, 0)
 
-        const totalCost = Math.round((tCost + dCost + costMat + consCost) * 100) / 100
+        const adHocCost = (form.extra_costs ?? []).reduce((s, c) => s + (c.summa || 0), 0)
+        const totalCost = Math.round((tCost + dCost + costMat + consCost + adHocCost) * 100) / 100
         if (totalCost === 0 && !tId && !dId) return null
         return (
           <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
@@ -370,6 +372,38 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 <span className="tabular-nums text-ink">{c.summa.toFixed(2)} €</span>
               </div>
             ))}
+            {/* Ad-hoc extra costs */}
+            {(form.extra_costs ?? []).map((c, i) => (
+              <div key={i} className="flex items-center gap-1 text-xs text-ink-muted">
+                <input type="text" value={c.nimi}
+                  onChange={e => {
+                    const next = [...(form.extra_costs ?? [])]
+                    next[i] = { ...next[i], nimi: e.target.value }
+                    set('extra_costs', next)
+                  }}
+                  placeholder="Kulu nimi"
+                  className="input py-0.5 px-1.5 text-xs flex-1 min-w-0"
+                />
+                <div className="relative w-20">
+                  <input type="number" min="0" step="0.01" value={c.summa || ''}
+                    onChange={e => {
+                      const next = [...(form.extra_costs ?? [])]
+                      next[i] = { ...next[i], summa: parseFloat(e.target.value) || 0 }
+                      set('extra_costs', next)
+                    }}
+                    className="input py-0.5 px-1.5 pr-5 text-xs text-right"
+                  />
+                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
+                </div>
+                <button type="button" onClick={() => set('extra_costs', (form.extra_costs ?? []).filter((_, j) => j !== i))}
+                  className="text-red-400 hover:text-red-500 text-xs px-0.5">×</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => set('extra_costs', [...(form.extra_costs ?? []), { nimi: '', summa: 0 }])}
+              className="text-[10px] text-accent hover:text-accent/80 font-medium">
+              + Lisa kulu
+            </button>
+
             <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
               <span className="font-semibold text-ink">Kokku kulu</span>
               <span className="font-bold text-red-500 tabular-nums">{totalCost.toFixed(2)} €</span>

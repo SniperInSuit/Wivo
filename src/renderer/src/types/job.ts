@@ -191,6 +191,7 @@ export interface Job {
   uus_valmis?: string | null
   // --- Extra services added to this job (from settings.lisateenused) ---
   extras: JobExtra[]           // e.g. [{id, nimi, hind}]
+  extra_costs: { nimi: string; summa: number }[] // Ad-hoc costs (e.g. root canal, outsourced work)
   // --- Pricing / payment ---
   hind: number | null          // Hind — total price in EUR
   disain_hind: number | null   // Disain hind — design fee (own or third-party)
