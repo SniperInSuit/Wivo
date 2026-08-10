@@ -1,5 +1,51 @@
 # Changelog
 
+## [1.31.5] — 2026-08-10
+
+**Omahind, rahanduse parandused, implantaadi kruvi**
+
+**Omahind (labori kulu) kast töö ja muudatuse vormil**
+- Tehnik ja disainija tasu arvutatakse **tegelikest tasureeglitest** — fetchib
+  valitud töötaja reeglid (hammas/töö/%) ja arvutab tegeliku summa
+- "Sama mis tööl" → kasutab originaaltöö tehnik/disainija reegleid, mitte fallback'i
+- Materjali kulu: `materialCosts` → `materialPrices` fallback kui omahinda pole
+- Tarvikud (kruvid, abutmendid) seadetest — iga kulu nimepidi eraldi real
+- **+ Lisa kulu** — ad-hoc lisakulud (nt juureravi, väline labor) mitu rida
+- Kate = Tulu − Kokku kulu (protsendiga)
+- Tunnihind: kuutasult arvutatakse `kuupalk / (päevad × 4.33 × tunnid)`
+
+**Muudatuse ümbertegemise kulu**
+- Automaatne: materjal + tehnik/disainija tasu + lisakulud × kiirtöö kordaja
+- Tarvikud (kruvid) ei arvestata — kasutatakse originaaltöö omi
+- **Lisakulud** mitmerealiseks (nimi + summa, + Lisa kulu / × eemalda)
+- Tasustamata toggle → tööjõud = 0 kulus
+- Disain ID lisatud Print ID kõrvale
+- Käsitsi hinna sisestamine eemaldatud — kulu on alati automaatne
+
+**Rahanduse tabel parandused**
+- Tabel arvestab **iga tööosa eraldi** (mitte ainult job.too)
+- Muudatuste tööosad arvestatakse ka (Allon4 redo ilmub tabelis)
+- Muudatused ilmuvad ka kui originaaltöö on vanemast perioodist
+- Veerud: Tulu, Kulu, Tööjõud, Materjal, Kate, Kate %, Kesk. tulu/kulu/kate, €/h tulu/kulu/kate
+- **Kasum / Tulu / Kulu** kokkuvõte kaardid ülaosas (vana arveldatud-põhine eemaldatud)
+- Materjali kulu fallback müügihinnale kui omahinda pole
+- Kulu kaardil detailne jaotus: tööjõud, materjal, fikseeritud, üldkulud
+
+**Implantaadi kruvi väli**
+- `WorkItem.kruvi` väli — ilmub automaatselt implantaat-tüüpi tööosadel
+- Read view näitab kruvi infot: 🔩 MIS C1 3.75×11.5mm
+
+**Töötasude tööpäevade valik**
+- E T K N R L P nupud — valitav tunni- ja kuutasu reeglile
+- Vaikimisi E-N (4 päeva), mitte hardcoded E-R
+
+**Muud parandused**
+- `resolveWorkType` matchib pikima nime enne (Implantkroon > Kroon)
+- Töö tüüp näitab kõiki tööosasid: "Kroon + Implantaadi kroon"
+- DeadlineChip kasutab kalendripäevi (`differenceInCalendarDays`)
+- "Muudatuse hind" → "Ümbertegemise kulu (sisemine)"
+- `package-lock.json` sünkroonitud, `allowScripts` lisatud
+
 ## [1.31.3] — 2026-08-07
 
 **Uus odontogram ja wizard parandused**
