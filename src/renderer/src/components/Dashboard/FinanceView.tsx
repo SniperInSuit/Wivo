@@ -254,8 +254,10 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Kate %</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. tulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. kulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/hammas tulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/hammas kulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kesk. kate</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/h tulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/h kulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/h kate</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,11 +298,17 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
                           {t.jobs > 0 ? `${avgCost.toFixed(0)} €` : '—'}
                         </td>
+                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${t.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                          {t.jobs > 0 ? `${(t.margin / t.jobs).toFixed(0)} €` : '—'}
+                        </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-emerald-600">
                           {t.teeth > 0 ? `${(t.income / t.teeth).toFixed(2)}` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-red-400">
                           {t.teeth > 0 ? `${((t.labour + t.material + t.costs) / t.teeth).toFixed(2)}` : '—'}
+                        </td>
+                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${t.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                          {t.teeth > 0 ? `${(t.margin / t.teeth).toFixed(2)}` : '—'}
                         </td>
                       </tr>
                     )
@@ -352,6 +360,13 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                       return tj > 0 ? `${(tc / tj).toFixed(0)} €` : '—'
                     })()}
                   </td>
+                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                    {(() => {
+                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
+                      const tm = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      return tj > 0 ? `${(tm / tj).toFixed(0)} €` : '—'
+                    })()}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-emerald-600">
                     {(() => {
                       const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
@@ -364,6 +379,13 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                       const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
                       const tc = fin.byWorkType.reduce((s, t) => s + t.labour + t.material + t.costs, 0)
                       return tt > 0 ? (tc / tt).toFixed(2) : '—'
+                    })()}
+                  </td>
+                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                    {(() => {
+                      const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
+                      const tm = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      return tt > 0 ? (tm / tt).toFixed(2) : '—'
                     })()}
                   </td>
                 </tr>
