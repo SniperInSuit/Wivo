@@ -22,12 +22,16 @@ import { resolveWorkType } from '../../config/workTypes'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
+  /** The parent job's assigned_to — used when revision says "Sama mis tööl" */
+  jobAssignedTo?: string | null
+  /** The parent job's designed_by */
+  jobDesignedBy?: string | null
   onSave: (updated: Revision) => void
   onCancel: () => void
   saving?: boolean
 }
 
-export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: RevisionEditFullscreenProps) {
+export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy, onSave, onCancel, saving }: RevisionEditFullscreenProps) {
   const { stages } = usePipeline()
   const { settings } = useSettings()
   const wt = settings.tooTuubid
@@ -82,11 +86,14 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const today = new Date().toISOString().slice(0, 10)
   const types = wt
 
-  // Technician labour from their actual pay rules (or fallback to muudatusHambaHind)
-  const techId = form.assigned_to
-  const techRates = techId ? allRates.filter(r => r.profile_id === techId) : []
+  // Resolve actual worker: form value, or fall back to job's worker
+  const effectiveTechId = form.assigned_to ?? jobAssignedTo ?? null
+  const effectiveDesignId = form.designed_by ?? jobDesignedBy ?? null
   const primaryToo = form.work_items[0]?.too ?? null
-  const techRate = techId ? pickRateFor(techRates, primaryToo, today, types, 'muudatus')
+
+  // Technician labour from their actual pay rules
+  const techRates = effectiveTechId ? allRates.filter(r => r.profile_id === effectiveTechId) : []
+  const techRate = effectiveTechId ? pickRateFor(techRates, primaryToo, today, types, 'muudatus')
     ?? pickRateFor(techRates, primaryToo, today, types, 'too')
     : null
   let techCost = 0
@@ -97,16 +104,11 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
       case 'too':    techCost = techRate.amount; techLabel = `${techRate.amount} €/töö`; break
       default:       break
     }
-  } else if (teethCount > 0 && settings.muudatusHambaHind > 0) {
-    // Fallback: no specific worker selected or no rule — use default rate
-    techCost = teethCount * settings.muudatusHambaHind
-    techLabel = `${teethCount} × ${settings.muudatusHambaHind} €/hammas (vaikimisi)`
   }
 
   // Designer labour
-  const designId = form.designed_by
-  const designRates = designId ? allRates.filter(r => r.profile_id === designId) : []
-  const designRate = designId ? pickRateFor(designRates, primaryToo, today, types, 'disain') : null
+  const designRates = effectiveDesignId ? allRates.filter(r => r.profile_id === effectiveDesignId) : []
+  const designRate = effectiveDesignId ? pickRateFor(designRates, primaryToo, today, types, 'disain') : null
   let designCost = 0
   let designLabel = ''
   if (designRate) {
@@ -449,8 +451,8 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               <div className="mt-1 space-y-0.5 text-[10px] text-slate-500">
                 {techCost > 0 && <p>Tehnik: {techLabel} = {techCost.toFixed(2)} €</p>}
                 {designCost > 0 && <p>Disain: {designLabel} = {designCost.toFixed(2)} €</p>}
-                {!techId && !form.taspidev && <p className="text-slate-600">Tehnik määramata</p>}
-                {techId && techCost === 0 && form.taspidev && <p className="text-slate-600">Tehnikul puudub muudatuse reegel</p>}
+                {!effectiveTechId && form.taspidev && <p className="text-slate-600">Tehnik määramata</p>}
+                {effectiveTechId && techCost === 0 && form.taspidev && <p className="text-slate-600">Tehnikul puudub tasureegel</p>}
                 {matCost > 0 && <p>Materjal: {matCost.toFixed(2)} €</p>}
                 {extraTotal > 0 && <p>Lisakulud: {extraTotal.toFixed(2)} €</p>}
                 {form.kiirtoo && <p>× {settings.kiirtooKordaja} (kiirtöö)</p>}

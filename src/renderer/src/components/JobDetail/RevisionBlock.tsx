@@ -22,6 +22,8 @@ interface RevisionBlockProps {
   autoExpandId?: string   // expand + scroll to this revision on mount
   autoEditId?: string | null  // auto-open this revision in edit mode
   onAutoEditDone?: () => void
+  jobAssignedTo?: string | null
+  jobDesignedBy?: string | null
 }
 
 const EMPTY_DRAFT = {
@@ -44,7 +46,7 @@ const EMPTY_DRAFT = {
 
 type Draft = typeof EMPTY_DRAFT
 
-export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone }: RevisionBlockProps) {
+export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone, jobAssignedTo, jobDesignedBy }: RevisionBlockProps) {
   const { settings } = useSettings()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
@@ -202,6 +204,8 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       {adding && (
         <RevisionEditFullscreen
           revision={{ id: crypto.randomUUID(), ts: new Date().toISOString(), note: '', status: 'disain' }}
+          jobAssignedTo={jobAssignedTo}
+          jobDesignedBy={jobDesignedBy}
           onSave={rev => {
             if (!rev.note.trim()) return
             onChange([...value, rev])
@@ -362,6 +366,8 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
             {isEditing && (
               <RevisionEditFullscreen
                 revision={rev}
+                jobAssignedTo={jobAssignedTo}
+                jobDesignedBy={jobDesignedBy}
                 onSave={updated => {
                   try {
                     debugLog('info', 'Revision save', { id: rev.id, mudel: updated.mudel, keys: Object.keys(updated) })

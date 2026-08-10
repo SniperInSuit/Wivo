@@ -1437,6 +1437,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 autoEditId={editingRevId}
                 onAutoEditDone={() => setEditingRevId(null)}
                 onChange={revs => set('revisions', revs)}
+                jobAssignedTo={form.assigned_to}
+                jobDesignedBy={form.designed_by}
               />
             </div>
 
@@ -1462,6 +1464,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         return (
           <RevisionEditFullscreen
             revision={revision}
+            jobAssignedTo={job.assigned_to}
+            jobDesignedBy={job.designed_by}
             onSave={async rev => {
               if (!rev.note.trim()) return
               try {
