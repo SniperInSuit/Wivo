@@ -233,37 +233,6 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         </div>
       </section>
 
-      {/* ── Result ── */}
-      <section>
-        <div className="card p-5 flex items-center gap-6 flex-wrap">
-          <div>
-            <p className="text-xs text-ink-muted mb-1">
-              {hasOverheads
-                ? 'Kasum (arveldatud − tööjõud koos maksudega − materjal − üldkulud)'
-                : 'Kate (arveldatud − tööjõud koos maksudega − materjal)'}
-            </p>
-            <p className={`text-3xl font-bold tabular-nums leading-none ${
-              marginAfterTax >= 0 ? 'text-emerald-600' : 'text-red-500'
-            }`}>
-              {marginAfterTax.toFixed(2)} €
-            </p>
-          </div>
-          <div className="pl-6 border-l border-ink-faint/20">
-            <p className="text-xs text-ink-muted mb-1">Katteprotsent</p>
-            <p className={`text-2xl font-bold tabular-nums leading-none ${
-              marginPctAfterTax >= 0 ? 'text-ink' : 'text-red-500'
-            }`}>
-              {marginPctAfterTax.toFixed(1)}%
-            </p>
-          </div>
-          <p className="text-[11px] text-ink-faint max-w-sm ml-auto leading-relaxed">
-            Arvutatud <strong className="text-ink-muted">arveldatud</strong> summast, mitte
-            tööde hindadest: arve on see, mille saab reaalselt sisse nõuda. Üldkulud
-            (rent, seadmed, tarkvara) ei ole siin arvestatud.
-          </p>
-        </div>
-      </section>
-
       {/* ── By work type ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
