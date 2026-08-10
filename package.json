@@ -84,5 +84,9 @@
       "target": "dmg",
       "icon": "build/icon.png"
     }
+  },
+  "allowScripts": {
+    "electron@32.3.3": true,
+    "esbuild@0.21.5": true
   }
 }
