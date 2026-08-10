@@ -26,6 +26,9 @@ import { WorkerSelect } from './WorkerSelect'
 import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
+import { useWorkerRates } from '../../hooks/useWorkerPay'
+import { pickRateFor } from '../../lib/earnings'
+import { jobMaterialCost } from '../../lib/finance'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 
@@ -109,7 +112,7 @@ function CustomerSelect({ value, onChange }: {
 }
 
 // ─── Pricing sub-component (shared between side + bottom layouts) ─────────────
-function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, hasCalc, onHindChange, useDiscount, onDiscountChange, onRequestMarkPaid, paidSoFar }: {
+function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, hasCalc, onHindChange, useDiscount, onDiscountChange, onRequestMarkPaid, paidSoFar, allRates }: {
   form: JobInput
   set: <K extends keyof JobInput>(key: K, val: JobInput[K]) => void
   settings: ReturnType<typeof useSettings>['settings']
@@ -122,6 +125,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
   onDiscountChange: (v: boolean) => void
   onRequestMarkPaid?: () => void
   paidSoFar: number
+  allRates: import('../../lib/earnings').WorkerRate[]
 }) {
   // Recomputed here rather than threaded in: this block is rendered by two
   // layouts, and a prop the two callers could set differently is a way for the
@@ -276,6 +280,79 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         </div>
       )}
 
+      {/* ── Cost breakdown — what this job costs the lab ── */}
+      {(() => {
+        const allHambad = form.work_items.length > 0
+          ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
+          : (form.hambad ?? '')
+        const effectiveMaterjal = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
+        const costMat = jobMaterialCost(
+          { materjal: effectiveMaterjal, hambad: allHambad, masina: form.masina },
+          settings.materialCosts, settings.materialPrices
+        ) ?? 0
+        const costTeeth = toothCountOf(allHambad)
+        const today = new Date().toISOString().slice(0, 10)
+
+        const tId = form.assigned_to
+        const tRates = tId ? allRates.filter(r => r.profile_id === tId) : []
+        const tRate = tId ? pickRateFor(tRates, form.too, today, settings.tooTuubid, 'too') : null
+        let tCost = 0, tLabel = ''
+        if (tRate) {
+          if (tRate.kind === 'hammas') { tCost = costTeeth * tRate.amount; tLabel = `${costTeeth} × ${tRate.amount} €` }
+          else if (tRate.kind === 'too') { tCost = tRate.amount; tLabel = `${tRate.amount} €/töö` }
+        }
+
+        const dId = form.designed_by
+        const dRates = dId ? allRates.filter(r => r.profile_id === dId) : []
+        const dRate = dId ? pickRateFor(dRates, form.too, today, settings.tooTuubid, 'disain') : null
+        let dCost = 0, dLabel = ''
+        if (dRate) {
+          if (dRate.kind === 'hammas') { dCost = costTeeth * dRate.amount; dLabel = `${costTeeth} × ${dRate.amount} €` }
+          else if (dRate.kind === 'too') { dCost = dRate.amount; dLabel = `${dRate.amount} €/töö` }
+        }
+
+        const totalCost = Math.round((tCost + dCost + costMat) * 100) / 100
+        if (totalCost === 0 && !tId && !dId) return null
+        return (
+          <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
+            <p className="text-xs font-semibold text-ink-muted mb-1.5">Omahind (labori kulu)</p>
+            {tCost > 0 && (
+              <div className="flex justify-between text-xs text-ink-muted">
+                <span>Tehnik</span>
+                <span className="tabular-nums text-ink">{tCost.toFixed(2)} € <span className="text-ink-faint text-[10px]">{tLabel}</span></span>
+              </div>
+            )}
+            {tId && tCost === 0 && (
+              <div className="text-[10px] text-ink-faint">Tehnikul puudub tasureegel</div>
+            )}
+            {dCost > 0 && (
+              <div className="flex justify-between text-xs text-ink-muted">
+                <span>Disainija</span>
+                <span className="tabular-nums text-ink">{dCost.toFixed(2)} € <span className="text-ink-faint text-[10px]">{dLabel}</span></span>
+              </div>
+            )}
+            {costMat > 0 && (
+              <div className="flex justify-between text-xs text-ink-muted">
+                <span>Materjal</span>
+                <span className="tabular-nums text-ink">{costMat.toFixed(2)} €</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
+              <span className="font-semibold text-ink">Kokku kulu</span>
+              <span className="font-bold text-red-500 tabular-nums">{totalCost.toFixed(2)} €</span>
+            </div>
+            {(form.hind ?? 0) > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-ink-muted">Kate</span>
+                <span className={`font-semibold tabular-nums ${(form.hind ?? 0) - totalCost >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {((form.hind ?? 0) - totalCost).toFixed(2)} € ({totalCost > 0 && (form.hind ?? 0) > 0 ? `${(((form.hind ?? 0) - totalCost) / (form.hind ?? 1) * 100).toFixed(0)}%` : '—'})
+                </span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="label">Hind kokku (€)</label>
@@ -366,6 +443,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const [paidDialog, setPaidDialog] = useState(false)
   const markPaid = useMarkJobsPaid()
   const { data: jobPayments = [] } = usePayments()
+  const { data: workerRates = [] } = useWorkerRates()
   const { stages, doneStageKey } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
@@ -1428,6 +1506,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 onRequestMarkPaid={job ? () => setPaidDialog(true) : undefined}
                 paidSoFar={job ? jobPayments.filter(p => p.job_id === job.id)
                   .reduce((s, p) => s + Number(p.amount), 0) : 0}
+                allRates={workerRates}
               />
 
               {/* Muudatused */}
