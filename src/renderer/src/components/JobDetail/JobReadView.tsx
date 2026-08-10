@@ -267,8 +267,10 @@ export function JobReadView({
             <div className="space-y-1.5">
               {rev ? (
                 <>
-                  <Line label="Muudatuse hind" value={`${v.price.toFixed(2)} €`} />
-                  <Line label="Töö hind" value={`${(job.hind ?? 0).toFixed(2)} €`} muted />
+                  <Line label="Töö hind" value={`${(job.hind ?? 0).toFixed(2)} €`} />
+                  {v.price > 0 && (
+                    <Line label="Ümbertegemise kulu (sisemine)" value={`${v.price.toFixed(2)} €`} muted />
+                  )}
                   {revisions.length > 1 && (
                     <Line label={`Kõik muudatused (${revisions.length})`} value={`${revTotal.toFixed(2)} €`} muted />
                   )}
