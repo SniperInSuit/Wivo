@@ -370,6 +370,34 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       }
     }
   }
+  // ── Completed revisions — count their work types too ───────────────────────
+  // A revision can carry its own work_items (e.g. Allon4 redo on a Crown job).
+  // These are real production work and must appear in the per-type table.
+  for (const j of jobs) {
+    for (const rev of j.revisions ?? []) {
+      if ((rev.status ?? '') !== doneStageKey) continue
+      const revDate = (rev.valmis_kuupaev ?? rev.deadline ?? rev.ts ?? '').slice(0, 10)
+      if (!revDate || revDate < periodStart || revDate > periodEnd) continue
+
+      const revItems = Array.isArray(rev.work_items) && rev.work_items.length > 0
+        ? rev.work_items
+        : rev.hambad
+          ? [{ id: rev.id, too: j.too ?? '', hambad: rev.hambad }]
+          : []
+
+      for (const item of revItems) {
+        const name = resolveWorkType(item.too, types).nimi
+        const b = typeBuckets.get(name)
+        if (!b) continue
+        const teeth = toothCount(item.hambad)
+        // Revisions are cost only (internal), not income — but they ARE work done
+        b.teeth += teeth
+        b.costs += workTypeConsumables(item.too, types, teeth).total
+        b.material += (jobMaterialCost({ materjal: rev.materjal ?? j.materjal, hambad: item.hambad, masina: j.masina }, materialCosts) ?? 0)
+      }
+    }
+  }
+
   // Labour is attributed per job by re-running the engine for the job's own
   // technician; cheaper than it looks because the job list is already filtered.
   for (const w of workers) {
