@@ -45,7 +45,9 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
     mudel: revision.mudel ?? false,
     taspidev: revision.taspidev !== false,  // default true (billable)
     purunenud_hambad: revision.purunenud_hambad ?? '',
-    extra_cost: revision.extra_cost != null ? String(revision.extra_cost) : '',
+    extra_costs: Array.isArray(revision.extra_costs) && revision.extra_costs.length > 0
+      ? revision.extra_costs.map(c => ({ ...c }))
+      : [] as { nimi: string; summa: number }[],
     print_id: revision.print_id ?? '',
     disain_id: revision.disain_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
@@ -66,14 +68,15 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
   const allHambad = form.work_items.length > 0
     ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
     : form.hambad
-  // Auto cost: material only (consumables like screws are reused from original job)
-  // Extra cost is for exceptional cases (e.g. broken screw needs replacement)
+  // Auto cost: material + labour estimate + extra costs
   const matCost = jobMaterialCost(
     { materjal: form.materjal, hambad: allHambad, masina: null },
     settings.materialCosts, settings.materialPrices
   ) ?? 0
-  const extraCost = parseFloat(form.extra_cost) || 0
-  const autoPrice = Math.round((matCost + extraCost) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
+  const teethCount = allHambad.split(',').filter(t => t.trim()).length
+  const labourCost = teethCount * settings.muudatusHambaHind
+  const extraTotal = form.extra_costs.reduce((s, c) => s + (c.summa || 0), 0)
+  const autoPrice = Math.round((matCost + labourCost + extraTotal) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
 
   function handleSubmit(e?: React.FormEvent | React.MouseEvent) {
     e?.preventDefault()
@@ -94,7 +97,9 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
         : form.materjal) || undefined,
       deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
       price: autoPrice > 0 ? autoPrice : undefined,
-      extra_cost: extraCost > 0 ? extraCost : undefined,
+      extra_costs: form.extra_costs.filter(c => c.nimi.trim() && c.summa > 0).length > 0
+        ? form.extra_costs.filter(c => c.nimi.trim() && c.summa > 0)
+        : undefined,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
       taspidev: form.taspidev ? undefined : false,
@@ -392,34 +397,58 @@ export function RevisionEditFullscreen({ revision, onSave, onCancel, saving }: R
               </div>
             </div>
 
-            {/* Auto-computed cost + extra */}
+            {/* Auto-computed cost */}
             <div>
               <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> Ümbertegemise kulu</label>
               <p className="text-lg font-bold text-slate-100 tabular-nums">
                 {autoPrice > 0 ? `${autoPrice.toFixed(2)} €` : '—'}
               </p>
-              {(matCost > 0 || extraCost > 0) && (
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  {matCost > 0 ? `Materjal ${matCost.toFixed(2)} €` : ''}
-                  {matCost > 0 && extraCost > 0 ? ' + ' : ''}
-                  {extraCost > 0 ? `Lisakulu ${extraCost.toFixed(2)} €` : ''}
-                  {form.kiirtoo ? ` × ${settings.kiirtooKordaja}` : ''}
-                </p>
-              )}
+              <div className="mt-1 space-y-0.5 text-[10px] text-slate-500">
+                {labourCost > 0 && <p>Tööjõud: {teethCount} × {settings.muudatusHambaHind} € = {labourCost.toFixed(2)} €</p>}
+                {matCost > 0 && <p>Materjal: {matCost.toFixed(2)} €</p>}
+                {extraTotal > 0 && <p>Lisakulud: {extraTotal.toFixed(2)} €</p>}
+                {form.kiirtoo && <p>× {settings.kiirtooKordaja} (kiirtöö)</p>}
+              </div>
             </div>
 
-            {/* Lisakulu — exceptional costs like replacement screws */}
+            {/* Lisakulud — exceptional costs like replacement screws */}
             <div>
-              <label className="label text-slate-400">Lisakulu (€)</label>
-              <div className="relative w-36">
-                <input type="number" min="0" step="0.01" value={form.extra_cost}
-                  onChange={e => set('extra_cost', e.target.value)}
-                  placeholder="0.00"
-                  className="input pr-7 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">€</span>
+              <label className="label text-slate-400">Lisakulud</label>
+              <div className="space-y-1.5">
+                {form.extra_costs.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input type="text" value={c.nimi}
+                      onChange={e => {
+                        const next = [...form.extra_costs]
+                        next[i] = { ...next[i], nimi: e.target.value }
+                        set('extra_costs', next)
+                      }}
+                      placeholder="Nimi (nt kruvi)"
+                      className="input flex-1 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent text-xs"
+                    />
+                    <div className="relative w-24">
+                      <input type="number" min="0" step="0.01" value={c.summa || ''}
+                        onChange={e => {
+                          const next = [...form.extra_costs]
+                          next[i] = { ...next[i], summa: parseFloat(e.target.value) || 0 }
+                          set('extra_costs', next)
+                        }}
+                        placeholder="0.00"
+                        className="input pr-6 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent text-xs"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none">€</span>
+                    </div>
+                    <button type="button" onClick={() => {
+                      set('extra_costs', form.extra_costs.filter((_, j) => j !== i))
+                    }} className="text-red-400 hover:text-red-300 text-xs px-1">×</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => {
+                  set('extra_costs', [...form.extra_costs, { nimi: '', summa: 0 }])
+                }} className="text-xs text-accent hover:text-accent/80 font-medium">
+                  + Lisa kulu
+                </button>
               </div>
-              <p className="text-[10px] text-slate-500 mt-0.5">Nt uus kruvi, abutment — ainult kui vaja asendada</p>
             </div>
           </div>
 
