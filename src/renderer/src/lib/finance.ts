@@ -17,7 +17,7 @@
  *   not see, and the UI shows it next to the number.
  */
 import type { Job } from '../types/job'
-import { revisionReasons } from '../types/job'
+import { revisionReasons, jobWorkItems } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
@@ -329,17 +329,46 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
   }
   for (const j of done) {
-    const name = resolveWorkType(j.too, types).nimi
-    const b = typeBuckets.get(name) ?? {
-      name, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
+    const items = jobWorkItems(j)
+    const jobRev = revenueByJob.get(j.id) ?? 0
+    const jobIncome = Number(j.hind ?? 0)
+    const jobMatCost = jobMaterialCost(j, materialCosts) ?? 0
+    // Distribute revenue/income/material proportionally by tooth count when multi-type
+    const totalTeeth = toothCount(j.hambad) || 1
+    const jobCons = workTypeConsumables(j.too, types, totalTeeth).total
+
+    if (items.length <= 1) {
+      // Single type — attribute everything to it
+      const name = resolveWorkType(j.too, types).nimi
+      const b = typeBuckets.get(name) ?? {
+        name, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
+      }
+      b.jobs++
+      b.teeth += totalTeeth
+      b.income += jobIncome
+      b.revenue += jobRev
+      b.material += jobMatCost
+      b.costs += jobCons + perJobFixed
+      typeBuckets.set(name, b)
+    } else {
+      // Multi-type — each work item gets its share
+      const fixedShare = perJobFixed / items.length
+      for (const item of items) {
+        const name = resolveWorkType(item.too, types).nimi
+        const b = typeBuckets.get(name) ?? {
+          name, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
+        }
+        const itemTeeth = toothCount(item.hambad)
+        const share = totalTeeth > 0 ? itemTeeth / totalTeeth : 1 / items.length
+        b.jobs++
+        b.teeth += itemTeeth
+        b.income += round2(jobIncome * share)
+        b.revenue += round2(jobRev * share)
+        b.material += round2(jobMatCost * share)
+        b.costs += round2(workTypeConsumables(item.too, types, itemTeeth).total + fixedShare)
+        typeBuckets.set(name, b)
+      }
     }
-    b.jobs++
-    b.teeth += toothCount(j.hambad)
-    b.income += Number(j.hind ?? 0)
-    b.revenue += revenueByJob.get(j.id) ?? 0
-    b.material += (jobMaterialCost(j, materialCosts) ?? 0)
-    b.costs += workTypeConsumables(j.too, types, toothCount(j.hambad)).total + perJobFixed
-    typeBuckets.set(name, b)
   }
   // Labour is attributed per job by re-running the engine for the job's own
   // technician; cheaper than it looks because the job list is already filtered.
