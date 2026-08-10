@@ -100,6 +100,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     workers: workers.map(w => ({ id: w.id, full_name: w.full_name, toosuhe: w.toosuhe })),
     types: wt.types,
     materialCosts: settings.materialCosts,
+    materialPrices: settings.materialPrices,
     fixedCosts: settings.fixedCostsPerJob,
     overheads: settings.yldkulud,
     doneStageKey,
@@ -251,7 +252,8 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Materjal</th>
                   <th className="px-3 py-2 font-semibold text-right">Kate</th>
                   <th className="px-3 py-2 font-semibold text-right">%</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kesk. / töö</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kesk. tulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">Kesk. kulu</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,7 +261,8 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   .sort((a, b) => b.revenue - a.revenue)
                   .map(t => {
                     const img = workTypeImage(t.name)
-                    const avgMargin = t.jobs > 0 ? t.margin / t.jobs : 0
+                    const avgIncome = t.jobs > 0 ? t.income / t.jobs : 0
+                    const avgCost = t.jobs > 0 ? (t.labour + t.material + t.costs) / t.jobs : 0
                     return (
                       <tr key={t.name} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
                         <td className="px-3 py-2">
@@ -285,9 +288,11 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                           t.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
                           {t.revenue > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
                         </td>
-                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${
-                          avgMargin >= 0 ? 'text-ink-muted' : 'text-red-400'}`}>
-                          {t.jobs > 0 ? `${avgMargin.toFixed(2)} €` : '—'}
+                        <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
+                          {t.jobs > 0 ? `${avgIncome.toFixed(0)} €` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
+                          {t.jobs > 0 ? `${avgCost.toFixed(0)} €` : '—'}
                         </td>
                       </tr>
                     )
@@ -325,6 +330,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                       return totalIncome > 0 ? `${(totalMargin / totalIncome * 100).toFixed(0)}%` : '—'
                     })()}
                   </td>
+                  <td className="px-3 py-2" />
                   <td className="px-3 py-2" />
                 </tr>
               </tfoot>

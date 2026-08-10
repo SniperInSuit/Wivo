@@ -53,17 +53,21 @@ const coverage = (total: number, covered: number): Coverage => ({
  *   Pro2 arch kit → bulk, lower per-tooth cost
  *   Midas → tooth per capsule (1 large, up to 3 small), higher per-tooth cost
  */
+/**
+ * Material cost for a job. Checks `costs` first (explicit cost prices),
+ * falls back to `fallbackPrices` (selling prices used as cost estimate).
+ */
 export function jobMaterialCost(
   job: Pick<Job, 'materjal' | 'hambad' | 'masina'>,
-  costs: Record<string, MaterialPricing>
+  costs: Record<string, MaterialPricing>,
+  fallbackPrices?: Record<string, MaterialPricing>
 ): number | null {
   const mat = job.materjal?.trim()
   if (!mat) return null
   const machine = job.masina?.trim()
 
-  // Try machine-specific key first ("Crown HT|Pro2"), then base ("Crown HT")
-  function findCost(material: string): MaterialPricing | undefined {
-    const allKeys = Object.keys(costs).sort((a, b) => b.length - a.length)
+  function findCost(material: string, table: Record<string, MaterialPricing>): MaterialPricing | undefined {
+    const allKeys = Object.keys(table).sort((a, b) => b.length - a.length)
 
     // 1. Machine-specific: "material|machine"
     if (machine) {
@@ -73,17 +77,21 @@ export function jobMaterialCost(
         return kMach.toLowerCase() === machine.toLowerCase()
           && (material === kMat || material.toLowerCase().startsWith(kMat.toLowerCase() + ' '))
       })
-      if (machineKey) return costs[machineKey]
+      if (machineKey) return table[machineKey]
     }
 
     // 2. Base material (no machine)
     const baseKey = allKeys
       .filter(k => !k.includes('|'))
       .find(k => material === k || material.toLowerCase().startsWith(k.toLowerCase() + ' '))
-    return baseKey ? costs[baseKey] : undefined
+    return baseKey ? table[baseKey] : undefined
   }
 
-  const c = findCost(mat)
+  // Try explicit cost prices first, fall back to selling prices as estimate
+  let c = findCost(mat, costs)
+  if (!c || (c.small === 0 && c.large === 0)) {
+    if (fallbackPrices) c = findCost(mat, fallbackPrices)
+  }
   if (!c || (c.small === 0 && c.large === 0)) return null
   const h = job.hambad ?? ''
   return round2(countSmallTeeth(h) * c.small + countLargeTeeth(h) * c.large)
@@ -208,6 +216,8 @@ export interface FinanceInput {
   workers: { id: string; full_name: string; toosuhe?: string | null }[]
   types: WorkType[]
   materialCosts: Record<string, MaterialPricing>
+  /** Selling prices — used as fallback when materialCosts has no entry. */
+  materialPrices?: Record<string, MaterialPricing>
   fixedCosts: FixedCost[]
   /** Monthly recurring costs. Empty = overheads unknown, reported as 0. */
   overheads: Overhead[]
@@ -219,7 +229,7 @@ export interface FinanceInput {
 export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
-    materialCosts, fixedCosts, overheads, doneStageKey, periodStart, periodEnd,
+    materialCosts, materialPrices, fixedCosts, overheads, doneStageKey, periodStart, periodEnd,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -291,7 +301,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   let costedJobs = 0
   let consumableCost = 0
   for (const j of done) {
-    const c = jobMaterialCost(j, materialCosts)
+    const c = jobMaterialCost(j, materialCosts, materialPrices)
     if (c != null) { materialCost += c; costedJobs++ }
     consumableCost += workTypeConsumables(j.too, types, toothCount(j.hambad)).total
   }
@@ -332,7 +342,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     const items = jobWorkItems(j)
     const jobRev = revenueByJob.get(j.id) ?? 0
     const jobIncome = Number(j.hind ?? 0)
-    const jobMatCost = jobMaterialCost(j, materialCosts) ?? 0
+    const jobMatCost = jobMaterialCost(j, materialCosts, materialPrices) ?? 0
     // Distribute revenue/income/material proportionally by tooth count when multi-type
     const totalTeeth = toothCount(j.hambad) || 1
     const jobCons = workTypeConsumables(j.too, types, totalTeeth).total
@@ -393,7 +403,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         // Revisions are cost only (internal), not income — but they ARE work done
         b.teeth += teeth
         b.costs += workTypeConsumables(item.too, types, teeth).total
-        b.material += (jobMaterialCost({ materjal: rev.materjal ?? j.materjal, hambad: item.hambad, masina: j.masina }, materialCosts) ?? 0)
+        b.material += (jobMaterialCost({ materjal: rev.materjal ?? j.materjal, hambad: item.hambad, masina: j.masina }, materialCosts, materialPrices) ?? 0)
       }
     }
   }
@@ -446,7 +456,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const shareOf = (v: number) => v / reasons.length
       const revMat = r.materjal ?? j.materjal
       const revHambad = r.hambad ?? j.hambad
-      const revMaterial = (jobMaterialCost({ materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts) ?? 0)
+      const revMaterial = (jobMaterialCost({ materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts, materialPrices) ?? 0)
         + workTypeConsumables(j.too, types, toothCount(revHambad)).total
 
       for (const reason of reasons) {
