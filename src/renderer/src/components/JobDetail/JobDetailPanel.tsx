@@ -295,25 +295,67 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         const costTeeth = toothCountOf(allHambad)
         const today = new Date().toISOString().slice(0, 10)
 
+        // Build work items for rate matching
+        const workItems = form.work_items.length > 0
+          ? form.work_items.map(i => ({ too: i.too, hambad: i.hambad }))
+          : [{ too: form.too ?? '', hambad: allHambad }]
+
         const tId = form.assigned_to
         const tRates = tId ? allRates.filter(r => r.profile_id === tId) : []
-        const tRate = tId ? pickRateFor(tRates, form.too, today, settings.tooTuubid, 'too') : null
-        let tCost = 0, tLabel = ''
-        if (tRate) {
-          if (tRate.kind === 'hammas') { tCost = costTeeth * tRate.amount; tLabel = `${costTeeth} × ${tRate.amount} €` }
-          else if (tRate.kind === 'too') { tCost = tRate.amount; tLabel = `${tRate.amount} €/töö` }
+
+        // Sum production rates across all work items
+        type CostLine = { label: string; amount: number }
+        const techLines: CostLine[] = []
+        for (const item of workItems) {
+          const tc = toothCountOf(item.hambad)
+          const rate = tId ? pickRateFor(tRates, item.too, today, settings.tooTuubid, 'too') : null
+          if (rate) {
+            const amt = rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0
+            if (amt > 0) techLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €`, amount: amt })
+          }
         }
+        // Additive rules (e.g. "igeme disain" per tooth on Allon types)
+        for (const r of tRates) {
+          if (!r.additive || (r.applies_to ?? 'too') !== 'too') continue
+          const covered = workItems.filter(i => {
+            const rt = (r.work_type ?? '').toLowerCase()
+            if (!rt) return true
+            return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
+          })
+          if (covered.length === 0) continue
+          const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
+          const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
+          if (amt > 0) techLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €`, amount: amt })
+        }
+        const tCost = Math.round(techLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
 
         const dId = form.designed_by
         const dRates = dId ? allRates.filter(r => r.profile_id === dId) : []
-        const dRate = dId ? pickRateFor(dRates, form.too, today, settings.tooTuubid, 'disain') : null
-        let dCost = 0, dLabel = ''
-        if (dRate) {
-          if (dRate.kind === 'hammas') { dCost = costTeeth * dRate.amount; dLabel = `${costTeeth} × ${dRate.amount} €` }
-          else if (dRate.kind === 'too') { dCost = dRate.amount; dLabel = `${dRate.amount} €/töö` }
+        const designLines: CostLine[] = []
+        for (const item of workItems) {
+          const tc = toothCountOf(item.hambad)
+          const rate = dId ? pickRateFor(dRates, item.too, today, settings.tooTuubid, 'disain') : null
+          if (rate) {
+            const amt = rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0
+            if (amt > 0) designLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €`, amount: amt })
+          }
         }
+        // Additive design rules
+        for (const r of dRates) {
+          if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
+          const covered = workItems.filter(i => {
+            const rt = (r.work_type ?? '').toLowerCase()
+            if (!rt) return true
+            return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
+          })
+          if (covered.length === 0) continue
+          const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
+          const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
+          if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €`, amount: amt })
+        }
+        const dCost = Math.round(designLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
 
-        // Hourly cost from tund/kuu rate (for info, not included in total yet — needs time tracking)
+        // Hourly cost from tund/kuu rate (for info)
         const tHourRate = tId ? tRates.find(r => r.kind === 'tund') : null
         const tMonthRate = tId ? tRates.find(r => r.kind === 'kuu') : null
         let tHourlyCost: number | null = null
@@ -339,12 +381,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         return (
           <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
             <p className="text-xs font-semibold text-ink-muted mb-1.5">Omahind (labori kulu)</p>
-            {tCost > 0 && (
-              <div className="flex justify-between text-xs text-ink-muted">
-                <span>Tehnik</span>
-                <span className="tabular-nums text-ink">{tCost.toFixed(2)} € <span className="text-ink-faint text-[10px]">{tLabel}</span></span>
+            {techLines.map((l, i) => (
+              <div key={`t${i}`} className="flex justify-between text-xs text-ink-muted">
+                <span className="truncate">{techLines.length === 1 ? 'Tehnik' : `Tehnik: ${l.label.split(':')[0]}`}</span>
+                <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} € <span className="text-ink-faint text-[10px]">{l.label.split(':').slice(1).join(':').trim()}</span></span>
               </div>
-            )}
+            ))}
             {tHourlyCost != null && (
               <div className="flex justify-between text-[10px] text-ink-faint">
                 <span>Tehnik tunnihind</span>
@@ -354,12 +396,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             {tId && tCost === 0 && !tHourlyCost && (
               <div className="text-[10px] text-ink-faint">Tehnikul puudub tasureegel</div>
             )}
-            {dCost > 0 && (
-              <div className="flex justify-between text-xs text-ink-muted">
-                <span>Disainija</span>
-                <span className="tabular-nums text-ink">{dCost.toFixed(2)} € <span className="text-ink-faint text-[10px]">{dLabel}</span></span>
+            {designLines.map((l, i) => (
+              <div key={`d${i}`} className="flex justify-between text-xs text-ink-muted">
+                <span className="truncate">{designLines.length === 1 ? 'Disainija' : `Disain: ${l.label.split(':')[0]}`}</span>
+                <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} € <span className="text-ink-faint text-[10px]">{l.label.split(':').slice(1).join(':').trim()}</span></span>
               </div>
-            )}
+            ))}
             {costMat > 0 && (
               <div className="flex justify-between text-xs text-ink-muted">
                 <span>Materjal</span>
