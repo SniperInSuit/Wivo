@@ -51,6 +51,7 @@ const ALIASES: Record<string, string> = {
   'implantkroon':    'implant_crown',
   'implantaat-kroon': 'implant_crown',
   'implantaatkroon': 'implant_crown',
+  'implantaadi-kroon': 'implant_crown',
   'abutmendile-kroon': 'abutment_crown',
   'sild':            'bridge',
   'viniir':          'veneer',
