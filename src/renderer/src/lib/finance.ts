@@ -118,6 +118,8 @@ export function jobFixedCost(fixedCosts: FixedCost[]): number {
 export interface WorkTypeFinance {
   name: string
   jobs: number
+  teeth: number         // total teeth across all jobs of this type
+  income: number        // sum of job.hind (what the jobs are worth)
   revenue: number       // invoiced for these jobs
   labour: number
   material: number
@@ -323,14 +325,16 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   const typeBuckets = new Map<string, WorkTypeFinance>()
   // Pre-seed all configured work types so every one shows in the table
   for (const t of types) {
-    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
+    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
   }
   for (const j of done) {
     const name = resolveWorkType(j.too, types).nimi
     const b = typeBuckets.get(name) ?? {
-      name, jobs: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
+      name, jobs: 0, teeth: 0, income: 0, revenue: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
     }
     b.jobs++
+    b.teeth += toothCount(j.hambad)
+    b.income += Number(j.hind ?? 0)
     b.revenue += revenueByJob.get(j.id) ?? 0
     // Consumables sit with material in the per-type table: both are "what this
     // job consumed", and splitting them there would add a column nobody asked for.
@@ -356,16 +360,17 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     }
   }
   const byWorkType = [...typeBuckets.values()].map(b => {
-    const margin = round2(b.revenue - b.labour - b.material)
+    const margin = round2(b.income - b.labour - b.material)
     return {
       ...b,
+      income: round2(b.income),
       revenue: round2(b.revenue),
       labour: round2(b.labour),
       material: round2(b.material),
       margin,
-      marginPct: b.revenue > 0 ? round2((margin / b.revenue) * 100) : 0,
+      marginPct: b.income > 0 ? round2((margin / b.income) * 100) : 0,
     }
-  }).sort((a, b) => b.revenue - a.revenue)
+  }).sort((a, b) => b.income - a.income)
 
   // ── Revisions ─────────────────────────────────────────────────────────────
   // What rework costs. A revision consumes resin and, when the rule says so,
