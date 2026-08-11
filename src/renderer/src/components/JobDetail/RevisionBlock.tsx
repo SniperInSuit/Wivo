@@ -95,7 +95,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
         : (draft.hambad || undefined),
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
-      deadline: draft.deadline ? new Date(draft.deadline).toISOString() : undefined,
+      deadline: draft.deadline || undefined,
       // The multiplier comes from Seaded → Hinnad. It was hardcoded 2, so a lab
       // that charges 1.5× for rush had its revisions silently billed at double.
       price: draft.price !== ''

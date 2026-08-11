@@ -50,8 +50,9 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
 
   // The deadline is one timestamp. 17:00 is the end of a working day and the
   // same default the calendar uses when a user picks a date and no time.
+  // Store as local time — no UTC conversion. toISOString() shifts by timezone.
   const valmisAeg = state.deadline
-    ? new Date(`${state.deadline}T${state.time ?? '17:00'}`).toISOString()
+    ? `${state.deadline}T${state.time ?? '17:00'}`
     : null
 
   const autoPrice =

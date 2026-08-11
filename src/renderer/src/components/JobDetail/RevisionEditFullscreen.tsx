@@ -140,7 +140,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
       materjal: (form.work_items.length > 1
         ? form.work_items[0]?.materjal ?? form.materjal
         : form.materjal) || undefined,
-      deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined,
+      deadline: form.deadline || undefined,
       price: autoPrice > 0 ? autoPrice : undefined,
       extra_costs: form.extra_costs.filter(c => c.nimi.trim() && c.summa > 0).length > 0
         ? form.extra_costs.filter(c => c.nimi.trim() && c.summa > 0)

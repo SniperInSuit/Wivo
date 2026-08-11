@@ -706,7 +706,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
       varv: form.varv || null,
-      valmis_aeg: form.valmis_aeg ? new Date(form.valmis_aeg).toISOString() : null,
+      // Store as-is — no UTC conversion. The user types local time and expects
+      // to see it back unchanged. toISOString() shifts by the timezone offset.
+      valmis_aeg: form.valmis_aeg || null,
       disain_hind: form.disain_hind,
       // Clear legacy fields on save
       muudatused: null,
