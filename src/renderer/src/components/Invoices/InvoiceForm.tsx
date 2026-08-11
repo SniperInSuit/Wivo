@@ -10,7 +10,7 @@ import { motion } from 'framer-motion'
 import { X, Plus, Trash2, Loader2, FileText } from 'lucide-react'
 import { format, addDays, addMonths, parseISO } from 'date-fns'
 import type { Job } from '../../types/job'
-import { revisionReasonLabel } from '../../types/job'
+import { revisionReasonLabel, jobWorkItems } from '../../types/job'
 import { useSettings } from '../../stores/useSettings'
 import { useCreateInvoice, useInvoices, type CreateInvoiceInput } from '../../hooks/useInvoices'
 import { PatientPicker } from '../Patients/PatientPicker'
@@ -97,15 +97,12 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           job_id: j.id,
           revision_id: null,
           description: [
-            j.too?.trim() || 'Töö',
-            // On a customer invoice the practice needs to know WHICH case, and
-            // their own reference is what they filed it under.
+            // All work types, not just the first one
+            [...new Set(jobWorkItems(j).map(i => i.too))].join(' + ') || j.too?.trim() || 'Töö',
             billTo === 'customer'
               ? (j.customer_ref?.trim() || j.patsient?.trim() || null)
               : null,
             j.hambad ? `hambad ${j.hambad}` : null,
-            // Named, because the price includes them and a line that silently
-            // carries 60 € of Ülesehitus is a line the client will query.
             (j.extras ?? []).length > 0
               ? (j.extras ?? []).map(e => e.nimi).join(', ')
               : null,
