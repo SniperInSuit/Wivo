@@ -64,9 +64,11 @@ export function RevisionBoardCard({
             <Zap size={8} /> {settings.kiirtooKordaja}×
           </span>
         )}
-        {revision.price != null && (
-          <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">
-            {revision.price.toFixed(2)} €
+        {job.hind != null && (
+          <span className={`ml-auto text-[9px] font-bold px-1 py-0.5 rounded ${
+            job.makstud ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+          }`}>
+            {job.makstud ? '€ ✓' : `${job.hind} €`}
           </span>
         )}
       </div>
