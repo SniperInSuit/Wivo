@@ -4,7 +4,7 @@ import { AlertCircle } from 'lucide-react'
 import type {
   ArchSelection, WizardPriority, WizardField as WizardFieldKey,
 } from '@shared/wizard'
-import { baseTypeName, materialsOf } from '@shared/wizard'
+import { baseTypeName, typeKeyIndex, materialsOf } from '@shared/wizard'
 import { quoteJob } from '@shared/pricing/quote'
 import type { WizardStepComponent } from '../types'
 import { WizardSummaryRow } from '../ui/WizardSummaryRow'
@@ -71,6 +71,14 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
   const { data: workers = [] } = useClinicProfiles()
 
   const items: WorkItem[] = useMemo(() => wizardWorkItems(state, types), [state, types])
+
+  /** Display name: "Sild§2" → "Sild 2", "Kroon" → "Kroon" */
+  const displayName = (key: string): string => {
+    const base = baseTypeName(key)
+    const idx = typeKeyIndex(key)
+    const sameType = state.jobTypes.filter(k => baseTypeName(k) === base)
+    return sameType.length > 1 ? `${base} ${idx}` : base
+  }
 
   // The quote is built through wizardQuoteInput so the number shown here and
   // the number toJobInput() writes come from one builder — see workItems.ts.
@@ -152,18 +160,18 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
             empty={state.jobTypes.length === 0}
             value={
               <span className="flex flex-wrap gap-2">
-                {state.jobTypes.map(nimi => (
+                {state.jobTypes.map(key => (
                   <span
-                    key={nimi}
+                    key={key}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg
                                bg-bg-sidebar border border-ink-faint/25 text-base text-ink"
                   >
                     <span
                       className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ background: hex(nimi) }}
+                      style={{ background: hex(baseTypeName(key)) }}
                       aria-hidden="true"
                     />
-                    {nimi}
+                    {displayName(key)}
                   </span>
                 ))}
               </span>
@@ -190,10 +198,13 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
               {state.selectedArch && (
                 <WizardSummaryRow label="Lõualuu" value={ARCH_LABEL[state.selectedArch]} />
               )}
-              {items.map(item => (
+              {items.map((item, idx) => {
+                const sameType = items.filter(i => i.too === item.too)
+                const num = sameType.length > 1 ? ` ${sameType.indexOf(item) + 1}` : ''
+                return (
                 <WizardSummaryRow
                   key={item.id}
-                  label={item.too}
+                  label={`${item.too}${num}`}
                   empty={!item.hambad}
                   value={
                     item.hambad ? (
@@ -209,7 +220,8 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                     )
                   }
                 />
-              ))}
+                )
+              })}
             </>
           )}
         </ReviewSection>
@@ -231,7 +243,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
               return (
                 <WizardSummaryRow
                   key={key}
-                  label={baseTypeName(key)}
+                  label={displayName(key)}
                   value={assigned || (fallback ? `${fallback} (esimese järgi)` : '')}
                   empty={!assigned && !fallback}
                 />
