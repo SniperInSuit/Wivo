@@ -5,7 +5,6 @@ import type { Revision, StageKey, WorkItem } from '../../types/job'
 import {
   MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
 } from '../../types/job'
-import { OdontogramPicker } from './OdontogramPicker'
 import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'

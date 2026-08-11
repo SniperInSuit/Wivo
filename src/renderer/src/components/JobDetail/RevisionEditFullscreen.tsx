@@ -7,7 +7,7 @@ import { debugLog } from '../Workers/DebugConsole'
 import { Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
 import type { Revision, StageKey } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
-import { OdontogramPicker } from './OdontogramPicker'
+import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
@@ -290,9 +290,16 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                       <Check size={12} /> Valmis
                     </button>
                   </div>
-                  <OdontogramPicker
-                    value={form.purunenud_hambad}
-                    onChange={v => set('purunenud_hambad', v)}
+                  <MultiOdontogramPicker
+                    items={[{ id: '__breakage__', too: 'Purunenud', hambad: form.purunenud_hambad }]}
+                    activeItemId="__breakage__"
+                    colorMap={{ Purunenud: '#EF4444' }}
+                    onToggleTooth={tooth => {
+                      const teeth = new Set(form.purunenud_hambad.split(',').map(t => t.trim()).filter(Boolean))
+                      const s = String(tooth)
+                      teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                      set('purunenud_hambad', [...teeth].join(','))
+                    }}
                   />
                 </div>
               )}

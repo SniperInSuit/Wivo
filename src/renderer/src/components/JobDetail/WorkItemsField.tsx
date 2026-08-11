@@ -22,7 +22,6 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
-import { OdontogramPicker } from './OdontogramPicker'
 import { workTypeImage } from '../../lib/workTypeImages'
 
 export interface WorkItemsFieldProps {
@@ -349,9 +348,16 @@ export function WorkItemsField({
             // No work item yet. The revision still lets teeth be marked on their
             // own; the job page passes no handler and simply shows nothing.
             onLooseTeethChange && (
-              <OdontogramPicker
-                value={looseTeeth ?? ''}
-                onChange={onLooseTeethChange}
+              <MultiOdontogramPicker
+                items={[{ id: '__loose__', too: 'Hambad', hambad: looseTeeth ?? '' }]}
+                activeItemId="__loose__"
+                colorMap={{ Hambad: '#0AB6C4' }}
+                onToggleTooth={tooth => {
+                  const teeth = new Set((looseTeeth ?? '').split(',').map(t => t.trim()).filter(Boolean))
+                  const s = String(tooth)
+                  teeth.has(s) ? teeth.delete(s) : teeth.add(s)
+                  onLooseTeethChange([...teeth].join(','))
+                }}
               />
             )
           )}
