@@ -260,7 +260,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
       <div className="grid grid-cols-[minmax(180px,1fr)_minmax(480px,3fr)] gap-6 items-start">
         {/* ── Left: tabs + controls ── */}
         <div className="space-y-4">
-          {tabs.length > 1 && (
+          {tabs.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-ink-soft">Millisele tööle?</h3>
               <WorkTypeTabs
