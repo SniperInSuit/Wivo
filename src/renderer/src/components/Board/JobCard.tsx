@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
-import { MessageSquare, Euro, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
+import { MessageSquare, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
+import { usePayments } from '../../hooks/useInvoices'
+import { jobPaymentState } from '../../lib/jobPayments'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -18,6 +20,8 @@ interface JobCardProps {
 export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProps) {
   const { stages } = usePipeline()
   const wt = useWorkTypes()
+  const { data: allPayments = [] } = usePayments()
+  const pay = jobPaymentState(job, allPayments)
   const hasRevision = (job.revisions?.length ?? 0) > 0 || !!job.muudatused
   const workItems = jobWorkItems(job)
   const isMultiType = workItems.length > 1
@@ -71,9 +75,17 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
               <MessageSquare size={13} className="text-amber-500" />
             </span>
           )}
-          {job.hind != null && !job.makstud && (
-            <span title={`${job.hind} € maksmata`}>
-              <Euro size={13} className="text-red-400" />
+          {job.hind != null && (
+            <span title={pay.settled ? `${job.hind} € makstud` : pay.partial ? `${pay.paid.toFixed(0)}/${job.hind} €` : `${job.hind} € maksmata`}
+              className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                pay.settled
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : pay.partial
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-red-100 text-red-600'
+              }`}
+            >
+              {pay.settled ? '€ ✓' : pay.partial ? `€ ${Math.round(pay.paid / (job.hind || 1) * 100)}%` : '€'}
             </span>
           )}
         </div>
