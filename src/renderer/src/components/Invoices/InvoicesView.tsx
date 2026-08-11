@@ -473,8 +473,8 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
           )}
         </section>
 
-        {/* Delete — drafts only. An issued invoice is a document; cancel it. */}
-        {canWrite && invoice.status === 'mustand' && (
+        {/* Delete */}
+        {canWrite && (
           <section className="pt-1 border-t border-ink-faint/15">
             {confirmDelete ? (
               <div className="flex items-center gap-2">
@@ -491,12 +491,9 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                 onClick={() => setConfirmDelete(true)}
                 className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors"
               >
-                <Trash2 size={11} /> Kustuta mustand
+                <Trash2 size={11} /> Kustuta arve
               </button>
             )}
-            <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-              Väljastatud arvet ei kustutata — selle jaoks on "Tühistatud".
-            </p>
           </section>
         )}
       </div>
