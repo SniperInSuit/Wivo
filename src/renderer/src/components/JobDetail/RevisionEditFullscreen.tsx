@@ -7,7 +7,6 @@ import { debugLog } from '../Workers/DebugConsole'
 import { Save, Loader2, Zap, Euro, Cpu, Banknote, Check } from 'lucide-react'
 import type { Revision, StageKey } from '../../types/job'
 import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/job'
-import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
@@ -279,30 +278,46 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 </div>
               )}
 
-              {/* Breakage odontogram popup */}
-              {showBreakageOdonto && (
-                <div className="absolute z-50 left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl p-4 shadow-panel">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-semibold text-red-400">Märgi purunenud hambad</label>
+              {/* Breakage tooth picker — compact number grid */}
+              {showBreakageOdonto && (() => {
+                const broken = new Set(form.purunenud_hambad.split(',').map(t => t.trim()).filter(Boolean))
+                const toggleBreak = (n: number) => {
+                  const s = String(n)
+                  const next = new Set(broken)
+                  next.has(s) ? next.delete(s) : next.add(s)
+                  set('purunenud_hambad', [...next].join(','))
+                }
+                return (
+                <div className="mt-2 bg-slate-800 border border-slate-600 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-semibold text-red-400">Märgi purunenud hambad</label>
                     <button type="button" onClick={() => setShowBreakageOdonto(false)}
-                      className="flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded-lg bg-emerald-500/10 transition-colors"
+                      className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10"
                     >
-                      <Check size={12} /> Valmis
+                      <Check size={10} className="inline mr-1" />Valmis
                     </button>
                   </div>
-                  <MultiOdontogramPicker
-                    items={[{ id: '__breakage__', too: 'Purunenud', hambad: form.purunenud_hambad }]}
-                    activeItemId="__breakage__"
-                    colorMap={{ Purunenud: '#EF4444' }}
-                    onToggleTooth={tooth => {
-                      const teeth = new Set(form.purunenud_hambad.split(',').map(t => t.trim()).filter(Boolean))
-                      const s = String(tooth)
-                      teeth.has(s) ? teeth.delete(s) : teeth.add(s)
-                      set('purunenud_hambad', [...teeth].join(','))
-                    }}
-                  />
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    {[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28].map(n => (
+                      <button key={n} type="button" onClick={() => toggleBreak(n)}
+                        className={`w-7 h-6 rounded text-[10px] font-bold transition-colors ${
+                          broken.has(String(n)) ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                        }`}
+                      >{n}</button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38].map(n => (
+                      <button key={n} type="button" onClick={() => toggleBreak(n)}
+                        className={`w-7 h-6 rounded text-[10px] font-bold transition-colors ${
+                          broken.has(String(n)) ? 'bg-red-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                        }`}
+                      >{n}</button>
+                    ))}
+                  </div>
                 </div>
-              )}
+                )
+              })()}
             </div>
 
             {/* Materjal — per-work-item when multiple items exist */}
