@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.32.0] — 2026-08-12
+
+**Köndivärv**
+
+- Uus väli **Köndivärv** — ihutud köndi enda toon, eraldi hamba toonist.
+  Läbipaistva keraamika all paistab könt krooni läbi, nii et sama A2 tuleb tumeda
+  köndi peal teistsugune. Tehnik valib selle järgi ingoti läbipaistmatuse
+- **VITA ND1–ND9** skaala värvinäidistega + vaba tekst (nt „titaanabutment")
+- Kohad: töö vorm (Värvi all), muudatuse vorm, uue töö nõustaja 3. samm
+  (Värvitooni sektsioonis, sest need kaks on üks otsus), töö vaade, eksport
+- Nõustajas ja kokkuvõttes küsitakse ainult nende tööde puhul, mis üldse tooni
+  toetavad — kaitsel ega proteesil ei ole könti
+- Tühjaks jätmine on täisväärtuslik vastus. Vale ND on halvem kui puuduv, sest
+  tehnik tegutseb selle järgi
+- Vajab migratsiooni `sql/042_job_kondivarv.sql`
+
+**Kuupäevade läbivaatus (live-valmidus)**
+
+Käisin läbi kõik `format` / `toISOString` / `differenceIn` kutsed rakenduses.
+Ülejäänud olid juba kaitstud või formaadivad `new Date()` pealt. Kolm parandust:
+
+- **Ülevaate keskmine läbimisaeg** andis `NaN`, kui kasvõi ühel valmis tööl oli
+  loetamatu kuupäev — üks NaN mürgitas terve keskmise
+- **Arve osamaksed** — kuupäeva nihutamine osamaksete tsüklis võis visata keset
+  tsüklit, jättes pooled dokumendid loomata. Nüüd nihutatakse ainult loetavat
+  kuupäeva
+- **Visiidi lohistamine kalendris** — vigane uus aeg viskas `toISOString()`
+  pealt, nüüd tuleb veateade
+
+**Tahvel**
+- Lohistamise diagnostikalogi eemaldatud (parandus ise jääb)
+
 ## [1.31.12] — 2026-08-12
 
 **Tahvel: muudatuse kaardi lohistamine ei teinud midagi**

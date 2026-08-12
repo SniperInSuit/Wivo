@@ -10,6 +10,7 @@ export interface Revision {
   note: string        // description of what needs to change
   hambad?: string     // revised tooth selection (FDI comma-separated)
   varv?: string       // revised shade code
+  kondivarv?: string  // revised stump/die shade (VITA ND1–ND9 or free text)
   materjal?: string   // revised material
   deadline?: string   // new deadline (ISO datetime)
   price?: number      // cost charged for this revision (€)
@@ -167,7 +168,12 @@ export interface Job {
   masina: string | null     // Masin — printer (Pro2, Midas)
   print_id: string | null   // Print ID — SprintRay job number for lookup
   disain_id: string | null  // Disain ID — design file or job reference
-  varv: string | null       // Värv — VITA shade
+  varv: string | null       // Värv — VITA shade of the finished tooth
+  // Köndivärv — the PREPARED STUMP's shade (migration 042). A different
+  // question from `varv`: translucent ceramic shows the stump through, so the
+  // same target shade needs a different ingot over a dark or titanium stump.
+  // VITA Natural Die Material scale (ND1–ND9), free text allowed.
+  kondivarv?: string | null
   hambad: string | null     // Ham — FDI tooth numbers, e.g. "11,21"
   kirjeldus: string | null  // Kirjeldus — free-text description of the work
   valmis_aeg: string | null // Valmis aeg — DEADLINE (ISO timestamp), a plan

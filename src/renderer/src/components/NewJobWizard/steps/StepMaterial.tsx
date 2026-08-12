@@ -6,6 +6,7 @@ import type { WizardStepComponent } from '../types'
 import { fieldErrors } from '../types'
 import { MaterialPicker } from '../material/MaterialPicker'
 import { WizardShadePicker } from '../material/WizardShadePicker'
+import { WizardDieShadePicker } from '../material/WizardDieShadePicker'
 import { SelectableCard } from '../ui/SelectableCard'
 import { FOCUS_RING, WIZARD_BTN, WIZARD_ERROR, WIZARD_HELP } from '../wizardTheme'
 
@@ -162,6 +163,21 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
             value={state.defaultShade}
             onChange={defaultShade => patch({ defaultShade })}
           />
+
+          {/* Köndivärv sits inside the shade section, not beside it: the two
+              are one decision. The ingot is chosen from the pair — the target
+              shade alone does not determine it. */}
+          <div className="mt-6">
+            <SectionHeading
+              id="wizard-kondivarv-label"
+              title="Köndivärv"
+              help="Ihutud köndi enda toon (VITA ND). Läbipaistva keraamika all paistab see krooni läbi. Kui ei ole teada, jäta valimata."
+            />
+            <WizardDieShadePicker
+              value={state.dieShade}
+              onChange={dieShade => patch({ dieShade })}
+            />
+          </div>
         </section>
       ) : (
         // Said out loud rather than silently omitted: a missing field reads as

@@ -51,6 +51,7 @@ export function jobColumns(
     { header: 'Töö',           value: j => j.too },
     { header: 'Materjal',      value: j => j.materjal },
     { header: 'Värv',          value: j => j.varv },
+    { header: 'Köndivärv',     value: j => j.kondivarv ?? null },
     { header: 'Hambad',        value: j => j.hambad },
     { header: 'Hambaid',       value: j => (j.hambad ?? '').split(',').filter(Boolean).length },
     { header: 'Print ID',      value: j => j.print_id },

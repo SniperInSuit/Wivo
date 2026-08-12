@@ -261,11 +261,20 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
             errors={pick('defaultShade', 'glaze', 'texture')}
           >
             {rules.supportsShade && (
-              <WizardSummaryRow
-                label="Värv"
-                value={state.defaultShade ?? ''}
-                empty={!state.defaultShade}
-              />
+              <>
+                <WizardSummaryRow
+                  label="Värv"
+                  value={state.defaultShade ?? ''}
+                  empty={!state.defaultShade}
+                />
+                {/* Shown even when blank — an unrecorded stump shade is worth
+                    noticing before the job is created, not after. */}
+                <WizardSummaryRow
+                  label="Köndivärv"
+                  value={state.dieShade ?? ''}
+                  empty={!state.dieShade}
+                />
+              </>
             )}
             {rules.supportsGlaze && (
               <WizardSummaryRow label="Glasuur" value={state.glaze ?? ''} empty={!state.glaze} />

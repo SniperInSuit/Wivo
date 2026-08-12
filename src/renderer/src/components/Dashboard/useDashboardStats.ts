@@ -148,7 +148,13 @@ export function useDashboardStats(
       .slice(0, 8)
 
     // Avg turnaround: days from kuupaev to valmis_aeg for completed jobs
-    const completedWithDates = completed.filter((j) => j.kuupaev && j.valmis_aeg)
+    // Both ends must PARSE, not merely be present. differenceInDays on an
+    // Invalid Date returns NaN, and one NaN poisons the sum — the whole average
+    // rendered as "NaN päeva" off a single unreadable row.
+    const completedWithDates = completed.filter(j => {
+      if (!j.kuupaev || !j.valmis_aeg) return false
+      return isValid(parseISO(j.kuupaev)) && isValid(parseISO(j.valmis_aeg))
+    })
     const avgTurnaround = completedWithDates.length > 0
       ? completedWithDates.reduce((sum, j) => {
           const days = differenceInDays(parseISO(j.valmis_aeg!), parseISO(j.kuupaev))

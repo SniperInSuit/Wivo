@@ -13,10 +13,10 @@
 import type { NewJobState } from '@shared/wizard'
 
 export const DRAFT_KEY = 'wivo_newjob_draft_v1'
-// v2 added `modelId`. A v1 draft has no such key, and a v1 draft on a Mudel job
-// would reach StepReview's `state.modelId.trim()` as undefined — so it is
-// dropped rather than patched, per the rule above.
-export const DRAFT_VERSION = 2 as const
+// v2 added `modelId`, v3 added `dieShade`. An older draft has no such key, and
+// a v1 draft on a Mudel job would reach StepReview's `state.modelId.trim()` as
+// undefined — so old drafts are dropped rather than patched, per the rule above.
+export const DRAFT_VERSION = 3 as const
 
 export interface NewJobDraft {
   v: typeof DRAFT_VERSION

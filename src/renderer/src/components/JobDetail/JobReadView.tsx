@@ -92,6 +92,7 @@ export function JobReadView({
         teeth: rev.hambad ?? null,
         material: rev.materjal ?? null,
         shade: rev.varv ?? null,
+        dieShade: rev.kondivarv ?? null,
         machine: null as string | null,
         printId: rev.print_id ?? null,
         designId: null as string | null,
@@ -109,6 +110,7 @@ export function JobReadView({
         teeth: job.hambad,
         material: job.materjal,
         shade: job.varv,
+        dieShade: job.kondivarv ?? null,
         machine: job.masina,
         printId: job.print_id,
         designId: job.disain_id,
@@ -259,6 +261,15 @@ export function JobReadView({
                 <Label>VITA toon</Label>
                 {v.shade ? <ShadeChip shade={v.shade} /> : <p className="text-sm text-ink-faint">—</p>}
               </div>
+              {/* Only when answered. Plenty of work has no stump at all — a
+                  splint, a denture — and an empty row on every one of those
+                  would be noise. */}
+              {v.dieShade && (
+                <div>
+                  <Label>Köndivärv</Label>
+                  <ShadeChip shade={v.dieShade} />
+                </div>
+              )}
               <Cell label="Masin" value={v.machine || (rev ? 'sama kui tööl' : '—')} strong />
               <Cell label="Print ID" value={v.printId || '—'} mono />
               <Cell label="Disain ID" value={v.designId || '—'} mono />

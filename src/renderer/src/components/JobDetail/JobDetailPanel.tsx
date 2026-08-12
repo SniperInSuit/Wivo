@@ -32,6 +32,7 @@ import { workTypeConsumables } from '../../config/workTypes'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime } from '../../lib/dates'
+import { DieShadePicker } from './DieShadePicker'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -62,6 +63,7 @@ const EMPTY_FORM: JobInput = {
   print_id: '',
   disain_id: '',
   varv: '',
+  kondivarv: '',
   hambad: '',
   work_items: [],
   extras: [],
@@ -607,6 +609,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         print_id: job.print_id ?? '',
         disain_id: job.disain_id ?? '',
         varv: job.varv ?? '',
+        kondivarv: job.kondivarv ?? '',
         hambad: job.hambad ?? '',
         work_items: Array.isArray(job.work_items) ? job.work_items.map(i => ({ ...i })) : [],
         extras: Array.isArray(job.extras) ? job.extras.map(e => ({ ...e })) : [],
@@ -717,6 +720,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       // this job no longer has — invisible in the form, visible in the export.
       mudel_id: form.mudel ? (form.mudel_id || null) : null,
       varv: form.varv || null,
+      kondivarv: form.kondivarv || null,
       // Store as-is — no UTC conversion. The user types local time and expects
       // to see it back unchanged. toISOString() shifts by the timezone offset.
       //
@@ -1553,6 +1557,19 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               <div>
                 <label className="label">Värv (VITA)</label>
                 <ShadePicker value={form.varv ?? null} onChange={v => set('varv', v)} />
+              </div>
+
+              {/* Köndivärv — the stump under the crown, not the crown. Sits
+                  directly below the tooth shade because the two are read
+                  together: the ingot is chosen from the pair, never from the
+                  target shade alone. */}
+              <div>
+                <label className="label">Köndivärv (VITA ND)</label>
+                <p className="text-[11px] text-ink-faint mb-1.5 leading-snug">
+                  Ihutud köndi enda toon. Läbipaistva keraamika all paistab see krooni
+                  läbi — tume könt vajab teistsugust ingotit sama lõpptooni saamiseks.
+                </p>
+                <DieShadePicker value={form.kondivarv ?? null} onChange={v => set('kondivarv', v)} />
               </div>
 
               {/* Valmis aeg moved to top row with Kuupäev */}

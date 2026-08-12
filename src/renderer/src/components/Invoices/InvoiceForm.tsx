@@ -20,6 +20,12 @@ import { useCustomers } from '../../hooks/useCustomers'
 import type { BillToKind } from '../../types/customer'
 import { toDate } from '../../lib/dates'
 
+/** Same date k months on, or null when the input cannot be read. */
+function shiftMonths(value: string | null, k: number): string | null {
+  const d = toDate(value)
+  return d ? format(addMonths(d, k), 'yyyy-MM-dd') : null
+}
+
 interface DraftLine {
   key: string
   job_id: string | null
@@ -220,10 +226,11 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
 
         const inv = await createInvoice.mutateAsync({
           ...input,
-          issue_date: format(addMonths(parseISO(input.issue_date), k), 'yyyy-MM-dd'),
-          due_date: input.due_date
-            ? format(addMonths(parseISO(input.due_date), k), 'yyyy-MM-dd')
-            : null,
+          // Shifted only when the source date parses. An instalment run is a
+          // loop of real inserts, so one throw here leaves half the documents
+          // created and half not — worse than a plain unshifted date.
+          issue_date: shiftMonths(input.issue_date, k) ?? input.issue_date,
+          due_date: shiftMonths(input.due_date, k),
           note: [input.note, `Osamakse ${k + 1}/${instalments}`].filter(Boolean).join(' · '),
           lines: linesForK,
         })

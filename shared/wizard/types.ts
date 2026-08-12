@@ -83,6 +83,8 @@ export interface NewJobState {
   materialByType: Record<string, string>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
+  /** Köndivärv — the prepared stump's shade (VITA ND1–ND9 or free text). */
+  dieShade: string | null
   glaze: string | null
   texture: string | null
   /** settings.masinad entry → job.masina. */
@@ -176,6 +178,7 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     selectedArch: null,
     materialByType: {},
     defaultShade: null,
+    dieShade: null,
     glaze: null,
     texture: null,
     machine: init.machine ?? null,

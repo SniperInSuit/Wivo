@@ -10,6 +10,7 @@ import { MATERIAL_SHADES, REVISION_REASONS, revisionReasons } from '../../types/
 import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
+import { DieShadePicker } from './DieShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
@@ -45,6 +46,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
     work_items: Array.isArray(revision.work_items) ? revision.work_items.map(i => ({ ...i })) : [],
     hambad: revision.hambad ?? '',
     varv: revision.varv ?? null as string | null,
+    kondivarv: revision.kondivarv ?? null as string | null,
     materjal: revision.materjal ?? '',
     deadline: revision.deadline ? revision.deadline.replace('Z', '').slice(0, 16) : '',
     kiirtoo: revision.kiirtoo ?? false,
@@ -137,6 +139,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
         ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
         : (form.hambad || undefined),
       varv: form.varv || undefined,
+      kondivarv: form.kondivarv || undefined,
       materjal: (form.work_items.length > 1
         ? form.work_items[0]?.materjal ?? form.materjal
         : form.materjal) || undefined,
@@ -434,6 +437,11 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
             <div>
               <label className="label text-slate-400">Uus värv</label>
               <ShadePicker value={form.varv} onChange={v => set('varv', v)} />
+            </div>
+
+            <div>
+              <label className="label text-slate-400">Köndivärv (VITA ND)</label>
+              <DieShadePicker value={form.kondivarv} onChange={v => set('kondivarv', v)} />
             </div>
 
             {/* Print ID + Disain ID */}

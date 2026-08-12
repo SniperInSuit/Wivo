@@ -77,6 +77,9 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     // A shade on a nightguard would be noise on the Edit page and in the
     // export — if no selected type supports one, none is stored.
     varv: rules.supportsShade ? orNull(state.defaultShade) : null,
+    // Same gate as the tooth shade: a job with no shade has no stump shade
+    // either, and asking for one on a nightguard is asking about nothing.
+    kondivarv: rules.supportsShade ? orNull(state.dieShade) : null,
     hambad,
     kirjeldus: composeKirjeldus(state),
     valmis_aeg: valmisAeg,

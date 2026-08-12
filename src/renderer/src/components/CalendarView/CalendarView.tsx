@@ -270,6 +270,12 @@ export function CalendarView({
   // Drag-to-reschedule from the week grid. Keeps the duration, moves the start.
   async function moveVisit(v: Visit, newStart: Date) {
     setVisitError(null)
+    // toISOString() on an Invalid Date throws "Invalid time value", and this is
+    // called from grid arithmetic rather than from a date input.
+    if (!isValid(newStart)) {
+      setVisitError('Visiidi uus aeg on vigane.')
+      return
+    }
     try {
       await updateVisit.mutateAsync({ id: v.id, algus: newStart.toISOString() })
     } catch (err) {

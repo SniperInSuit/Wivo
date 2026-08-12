@@ -1,4 +1,5 @@
 import { VITA_SHADES } from '../../config/vita'
+import { dieShadeOf } from '../../config/dieShades'
 
 interface ShadeChipProps {
   shade: string | null
@@ -8,8 +9,12 @@ interface ShadeChipProps {
 export function ShadeChip({ shade, size = 'sm' }: ShadeChipProps) {
   if (!shade) return null
 
-  const vitaShade = VITA_SHADES.find((s) => s.code === shade)
-  const hex = vitaShade?.hex ?? '#F5E6C8'
+  // Stump shades reuse this chip, so ND codes have to resolve too — otherwise
+  // an ND8 stump renders with the default light-tooth swatch, which is the one
+  // thing that shade is telling you it is not.
+  const hex = VITA_SHADES.find(s => s.code === shade)?.hex
+    ?? dieShadeOf(shade)?.hex
+    ?? '#F5E6C8'
 
   return (
     <span
