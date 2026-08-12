@@ -139,6 +139,29 @@ export const StepProduction: WizardStepComponent = ({ state, patch, errors, show
           value={state.priority}
           onChange={priority => patch({ priority })}
         />
+
+        {/* The model is a separate print with its own number, so it gets its own
+            field — and only once Mudel is chosen. Not left in the two-column
+            grid above with Print ID: there it would sit on every job as a
+            question that has no answer. */}
+        {state.priority === 'mudel' && (
+          <div className="mt-4 max-w-sm">
+            <WizardField
+              label="Mudel ID"
+              htmlFor="wizard-mudel-id"
+              help="Mudeli töö number, kui see on juba teada."
+            >
+              <input
+                id="wizard-mudel-id"
+                type="text"
+                value={state.modelId}
+                onChange={e => patch({ modelId: e.target.value })}
+                placeholder="Nt M-3310"
+                className={WIZARD_INPUT}
+              />
+            </WizardField>
+          </div>
+        )}
       </section>
     </div>
   )

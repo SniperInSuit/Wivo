@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Package, CalendarClock } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { fmtDate, toDate } from '../../lib/dates'
 import type { Revision, StageKey, WorkItem } from '../../types/job'
 import {
   MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
@@ -145,7 +145,10 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
         : (d.hambad || undefined),
       varv: d.varv || undefined,
       materjal: d.materjal || undefined,
-      deadline: d.deadline ? new Date(d.deadline).toISOString() : undefined,
+      // `new Date(x).toISOString()` throws "Invalid time value" on a half-typed
+      // datetime — the same RangeError that used to take down whole views. An
+      // unreadable deadline is no deadline.
+      deadline: toDate(d.deadline)?.toISOString(),
       price: d.price !== '' ? parseFloat(d.price) : undefined,
       kiirtoo: d.kiirtoo || undefined,
       print_id: d.print_id || undefined,
@@ -242,7 +245,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                 {/* Top: timestamp + badges */}
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                   <span className="text-[10px] text-slate-300 font-mono tabular-nums">
-                    #{sorted.length - idx} · {format(parseISO(rev.ts), 'dd.MM.yy HH:mm')}
+                    #{sorted.length - idx} · {fmtDate(rev.ts, 'dd.MM.yy HH:mm')}
                   </span>
                   {rev.taspidev === false && (
                     <span className="text-[10px] bg-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-bold">
@@ -289,9 +292,9 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                       Purunenud: {rev.purunenud_hambad}
                     </span>
                   )}
-                  {rev.deadline && (
+                  {toDate(rev.deadline) && (
                     <span className="text-[10px] text-slate-300 font-mono">
-                      → {format(parseISO(rev.deadline), 'dd.MM.yy')}
+                      → {fmtDate(rev.deadline, 'dd.MM.yy')}
                     </span>
                   )}
                 </div>
@@ -403,11 +406,11 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                       Uus värv: <span className="font-semibold text-slate-200">{rev.varv}</span>
                     </div>
                   )}
-                  {rev.deadline && (
+                  {toDate(rev.deadline) && (
                     <div className="text-xs text-slate-400">
                       Uus tähtaeg:{' '}
                       <span className="font-semibold text-slate-200">
-                        {format(parseISO(rev.deadline), 'dd.MM.yy HH:mm')}
+                        {fmtDate(rev.deadline, 'dd.MM.yy HH:mm')}
                       </span>
                     </div>
                   )}

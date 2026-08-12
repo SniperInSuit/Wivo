@@ -22,6 +22,7 @@ export interface Revision {
   valmis_kuupaev?: string
   print_id?: string   // SprintRay job number for this revision's print
   disain_id?: string  // Design file reference for this revision
+  mudel_id?: string   // Job number of the printed model — only when mudel is set
   extra_costs?: { nimi: string; summa: number }[] // Additional costs (e.g. replacement screw)
   // Why the revision was needed. A remake often has more than one cause — the
   // shade was wrong AND the fit was poor — and forcing a single choice made the
@@ -175,6 +176,10 @@ export interface Job {
   valmis_kuupaev: string | null
   kiirtoo: boolean          // Kiirtöö — rush job, price × 2
   mudel?: boolean           // Mudel — requires a printed model for try-in
+  // Mudel ID — the printed model's own job number (migration 041). Read and
+  // written only while `mudel` is true; cleared when the flag comes off, so a
+  // job never carries an identifier for a model it does not have.
+  mudel_id?: string | null
   // Where the work physically is. The pipeline ending at "done" says the bench
   // has finished with it, not that the practice has it (migration 035).
   delivery_status: DeliveryStatus

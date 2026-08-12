@@ -54,6 +54,7 @@ export function jobColumns(
     { header: 'Hambad',        value: j => j.hambad },
     { header: 'Hambaid',       value: j => (j.hambad ?? '').split(',').filter(Boolean).length },
     { header: 'Print ID',      value: j => j.print_id },
+    { header: 'Mudel ID',      value: j => j.mudel_id ?? null },
     { header: 'Masin',         value: j => j.masina },
     { header: 'Teostaja',      value: j => workerName(j.assigned_to) },
     { header: 'Disainija',     value: j => workerName(j.designed_by) },

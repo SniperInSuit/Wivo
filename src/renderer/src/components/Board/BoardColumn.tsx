@@ -8,6 +8,18 @@ import { usePipeline } from '../../context/PipelineContext'
 import { JobCard } from './JobCard'
 import { RevisionBoardCard } from './RevisionBoardCard'
 import { MergedValmisCard } from './MergedValmisCard'
+import { debugLog } from '../Workers/DebugConsole'
+
+/**
+ * DIAGNOSTIC — "the card lifts but the column will not take it".
+ *
+ * dragstart fires on the SOURCE column and drop on the TARGET one, so this
+ * cannot be a ref: it has to outlive both components. A browser only runs one
+ * drag at a time, so a module-level flag is exactly the right scope.
+ *
+ * Remove this and the debugLog calls below once the cause is known.
+ */
+let dropReached = false
 
 interface BoardColumnProps {
   stage: PipelineStage
@@ -37,15 +49,53 @@ export function BoardColumn({
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const columnRef = useRef<HTMLDivElement>(null)
 
-  const handleDragStart = (e: React.DragEvent, jobId: string) => {
+  /**
+   * `revId` is what makes a revision card draggable in its own right.
+   *
+   * Every card used to put only the JOB's id on the drag, including revision
+   * cards — so dropping a revision moved its parent job between stages. The
+   * board places a revision card by `rev.status` and the job card by
+   * `job.status`, so the card then stayed exactly where it was while a hidden
+   * job silently changed stage somewhere else. Nothing errored and nothing
+   * moved, which is precisely what "the card will not drop" looked like.
+   */
+  const handleDragStart = (e: React.DragEvent, jobId: string, revId?: string) => {
     e.dataTransfer.setData('jobId', jobId)
+    if (revId) e.dataTransfer.setData('revId', revId)
     e.dataTransfer.effectAllowed = 'move'
     setDraggingId(jobId)
+    dropReached = false
+    debugLog('info', `DRAG algus · ${stage.label} · ${jobId.slice(0, 8)}${revId ? ` · muudatus ${revId.slice(0, 8)}` : ''}`)
   }
-  const handleDragEnd   = () => setDraggingId(null)
+  const handleDragEnd = () => {
+    setDraggingId(null)
+    // The interesting case. Chromium fires dragend with no drop when the drag
+    // was cancelled — most often because the source element was unmounted while
+    // the drag was in flight, or because no target ever accepted it.
+    if (!dropReached) debugLog('warn', `DRAG katkes ILMA kukkumiseta · algus ${stage.label}`)
+  }
   const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsDragOver(true) }
   const handleDragLeave = (e: React.DragEvent) => { if (!columnRef.current?.contains(e.relatedTarget as Node)) setIsDragOver(false) }
-  const handleDrop      = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); const id = e.dataTransfer.getData('jobId'); if (id) onDrop(id, stage.key) }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    dropReached = true
+    const id = e.dataTransfer.getData('jobId')
+    const revId = e.dataTransfer.getData('revId')
+    debugLog('info', `DROP → ${stage.label} · id=${id ? id.slice(0, 8) : 'TÜHI'}${revId ? ` · muudatus ${revId.slice(0, 8)}` : ''}`)
+    if (!id) return
+    // A revision moves itself. Falling back to the job would put the parent in
+    // a stage nobody asked for and leave the card on screen where it was.
+    if (revId) {
+      if (!onRevisionStageChange) {
+        debugLog('warn', 'Muudatuse kaarti ei saa liigutada — onRevisionStageChange puudub')
+        return
+      }
+      onRevisionStageChange(id, revId, stage.key)
+      return
+    }
+    onDrop(id, stage.key)
+  }
 
   const jobCount = entries.filter(e => e.type === 'job').length
 
@@ -115,7 +165,7 @@ export function BoardColumn({
                 <div
                   key={`rev-${entry.job.id}-${entry.rev.id}`}
                   draggable
-                  onDragStart={e => handleDragStart(e, entry.job.id)}
+                  onDragStart={e => handleDragStart(e, entry.job.id, entry.rev.id)}
                   onDragEnd={handleDragEnd}
                 >
                   <RevisionBoardCard

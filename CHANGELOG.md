@@ -1,5 +1,116 @@
 # Changelog
 
+## [1.31.12] — 2026-08-12
+
+**Tahvel: muudatuse kaardi lohistamine ei teinud midagi**
+
+Diagnostika näitas, et lohistamine ise oli terve — `drop` jõudis kohale, ID oli
+küljes, viga ei olnud. Katki oli see, mida drop tegi.
+
+- **Muudatuse kaart pani lohistamisele kaasa ainult originaaltöö ID.** Drop
+  liigutas seega **tööd**, mitte muudatust. Tahvel paigutab muudatuse kaardi
+  `rev.status` järgi ja töö kaardi `job.status` järgi — nii et kaart jäi täpselt
+  sinna, kus ta oli, samal ajal kui mõni nähtamatu töö vaikselt etappi vahetas.
+  Midagi ei vigastanud ja midagi ei liikunud, mis nägi välja täpselt nagu
+  „kaart ei kuku"
+- Muudatuse kaart kannab nüüd `revId` kaasa ja drop suunab selle
+  `onRevisionStageChange`-i — juhtmestik oli juba olemas, lohistamine lihtsalt
+  ei kasutanud seda
+- Puudutab ainult töid, millel on aktiivne muudatus. Ilma muudatuseta töö kaardi
+  lohistamine töötas kogu aeg, mistõttu see nii kaua märkamata jäi
+
+## [1.31.11] — 2026-08-12
+
+**Ajutine: tahvli lohistamise diagnostika**
+
+- Tahvli kaardi lohistamine logib nüüd debug-konsooli (Meeskond → allservas):
+  `DRAG algus`, seejärel kas `DROP → veerg` koos edastatud ID-ga või
+  `DRAG katkes ILMA kukkumiseta`. Nendest kolmest reast on näha, kas viga on
+  lohistamises, andmete edastamises või alles staatuse salvestamises
+- See on diagnostika, mitte funktsioon — eemaldub kohe kui põhjus on teada
+
+## [1.31.10] — 2026-08-12
+
+**Kuupäevade lugemine liiga range (1.31.9 regressioon)**
+
+- `toDate` kasutas ainult `parseISO`-t, mis on rangem kui vana `new Date(...)`
+  — muu hulgas nõuab ta `T` eraldajat, samas kui Postgres võib tagastada
+  `2026-08-12 17:00:00+00`. Tagajärg oleks olnud, et osa tähtaegu kaob kaartidelt
+  `—` taha, kuigi need on täiesti korras. Nüüd on `new Date` tagavaraks ja
+  `null` jääb ainult päriselt loetamatutele väärtustele
+
+## [1.31.9] — 2026-08-12
+
+**„Invalid time value" — vaate kokkujooksmine**
+
+Täpne põhjus on **veel leidmata**. Esimene diagnoos (et `jobs.valmis_aeg` on
+tekstiveerg ja hoiab pooleli trükitud kellaaegu) osutus valeks — veerg on
+`timestamptz`, mis tähendab et Postgres poleks katkist väärtust vastu võtnudki.
+Selle põhjal kirjutatud parandusskript `sql/042` on eemaldatud.
+
+Mis sai tehtud:
+
+- **Veateade on nüüd kasutatav.** `Invalid time value` tuleb date-fns'ist ja
+  võib pärineda kümnetest kohtadest — pelgalt sõnum ei ütle millisest. Veaaken
+  näitab nüüd ka **„Kus see juhtus"** (komponentide jada) ja sellel on nupp
+  **„Kopeeri veateade"**, mis paneb lõikelauale sõnumi, komponendid, stack'i ja
+  versiooni. Järgmine kord piisab ühest kopeerimisest, et koht üles leida
+- **Loetamatu kuupäev kuvatakse `—`-na, mitte ei võta vaadet maha.** Kaetud:
+  tähtaja märgis (tahvel/tabel/kalender/töö paneel), tabelivaade, „Valmis"
+  koondkaart, muudatuste plokk. Muudatused elavad JSONB-s, kus andmebaas midagi
+  ei valideeri, nii et need on päriselt kaitseta olnud
+- Uus `lib/dates.ts` (`toDate` / `fmtDate` / `normalizeDateTime`) + 24 testi
+
+**Töö vormi Kell-väli**
+- Oli vaba tekst ja kirjutas iga klahvivajutuse otse `valmis_aeg` külge, nii et
+  „12:00" trükkimine saatis teel andmebaasi `…T1`, `…T12:`, `…T12:0`. Kuna veerg
+  on `timestamptz`, lükkas Postgres need tagasi — **salvestamise veana**, mitte
+  vaikse rikutud reana. Nüüd on natiivne kellaväli, kust tuleb kas täielik HH:MM
+  või tühi
+
+**Sama viga mujal, päris leiud**
+- **Arve vorm:** väljastamise kuupäeva tühjendamine jooksis **renderdamisel**
+  kokku (maksetähtaja arvutus `parseISO('')` pealt). Nüüd jääb tähtaeg tühjaks
+  ja salvestamine on blokis
+- **Visiidi vorm:** tühi algusaeg viskas `toISOString()` pealt väljaspool
+  püünist — nüüd tavaline veateade
+
+## [1.31.7] — 2026-08-12
+
+**Töötasud: väljamakstud summa ei kao enam ära**
+
+- Väljamakse kinnitamine viis töötaja summa **0.00 €** peale ja tühjendas ka
+  ülemise koondkaardi — kuu nägi välja nagu poleks seal midagi teenitud
+- Rea summa näitab nüüd **kogu perioodi teenistust**, makstud või mitte.
+  Kõrval ütlevad märgised, kuidas see jaguneb: roheline „Välja makstud X €"
+  ja osalise makse korral kollane „Maksmata Y €"
+- Koondkaart (Palgal bruto / Tööandja maksud / Arve alusel / Kogukulu) arvestab
+  samuti kogu perioodi — tööandja maks on kuu pealt võlgu, mitte selle pealt,
+  mis veel maksmata on. Kogukulu all näidatakse „sh välja makstud X €"
+- Rea alltekst ütleb nüüd „N **arvestamata** rida", mitte „N rida" — 0 rida
+  makstud perioodil luges nagu viga
+
+**Lisakulude kadumine töö vormil (andmekadu)**
+- Salvestatud töö avamine ei laadinud `extra_costs` välja vormi. Kulud jäid
+  baasi alles, aga olid vormis nähtamatud — ja järgmine lisatud kulu kirjutas
+  kogu vana nimekirja üle
+- Ühtlasi kadusid viimased 3 tüübiviga, `npx tsc` on nüüd puhas
+
+## [1.31.6] — 2026-08-12
+
+**Mudel ID**
+
+- Uus väli **Mudel ID** — mudeli enda töönumber, eraldi Print ID-st
+- Ilmub ainult siis kui **Mudel** on sisse lülitatud: töö muutmise vormis kohe
+  Kiirtöö/Mudel nuppude all, muudatuse vormis sama koha peal, uue töö
+  nõustaja 4. sammus Prioriteedi valiku all
+- Mudeli lipu mahavõtmine tühjendab ka ID — töö ei kanna numbrit mudelile,
+  mida tal pole
+- Nähtav töö vaates (Tootmise andmed), otsitav globaalsest otsingust,
+  kaasas Exceli/CSV ekspordis
+- Vajab migratsiooni `sql/041_job_mudel_id.sql` (Supabase SQL editoris)
+- Pooleliolevad uue töö mustandid lähtestuvad (mustandi versioon v1 → v2)
+
 ## [1.31.5] — 2026-08-10
 
 **Omahind, rahanduse parandused, implantaadi kruvi**

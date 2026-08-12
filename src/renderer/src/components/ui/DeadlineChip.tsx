@@ -1,5 +1,6 @@
 import { differenceInHours, differenceInCalendarDays, format, isPast, isToday, isTomorrow } from 'date-fns'
 import { Clock, AlertTriangle } from 'lucide-react'
+import { toDate } from '../../lib/dates'
 
 interface DeadlineChipProps {
   deadline: string | null
@@ -10,7 +11,12 @@ interface DeadlineChipProps {
 export function DeadlineChip({ deadline, compact = false, isDone = false }: DeadlineChipProps) {
   if (!deadline) return null
 
-  const date = new Date(deadline)
+  // This chip is on the board, the table, the calendar and the job panel. An
+  // unreadable deadline used to throw out of format() and take the whole view
+  // with it, so it renders as no chip at all — same as having no deadline.
+  const date = toDate(deadline)
+  if (!date) return null
+
   const now = new Date()
   const hoursLeft = differenceInHours(date, now)
   const calDays = differenceInCalendarDays(date, now)

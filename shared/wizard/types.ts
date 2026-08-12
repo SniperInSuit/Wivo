@@ -99,6 +99,8 @@ export interface NewJobState {
   time: string | null
   printId: string
   designId: string
+  /** The printed model's own job number. Only reaches the row when priority is 'mudel'. */
+  modelId: string
   priority: WizardPriority
   patient: WizardPatient | null
   /** customers.id → job.customer_id. */
@@ -184,6 +186,7 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     time: init.time ?? null,
     printId: '',
     designId: '',
+    modelId: '',
     priority: 'standard',
     patient: null,
     customer: null,

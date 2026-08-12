@@ -96,11 +96,12 @@ export function CalendarView({
     const today = startOfDay(new Date())
     setMonth(startOfMonth(today)); setSelected(today); setTimelineDay(today)
     setWeekStart(startOfWeek(today, { weekStartsOn: 1 }))
-    requestAnimationFrame(() => {
+    // setTimeout allows React to re-render with the new month/week before scrolling
+    setTimeout(() => {
       scrollRef.current
         ?.querySelector(`[data-day="${format(today, 'yyyy-MM-dd')}"]`)
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    })
+    }, 50)
   }, [todaySignal])
 
   const showJobs = mode !== 'visiidid'

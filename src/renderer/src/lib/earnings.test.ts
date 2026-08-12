@@ -68,6 +68,7 @@ function job(over: Partial<Job> = {}): Job {
     masina: null,
     print_id: null,
     disain_id: null,
+    extra_costs: [],
     varv: null,
     hambad: null,
     kirjeldus: null,

@@ -84,6 +84,10 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     valmis_kuupaev: null,
     kiirtoo: state.priority === 'kiirtoo',
     mudel: state.priority === 'mudel',
+    // Tied to the flag, not merely to what was typed: the field is only shown
+    // for a Mudel job, so a number left behind by a changed mind must not ride
+    // along on a standard job that has no model at all.
+    mudel_id: state.priority === 'mudel' ? orNull(state.modelId) : null,
     // A job being created is at the lab — there is no other answer, so the
     // wizard does not ask. Handover is set on the job page once it is done.
     delivery_status: 'labor',
@@ -91,6 +95,10 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     work_items: workItems,
     revisions: [],
     extras: [],
+    // Nothing ad-hoc on a job that does not exist yet, but the column is NOT
+    // NULL-able and the insert is a raw spread — omitting it left the shape
+    // out of step with the Edit page's for no reason.
+    extra_costs: [],
     hind: state.pricing.overridden ? state.pricing.hind : autoPrice,
     disain_hind: state.pricing.disainHind,
     // Paid status is not asked at creation — nobody has been invoiced yet.

@@ -95,6 +95,8 @@ export function JobReadView({
         machine: null as string | null,
         printId: rev.print_id ?? null,
         designId: null as string | null,
+        model: rev.mudel ?? false,
+        modelId: rev.mudel_id ?? null,
         date: rev.ts,
         deadline: rev.deadline ?? null,
         price: rev.price ?? 0,
@@ -110,6 +112,8 @@ export function JobReadView({
         machine: job.masina,
         printId: job.print_id,
         designId: job.disain_id,
+        model: job.mudel ?? false,
+        modelId: job.mudel_id ?? null,
         date: job.kuupaev,
         deadline: job.valmis_aeg,
         price: job.hind ?? 0,
@@ -258,6 +262,11 @@ export function JobReadView({
               <Cell label="Masin" value={v.machine || (rev ? 'sama kui tööl' : '—')} strong />
               <Cell label="Print ID" value={v.printId || '—'} mono />
               <Cell label="Disain ID" value={v.designId || '—'} mono />
+              {/* Only for work that actually has a model — otherwise every job
+                  in the app grows a permanent empty row for a field it cannot
+                  have. Shown even when blank once the flag is on, because then
+                  the missing number IS the thing worth noticing. */}
+              {v.model && <Cell label="Mudel ID" value={v.modelId || '—'} mono />}
             </div>
           </Card>
 

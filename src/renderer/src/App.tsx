@@ -89,6 +89,7 @@ function AppContent() {
       (j.hambad ?? '').toLowerCase().includes(q) ||
       (j.materjal ?? '').toLowerCase().includes(q) ||
       (j.print_id ?? '').toLowerCase().includes(q) ||
+      (j.mudel_id ?? '').toLowerCase().includes(q) ||
       (j.kirjeldus ?? '').toLowerCase().includes(q)
     )
   }, [jobs, search])

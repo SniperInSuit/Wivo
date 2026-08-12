@@ -31,6 +31,7 @@ import { jobMaterialCost } from '../../lib/finance'
 import { workTypeConsumables } from '../../config/workTypes'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
+import { normalizeDateTime } from '../../lib/dates'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -69,6 +70,7 @@ const EMPTY_FORM: JobInput = {
   valmis_kuupaev: null,
   kiirtoo: false,
   mudel: false,
+  mudel_id: '',
   revisions: [],
   hind: null,
   disain_hind: null,
@@ -608,10 +610,15 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         hambad: job.hambad ?? '',
         work_items: Array.isArray(job.work_items) ? job.work_items.map(i => ({ ...i })) : [],
         extras: Array.isArray(job.extras) ? job.extras.map(e => ({ ...e })) : [],
+        // Was missing entirely, so opening a saved job blanked its ad-hoc costs
+        // in the form. They survived in the DB only until the next edit added
+        // one — then the save wrote a one-item list over the lot.
+        extra_costs: Array.isArray(job.extra_costs) ? job.extra_costs.map(c => ({ ...c })) : [],
         valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
         mudel: job.mudel ?? false,
+        mudel_id: job.mudel_id ?? '',
         revisions,
         hind: job.hind,
         disain_hind: job.disain_hind ?? null,
@@ -705,10 +712,19 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         : form.masina) || null,
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
+      // Follows the flag. The field is only on screen while Mudel is on, so
+      // keeping a value after it is switched off would store an ID for a model
+      // this job no longer has — invisible in the form, visible in the export.
+      mudel_id: form.mudel ? (form.mudel_id || null) : null,
       varv: form.varv || null,
       // Store as-is — no UTC conversion. The user types local time and expects
       // to see it back unchanged. toISOString() shifts by the timezone offset.
-      valmis_aeg: form.valmis_aeg || null,
+      //
+      // Normalised rather than passed through: the column is text, so nothing
+      // downstream rejects a malformed timestamp, and one bad row was enough to
+      // crash every view that formatted it. The widget above can no longer
+      // produce one — this is the backstop for anything that still could.
+      valmis_aeg: normalizeDateTime(form.valmis_aeg),
       disain_hind: form.disain_hind,
       // Clear legacy fields on save
       muudatused: null,
@@ -986,6 +1002,22 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </button>
               </div>
 
+              {/* Mudel ID — right under the toggle that creates it, not down in
+                  the Print ID / Disain ID pair: the model is a separate print
+                  with its own job number, and it only exists while Mudel is on. */}
+              {form.mudel && (
+                <div>
+                  <label className="label">Mudel ID</label>
+                  <input
+                    type="text"
+                    value={form.mudel_id ?? ''}
+                    onChange={e => set('mudel_id', e.target.value)}
+                    placeholder="Mudeli töö nr…"
+                    className="input font-mono"
+                  />
+                </div>
+              )}
+
               {/* Kuupäev + Tähtaeg + Kellaaeg */}
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <div>
@@ -1012,18 +1044,23 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
                 <div>
                   <label className="label">Kell</label>
+                  {/* Was a free-text box that wrote every keystroke straight into
+                      `valmis_aeg` — so typing "12:00" stored `…T1`, then `…T12`,
+                      and whichever half-finished string was there on save stayed
+                      in the row. `valmis_aeg` is a text column, so Postgres took
+                      it, and every view that later formatted that job threw
+                      "Invalid time value". A native time input can only produce
+                      a complete HH:MM or nothing, which is what the wizard's
+                      deadline field already used. */}
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="HH:MM"
-                    maxLength={5}
+                    type="time"
                     value={(form.valmis_aeg ?? '').split('T')[1]?.slice(0, 5) || ''}
                     onChange={e => {
-                      const raw = e.target.value.replace(/[^0-9:]/g, '')
                       const date = (form.valmis_aeg ?? '').split('T')[0]
-                      if (date) set('valmis_aeg', `${date}T${raw}`)
+                      if (!date) return
+                      set('valmis_aeg', `${date}T${e.target.value || '12:00'}`)
                     }}
-                    className="input w-[70px]"
+                    className="input w-[110px]"
                   />
                 </div>
               </div>

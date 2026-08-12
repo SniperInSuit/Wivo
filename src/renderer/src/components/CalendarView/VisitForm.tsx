@@ -9,6 +9,7 @@ import { PatientPicker } from '../Patients/PatientPicker'
 import { usePatients } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
 import { describeError } from '../Patients/errors'
+import { toDate } from '../../lib/dates'
 
 interface VisitFormProps {
   visit: Visit | null      // null = create
@@ -81,7 +82,14 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
       patsient: form.patsient.trim(),
       arst: form.arst?.trim() || null,
       markus: form.markus?.trim() || null,
-      algus: new Date(form.algus).toISOString()
+      // Clearing the datetime field left '' here, and new Date('').toISOString()
+      // throws "Invalid time value" outside the try below — an uncaught crash
+      // rather than the save error it should have been.
+      algus: toDate(form.algus)?.toISOString() ?? ''
+    }
+    if (!payload.algus) {
+      setError('Visiidi algusaeg on puudu või vigane.')
+      return
     }
     try {
       if (visit) await updateVisit.mutateAsync({ id: visit.id, ...payload })

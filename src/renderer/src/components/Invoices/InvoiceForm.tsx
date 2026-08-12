@@ -18,6 +18,7 @@ import { describeError } from '../Patients/errors'
 import { jobTotalValue } from '../../lib/jobPayments'
 import { useCustomers } from '../../hooks/useCustomers'
 import type { BillToKind } from '../../types/customer'
+import { toDate } from '../../lib/dates'
 
 interface DraftLine {
   key: string
@@ -57,10 +58,13 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   const [instalments, setInstalments] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
-  const dueDate = useMemo(
-    () => format(addDays(parseISO(issueDate), settings.makseTahtaegPaevades), 'yyyy-MM-dd'),
-    [issueDate, settings.makseTahtaegPaevades]
-  )
+  // Clearing the issue date leaves '' here, and parseISO('') is an Invalid Date
+  // that format() throws on — during render, so the whole invoice screen went
+  // behind the error boundary instead of showing an empty due date.
+  const dueDate = useMemo(() => {
+    const d = toDate(issueDate)
+    return d ? format(addDays(d, settings.makseTahtaegPaevades), 'yyyy-MM-dd') : ''
+  }, [issueDate, settings.makseTahtaegPaevades])
 
   // Every job_id already on any invoice. Billing the same job twice is the
   // mistake this screen most needs to prevent, so those jobs are not offered.
@@ -149,7 +153,11 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   const removeLine = (key: string) => setLines(prev => prev.filter(l => l.key !== key))
 
   const addresseeOk = billTo === 'customer' ? !!customerId : patsient.trim().length > 0
-  const canSave = addresseeOk && lines.length > 0 && !createInvoice.isPending
+  // An invoice with no issue date has no period, no due date and no place in a
+  // sequence. Blocked here rather than left to Postgres, because the instalment
+  // path formats this date and would throw before the insert was even attempted.
+  const canSave =
+    addresseeOk && lines.length > 0 && !!toDate(issueDate) && !createInvoice.isPending
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -165,7 +173,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
       customer_id: billTo === 'customer' ? customerId : null,
       bill_to_kind: billTo,
       issue_date: issueDate,
-      due_date: dueDate,
+      due_date: dueDate || null,
       vat_rate: vatRate,
       note: note.trim() || null,
       lines: lines.map((l, i) => ({

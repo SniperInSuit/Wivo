@@ -4,7 +4,7 @@
  * smaller context (right) side.
  */
 import { CornerDownLeft, Euro, Zap } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { toDate, fmtDate } from '../../lib/dates'
 import type { Job } from '../../types/job'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
@@ -89,9 +89,9 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
           )}
 
           {/* Revision deadline */}
-          {latest.deadline && (
+          {toDate(latest.deadline) && (
             <p className="text-[10px] text-ink-faint font-mono mt-auto pt-1">
-              → {format(parseISO(latest.deadline), 'dd.MM.yy HH:mm')}
+              → {fmtDate(latest.deadline, 'dd.MM.yy HH:mm')}
             </p>
           )}
         </div>

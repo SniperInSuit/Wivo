@@ -56,6 +56,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
       : [] as { nimi: string; summa: number }[],
     print_id: revision.print_id ?? '',
     disain_id: revision.disain_id ?? '',
+    mudel_id: revision.mudel_id ?? '',
     status: revision.status ?? 'disain' as StageKey,
   })
 
@@ -150,6 +151,8 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
       purunenud_hambad: form.purunenud_hambad || undefined,
       print_id: form.print_id || undefined,
       disain_id: form.disain_id || undefined,
+      // Dropped along with the flag — see JobDetailPanel's save for why.
+      mudel_id: form.mudel ? (form.mudel_id || undefined) : undefined,
       status: form.status || 'disain',
     })
   }
@@ -231,6 +234,17 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 {form.taspidev ? 'Tasustatud' : 'Tasustamata'}
               </button>
             </div>
+
+            {/* Mudel ID — appears with the toggle that makes it meaningful. */}
+            {form.mudel && (
+              <div>
+                <label className="label text-slate-400">Mudel ID</label>
+                <input type="text" value={form.mudel_id} onChange={e => set('mudel_id', e.target.value)}
+                  placeholder="Mudeli töö nr…"
+                  className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
+                />
+              </div>
+            )}
 
             {/* Kirjeldus (note) */}
             <div>

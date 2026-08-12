@@ -17,6 +17,7 @@ import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
 import { useWorkTypes } from '../../stores/useSettings'
 import { useCustomers } from '../../hooks/useCustomers'
 import { exportCsv, jobColumns } from '../../lib/exports'
+import { toDate, fmtDate } from '../../lib/dates'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
@@ -42,8 +43,8 @@ interface TableViewProps {
 }
 
 function DeadlineCell({ valmis_aeg }: { valmis_aeg: string | null }) {
-  if (!valmis_aeg) return <span className="text-ink-faint">—</span>
-  const date = parseISO(valmis_aeg)
+  const date = toDate(valmis_aeg)
+  if (!date) return <span className="text-ink-faint">—</span>
   const overdue = isPast(date)
   return (
     <span className={`text-xs font-medium ${overdue ? 'text-red-600' : 'text-ink-soft'}`}>
@@ -577,7 +578,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
                   {/* Kuupäev */}
                   <td className="px-4 py-3 text-xs text-ink-muted whitespace-nowrap">
-                    {job.kuupaev ? format(parseISO(job.kuupaev), 'dd.MM.yy HH:mm') : '—'}
+                    {fmtDate(job.kuupaev, 'dd.MM.yy HH:mm')}
                   </td>
 
                   {/* Patsient */}

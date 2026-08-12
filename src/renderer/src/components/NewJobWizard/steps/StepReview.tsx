@@ -301,6 +301,10 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
             label="Prioriteet"
             value={priorityLabel(state.priority, settings.kiirtooKordaja)}
           />
+          {/* Only for a Mudel job — the row is not stored on any other. */}
+          {state.priority === 'mudel' && (
+            <WizardSummaryRow label="Mudel ID" value={state.modelId} empty={!state.modelId.trim()} />
+          )}
         </ReviewSection>
 
         {/* ── 6. Tähtaeg ──────────────────────────────────────────────────── */}

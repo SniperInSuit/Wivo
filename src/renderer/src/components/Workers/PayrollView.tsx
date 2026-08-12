@@ -125,10 +125,23 @@ export function PayrollView({ jobs }: PayrollViewProps) {
     const periodPayouts = payouts.filter(
       p => p.profile_id === w.id && p.period_start === period.start
     )
+    // What is still owed for this period. `calculateEarnings` drops every line
+    // already frozen into a payout, so this is the UNPAID half and nothing else.
+    const outstanding = earningsTotal(lines)
+    // The other half, which exists nowhere in `lines` and has to be read back
+    // off the payouts themselves.
+    const paid = periodPayouts.reduce((s, p) => s + Number(p.total), 0)
     return {
       worker: w,
       lines,
-      total: earningsTotal(lines),
+      outstanding,
+      paid,
+      // The month's earning, paid or not. This is what the summary tiles, the
+      // employer tax and the clinic's total cost are computed from: those are
+      // facts about the PERIOD, and paying someone does not make the month
+      // cheaper. Showing only `outstanding` there emptied the whole header the
+      // moment a payout was confirmed.
+      total: outstanding + paid,
       rates: rates.filter(r => r.profile_id === w.id),
       payouts: periodPayouts,
       // Computed ALWAYS, not only when the total is zero. Gating it on an empty
@@ -156,6 +169,9 @@ export function PayrollView({ jobs }: PayrollViewProps) {
     .reduce((s, x) => s + x.total, 0)
   const employerTax = employerTaxAmount(employeeGross, settings.tooandjaMaksudProtsent)
   const grandTotal = employeeGross + contractorTotal
+  // How much of the period's cost has already left the account. Shown under the
+  // total rather than subtracted from it — the month cost what it cost.
+  const paidTotal = perWorker.reduce((s, x) => s + x.paid, 0)
 
   async function payOut(profileId: string, lines: ReturnType<typeof calculateEarnings>) {
     setActionError(null)
@@ -302,6 +318,11 @@ export function PayrollView({ jobs }: PayrollViewProps) {
             <p className="text-xl font-bold text-accent tabular-nums">
               {(employeeGross + employerTax + contractorTotal).toFixed(2)} €
             </p>
+            {paidTotal > 0 && (
+              <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                <Lock size={8} /> sh välja makstud {paidTotal.toFixed(2)} €
+              </p>
+            )}
           </div>
 
           {settings.tooandjaMaksudProtsent === 0 && employeeGross > 0 && (
@@ -348,7 +369,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
           <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
         </div>
-      ) : perWorker.map(({ worker, lines, total, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
+      ) : perWorker.map(({ worker, lines, total, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
         return (
           <div key={worker.id} className="card overflow-hidden">
@@ -370,7 +391,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                 <p className="text-[11px] text-ink-faint">
                   {workerRates.length === 0
                     ? 'Tasureegleid ei ole määratud'
-                    : `${workerRates.length} reeglit · ${lines.length} rida · ${assignedDone} määratud valmis tööd`}
+                    : `${workerRates.length} reeglit · ${lines.length} arvestamata rida · ${assignedDone} määratud valmis tööd`}
                   {issues.length > 0 && (
                     <span className="text-orange-500 font-medium">
                       {' '}· {issues.reduce((n, i) => n + i.count, 0)} tööd arvestamata
@@ -378,9 +399,18 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                   )}
                 </p>
               </div>
-              {periodPayouts.length > 0 && (
+              {/* The badges say how the period's total splits. The total itself
+                  stays put — it is what the person earned this month, and it
+                  used to fall to 0.00 € the moment they were paid, which read
+                  as "nothing was earned" rather than "nothing is owed". */}
+              {paid > 0 && (
                 <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                  <Lock size={9} /> Välja makstud {periodPayouts.reduce((s, p) => s + Number(p.total), 0).toFixed(2)} €
+                  <Lock size={9} /> Välja makstud {paid.toFixed(2)} €
+                </span>
+              )}
+              {paid > 0 && outstanding > 0 && (
+                <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">
+                  Maksmata {outstanding.toFixed(2)} €
                 </span>
               )}
               <span className="text-right">
