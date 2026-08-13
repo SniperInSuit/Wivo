@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.35.0] — 2026-08-13
+
+**Finantsnäitajad lepitatud: üks agregaator kolme ekraani jaoks**
+
+Sama „See kuu" andis kolmel ekraanil kolm vastust — 19 vs 15 tööd, 156 vs 144
+hambaid, Laekunud 21 980 vs Makstud 12 800. Neli põhjust, kõik leitud koodist
+(vt `docs/finance-metrics.md`):
+
+1. **Perioodi lõpp erines** — Tootmine kuni kuu lõpp, Rahandus kuni täna
+2. **Ülevaates ei olnud perioodi üldse** — kõigi aegade summa, sildistamata
+3. **Loendusühik erines** — Rahanduse tabel luges **tööosi** (mitme tööosaga töö
+   luges mitu korda), Tootmine töid ja muudatusi eraldi
+4. **Neli rahamõistet kahe sildi all** — „Makstud" oli tegelikult *märgitud
+   makstuks* lipuga tööde hinnakiri, mitte laekunud raha
+
+**Parandus**
+- Uus `lib/periodMetrics.ts` — ainus koht, kus perioodi summa arvutatakse.
+  Parameetrid: `dateAnchor`, `includeChanges`, `moneyConcept`. Kolm ekraani
+  kutsuvad seda; erinevused on nüüd parameetrid, mitte failide omadused
+- `rangeFor()` — üks perioodiaken kõigile. Üldkulud üksi klapivad `elapsedEndOf`
+  külge, sest üür ei kogune päevade eest, mida ei ole olnud
+- **„Makstud" → „Laekunud"** ja see on nüüd samad maksekirjed, mida Rahandus
+  näitab. Vana `jobs.makstud` lippu ei summeerita enam kuskil
+- Iga loend, kus originaal ja muudatus on koos, näitab jaotust — üks funktsioon,
+  mitte kolm sõnastust
+- Rahanduse tabeli veerg „Töid" → **„Tööosi"** koos selgitusega, miks see summa
+  on tööde arvust suurem ja miks „0 tööosa · hambaid · negatiivne kate" on õige
+- Ülevaate kaardid kannavad nüüd silti **„kogu aeg"**
+- 13 uut testi, mis reprodutseerivad kõik neli lahknevuse klassi
+
+Muudatused on esitusloogikas: palga külmutamist ja ümbertegemise kulu jaotust
+ei puudutatud.
+
 ## [1.34.0] — 2026-08-13
 
 **Visiidi tüübid — miks patsient tuleb**

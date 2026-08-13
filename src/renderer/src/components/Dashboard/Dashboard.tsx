@@ -13,6 +13,8 @@ import { usePatients } from '../../hooks/usePatients'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
 import { FinanceView } from './FinanceView'
 import { useWorkTypes } from '../../stores/useSettings'
+import { usePayments } from '../../hooks/useInvoices'
+import { unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
 
 const CHART_COLORS = ['#0AB6C4', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#3B82F6']
 
@@ -111,7 +113,9 @@ export function Dashboard({ jobs }: DashboardProps) {
   // empty arrays and simply reports zeroes rather than breaking the page.
   const { data: visits = [] } = useVisits()
   const { data: patients = [] } = usePatients()
-  const stats = useDashboardStats(jobs, period, visits, patients, custom)
+  // Cash received. "Makstud" is a payments question, never the legacy flag.
+  const { data: payments = [] } = usePayments()
+  const stats = useDashboardStats(jobs, period, visits, patients, custom, payments)
   const wt = useWorkTypes()
 
   const paidPct =
@@ -199,7 +203,7 @@ export function Dashboard({ jobs }: DashboardProps) {
             icon={Users}
             label="Töid kokku"
             value={stats.totalWork}
-            sub={`${stats.filtered.length} tööd · ${stats.totalRevisions} muudatust`}
+            sub={unitSplitLabel(stats.metrics)}
           />
           <StatCard
             icon={Layers}
@@ -212,7 +216,7 @@ export function Dashboard({ jobs }: DashboardProps) {
             icon={TrendingUp}
             label="Hambaid toodetud"
             value={stats.totalTeeth}
-            sub={`Ø ${stats.avgTeethPerJob.toFixed(1)} / töö`}
+            sub={`Ø ${stats.avgTeethPerJob.toFixed(1)} / töö · ${teethSplitLabel(stats.metrics)}`}
             accent="#10B981"
             breakdown={{
               left: { label: 'originaal', value: stats.originalTeeth, color: '#0AB6C4' },
@@ -239,18 +243,20 @@ export function Dashboard({ jobs }: DashboardProps) {
             icon={Euro}
             label="Käive kokku"
             value={`${stats.totalRevenue.toFixed(2)} €`}
+            sub={MONEY_HINT.kaive}
           />
           <StatCard
             icon={CheckCircle}
-            label="Makstud"
+            label="Laekunud"
             value={`${stats.paidRevenue.toFixed(2)} €`}
-            sub={`${paidPct}% käibest`}
+            sub={`${paidPct}% käibest · ${MONEY_HINT.laekunud.toLowerCase()}`}
             accent="#22C55E"
           />
           <StatCard
             icon={Clock}
             label="Maksmata"
             value={`${stats.unpaidRevenue.toFixed(2)} €`}
+            sub="Käive − laekunud"
             accent="#EF4444"
           />
           <StatCard
@@ -271,7 +277,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Makstud', value: stats.paidRevenue },
+                        { name: 'Laekunud', value: stats.paidRevenue },
                         { name: 'Maksmata', value: stats.unpaidRevenue }
                       ]}
                       cx="50%"
@@ -289,7 +295,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
-                    <span className="text-ink-muted">Makstud: </span>
+                    <span className="text-ink-muted">Laekunud: </span>
                     <span className="font-semibold">{stats.paidRevenue.toFixed(2)} €</span>
                   </div>
                   <div className="flex items-center gap-2">

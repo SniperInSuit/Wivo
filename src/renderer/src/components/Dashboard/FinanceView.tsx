@@ -24,6 +24,7 @@ import { workTypeImage } from '../../lib/workTypeImages'
 import { employerCost, employerTaxAmount } from '../../lib/earnings'
 import type { Period, DateRange } from './useDashboardStats'
 import { customIsUsable, orderRange } from './useDashboardStats'
+import { periodMetrics, rangeFor, elapsedEndOf, unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
 
 interface FinanceViewProps {
   jobs: Job[]
@@ -70,8 +71,13 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
 
   // "Kõik" spans whatever the data actually covers: the earliest thing on
   // record through today. Every other period is a real calendar window.
+  // rangeFor, shared with Tootmine. This screen used to end its window at TODAY
+  // while Tootmine ended it at the end of the month, so for most of any month
+  // the same "See kuu" button counted two different sets of work. The reason
+  // for ending at today was real but narrower than the change it made — see
+  // `overheadEnd` below, which is where it actually belongs.
   const range = useMemo(() => {
-    const fixed = periodRange(period, custom)
+    const fixed = rangeFor(period, custom)
     if (fixed) return fixed
     const today = format(new Date(), 'yyyy-MM-dd')
     const earliest = [
@@ -90,6 +96,14 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     return d >= range.start && d <= range.end
   }), [jobs, range])
 
+  // Every count and money total that ALSO appears on Ülevaade or Tootmine.
+  // Rahandus keeps its own cost attribution below; it no longer keeps its own
+  // idea of how many tööd a period contains.
+  const m = useMemo(() => periodMetrics(
+    { jobs, invoices, payments, range },
+    { dateAnchor: 'too', includeChanges: true, moneyConcept: 'kaive' },
+  ), [jobs, invoices, payments, range])
+
   const fin = useMemo(() => calculateFinance({
     jobs: jobsInPeriod,
     allJobs: jobs,
@@ -107,6 +121,9 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     doneStageKey,
     periodStart: range.start,
     periodEnd: range.end,
+    // Rent does not accrue for days that have not happened. Counts use the
+    // whole period; overheads use only the elapsed part of it.
+    overheadEnd: elapsedEndOf(range),
   }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, doneStageKey, range])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
@@ -164,7 +181,15 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Tulu (tööde hinnad)</p>
                 <p className="text-2xl font-bold tabular-nums text-ink">{totalIncome.toFixed(2)} €</p>
-                <p className="text-[11px] text-ink-faint mt-1">{fin.byWorkType.reduce((s, t) => s + t.jobs, 0)} tööd · {fin.byWorkType.reduce((s, t) => s + t.teeth, 0)} hammast</p>
+                {/* From the shared aggregator, not from summing the table
+                    below: that table splits a multi-type job across its types,
+                    so its job column counts WORK ITEMS. Reading the headline
+                    off it is what made this screen say 19 where Tootmine said
+                    15 for the same month. */}
+                <p className="text-[11px] text-ink-faint mt-1">
+                  {unitSplitLabel(m)} · {m.hambad} hammast
+                </p>
+                <p className="text-[11px] text-ink-faint">{teethSplitLabel(m)}</p>
               </div>
               <div className="card p-4">
                 <p className="text-xs text-ink-muted mb-1">Kulu kokku</p>
@@ -209,8 +234,12 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           <TrendingUp size={13} /> Sisse
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Money icon={Euro} label="Arveldatud" value={fin.billed} sub="käibemaksuta" />
-          <Money icon={Wallet} label="Laekunud" value={fin.received} accent="#22C55E" />
+          <Money icon={Euro} label="Arveldatud" value={fin.billed} sub={MONEY_HINT.arveldatud} />
+          {/* Same quantity Tootmine now shows under the same name. It used to
+              show the list price of jobs whose legacy `makstud` boolean was
+              ticked, which is why the two screens reported 12 800 and 21 980
+              for one month. */}
+          <Money icon={Wallet} label="Laekunud" value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
           <Money icon={Clock} label="Tasumata" value={fin.outstanding} accent="#F59E0B"
             sub={fin.overdue > 0 ? `${fin.overdue.toFixed(2)} € üle tähtaja` : undefined} />
           <Money
@@ -270,9 +299,18 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
 
       {/* ── By work type ── */}
       <section>
-        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+        <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
           Kate töö tüübi järgi
         </h3>
+        {/* Said once, here, rather than left for the reader to deduce from a
+            footer that does not add up to the headline. */}
+        <p className="text-[11px] text-ink-faint mb-3 max-w-2xl leading-relaxed">
+          Ridade ühik on <strong className="text-ink-muted">tööosa</strong>, mitte töö:
+          mitme tööosaga töö jaguneb oma tüüpide vahel, seega on veerg „Tööosi" summa
+          suurem kui tööde arv ({unitSplitLabel(m)}). Muudatused lisavad hambaid ja kulu,
+          aga mitte tööosi — rida kujul „0 tööosa · hambaid · negatiivne kate" on
+          eelmisest perioodist pärit töö tasuta ümbertegemine ja on niimoodi õige.
+        </p>
         {fin.byWorkType.length === 0 ? (
           <div className="card p-6 text-center text-sm text-ink-faint">Andmed puuduvad</div>
         ) : (
@@ -281,7 +319,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
                   <th className="px-3 py-2 font-semibold">Töö tüüp</th>
-                  <th className="px-3 py-2 font-semibold text-right">Töid</th>
+                  <th className="px-3 py-2 font-semibold text-right">Tööosi</th>
                   <th className="px-3 py-2 font-semibold text-right">Hambaid</th>
                   <th className="px-3 py-2 font-semibold text-right">Tulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Kulu</th>

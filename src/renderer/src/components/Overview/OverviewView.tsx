@@ -20,6 +20,7 @@ import { jobPaymentState } from '../../lib/jobPayments'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
+import { periodMetrics, unitSplitLabel, teethSplitLabel } from '../../lib/periodMetrics'
 
 interface OverviewViewProps {
   jobs: Job[]
@@ -68,6 +69,16 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
 
   const [day, setDay] = useState(() => startOfDay(new Date()))
   const { data: allPayments = [] } = usePayments()
+
+  // Ülevaade is deliberately ALL-TIME: it is the front door, not a report.
+  // It used to compute `jobs.length` inline with no filter and no label, so its
+  // 46 tööd read as a third opinion about "this month" next to Tootmine's 15.
+  // Same aggregator, range: null, and the scope is now printed on the tiles.
+  const allTime = useMemo(
+    () => periodMetrics({ jobs, range: null },
+      { dateAnchor: 'too', includeChanges: true, moneyConcept: 'kaive' }),
+    [jobs],
+  )
 
   const stats = useMemo(() => {
     const weekAgo = subDays(now, 7)
@@ -178,8 +189,10 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       {/* ─── KPI row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Kpi
-          label="Tööd kokku" value={String(stats.total)} icon={FileText}
+          label="Tööd kokku" scope="kogu aeg"
+          value={String(allTime.yksused)} icon={FileText}
           tint="bg-blue-50 text-blue-500"
+          note={unitSplitLabel(allTime)}
           delta={stats.totalDelta} deltaLabel="võrreldes eelmise nädalaga"
         />
         <Kpi
@@ -195,12 +208,15 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
           noteDanger={stats.overdue.length > 0}
         />
         <Kpi
-          label="Hambaid toodetud" value={String(stats.teeth)} icon={Smile}
+          label="Hambaid toodetud" scope="kogu aeg"
+          value={String(allTime.hambad)} icon={Smile}
           tint="bg-emerald-50 text-emerald-500"
+          note={teethSplitLabel(allTime)}
           delta={stats.teethDelta} deltaLabel="võrreldes eelmise nädalaga"
         />
         <Kpi
-          label="Maksete seis" value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
+          label="Maksete seis" scope="kogu aeg"
+          value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
           note={`${stats.paidCount ?? 0} makstud · ${stats.partialCount ?? 0} osaliselt · ${stats.unpaidCount} maksmata`}
           noteDanger={stats.unpaidCount > 0}
@@ -361,7 +377,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
 }
 
 // ─── Small building blocks ─────────────────────────────────────────────────
-function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDanger }: {
+function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDanger, scope }: {
   label: string
   value: string
   icon: LucideIcon
@@ -370,11 +386,20 @@ function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDang
   deltaLabel?: string
   note?: string
   noteDanger?: boolean
+  /** "kogu aeg", "see kuu"… An unlabelled total is a total nobody can check. */
+  scope?: string
 }) {
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-ink-muted">{label}</p>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-ink-muted">{label}</p>
+          {scope && (
+            <span className="inline-block mt-0.5 text-[10px] font-medium text-ink-faint bg-bg-sidebar rounded px-1.5 py-0.5">
+              {scope}
+            </span>
+          )}
+        </div>
         <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${tint}`}>
           <Icon size={15} />
         </span>

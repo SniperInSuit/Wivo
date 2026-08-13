@@ -226,12 +226,22 @@ export interface FinanceInput {
   doneStageKey: string
   periodStart: string
   periodEnd: string
+  /**
+   * End date for TIME-BASED costs only (overheads). Defaults to periodEnd.
+   *
+   * Counts and revenue use the whole period; rent does not accrue for days that
+   * have not happened. Keeping these apart is what let the counting window be
+   * unified with Tootmine without charging a full month's rent against three
+   * days of work.
+   */
+  overheadEnd?: string
 }
 
 export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
     materialCosts, materialPrices, fixedCosts, overheads, doneStageKey, periodStart, periodEnd, allJobs,
+    overheadEnd,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -321,7 +331,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   // Overheads are charged by the month, so a period that is not a whole month
   // gets its share by days. A three-day view showing a full month's rent would
   // read as a catastrophic loss.
-  const overheadCost = overheadForPeriod(overheads ?? [], periodStart, periodEnd)
+  const overheadCost = overheadForPeriod(overheads ?? [], periodStart, overheadEnd ?? periodEnd)
   const netMargin = round2(grossMargin - overheadCost)
   const netMarginPct = billed > 0 ? round2((netMargin / billed) * 100) : 0
 

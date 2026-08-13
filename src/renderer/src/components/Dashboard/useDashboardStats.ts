@@ -10,6 +10,8 @@ import type { Visit } from '../../types/visit'
 import type { Patient } from '../../types/patient'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
+import { periodMetrics, rangeFor } from '../../lib/periodMetrics'
+import type { Payment } from '../../types/invoice'
 
 export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom'
 
@@ -85,7 +87,10 @@ export function useDashboardStats(
   visits: Visit[] = [],
   patients: Patient[] = [],
   /** Only read when `period` is 'custom'. */
-  custom?: DateRange | null
+  custom?: DateRange | null,
+  /** Cash actually received. Without it "Makstud" falls back to 0 rather than
+   *  to the legacy `makstud` flag — a flag is not money. */
+  payments: Payment[] = [],
 ) {
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
@@ -95,6 +100,20 @@ export function useDashboardStats(
     const jobTotal = (j: Job) =>
       (j.hind ?? 0) + (j.revisions ?? []).reduce((s, r) => s + (r.price ?? 0), 0)
 
+    // ── Headline counts and money come from the shared aggregator ───────────
+    // Everything below this block is Tootmine-only detail (machines, patients,
+    // durability). The numbers that ALSO appear on Ülevaade or Rahandus are
+    // computed once, here, so they cannot drift again. See lib/periodMetrics.ts.
+    const range = rangeFor(period, custom)
+    const m = periodMetrics(
+      { jobs, payments, range },
+      { dateAnchor: 'too', includeChanges: true, moneyConcept: 'kaive' },
+    )
+    const cash = periodMetrics(
+      { jobs, payments, range },
+      { dateAnchor: 'laekumine', includeChanges: true, moneyConcept: 'laekunud' },
+    )
+
     const filtered = filterByPeriod(jobs, period, custom)
     const completed = filtered.filter((j) => j.status === doneStageKey)
     const inProduction = filtered.filter((j) => j.status !== doneStageKey)
@@ -103,8 +122,10 @@ export function useDashboardStats(
       (j) => j.valmis_aeg && isBefore(parseISO(j.valmis_aeg), now) && j.status !== doneStageKey
     )
     const withRevision = filtered.filter((j) => (j.revisions?.length ?? 0) > 0 || !!j.muudatused)
-    const totalRevisions = filtered.reduce((sum, j) => sum + (j.revisions?.length ?? 0), 0)
-    const totalWork = filtered.length + totalRevisions
+    // From the aggregator: a revision is counted in the period IT was finished,
+    // not in its parent's. The old sum attributed an August redo to a June job.
+    const totalRevisions = m.muudatused
+    const totalWork = m.yksused
     // Revision teeth. A CSV-imported job that has never been opened+saved still
     // carries its revision in the legacy rev_hambad field with revisions = [],
     // so count that instead — otherwise the dashboard undercounts exactly the
@@ -115,8 +136,8 @@ export function useDashboardStats(
         ? toothCount(j.rev_hambad ?? null)
         : revs.reduce((s, r) => s + toothCount(r.hambad ?? null), 0)
     }
-    const totalTeeth = filtered.reduce((sum, j) => sum + toothCount(j.hambad) + revTeethOf(j), 0)
-    const avgTeethPerJob = filtered.length > 0 ? totalTeeth / filtered.length : 0
+    const totalTeeth = m.hambad
+    const avgTeethPerJob = m.tood > 0 ? totalTeeth / m.tood : 0
     const revisionRate = filtered.length > 0 ? (withRevision.length / filtered.length) * 100 : 0
 
     // Kiirtöö stats
@@ -180,12 +201,17 @@ export function useDashboardStats(
       .sort((a, b) => b.total - a.total)
       .slice(0, 8)
 
-    // Payment stats — include revision prices in every revenue figure
-    const totalRevenue = filtered.reduce((sum, j) => sum + jobTotal(j), 0)
-    const paid = filtered.filter((j) => j.makstud)
+    // ── Money ───────────────────────────────────────────────────────────────
+    // `totalRevenue` is KÄIVE: job prices plus redo charges, each anchored on
+    // its own completion date.
+    const totalRevenue = m.money
+    // `paidRevenue` is LAEKUNUD — the same quantity Rahandus shows under that
+    // name. It used to be "the list price of jobs whose legacy `makstud`
+    // boolean happened to be ticked", which is why this screen said 12 800
+    // while Rahandus said 21 980 for the same month. A flag is not money.
+    const paidRevenue = cash.money
+    const unpaidRevenue = Math.round(Math.max(0, totalRevenue - paidRevenue) * 100) / 100
     const unpaid = filtered.filter((j) => !j.makstud && jobTotal(j) > 0)
-    const paidRevenue = paid.reduce((sum, j) => sum + jobTotal(j), 0)
-    const unpaidRevenue = unpaid.reduce((sum, j) => sum + jobTotal(j), 0)
     const jobsWithPrice = filtered.filter((j) => jobTotal(j) > 0)
     const avgPrice = jobsWithPrice.length > 0 ? totalRevenue / jobsWithPrice.length : 0
     const avgPricePerTooth = totalTeeth > 0 ? totalRevenue / totalTeeth : 0
@@ -369,10 +395,15 @@ export function useDashboardStats(
     const strongestTeeth = toothFreqSorted.slice(-10).reverse()  // least treated = strongest
 
     // Original vs revision teeth
-    const originalTeeth = filtered.reduce((sum, j) => sum + toothCount(j.hambad), 0)
-    const revisionTeeth = filtered.reduce((sum, j) => sum + revTeethOf(j), 0)
+    // From the aggregator, so the split and the total can never disagree —
+    // originalTeeth + revisionTeeth === totalTeeth by construction now.
+    const originalTeeth = m.hambadOriginaal
+    const revisionTeeth = m.hambadMuudatused
 
     return {
+      /** The shared aggregator's result. UI reads splits and rows from here. */
+      metrics: m,
+      cashMetrics: cash,
       filtered,
       completed,
       inProduction,
@@ -455,5 +486,5 @@ export function useDashboardStats(
   // on it would recompute every stat on every render. The list identity only
   // changes when a work type is actually edited.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, period, custom?.start, custom?.end, stages, doneStageKey, visits, patients, wt.types])
+  }, [jobs, period, custom?.start, custom?.end, payments, stages, doneStageKey, visits, patients, wt.types])
 }
