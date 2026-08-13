@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.32.2] — 2026-08-13
+
+**Puuduv migratsioon: `jobs.extra_costs`**
+
+- `extra_costs` on olnud `Job` tüübis ja töö vormi kulukastis ammu, aga **veergu
+  ei ole kunagi loodud**. Miski ei katkenud, sest kõik kirjutamisteed jätsid
+  võtme juhuslikult välja, ja kõik lugemised kasutavad `?? []`
+- 1.31.6 sulges need kaks auku (nõustaja saadab nüüd `extra_costs: []`, töö vorm
+  laeb ja salvestab päris nimekirja) — ja puuduv veerg lükkas kohe terve inserti
+  tagasi, sest mõlemad kirjutused on toored spread'id. See on migratsioon, mis
+  oleks pidanud funktsiooniga kaasa tulema
+- `sql/043_job_extra_costs.sql` — jsonb, not null, vaikimisi `[]`, nagu `extras`
+- Veateate kaardistus parandatud: `extra_costs` osutas ekslikult `033`-le, mis
+  loob hoopis `extras` — teine veerg, teine funktsioon, üks sõna vahet
+
 ## [1.32.1] — 2026-08-13
 
 **Nõustaja: „Loo töö" ja „Salvesta mustand" nägid välja nagu surnud nupud**

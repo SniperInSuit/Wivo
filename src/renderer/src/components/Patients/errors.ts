@@ -15,7 +15,10 @@ const COLUMN_MIGRATION: Record<string, string> = {
   valmis_kuupaev:  'sql/025_job_completed_date.sql',
   work_items:      'sql/032_work_items.sql',
   extras:          'sql/033_job_extras.sql',
-  extra_costs:     'sql/033_job_extras.sql',
+  // NOT 033 — that adds `extras`, a different column for the priced services
+  // picked from settings. `extra_costs` is the free-text cost list and got its
+  // own migration late, which is how this map was wrong the first time.
+  extra_costs:     'sql/043_job_extra_costs.sql',
   customer_id:     'sql/035_customers.sql',
   customer_ref:    'sql/035_customers.sql',
   delivery_status: 'sql/035_customers.sql',
