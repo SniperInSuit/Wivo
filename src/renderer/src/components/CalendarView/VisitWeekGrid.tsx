@@ -7,7 +7,7 @@ import {
 import { et } from 'date-fns/locale'
 import type { Visit } from '../../types/visit'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
-import { useSettings } from '../../stores/useSettings'
+import { useVisitTypes, useSettings } from '../../stores/useSettings'
 
 // Working day, drag step and row height. The hours and the step come from Seaded
 // → Kalender: they used to be constants, which quietly assumed one lab's day.
@@ -81,6 +81,7 @@ export function VisitWeekGrid({
   onDaySelect, selected
 }: VisitWeekGridProps) {
   const { settings } = useSettings()
+  const vt = useVisitTypes()
   const HOUR_START = settings.nadalAlgus
   const HOUR_END = Math.max(settings.nadalAlgus + 1, settings.nadalLopp)
   const SNAP_MIN = settings.ajaSamm
@@ -405,7 +406,13 @@ export function VisitWeekGrid({
                           })()}
 
                           {placed.map(({ visit: v, start, col, cols }) => {
-                  const hex = VISIT_STATUS_HEX[v.staatus]
+                  // Two facts, two channels. The FILL says what the visit is
+                  // for (type), the LEFT EDGE says where it has got to
+                  // (status). Making them fight over one colour meant the
+                  // calendar could show either the reason or the state, never
+                  // both — and the front desk needs both.
+                  const hex = vt.hex(v.tyyp)
+                  const statusHex = VISIT_STATUS_HEX[v.staatus]
                   const cancelled = v.staatus === 'tuhistatud'
                   // Clamp so a long visit stops at 18:00 instead of spilling into
                   // the bottom padding
@@ -422,7 +429,7 @@ export function VisitWeekGrid({
                       onDragStart={e => e.dataTransfer.setData('visitId', v.id)}
                       onClick={e => { e.stopPropagation(); onVisitOpen(v) }}
                       onDoubleClick={e => { e.stopPropagation(); onVisitOpen(v) }}
-                      title={`${format(parseISO(v.algus), 'HH:mm')} · ${v.patsient}${v.arst ? ` · ${v.arst}` : ''} · ${v.kestus_min} min · ${VISIT_STATUS_LABEL[v.staatus]}`}
+                      title={`${format(parseISO(v.algus), 'HH:mm')} · ${v.patsient}${v.tyyp ? ` · ${v.tyyp}` : ''}${v.arst ? ` · ${v.arst}` : ''} · ${v.kestus_min} min · ${VISIT_STATUS_LABEL[v.staatus]}`}
                       className={`absolute rounded-md border-l-[3px] px-1.5 py-0.5 text-left overflow-hidden z-10 cursor-grab active:cursor-grabbing hover:z-40 hover:shadow-card transition-shadow ${
                         cancelled ? 'line-through opacity-70' : ''
                       }`}
@@ -432,7 +439,7 @@ export function VisitWeekGrid({
                         left: `calc(${col * widthPct}% + 2px)`,
                         width: `calc(${widthPct}% - 4px)`,
                         backgroundColor: `${hex}1f`,
-                        borderLeftColor: hex
+                        borderLeftColor: statusHex
                       }}
                     >
                       <p className="flex items-center gap-1 text-[10px] font-semibold text-ink tabular-nums truncate">

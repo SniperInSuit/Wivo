@@ -7,7 +7,7 @@ import type { Patient } from '../../types/patient'
 import type { Visit } from '../../types/visit'
 import { VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/visit'
 import { usePipeline } from '../../context/PipelineContext'
-import { useSettings } from '../../stores/useSettings'
+import { useSettings, useWorkTypes, useVisitTypes } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
 
 // Rail hours come from Seaded → Kalender; they used to be constants here.
@@ -35,6 +35,8 @@ interface DayTimelineProps {
 interface Slot {
   key: string
   kind: 'job' | 'visit'
+  /** Work-type colour for a job, visit-type colour for a visit. */
+  hex: string
   minutes: number      // minutes past midnight
   label: string        // HH:mm
   arst: string
@@ -50,6 +52,8 @@ export function DayTimeline({
   const { stageMap, doneStageKey } = usePipeline()
   const [openKey, setOpenKey] = useState<string | null>(null)
   const { settings } = useSettings()
+  const wt = useWorkTypes()
+  const vt = useVisitTypes()
   const START_HOUR = settings.ajajoonAlgus
   const END_HOUR = Math.max(settings.ajajoonAlgus + 1, settings.ajajoonLopp)
   const SPAN = (END_HOUR - START_HOUR) * 60
@@ -80,7 +84,8 @@ export function DayTimeline({
       const arst = `${j.patsient} · ${j.too ?? 'Määramata'}`
       const key = `job|${label}|${j.id}`
       const slot = map.get(key) ?? {
-        key, kind: 'job' as const, minutes, label, arst, jobs: [], overdue: false, done: false
+        key, kind: 'job' as const, hex: wt.hex(j.too), minutes, label, arst,
+        jobs: [], overdue: false, done: false,
       }
       slot.jobs.push(j)
       map.set(key, slot)
@@ -95,6 +100,7 @@ export function DayTimeline({
       map.set(`visit|${v.id}`, {
         key: `visit|${v.id}`,
         kind: 'visit',
+        hex: vt.hex(v.tyyp),
         minutes: d.getHours() * 60 + d.getMinutes(),
         label,
         arst: v.patsient || 'Nimeta',
@@ -114,7 +120,7 @@ export function DayTimeline({
           && s.jobs.some(j => j.status !== doneStageKey)
       })
       .sort((a, b) => a.minutes - b.minutes)
-  }, [jobs, visits, day, doctorOf, doneStageKey, now])
+  }, [jobs, visits, day, doctorOf, doneStageKey, now, wt, vt])
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   const showNow = isSameDay(day, now) && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60
@@ -211,11 +217,12 @@ export function DayTimeline({
                     style={{
                       left: `${left}%`,
                       top: '21px',
-                      // A visit carries its own status colour, so a no-show or a
-                      // cancellation reads the same here as on the calendar.
-                      backgroundColor: s.kind === 'visit'
-                        ? VISIT_STATUS_HEX[s.visit!.staatus]
-                        : s.overdue ? '#EF4444' : s.done ? '#A8B4BE' : 'rgb(var(--c-accent))'
+                      // The category colour — work type for a job, visit type
+                      // for a visit — so the rail reads the same way the board
+                      // and the calendar do. Overdue still overrides it: a
+                      // missed deadline outranks knowing what kind of work it
+                      // was. Finished things go grey and stop competing.
+                      backgroundColor: s.overdue ? '#EF4444' : s.done ? '#A8B4BE' : s.hex
                     }}
                   />
                   <span
@@ -226,24 +233,26 @@ export function DayTimeline({
                     onMouseEnter={() => setOpenKey(s.key)}
                     onMouseLeave={() => setOpenKey(k => (k === s.key ? null : k))}
                     onClick={() => s.kind === 'visit' ? onOpenCalendar() : s.jobs[0] && onJobClick(s.jobs[0])}
-                    className={`absolute -translate-x-1/2 w-[150px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
-                      s.kind === 'visit'
-                        ? `bg-bg-card hover:shadow-card ${s.done ? 'opacity-70 hover:opacity-100' : ''}`
-                        : s.overdue
-                          ? 'bg-red-50 border-red-200 hover:border-red-300'
-                          : s.done
-                            ? 'bg-bg-sidebar border-ink-faint/20 opacity-80 hover:opacity-100'
-                            : isCurrent
-                              ? 'bg-bg-card border-accent shadow-card'
-                              : 'bg-bg-card border-ink-faint/25 hover:border-accent/50'
+                    className={`absolute -translate-x-1/2 w-[150px] text-left rounded-xl border border-l-4 pl-2 pr-2.5 py-1.5 transition-all hover:shadow-card ${
+                      s.overdue
+                        ? 'bg-red-50'
+                        : s.done
+                          ? 'bg-bg-sidebar opacity-75 hover:opacity-100'
+                          : isCurrent
+                            ? 'bg-bg-card shadow-card'
+                            : 'bg-bg-card'
                     }`}
                     style={{
                       left: `${left}%`,
                       top: row === 0 ? '43px' : '71px',
                       zIndex: openKey === s.key ? 30 : 6,
-                      ...(s.kind === 'visit'
-                        ? { borderColor: `${VISIT_STATUS_HEX[s.visit!.staatus]}80` }
-                        : {}),
+                      // The thick left edge is the category. The thin rest of
+                      // the border is state, so a card says "what" and "how is
+                      // it going" without a legend.
+                      borderLeftColor: s.overdue ? '#EF4444' : s.hex,
+                      borderTopColor: s.overdue ? '#FECACA' : isCurrent ? 'rgb(var(--c-accent))' : `${s.hex}33`,
+                      borderRightColor: s.overdue ? '#FECACA' : isCurrent ? 'rgb(var(--c-accent))' : `${s.hex}33`,
+                      borderBottomColor: s.overdue ? '#FECACA' : isCurrent ? 'rgb(var(--c-accent))' : `${s.hex}33`,
                     }}
                   >
                     <span className="flex items-center gap-1 text-[10px] text-ink-muted tabular-nums">
@@ -256,9 +265,9 @@ export function DayTimeline({
                         : <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />}
                       <span className="truncate">{s.arst}</span>
                     </span>
-                    <span className="text-[10px] text-ink-muted truncate">
+                    <span className="text-[10px] truncate" style={{ color: s.hex }}>
                       {s.kind === 'visit'
-                        ? `${VISIT_STATUS_LABEL[s.visit!.staatus]} · ${s.visit!.kestus_min} min`
+                        ? `${s.visit!.tyyp ?? 'Määramata'} · ${s.visit!.kestus_min} min`
                         : `${s.jobs.length} ${s.jobs.length === 1 ? 'töö' : 'tööd'}`}
                     </span>
 
@@ -276,7 +285,12 @@ export function DayTimeline({
                           </span>
                         )}
                         <span className="block text-[10px] text-ink-muted pl-3.5">
-                          {s.label} · {s.visit!.kestus_min} min ·{' '}
+                          <span className="font-medium" style={{ color: s.hex }}>
+                            {s.visit!.tyyp ?? 'Määramata tüüp'}
+                          </span>
+                          {' · '}{s.label} · {s.visit!.kestus_min} min
+                        </span>
+                        <span className="block text-[10px] pl-3.5">
                           <span style={{ color: VISIT_STATUS_HEX[s.visit!.staatus] }}>
                             {VISIT_STATUS_LABEL[s.visit!.staatus]}
                           </span>

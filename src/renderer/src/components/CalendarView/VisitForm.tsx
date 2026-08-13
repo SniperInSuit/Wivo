@@ -7,7 +7,7 @@ import { EMPTY_VISIT, VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/v
 import { useCreateVisit, useUpdateVisit, useDeleteVisit } from '../../hooks/useVisits'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { usePatients } from '../../hooks/usePatients'
-import { useSettings } from '../../stores/useSettings'
+import { useSettings, useVisitTypes } from '../../stores/useSettings'
 import { describeError } from '../Patients/errors'
 import { toDate, toLocalInput, fromLocalInput } from '../../lib/dates'
 
@@ -32,6 +32,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
   const deleteVisit = useDeleteVisit()
   const { data: patients = [] } = usePatients()
   const { settings } = useSettings()
+  const vt = useVisitTypes()
 
   const [form, setForm] = useState<VisitInput>(() =>
     visit
@@ -39,6 +40,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           patient_id: visit.patient_id,
           patsient: visit.patsient,
           arst: visit.arst,
+          tyyp: visit.tyyp ?? null,
           algus: toLocalInput(visit.algus),
           kestus_min: visit.kestus_min,
           markus: visit.markus,
@@ -159,6 +161,37 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               </p>
             ) : null}
           </div>
+
+          {/* Visit type — why they are coming. Optional on purpose: a front
+              desk booking someone in a hurry must not be blocked by a picklist,
+              and an untyped visit simply draws grey. */}
+          {vt.types.length > 0 && (
+            <div>
+              <label className="label">Visiidi tüüp</label>
+              <div className="flex flex-wrap gap-1.5">
+                {vt.types.map(t => {
+                  const active = form.tyyp === t.nimi
+                  return (
+                    <button
+                      key={t.nimi}
+                      type="button"
+                      onClick={() => set('tyyp', active ? null : t.nimi)}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border-2 transition-all ${
+                        active ? 'border-current' : 'border-transparent bg-bg-sidebar text-ink-muted hover:border-ink-faint/40'
+                      }`}
+                      style={active ? { color: t.hex, backgroundColor: `${t.hex}1f` } : undefined}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: t.hex }}
+                      />
+                      {t.nimi}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="label">Suunav arst</label>

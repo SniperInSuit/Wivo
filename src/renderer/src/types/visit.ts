@@ -15,6 +15,9 @@ export interface Visit {
   patient_id: string | null
   patsient: string
   arst: string | null          // Suunav arst
+  // Miks patsient tuleb — kontroll, jäljendi tegemine, täidis… Vaba tekst,
+  // valitakse seadete nimekirjast (migratsioon 045). NULL = määramata.
+  tyyp: string | null
   algus: string                // ISO datetime — start
   kestus_min: number           // Kestus minutites
   markus: string | null
@@ -29,6 +32,7 @@ export const EMPTY_VISIT: VisitInput = {
   patient_id: null,
   patsient: '',
   arst: null,
+  tyyp: null,
   algus: '',
   kestus_min: 30,
   markus: null,

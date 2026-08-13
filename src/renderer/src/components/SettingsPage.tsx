@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound} from 'lucide-react'
+import { CalendarDays, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound} from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
@@ -1083,6 +1083,7 @@ export function SettingsPage() {
     settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
+    addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
   } = useSettings()
   const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults } = usePipeline()
   const auth = useAuth()
@@ -1542,6 +1543,61 @@ export function SettingsPage() {
             </div>
 
             <AddWorkTypeRow onAdd={addWorkType} />
+
+            {/* Visit types — only in a mode that books patients. */}
+            {settings.kliinilineRezhiim && (
+              <div className="mt-8 pt-5 border-t border-ink-faint/15">
+                <div className="flex items-center gap-2 mb-1">
+                  <CalendarDays size={14} className="text-accent" />
+                  <h3 className="text-sm font-semibold text-ink">Visiidi tüübid</h3>
+                </div>
+                <p className="text-xs text-ink-faint mb-1">
+                  Miks patsient tuleb — kontroll, jäljendi tegemine, täidis. Valitakse
+                  visiidi vormil; tüüpi ei ole kohustuslik määrata.
+                </p>
+                <p className="text-xs text-ink-faint mb-3">
+                  <strong className="text-ink-muted">Värv</strong> täidab visiidi kaardi
+                  kalendris ja ülevaate ajajoonel. Visiidi <em>staatus</em> (planeeritud,
+                  saabunud, tühistatud…) värvib kaardi serva — need on kaks eri asja ja
+                  mõlemad jäävad nähtavaks. Määramata tüüp on hall.
+                </p>
+
+                <div className="space-y-0.5 mb-3">
+                  {settings.visiidiTyybid.length === 0 && (
+                    <p className="text-xs text-ink-faint">
+                      Visiidi tüüpe ei ole. Kõik visiidid on hallid.
+                    </p>
+                  )}
+                  {settings.visiidiTyybid.map((t, idx) => (
+                    <WorkTypeRow
+                      key={t.nimi}
+                      type={t}
+                      isFirst={idx === 0}
+                      isLast={idx === settings.visiidiTyybid.length - 1}
+                      onRename={nimi => updateVisitType(t.nimi, { nimi })}
+                      onRecolor={hex => updateVisitType(t.nimi, { hex })}
+                      onRemove={() => removeVisitType(t.nimi)}
+                      onMove={dir => moveVisitType(t.nimi, dir)}
+                    />
+                  ))}
+                </div>
+
+                <AddWorkTypeRow onAdd={addVisitType} />
+
+                <button
+                  type="button"
+                  onClick={resetVisitTypes}
+                  className="mt-3 text-xs text-ink-muted hover:text-ink underline"
+                >
+                  Taasta vaikimisi tüübid
+                </button>
+                <p className="text-[11px] text-ink-faint mt-2 max-w-xl leading-relaxed">
+                  Tüübi ümbernimetamine ei muuda juba salvestatud visiite — need jäävad
+                  vana nime kandma ja muutuvad halliks. Salvestatud kirjet ei kirjutata
+                  valikunimekirja muutmisega ümber.
+                </p>
+              </div>
+            )}
 
             <button
               type="button"

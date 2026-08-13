@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.34.0] — 2026-08-13
+
+**Visiidi tüübid — miks patsient tuleb**
+
+Visiidil oli seni ainult **staatus** (planeeritud → saabunud → toimunud), mis
+ütleb, kus broneering on. Nüüd on ka **tüüp**, mis ütleb, milleks see on:
+kontroll, jäljendi tegemine, proovimine, tsementeerimine, täidis, juureravi,
+hügieen, ekstraktsioon, konsultatsioon. Vaikimisi üheksa, kõik muudetavad
+Seaded → Valikud all, sama redaktoriga mis töö tüüpidel.
+
+- Tüüp ei ole kohustuslik — registratuur ei tohi kiirustades broneerides
+  valikunimekirja taha kinni jääda. Määramata visiit on **hall**
+- Tüübi ümbernimetamine ei kirjuta juba salvestatud visiite ümber: need jäävad
+  vana nime kandma ja muutuvad halliks. Salvestatud kirjet ei muuda valiku-
+  nimekirja redigeerimine
+- Vajab migratsiooni `sql/045_visit_types.sql`
+
+**Kaks fakti, kaks kanalit**
+
+Tüüp ja staatus ei võitle enam ühe värvi pärast — varem sai kalender näidata
+kas põhjust või seisu, mitte mõlemat:
+
+- **Täidis** = tüüp (mis see on)
+- **Serv** = staatus (kus see on)
+
+**Ülevaate ajajoon on nüüd sama loogikaga kui tahvel**
+
+- Töö kaart kannab **töö tüübi värvi** — sama, mida tahvel ja kalender kasutavad
+- Visiidi kaart kannab **visiidi tüübi värvi**
+- Paks vasak serv on kategooria, ülejäänud ääris on seis. Möödunud tähtaeg
+  võidab ikka kõik: punane üle kõige, sest lõpetamata hilinenud töö on tähtsam
+  kui see, mis liiki tööga tegu on. Valmis asjad lähevad halliks ja lõpetavad
+  konkureerimise
+
 ## [1.33.0] — 2026-08-13
 
 **Kolm režiimi: WivoLab · WivoDental · WivoX**

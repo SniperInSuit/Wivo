@@ -17,7 +17,7 @@ import type { PipelineStage } from '../config/pipeline'
 import type { WorkType } from '../config/workTypes'
 
 export const CLINIC_COLUMNS = [
-  'work_types', 'materials', 'material_prices', 'material_costs', 'machines',
+  'work_types', 'visit_types', 'materials', 'material_prices', 'material_costs', 'machines',
   'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features',
 ] as const
 
@@ -26,6 +26,7 @@ export type ClinicColumn = (typeof CLINIC_COLUMNS)[number]
 export interface ClinicSettingsRow {
   clinic_id: string
   work_types: WorkType[]
+  visit_types: import('../config/visitTypes').VisitType[]
   materials: string[]
   material_prices: Record<string, MaterialPricing>
   material_costs: Record<string, MaterialPricing>
@@ -70,6 +71,7 @@ export type ClinicPatch = Partial<Omit<ClinicSettingsRow, 'clinic_id'>>
 export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSettingsRow, 'clinic_id'> {
   return {
     work_types: s.tooTuubid,
+    visit_types: s.visiidiTyybid,
     materials: s.materjalid,
     material_prices: s.materialPrices,
     material_costs: s.materialCosts,
@@ -126,6 +128,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   kmMaar: 'pricing',
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
+  visiidiTyybid: 'visit_types',
   kliinilineRezhiim: 'features',
   laboriRezhiim: 'features',
   fixedCostsPerJob: 'pricing',

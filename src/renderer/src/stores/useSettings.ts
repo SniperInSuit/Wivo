@@ -4,6 +4,7 @@ import {
   DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType,
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
+import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
 import {
   CLINIC_COLUMNS, COLUMN_OF, toRow as toClinicRow,
   type ClinicColumn, type ClinicPatch, type ClinicSettingsRow
@@ -106,6 +107,8 @@ export interface WivoSettings {
   // Töö tüübid — suggestions on the job form's Töö field AND the colour key for
   // every calendar fill, dashboard swatch and legend row.
   tooTuubid: WorkType[]
+  // Visiidi põhjused ja nende värvid. Sama kuju mis tooTuubid, sama redaktor.
+  visiidiTyybid: VisitType[]
   // Internal bookkeeping, not a user setting: marks that the 1.7.13 colour
   // repair has already run, so it cannot re-run and overwrite a deliberate pick.
   tooVarvidParandatud: boolean
@@ -181,6 +184,7 @@ function defaultSettings(): WivoSettings {
     masinad: [...MACHINE_OPTIONS],
     materjalid: [...MATERIAL_OPTIONS],
     tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
+    visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
     tooVarvidParandatud: true,
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
@@ -334,6 +338,11 @@ function loadSettings(): WivoSettings {
         workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
         (stored as { tooHinnad?: unknown }).tooHinnad
       ),
+      // An empty stored list is a deliberate "I deleted them all", so only a
+      // MISSING key falls back to the defaults.
+      visiidiTyybid: Array.isArray(stored.visiidiTyybid)
+        ? (stored.visiidiTyybid as VisitType[]).filter(t => t?.nimi && t?.hex).map(t => ({ ...t }))
+        : def.visiidiTyybid,
       tooVarvidParandatud: true,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
@@ -426,6 +435,11 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
   const next: WivoSettings = {
     ...prev,
     ...(row.work_types ? { tooTuubid: workTypeList(row.work_types, prev.tooTuubid, false) } : {}),
+    // Absent on every row written before 1.34 — keep whatever is local rather
+    // than blanking the list on the first sync after an upgrade.
+    ...(Array.isArray(row.visit_types) && row.visit_types.length > 0
+      ? { visiidiTyybid: (row.visit_types as VisitType[]).filter(t => t?.nimi && t?.hex) }
+      : {}),
     ...(row.materials ? { materjalid: strList(row.materials, prev.materjalid) } : {}),
     ...(row.material_prices ? { materialPrices: row.material_prices } : {}),
     ...(row.material_costs ? { materialCosts: row.material_costs } : {}),
@@ -677,11 +691,57 @@ export function useSettings() {
     })
   }, [])
 
+  // Visit types reuse the work-type row editor, so they need the same four
+  // operations. Kept separate rather than generalised: the work-type versions
+  // carry price and image concerns a visit type has no use for.
+  const addVisitType = useCallback((nimi: string, hex: string) => {
+    const n = nimi.trim()
+    if (!n) return
+    setSettings(prev => (
+      prev.visiidiTyybid.some(t => t.nimi.toLowerCase() === n.toLowerCase())
+        ? prev
+        : { ...prev, visiidiTyybid: [...prev.visiidiTyybid, { nimi: n, hex }] }
+    ), ['visit_types'])
+  }, [])
+
+  const removeVisitType = useCallback((nimi: string) => {
+    setSettings(prev => (
+      { ...prev, visiidiTyybid: prev.visiidiTyybid.filter(t => t.nimi !== nimi) }
+    ), ['visit_types'])
+  }, [])
+
+  // Renaming does NOT rewrite the visits already carrying the old name — an
+  // issued appointment record is not restated by an edit to a picklist. Those
+  // visits fall back to grey, which is honest: the type they name is gone.
+  const updateVisitType = useCallback((nimi: string, patch: Partial<VisitType>) => {
+    setSettings(prev => (
+      { ...prev, visiidiTyybid: prev.visiidiTyybid.map(t => t.nimi === nimi ? { ...t, ...patch } : t) }
+    ), ['visit_types'])
+  }, [])
+
+  const moveVisitType = useCallback((nimi: string, dir: 'up' | 'down') => {
+    setSettings(prev => {
+      const i = prev.visiidiTyybid.findIndex(t => t.nimi === nimi)
+      const j = dir === 'up' ? i - 1 : i + 1
+      if (i < 0 || j < 0 || j >= prev.visiidiTyybid.length) return prev
+      const next = [...prev.visiidiTyybid]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return { ...prev, visiidiTyybid: next }
+    }, ['visit_types'])
+  }, [])
+
+  const resetVisitTypes = useCallback(() => {
+    setSettings(prev => (
+      { ...prev, visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })) }
+    ), ['visit_types'])
+  }, [])
+
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
     setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
+    addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
     setTooHind,
   }
 }
@@ -692,6 +752,15 @@ export function useSettings() {
 // type repaints the calendar and its legend in the same render. That is exactly
 // what went wrong before 1.7.13 — the legend was drawn from hardcoded rules and
 // disagreed with what the user had configured.
+export function useVisitTypes() {
+  const settings = useSyncExternalStore(subscribe, getSnapshot)
+  const types = settings.visiidiTyybid
+  return {
+    types,
+    hex: (tyyp: string | null | undefined) => visitTypeHexIn(tyyp, types),
+  }
+}
+
 export function useWorkTypes() {
   const settings = useSyncExternalStore(subscribe, getSnapshot)
   const types = settings.tooTuubid
