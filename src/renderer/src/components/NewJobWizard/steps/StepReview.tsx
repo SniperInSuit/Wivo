@@ -4,7 +4,7 @@ import { AlertCircle } from 'lucide-react'
 import type {
   ArchSelection, WizardPriority, WizardField as WizardFieldKey,
 } from '@shared/wizard'
-import { baseTypeName, typeKeyIndex, materialsOf } from '@shared/wizard'
+import { baseTypeName, typeKeyIndex, materialsOf, machinesOf } from '@shared/wizard'
 import { quoteJob } from '@shared/pricing/quote'
 import type { WizardStepComponent } from '../types'
 import { WizardSummaryRow } from '../ui/WizardSummaryRow'
@@ -292,7 +292,24 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
           onEdit={goToStep}
           errors={pick('machine', 'designer', 'technician', 'date', 'printId', 'designId', 'priority')}
         >
-          <WizardSummaryRow label="Masin" value={state.machine ?? ''} empty={!state.machine} />
+          {/* Per work item once the job has more than one, so a case split
+              across two printers is visible before it is created. */}
+          {state.jobTypes.length > 1 ? (
+            state.jobTypes.map(key => (
+              <WizardSummaryRow
+                key={key}
+                label={`Masin — ${baseTypeName(key)}`}
+                value={state.machineByType[key] ?? ''}
+                empty={!state.machineByType[key]}
+              />
+            ))
+          ) : (
+            <WizardSummaryRow
+              label="Masin"
+              value={machinesOf(state)[0] ?? state.machine ?? ''}
+              empty={!machinesOf(state)[0] && !state.machine}
+            />
+          )}
           <WizardSummaryRow
             label="Disainija"
             value={workerName(state.designer)}

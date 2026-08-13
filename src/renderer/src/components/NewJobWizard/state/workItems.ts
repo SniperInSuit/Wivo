@@ -13,7 +13,7 @@ import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
 import {
   archTeeth, archesOf, teethToHambad, workTypeRules, baseTypeName,
-  materialFor, materialsOf,
+  materialFor, materialsOf, machineFor,
 } from '@shared/wizard'
 
 /**
@@ -34,18 +34,26 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     const materjal = materialFor(state, key)
     const mat = materjal ? { materjal } : {}
 
+    // Which printer THIS work runs on. Carried onto the item for the same
+    // reason as the material: the machine-specific material cost key
+    // ("materjal|masin") is read per item, so a job split across two printers
+    // only costs correctly if each item says which one it used.
+    const masina = machineFor(state, key)
+    const mach = masina ? { masina } : {}
+
     // An arch type on BOTH jaws is two pieces of work, so it is two items — see
     // archesOf() for why that is a pricing rule and not a display one. As one
     // item it was a single row carrying 32 teeth, and a per-job-priced All-on-X
     // came out at the single-arch price whichever answer the user gave.
     if (rules.toothMode === 'arch') {
-      if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '', ...mat }]
+      if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '', ...mat, ...mach }]
       const arches = archesOf(state.selectedArch)
       return arches.map(arch => ({
         id: arches.length > 1 ? `wiz:${key}:${arch}` : `wiz:${key}`,
         too: nimi,
         hambad: teethToHambad(archTeeth(arch)),
         ...mat,
+        ...mach,
       }))
     }
 
@@ -59,6 +67,7 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
       too: nimi,
       hambad,
       ...mat,
+      ...mach,
       ...(rules.isBridge ? { bridge: true } : {}),
     }]
   })

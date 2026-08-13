@@ -108,6 +108,11 @@ function sanitize(
   merged.materialByType = (merged.materialByType && typeof merged.materialByType === 'object')
     ? merged.materialByType
     : {}
+  // Absent on a draft written before 1.36. Defaulted rather than version-bumped
+  // so a half-filled job in progress is not thrown away for a new optional key.
+  merged.machineByType = (merged.machineByType && typeof merged.machineByType === 'object')
+    ? merged.machineByType
+    : {}
   merged.pricing = { ...base.pricing, ...(merged.pricing ?? {}) }
   // A draft is never resumed mid-insert.
   merged.status = 'draft'

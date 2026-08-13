@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.36.0] — 2026-08-13
+
+**Uue töö nõustaja: masin tööosa kaupa**
+
+Masinavalik oli üks rippmenüü kogu töö peale. Nüüd on see tööosade kaupa, sama
+mustriga mis materjalil juba oli — sild võib käia Pro2-l ja kroonid Midasel.
+
+- Uus `machineByType` nõustaja olekus, `machinesOf()` / `machineFor()` abifunktsioonid
+- Tööosad saavad `masina` välja kaasa (`wizardWorkItems`), töö tasemel `masina`
+  on esimene määratud masin — täpselt nagu materjalil
+- Kokkuvõttes on iga tööosa masin eraldi real, nii et kahe printeri vahel jagatud
+  töö on enne loomist näha
+- **Ühe tööosaga töö puhul ei muutu midagi** — sakiriba ilmub alles siis, kui on
+  midagi jagada
+- Pooleliolevad mustandid jäävad alles: puuduv `machineByType` täidetakse tühjaga,
+  mustandi versiooni ei tõstetud
+
+**Miks see loeb rohkem kui detail:** `jobMaterialCost` otsib masinapõhist
+kuluvõtit (`materjal|masin`) enne baashinda, sest Pro2 kaarekomplekt on hulgi ja
+Midas on kapsel hamba kohta. Üks masin kogu töö peale ei kaotanud lihtsalt
+detaili — see andis **vale omahinna**. Sama viga, mille materjali jaotus juba
+parandas.
+
 ## [1.35.2] — 2026-08-13
 
 **Uue töö nõustaja: materjali toon**

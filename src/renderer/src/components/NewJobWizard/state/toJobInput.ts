@@ -20,7 +20,7 @@ import type { Quote } from '@shared/pricing/quote'
 import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
 import {
-  composeKirjeldus, hambadToTeeth, jobRules, materialsOf, teethToHambad, todayISO,
+  composeKirjeldus, hambadToTeeth, jobRules, machinesOf, materialsOf, teethToHambad, todayISO,
 } from '@shared/wizard'
 import { wizardWorkItems } from './workItems'
 import { fromLocalInput } from '@/lib/dates'
@@ -75,7 +75,10 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     // The denormalised job-level material — the FIRST one assigned. Each work
     // item carries its own, which is what the Edit page and the price read.
     materjal: orNull(materialsOf(state)[0] ?? ''),
-    masina: orNull(state.machine),
+    // The denormalised job-level machine — the FIRST one assigned, matching how
+    // `materjal` works. Each work item carries its own, which is what the cost
+    // engine and the Edit page read.
+    masina: orNull(machinesOf(state)[0] ?? state.machine ?? ''),
     print_id: orNull(state.printId),
     disain_id: orNull(state.designId),
     // A shade on a nightguard would be noise on the Edit page and in the

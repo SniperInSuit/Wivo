@@ -2,8 +2,8 @@ import type { WizardStepComponent } from '../types'
 import { fieldErrors } from '../types'
 import { useSettings } from '@/stores/useSettings'
 import { WizardField } from '../ui/WizardField'
-import { WizardSelect } from '../ui/WizardSelect'
 import { WizardWorkerSelect } from '../production/WizardWorkerSelect'
+import { MachinePicker } from '../production/MachinePicker'
 import { PriorityPicker } from '../production/PriorityPicker'
 import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
 
@@ -22,21 +22,9 @@ export const StepProduction: WizardStepComponent = ({ state, patch, errors, show
   return (
     <div className="space-y-8">
       <div className="grid gap-6 md:grid-cols-2">
-        <WizardField
-          label="Masin"
-          htmlFor="wizard-masin"
-          help="Millise printeri või freesiga töö tehakse."
-        >
-          <WizardSelect
-            id="wizard-masin"
-            value={state.machine}
-            onChange={machine => patch({ machine })}
-            placeholder="Määramata"
-            options={settings.masinad.map(m => ({ value: m, label: m }))}
-          />
-        </WizardField>
-
-        <div className="hidden md:block" aria-hidden="true" />
+        <div className="md:col-span-2">
+          <MachinePicker state={state} patch={patch} />
+        </div>
 
         <WizardWorkerSelect
           id="wizard-teostaja"

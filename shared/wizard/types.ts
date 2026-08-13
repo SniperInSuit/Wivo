@@ -81,6 +81,16 @@ export interface NewJobState {
    * assigned), which is what a single-material job has always done.
    */
   materialByType: Record<string, string>
+  /**
+   * Printer per work TYPE, same shape and same reason as materialByType.
+   *
+   * Not one machine per job: `jobMaterialCost` looks up a machine-specific cost
+   * key ("materjal|masin") before falling back to the base rate, because a Pro2
+   * arch kit is bulk and a Midas capsule is per tooth. A bridge on one printer
+   * and crowns on another, quoted as if both ran on the first, is a wrong
+   * margin — the same bug per-type materials were introduced to fix.
+   */
+  machineByType: Record<string, string>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
   /** Köndivärv — the prepared stump's shade (VITA ND1–ND9 or free text). */
@@ -171,12 +181,32 @@ export const materialFor = (
 ): string | null =>
   state.materialByType[key]?.trim() || materialsOf(state)[0] || null
 
+/**
+ * Every distinct machine on the job, in the order its work types were picked.
+ * `[0]` is the job-level `masina`, exactly as materialsOf()[0] is `materjal`.
+ */
+export function machinesOf(state: Pick<NewJobState, 'jobTypes' | 'machineByType'>): string[] {
+  const out: string[] = []
+  for (const key of state.jobTypes) {
+    const m = state.machineByType[key]?.trim()
+    if (m && !out.includes(m)) out.push(m)
+  }
+  return out
+}
+
+/** Which printer one work type runs on, falling back to the job's first. */
+export const machineFor = (
+  state: Pick<NewJobState, 'jobTypes' | 'machineByType'>, key: string
+): string | null =>
+  state.machineByType[key]?.trim() || machinesOf(state)[0] || null
+
 export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState {
   return {
     jobTypes: [],
     selectedTeeth: {},
     selectedArch: null,
     materialByType: {},
+    machineByType: {},
     defaultShade: null,
     dieShade: null,
     glaze: null,
