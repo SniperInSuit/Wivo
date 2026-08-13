@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.35.1] — 2026-08-13
+
+**Tööd ei sünkroniseerunud arvutite vahel**
+
+- Töö lohistamine teise etappi ei liikunud teistes arvutites enne rakenduse
+  taaskäivitamist. Klient oli korras — `useJobs` avab iga mount'i kohta
+  `postgres_changes` kanali — aga **`jobs` tabelit ei ole kunagi
+  `supabase_realtime` publikatsiooni lisatud**, nii et sündmusi lihtsalt ei
+  tekkinud
+- Iga teine sünkroniseeritav tabel on migratsiooniga lisatud (001 patsiendid,
+  004 hambakaart, 008 visiidid, 019 seaded, 020 arved, 022 tasud, 036 kliendid).
+  `jobs` mitte — see on vanem kui `sql/` kaust ise ja loodi käsitsi README
+  koodiplokist. `sql/005` kommentaar väidab, et see on juba publikatsioonis, aga
+  see on kommentaari kirjutatud oletus, mitte kunagi jooksnud lause
+- `sql/046_jobs_realtime.sql` — sama kaitstud muster mis 004/008/036, ohutu ka
+  siis kui tabel on juba publikatsioonis
+
 ## [1.35.0] — 2026-08-13
 
 **Finantsnäitajad lepitatud: üks agregaator kolme ekraani jaoks**
