@@ -14,18 +14,20 @@ interface SidebarProps {
   onViewChange: (v: ViewMode) => void
 }
 
-// `clinical: true` = only shown when the clinical half is switched on in Seaded.
-// WivoLab is the laboratory product; the patient record is a clinic's job.
+// `clinical: true` = only in WivoDental/WivoX. `lab: true` = only in
+// WivoLab/WivoX. Unmarked items (Ülevaade, Kalender, Arved, Töötasud,
+// Statistika) belong to both products: a practice invoices and pays staff
+// exactly like a laboratory does.
 const NAV: {
   key: ViewMode; label: string; icon: typeof LayoutDashboard
-  perm?: PermissionKey; clinical?: boolean
+  perm?: PermissionKey; clinical?: boolean; lab?: boolean
 }[] = [
   { key: 'overview', label: 'Ülevaade',   icon: LayoutDashboard },
-  { key: 'board',    label: 'Tööd',       icon: Kanban,          perm: 'jobs.read' },
+  { key: 'board',    label: 'Tööd',       icon: Kanban,          perm: 'jobs.read', lab: true },
   { key: 'calendar', label: 'Kalender',   icon: CalendarDays,    perm: 'visits.read' },
-  { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read' },
+  { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read', lab: true },
   { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read', clinical: true },
-  { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read' },
+  { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read', lab: true },
   { key: 'arved',    label: 'Arved',      icon: FileText,        perm: 'payments.read' },
   { key: 'tootasud', label: 'Töötasud',   icon: Wallet },
   { key: 'stats',    label: 'Statistika', icon: BarChart2,       perm: 'stats.read' },
@@ -69,6 +71,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
       <nav className={`flex-1 overflow-y-auto space-y-1 [-webkit-app-region:no-drag] ${wide ? 'px-2' : 'px-1.5'}`}>
         {NAV
           .filter(item => !item.clinical || settings.kliinilineRezhiim)
+          .filter(item => !item.lab || settings.laboriRezhiim)
           .filter(item => !item.perm || can(item.perm))
           .map(({ key, label, icon: Icon }) => (
           <button

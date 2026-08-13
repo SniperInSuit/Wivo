@@ -139,6 +139,14 @@ export interface WivoSettings {
   // GDPR Art. 9 vastutus, mida laboril pole vaja kanda. Sisselülitamine toob
   // kõik tagasi — andmeid ei kustutata kunagi, ainult peidetakse.
   kliinilineRezhiim: boolean
+  // The other half. Together these two name the product:
+  //   lab only            → WivoLab      (a laboratory)
+  //   clinical only       → WivoDental   (a practice)
+  //   both                → WivoX        (a practice with its own lab)
+  // Defaults to true and every pre-1.33 row is read as true, so an existing
+  // install keeps every view it had. Never both false — the settings picker
+  // only offers the three combinations above.
+  laboriRezhiim: boolean
   // ─── Fikseeritud kulud iga töö kohta ───────────────────────────────────────
   // Applied automatically to every job's cost calculation. Covers things like
   // gloves, face shields, disinfection supplies — small per-patient costs that
@@ -189,6 +197,7 @@ function defaultSettings(): WivoSettings {
     // Set it in Seaded → Hinnad once, and confirm the rate that applies to you.
     kmMaar: 0,
     kliinilineRezhiim: false,
+    laboriRezhiim: true,
     yldkulud: [],
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
@@ -309,6 +318,7 @@ function loadSettings(): WivoSettings {
       materialPrices: { ...def.materialPrices, ...(stored.materialPrices ?? {}) },
       materialCosts: stored.materialCosts ?? {},
       kliinilineRezhiim: stored.kliinilineRezhiim ?? false,
+      laboriRezhiim: stored.laboriRezhiim ?? true,
       designFee: stored.designFee ?? 0,
       defaultMachine: stored.defaultMachine ?? '',
       kasutajaNimi: stored.kasutajaNimi ?? '',
@@ -422,7 +432,14 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
     ...(row.machines ? { masinad: strList(row.machines, prev.masinad) } : {}),
     ...(row.pricing ?? {}),
     ...(row.payroll ?? {}),
-    ...(row.features ? { kliinilineRezhiim: !!row.features.clinical } : {}),
+    // `laboratory` is absent on every row written before 1.33 — those are all
+    // labs, so undefined must read as TRUE, not as false.
+    ...(row.features
+      ? {
+          kliinilineRezhiim: !!row.features.clinical,
+          laboriRezhiim: row.features.laboratory ?? true,
+        }
+      : {}),
     ...(row.calendar ?? {}),
   }
   persistLocal(next)

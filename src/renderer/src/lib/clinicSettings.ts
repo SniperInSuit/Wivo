@@ -50,6 +50,8 @@ export interface ClinicSettingsRow {
   features: {
     /** Patient record + visit booking. Off = WivoLab, the laboratory product. */
     clinical: boolean
+    /** Absent on rows written before 1.33 — read as true, they are all labs. */
+    laboratory?: boolean
   }
   calendar: {
     ajajoonAlgus: number
@@ -96,6 +98,7 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
     },
     features: {
       clinical: s.kliinilineRezhiim,
+      laboratory: s.laboriRezhiim,
     },
     calendar: {
       ajajoonAlgus: s.ajajoonAlgus,
@@ -124,6 +127,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
   kliinilineRezhiim: 'features',
+  laboriRezhiim: 'features',
   fixedCostsPerJob: 'pricing',
   lisateenused: 'pricing',
   yldkulud: 'pricing',

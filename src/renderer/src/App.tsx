@@ -77,7 +77,12 @@ function AppContent() {
   // user somewhere that exists instead.
   useEffect(() => {
     if (!settings.kliinilineRezhiim && view === 'patients') setView('overview')
-  }, [settings.kliinilineRezhiim, view])
+    // Same hazard on the other side: WivoDental has no board, table or customer
+    // list, and the sidebar stops offering them the moment the mode changes.
+    if (!settings.laboriRezhiim && (view === 'board' || view === 'table' || view === 'kliendid')) {
+      setView('overview')
+    }
+  }, [settings.kliinilineRezhiim, settings.laboriRezhiim, view])
 
   // Global search filter — applied to views that display individual jobs
   const searchedJobs = useMemo(() => {

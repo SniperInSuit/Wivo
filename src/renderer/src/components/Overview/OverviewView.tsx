@@ -13,6 +13,7 @@ import type { Job } from '../../types/job'
 import type { ViewMode } from '../../types/view'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
+import { useVisits } from '../../hooks/useVisits'
 import { useSettings } from '../../stores/useSettings'
 import { usePayments } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
@@ -53,6 +54,10 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
   const { stages, stageMap, doneStageKey } = usePipeline()
   const { data: patients = [] } = usePatients()
   const { settings } = useSettings()
+  // Only in WivoDental / WivoX. A laboratory books no patients, so in WivoLab
+  // the rail stays exactly what it was: job deadlines and nothing else.
+  const { data: allVisits = [] } = useVisits()
+  const visits = settings.kliinilineRezhiim ? allVisits : []
 
   // Ticks once a minute so the current-time indicator actually moves
   const [now, setNow] = useState(() => new Date())
@@ -206,6 +211,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       <DayTimeline
         jobs={jobs}
         patients={patients}
+        visits={visits}
         day={day}
         onDayChange={setDay}
         now={now}

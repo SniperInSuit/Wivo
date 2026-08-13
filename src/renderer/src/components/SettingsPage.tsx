@@ -1206,36 +1206,52 @@ export function SettingsPage() {
               )}
             </div>
 
-            {/* The one switch that decides which product this is. Placed here
+            {/* The switch that decides which product this is. Placed here
                 rather than hidden in an advanced pane: someone who wants the
                 patient record back must be able to find it. */}
             <div className="mt-6 pt-5 border-t border-ink-faint/15">
-              <h4 className="text-sm font-semibold text-ink mb-1">Kliiniline režiim</h4>
+              <h4 className="text-sm font-semibold text-ink mb-1">Režiim</h4>
               <p className="text-xs text-ink-muted leading-relaxed mb-3 max-w-xl">
-                Patsiendikaart (ravikaart, allergiad, hambumus, hambakaardi seisund)
-                ja visiitide broneerimine. <strong>Vaikimisi väljas:</strong> labor
-                haldab töid, mitte patsiente, ja terviseandmed on GDPR-i eriliigilised
-                andmed, mida ei ole mõtet koguda, kui neid vaja ei lähe.
-                Väljalülitamine ei kustuta midagi — olemasolevad patsiendid ja visiidid
-                jäävad andmebaasi alles ja tulevad tagasi, kui selle uuesti sisse lülitad.
+                Kumb pool rakendusest on kasutusel. Väljalülitatud pool ei kustuta
+                midagi — read jäävad andmebaasi alles ja tulevad tagasi, kui selle
+                uuesti sisse lülitad.
+                <br />
+                <strong>Kliiniline pool</strong> (patsiendikaart, ravikaart, visiidid)
+                on vaikimisi väljas: terviseandmed on GDPR-i eriliigilised andmed,
+                mida ei ole mõtet koguda, kui neid vaja ei lähe.
               </p>
+              {/* Three buttons, not two checkboxes: two checkboxes can both be
+                  unticked, and an app with neither half is a blank window. */}
               <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
                 {([
-                  { v: false, label: 'Väljas — ainult labor' },
-                  { v: true,  label: 'Sees — labor + kliinik' },
-                ]).map(o => (
-                  <button
-                    key={String(o.v)}
-                    type="button"
-                    onClick={() => setFlag('kliinilineRezhiim', o.v)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-                      settings.kliinilineRezhiim === o.v ? 'chip-active' : 'text-ink-muted hover:text-ink'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
+                  { key: 'lab',    label: 'WivoLab',    lab: true,  clin: false },
+                  { key: 'dental', label: 'WivoDental', lab: false, clin: true  },
+                  { key: 'x',      label: 'WivoX',      lab: true,  clin: true  },
+                ]).map(o => {
+                  const active = settings.laboriRezhiim === o.lab
+                    && settings.kliinilineRezhiim === o.clin
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      onClick={() => {
+                        setFlag('laboriRezhiim', o.lab)
+                        setFlag('kliinilineRezhiim', o.clin)
+                      }}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
+                        active ? 'chip-active' : 'text-ink-muted hover:text-ink'
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  )
+                })}
               </div>
+              <p className="text-[11px] text-ink-faint mt-2 max-w-xl leading-relaxed">
+                <strong>WivoLab</strong> — labor: tööd, tahvel, tellijad, arved.{' '}
+                <strong>WivoDental</strong> — kliinik: patsiendid, visiidid, arved.{' '}
+                <strong>WivoX</strong> — mõlemad: kliinik oma laboriga.
+              </p>
             </div>
           </section>
         )}

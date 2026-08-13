@@ -24,15 +24,16 @@ export function CalendarTopControls({
   return (
     <>
       <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1 flex-shrink-0">
-        {/* Visits are appointment booking — a practice's front desk, not a
-            lab's. Hidden unless the clinical half is on; the jobs half of the
-            calendar (deadlines) is the lab's and always shows. */}
+        {/* Visits are appointment booking — a practice's front desk. Deadlines
+            are the lab's. Each half appears only in a mode that has it, and
+            'kombineeritud' only in WivoX where both actually exist. */}
         {([
-          { key: 'tood', label: 'Tööd', clinical: false },
-          { key: 'visiidid', label: 'Visiidid', clinical: true },
-          { key: 'kombineeritud', label: 'Kombineeritud', clinical: true },
+          { key: 'tood', label: 'Tööd', clinical: false, lab: true },
+          { key: 'visiidid', label: 'Visiidid', clinical: true, lab: false },
+          { key: 'kombineeritud', label: 'Kombineeritud', clinical: true, lab: true },
         ] as const)
           .filter(o => !o.clinical || settings.kliinilineRezhiim)
+          .filter(o => !o.lab || settings.laboriRezhiim)
           .map(({ key, label }) => (
           <button
             key={key}

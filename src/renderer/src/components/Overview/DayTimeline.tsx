@@ -4,6 +4,8 @@ import { format, parseISO, isValid, isSameDay, addDays } from 'date-fns'
 import { et } from 'date-fns/locale'
 import type { Job } from '../../types/job'
 import type { Patient } from '../../types/patient'
+import type { Visit } from '../../types/visit'
+import { VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/visit'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
@@ -13,6 +15,8 @@ import { stageChipStyle } from '../../config/pipeline'
 interface DayTimelineProps {
   jobs: Job[]
   patients: Patient[]
+  /** Empty in WivoLab — a laboratory books no patients. */
+  visits: Visit[]
   day: Date
   onDayChange: (d: Date) => void
   now: Date
@@ -20,21 +24,28 @@ interface DayTimelineProps {
   onOpenCalendar: () => void
 }
 
-// A slot is one point on the rail: everything due at the same time for the same
-// referring doctor. There is no appointment entity in Wivo, so the rail is
-// built from job DEADLINES (valmis_aeg) — the real, recorded times work is due.
+// A slot is one point on the rail. Two kinds share it:
+//
+//   'job'   — a DEADLINE (valmis_aeg): when work is due off the bench.
+//   'visit' — an APPOINTMENT (visits.algus): when a person is in the chair.
+//
+// They are deliberately not merged into one list of "events". A deadline that
+// has passed with the work unfinished is a problem; an appointment that has
+// passed is simply over. Colouring them the same would make the rail lie.
 interface Slot {
   key: string
+  kind: 'job' | 'visit'
   minutes: number      // minutes past midnight
   label: string        // HH:mm
   arst: string
   jobs: Job[]
-  overdue: boolean     // past its deadline and not in the done stage
+  visit?: Visit
+  overdue: boolean     // job only: past its deadline and not in the done stage
   done: boolean        // every job in the slot is finished
 }
 
 export function DayTimeline({
-  jobs, patients, day, onDayChange, now, onJobClick, onOpenCalendar
+  jobs, patients, visits, day, onDayChange, now, onJobClick, onOpenCalendar
 }: DayTimelineProps) {
   const { stageMap, doneStageKey } = usePipeline()
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -67,23 +78,43 @@ export function DayTimeline({
       const minutes = d.getHours() * 60 + d.getMinutes()
       const label = format(d, 'HH:mm')
       const arst = `${j.patsient} · ${j.too ?? 'Määramata'}`
-      const key = `${label}|${j.id}`
+      const key = `job|${label}|${j.id}`
       const slot = map.get(key) ?? {
-        key, minutes, label, arst, jobs: [], overdue: false, done: false
+        key, kind: 'job' as const, minutes, label, arst, jobs: [], overdue: false, done: false
       }
       slot.jobs.push(j)
       map.set(key, slot)
     }
+
+    // One node per visit, never grouped: two people in the chair at 10:00 is a
+    // double-booking, and collapsing them into one node would hide it.
+    for (const v of visits) {
+      const d = parseISO(v.algus)
+      if (!isValid(d) || !isSameDay(d, day)) continue
+      const label = format(d, 'HH:mm')
+      map.set(`visit|${v.id}`, {
+        key: `visit|${v.id}`,
+        kind: 'visit',
+        minutes: d.getHours() * 60 + d.getMinutes(),
+        label,
+        arst: v.patsient || 'Nimeta',
+        jobs: [],
+        visit: v,
+        overdue: false,
+        done: v.staatus === 'toimunud' || v.staatus === 'tuhistatud',
+      })
+    }
+
     return [...map.values()]
-      .map(s => ({
+      .map(s => s.kind === 'visit' ? s : {
         ...s,
         done: s.jobs.every(j => j.status === doneStageKey),
         overdue: s.minutes < now.getHours() * 60 + now.getMinutes()
           && isSameDay(day, now)
           && s.jobs.some(j => j.status !== doneStageKey)
-      }))
+      })
       .sort((a, b) => a.minutes - b.minutes)
-  }, [jobs, day, doctorOf, doneStageKey, now])
+  }, [jobs, visits, day, doctorOf, doneStageKey, now])
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   const showNow = isSameDay(day, now) && nowMinutes >= START_HOUR * 60 && nowMinutes <= END_HOUR * 60
@@ -95,6 +126,7 @@ export function DayTimeline({
     : null
 
   const totalJobs = slots.reduce((n, s) => n + s.jobs.length, 0)
+  const totalVisits = slots.filter(s => s.kind === 'visit').length
 
   return (
     <section className="card p-5">
@@ -104,9 +136,12 @@ export function DayTimeline({
             {isSameDay(day, now) ? 'Tänane plaan' : 'Päeva plaan'} — {format(day, 'd. MMMM yyyy', { locale: et })}
           </h2>
           <p className="text-[11px] text-ink-faint mt-0.5">
-            {totalJobs > 0
-              ? `${slots.length} ajahetke · ${totalJobs} tööd tähtajaga sel päeval`
-              : 'Sellel päeval ei ole ühtegi tähtaega'}
+            {totalJobs === 0 && totalVisits === 0
+              ? 'Sellel päeval ei ole ühtegi tähtaega ega visiiti'
+              : [
+                  totalJobs > 0 ? `${totalJobs} tööd tähtajaga` : null,
+                  totalVisits > 0 ? `${totalVisits} visiiti` : null,
+                ].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button onClick={onOpenCalendar} className="btn-ghost text-xs border border-ink-faint/25">
@@ -176,7 +211,11 @@ export function DayTimeline({
                     style={{
                       left: `${left}%`,
                       top: '21px',
-                      backgroundColor: s.overdue ? '#EF4444' : s.done ? '#A8B4BE' : 'rgb(var(--c-accent))'
+                      // A visit carries its own status colour, so a no-show or a
+                      // cancellation reads the same here as on the calendar.
+                      backgroundColor: s.kind === 'visit'
+                        ? VISIT_STATUS_HEX[s.visit!.staatus]
+                        : s.overdue ? '#EF4444' : s.done ? '#A8B4BE' : 'rgb(var(--c-accent))'
                     }}
                   />
                   <span
@@ -186,32 +225,72 @@ export function DayTimeline({
                   <button
                     onMouseEnter={() => setOpenKey(s.key)}
                     onMouseLeave={() => setOpenKey(k => (k === s.key ? null : k))}
-                    onClick={() => s.jobs[0] && onJobClick(s.jobs[0])}
+                    onClick={() => s.kind === 'visit' ? onOpenCalendar() : s.jobs[0] && onJobClick(s.jobs[0])}
                     className={`absolute -translate-x-1/2 w-[150px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
-                      s.overdue
-                        ? 'bg-red-50 border-red-200 hover:border-red-300'
-                        : s.done
-                          ? 'bg-bg-sidebar border-ink-faint/20 opacity-80 hover:opacity-100'
-                          : isCurrent
-                            ? 'bg-bg-card border-accent shadow-card'
-                            : 'bg-bg-card border-ink-faint/25 hover:border-accent/50'
+                      s.kind === 'visit'
+                        ? `bg-bg-card hover:shadow-card ${s.done ? 'opacity-70 hover:opacity-100' : ''}`
+                        : s.overdue
+                          ? 'bg-red-50 border-red-200 hover:border-red-300'
+                          : s.done
+                            ? 'bg-bg-sidebar border-ink-faint/20 opacity-80 hover:opacity-100'
+                            : isCurrent
+                              ? 'bg-bg-card border-accent shadow-card'
+                              : 'bg-bg-card border-ink-faint/25 hover:border-accent/50'
                     }`}
-                    style={{ left: `${left}%`, top: row === 0 ? '43px' : '71px', zIndex: openKey === s.key ? 30 : 6 }}
+                    style={{
+                      left: `${left}%`,
+                      top: row === 0 ? '43px' : '71px',
+                      zIndex: openKey === s.key ? 30 : 6,
+                      ...(s.kind === 'visit'
+                        ? { borderColor: `${VISIT_STATUS_HEX[s.visit!.staatus]}80` }
+                        : {}),
+                    }}
                   >
                     <span className="flex items-center gap-1 text-[10px] text-ink-muted tabular-nums">
                       <Clock size={9} />
                       {s.label}
                     </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-ink truncate">
-                      <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />
+                      {s.kind === 'visit'
+                        ? <User size={10} className="text-ink-faint flex-shrink-0" />
+                        : <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />}
                       <span className="truncate">{s.arst}</span>
                     </span>
-                    <span className="text-[10px] text-ink-muted">
-                      {s.jobs.length} {s.jobs.length === 1 ? 'töö' : 'tööd'}
+                    <span className="text-[10px] text-ink-muted truncate">
+                      {s.kind === 'visit'
+                        ? `${VISIT_STATUS_LABEL[s.visit!.staatus]} · ${s.visit!.kestus_min} min`
+                        : `${s.jobs.length} ${s.jobs.length === 1 ? 'töö' : 'tööd'}`}
                     </span>
 
                     {/* Hover detail: who, what, which stage */}
-                    {openKey === s.key && (
+                    {openKey === s.key && s.kind === 'visit' && (
+                      <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-[230px] card p-2.5 space-y-1.5 block text-left z-40">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-ink">
+                          <User size={9} className="text-ink-faint" />
+                          {s.visit!.patsient || 'Nimeta'}
+                        </span>
+                        {s.visit!.arst?.trim() && (
+                          <span className="flex items-center gap-1 text-[10px] text-ink-muted pl-3.5">
+                            <Stethoscope size={9} className="text-ink-faint" />
+                            {s.visit!.arst}
+                          </span>
+                        )}
+                        <span className="block text-[10px] text-ink-muted pl-3.5">
+                          {s.label} · {s.visit!.kestus_min} min ·{' '}
+                          <span style={{ color: VISIT_STATUS_HEX[s.visit!.staatus] }}>
+                            {VISIT_STATUS_LABEL[s.visit!.staatus]}
+                          </span>
+                        </span>
+                        {s.visit!.markus?.trim() && (
+                          <span className="block text-[10px] text-ink-faint pl-3.5">{s.visit!.markus}</span>
+                        )}
+                        <span className="block text-[10px] text-ink-faint pt-0.5 border-t border-ink-faint/15">
+                          Klõpsa, et avada kalender
+                        </span>
+                      </span>
+                    )}
+
+                    {openKey === s.key && s.kind === 'job' && (
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-[230px] card p-2.5 space-y-1.5 block text-left z-40">
                         {s.jobs.map(j => (
                           <span key={j.id} className="block">
@@ -246,7 +325,7 @@ export function DayTimeline({
 
             {slots.length === 0 && (
               <p className="absolute inset-x-0 top-[60px] text-center text-sm text-ink-faint">
-                Ühtegi tähtaega sellel päeval.
+                Sellel päeval ei ole midagi.
               </p>
             )}
           </div>

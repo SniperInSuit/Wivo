@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.33.0] — 2026-08-13
+
+**Kolm režiimi: WivoLab · WivoDental · WivoX**
+
+Varem oli üks lüliti („kliiniline režiim sees/väljas"), mis andis kaks toodet.
+Nüüd on kolm eraldi valikut Seaded → Kalender all:
+
+- **WivoLab** — labor: tööd, tahvel, tellijad, arved
+- **WivoDental** — kliinik: patsiendid, visiidid, arved
+- **WivoX** — mõlemad: kliinik oma laboriga
+
+Kolm nuppu, mitte kaks märkeruutu — kaks märkeruutu saab mõlemad tühjaks jätta ja
+rakendus ilma kummagi pooleta on tühi aken. Kõrvalribalt, kalendri režiimivalikult
+ja vaadete vahetusest kaob nüüd ka labori pool, kui see on välja lülitatud.
+Väljalülitamine ei kustuta midagi.
+
+Ühilduvus: enne 1.33 salvestatud seadetes ei ole `laboratory` välja üldse — need
+loetakse **laboriks**, nii et olemasolev paigaldus ei kaota ühtki vaadet.
+
+**Ülevaate ajajoon näitab ka visiite**
+
+- WivoDental ja WivoX režiimis ilmuvad päeva ajajoonele lisaks tööde tähtaegadele
+  ka **visiidid** — oma ikooni ja visiidi staatuse värviga (planeeritud, saabunud,
+  toimunud, ei tulnud, tühistatud), nii nagu kalendris
+- Hõljutamisel näeb patsienti, suunavat arsti, kestust, staatust ja märkust;
+  klõps avab kalendri
+- Tähtaeg ja visiit ei ole ühte patta pandud: möödunud tähtaeg lõpetamata tööga
+  on probleem, möödunud visiit on lihtsalt läbi. Sama värv oleks ajajoone
+  valetama pannud
+- Iga visiit saab oma punkti — kaks inimest kell 10:00 on topeltbroneering ja
+  kokku liidetuna jääks see nähtamatuks
+- WivoLab režiimis on ajajoon täpselt endine
+
 ## [1.32.3] — 2026-08-13
 
 **Tähtaeg nihkus 3 tundi (15:00 → 18:00)**
