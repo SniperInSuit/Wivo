@@ -31,7 +31,7 @@ import { jobMaterialCost } from '../../lib/finance'
 import { workTypeConsumables } from '../../config/workTypes'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
-import { normalizeDateTime } from '../../lib/dates'
+import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
 import { DieShadePicker } from './DieShadePicker'
 
 interface JobDetailPanelProps {
@@ -617,7 +617,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         // in the form. They survived in the DB only until the next edit added
         // one — then the save wrote a one-item list over the lot.
         extra_costs: Array.isArray(job.extra_costs) ? job.extra_costs.map(c => ({ ...c })) : [],
-        valmis_aeg: job.valmis_aeg ? job.valmis_aeg.replace('Z', '').slice(0, 16) : '',
+        valmis_aeg: toLocalInput(job.valmis_aeg),
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,
         mudel: job.mudel ?? false,
@@ -721,14 +721,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       mudel_id: form.mudel ? (form.mudel_id || null) : null,
       varv: form.varv || null,
       kondivarv: form.kondivarv || null,
-      // Store as-is — no UTC conversion. The user types local time and expects
-      // to see it back unchanged. toISOString() shifts by the timezone offset.
-      //
-      // Normalised rather than passed through: the column is text, so nothing
-      // downstream rejects a malformed timestamp, and one bad row was enough to
-      // crash every view that formatted it. The widget above can no longer
-      // produce one — this is the backstop for anything that still could.
-      valmis_aeg: normalizeDateTime(form.valmis_aeg),
+      // The form holds LOCAL wall time; the column is timestamptz. Sending the
+      // naive string made Postgres apply the server's timezone (UTC on
+      // Supabase), so a 15:00 deadline was stored as 15:00Z and read back as
+      // 18:00 everywhere except this form, which sliced the string. normalize
+      // first (repairs a half-typed time), then stamp the real offset.
+      valmis_aeg: fromLocalInput(normalizeDateTime(form.valmis_aeg)),
       disain_hind: form.disain_hind,
       // Clear legacy fields on save
       muudatused: null,

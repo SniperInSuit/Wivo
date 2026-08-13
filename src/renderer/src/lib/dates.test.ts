@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toDate, fmtDate, isValidTime, normalizeDateTime } from './dates'
+import { toDate, fmtDate, isValidTime, normalizeDateTime, toLocalInput, fromLocalInput } from './dates'
 
 // Not hypothetical: these are what the old Kell field wrote into
 // `jobs.valmis_aeg`, one per keystroke, on the way to "12:00".
@@ -86,5 +86,29 @@ describe('toDate — leniency', () => {
 
   it('accepts a full PostgREST timestamptz', () => {
     expect(toDate('2026-08-12T17:00:00+00:00')?.getTime()).toBeTypeOf('number')
+  })
+})
+
+describe('local input ⇄ stored instant', () => {
+  // The bug this pair exists for: a 15:00 deadline typed in Tallinn was stored
+  // naive, read by Postgres as 15:00 UTC, and rendered back as 18:00.
+  it('round-trips a wall time through the store', () => {
+    const typed = '2026-08-13T15:00'
+    const stored = fromLocalInput(typed)
+    expect(stored).toMatch(/Z$/)                 // a real instant, offset included
+    expect(toLocalInput(stored)).toBe(typed)     // same wall time back
+  })
+
+  it('keeps the wall time across a DST boundary', () => {
+    for (const typed of ['2026-01-15T15:00', '2026-08-13T15:00']) {
+      expect(toLocalInput(fromLocalInput(typed))).toBe(typed)
+    }
+  })
+
+  it('treats absent and unreadable values as empty rather than throwing', () => {
+    expect(toLocalInput(null)).toBe('')
+    expect(toLocalInput('2026-08-12T12:')).toBe('')
+    expect(fromLocalInput('')).toBeNull()
+    expect(fromLocalInput('rämps')).toBeNull()
   })
 })

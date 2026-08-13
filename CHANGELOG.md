@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.32.3] — 2026-08-13
+
+**Tähtaeg nihkus 3 tundi (15:00 → 18:00)**
+
+`jobs.valmis_aeg` on `timestamptz`, aga rakendus saatis sinna **naiivse**
+kohaliku stringi (`2026-08-13T15:00`). Postgres rakendas siis serveri ajavööndi
+— Supabase'is UTC — nii et 15:00 Tallinnas salvestus kui 15:00Z ehk 18:00
+Tallinna aega. Iga ekraan, mis selle kohalikku aega tagasi teisendas, näitas
+18:00. Töö muutmise vorm näitas 15:00, sest see lõikas stringi tükkideks
+teisendamise asemel — kaks ekraani, kaks eri kellaaega, sama töö.
+
+- **Kirjutamine** saadab nüüd päris ajahetke koos nihkega (`fromLocalInput`)
+- **Lugemine** vormi teisendab ajahetke kohalikuks ajaks (`toLocalInput`),
+  mitte ei lõika stringi
+- Puudutab töö vormi, uue töö nõustajat ja visiidi vormi
+
+**Sama viga visiitidel, teistpidi**
+- `visits.algus` **kirjutati** alati õigesti (`toISOString`), aga muutmise vorm
+  **luges** seda stringi lõigates — 15:00 visiit avanes oma vormis kui 12:00.
+  Salvestatud andmed on korras, parandust andmebaasis ei vaja
+
+**Olemasolevad tööd**
+- `sql/044_fix_valmis_aeg_timezone.sql` — diagnostika + parandus. Parandus on
+  kommentaari all ja piiritletud kuupäevaga: uued read on juba õiged ja neid ei
+  tohi nihutada. Teisendus käib `AT TIME ZONE` kaudu rea kaupa, nii et talvine
+  (+02) ja suvine (+03) aeg lahenevad kumbki õigesti — lame „miinus 3 tundi"
+  lõhuks kõik talvised tähtajad
+- `kuupaev`, `valmis_kuupaev`, `makse_kuupaev` on DATE-veerud ilma kellaajata —
+  neid see ei puuduta
+
 ## [1.32.2] — 2026-08-13
 
 **Puuduv migratsioon: `jobs.extra_costs`**

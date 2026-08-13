@@ -41,6 +41,34 @@ export function fmtDate(
 }
 
 /**
+ * Stored instant → the value a `datetime-local` / `date` + `time` input wants.
+ *
+ * This has to go through `format`, which renders in the BROWSER's timezone.
+ * Both call sites used to slice the string instead — `iso.replace('Z','')
+ * .slice(0,16)` — which reads whatever wall time the string happens to carry.
+ * For a `timestamptz` that is UTC, so a 15:00 Tallinn visit came back into its
+ * own edit form as 12:00.
+ */
+export const toLocalInput = (value: string | null | undefined): string => {
+  const d = toDate(value)
+  return d ? format(d, "yyyy-MM-dd'T'HH:mm") : ''
+}
+
+/**
+ * The inverse: local wall time from an input → the instant to store.
+ *
+ * `valmis_aeg` and `visits.algus` are `timestamptz`. Handing Postgres a naive
+ * '2026-08-13T15:00' makes it apply the SERVER's timezone, which on Supabase is
+ * UTC — so 15:00 in Tallinn was stored as 15:00Z and every screen that formats
+ * it back into local time showed 18:00. An explicit offset removes the guess.
+ */
+export const fromLocalInput = (value: string | null | undefined): string | null => {
+  if (!value) return null
+  const d = new Date(value)
+  return isValid(d) ? d.toISOString() : null
+}
+
+/**
  * Is this a complete `HH:mm`? Guards what gets WRITTEN, so the reader above
  * stays a safety net rather than the thing holding the feature together.
  */

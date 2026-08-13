@@ -9,7 +9,7 @@ import { PatientPicker } from '../Patients/PatientPicker'
 import { usePatients } from '../../hooks/usePatients'
 import { useSettings } from '../../stores/useSettings'
 import { describeError } from '../Patients/errors'
-import { toDate } from '../../lib/dates'
+import { toDate, toLocalInput, fromLocalInput } from '../../lib/dates'
 
 interface VisitFormProps {
   visit: Visit | null      // null = create
@@ -25,7 +25,6 @@ interface VisitFormProps {
 }
 
 // datetime-local wants "YYYY-MM-DDTHH:mm" with no timezone suffix
-const toLocalInput = (iso: string) => (iso ? iso.replace('Z', '').slice(0, 16) : '')
 
 export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpenPatient, prefillPatient }: VisitFormProps) {
   const createVisit = useCreateVisit()
@@ -85,7 +84,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
       // Clearing the datetime field left '' here, and new Date('').toISOString()
       // throws "Invalid time value" outside the try below — an uncaught crash
       // rather than the save error it should have been.
-      algus: toDate(form.algus)?.toISOString() ?? ''
+      algus: fromLocalInput(form.algus) ?? ''
     }
     if (!payload.algus) {
       setError('Visiidi algusaeg on puudu või vigane.')

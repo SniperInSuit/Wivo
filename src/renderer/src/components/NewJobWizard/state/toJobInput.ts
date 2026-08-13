@@ -23,6 +23,7 @@ import {
   composeKirjeldus, hambadToTeeth, jobRules, materialsOf, teethToHambad, todayISO,
 } from '@shared/wizard'
 import { wizardWorkItems } from './workItems'
+import { fromLocalInput } from '@/lib/dates'
 
 export interface ToJobInputContext {
   /** usePipeline().stages[0]?.key ?? 'disain' */
@@ -50,9 +51,12 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
 
   // The deadline is one timestamp. 17:00 is the end of a working day and the
   // same default the calendar uses when a user picks a date and no time.
-  // Store as local time — no UTC conversion. toISOString() shifts by timezone.
+  //
+  // Converted to a real instant: the wizard collects LOCAL wall time and the
+  // column is timestamptz, so a naive string was read as UTC by the server and
+  // came back three hours late in summer.
   const valmisAeg = state.deadline
-    ? `${state.deadline}T${state.time ?? '17:00'}`
+    ? fromLocalInput(`${state.deadline}T${state.time ?? '17:00'}`)
     : null
 
   const autoPrice =
