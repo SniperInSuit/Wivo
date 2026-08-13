@@ -44,7 +44,8 @@ export interface UseNewJobWizard {
   canCreate: boolean
   isDirty: boolean
   draftSavedAt: string | null
-  saveDraft: () => void
+  /** false → localStorage refused it; the draft is NOT saved. */
+  saveDraft: () => boolean
   discardDraft: () => void
   /** true when a draft was auto-restored on mount (shell shows the banner). */
   restored: boolean
@@ -210,9 +211,10 @@ export function useNewJobWizard(init: NewJobStateInit): UseNewJobWizard {
     setShowErrors(false)
   }, [types])
 
-  const saveDraft = useCallback(() => {
-    writeDraft(state)
-    setDraftSavedAt(new Date().toISOString())
+  const saveDraft = useCallback((): boolean => {
+    const ok = writeDraft(state)
+    if (ok) setDraftSavedAt(new Date().toISOString())
+    return ok
   }, [state])
 
   const discardDraft = useCallback(() => {

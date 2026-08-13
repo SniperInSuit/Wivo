@@ -317,11 +317,6 @@ export function WizardShell({
               goToStep={goToStep}
             />
 
-            {createError && (
-              <p role="alert" className="mt-6 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-base font-medium text-rose-500">
-                {createError}
-              </p>
-            )}
           </div>
 
           <div className="flex-shrink-0 bg-bg-card md:px-8 md:py-4 md:border-t md:border-ink-faint/20">
@@ -336,6 +331,7 @@ export function WizardShell({
               onSaveDraft={wizard.saveDraft}
               onCreate={onCreate}
               blockedReason={blockedReason}
+              createError={createError}
             />
           </div>
         </motion.div>

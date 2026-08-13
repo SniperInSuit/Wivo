@@ -7,7 +7,8 @@
  * viewport, and a Continue button you have to go looking for is a Continue
  * button people stop finding.
  */
-import { ArrowLeft, ArrowRight, Check, Loader2, Save } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Loader2, Save } from 'lucide-react'
 import type { StepId } from '@shared/wizard'
 import { FOCUS_RING, WIZARD_BTN } from './wizardTheme'
 
@@ -23,8 +24,11 @@ export interface WizardNavigationProps {
   saving: boolean
   onBack: () => void
   onContinue: () => void
-  onSaveDraft: () => void
+  /** false → localStorage refused it, so say so instead of confirming. */
+  onSaveDraft: () => boolean
   onCreate: () => void
+  /** Why the insert failed. Shown HERE, beside the button that was pressed. */
+  createError?: string | null
   /** First blocking Estonian message, announced beside the primary button.
    *  The SHELL decides when there is one: it stays null until the user has
    *  pressed a blocked Continue, so a step never opens in red. */
@@ -33,9 +37,21 @@ export interface WizardNavigationProps {
 
 export function WizardNavigation({
   step, canGoBack, canContinue, isLastStep, saving,
-  onBack, onContinue, onSaveDraft, onCreate, blockedReason,
+  onBack, onContinue, onSaveDraft, onCreate, blockedReason, createError,
 }: WizardNavigationProps): JSX.Element {
   const blocked = !canContinue
+
+  // "Salvesta mustand" wrote to localStorage and said nothing at all, which is
+  // indistinguishable from a dead button. It gets a word back.
+  const [draftNote, setDraftNote] = useState<'saved' | 'failed' | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+
+  const saveDraft = () => {
+    setDraftNote(onSaveDraft() ? 'saved' : 'failed')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setDraftNote(null), 3000)
+  }
 
   return (
     <div
@@ -59,6 +75,33 @@ export function WizardNavigation({
         {blocked && blockedReason ? blockedReason : ''}
       </p>
 
+      {/* The insert's failure belongs next to the button that caused it. It
+          used to render at the END of the step content, and step 6 is a long
+          scrolling review — so pressing "Loo töö" on a failing insert looked
+          exactly like pressing a dead button. */}
+      {createError && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-base font-medium text-rose-500 md:justify-end md:text-right"
+        >
+          <AlertTriangle size={18} aria-hidden="true" className="shrink-0 mt-0.5" />
+          <span>{createError}</span>
+        </p>
+      )}
+
+      {draftNote && (
+        <p
+          aria-live="polite"
+          className={`text-base font-medium md:text-right ${
+            draftNote === 'saved' ? 'text-emerald-600' : 'text-rose-500'
+          }`}
+        >
+          {draftNote === 'saved'
+            ? 'Mustand salvestatud siia arvutisse.'
+            : 'Mustandit ei õnnestunud salvestada — brauseri salvestusruum on täis või blokeeritud.'}
+        </p>
+      )}
+
       <div className="flex items-center gap-2 md:justify-end">
         <button
           type="button"
@@ -74,7 +117,7 @@ export function WizardNavigation({
 
         <button
           type="button"
-          onClick={onSaveDraft}
+          onClick={saveDraft}
           disabled={saving}
           className={`${WIZARD_BTN} hidden sm:flex items-center gap-2 text-ink-muted hover:text-ink hover:bg-bg-sidebar disabled:opacity-40 transition-colors`}
         >
@@ -131,7 +174,7 @@ export function WizardNavigation({
           primary controls stay full size; it comes back as its own line. */}
       <button
         type="button"
-        onClick={onSaveDraft}
+        onClick={saveDraft}
         disabled={saving}
         className={`${WIZARD_BTN} sm:hidden flex items-center justify-center gap-2 text-ink-muted hover:text-ink hover:bg-bg-sidebar disabled:opacity-40 transition-colors`}
       >

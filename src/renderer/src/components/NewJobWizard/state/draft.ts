@@ -42,12 +42,16 @@ export function readDraft(): NewJobDraft | null {
   }
 }
 
-export function writeDraft(state: NewJobState): void {
+/** true when the draft actually reached localStorage. */
+export function writeDraft(state: NewJobState): boolean {
   try {
     const draft: NewJobDraft = { v: DRAFT_VERSION, savedAt: new Date().toISOString(), state }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    return true
   } catch {
-    // Quota or a blocked store — the wizard keeps working from memory.
+    // Quota or a blocked store — the wizard keeps working from memory, but the
+    // caller must not tell the user their draft is safe when it is not.
+    return false
   }
 }
 

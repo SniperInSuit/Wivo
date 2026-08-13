@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.32.1] — 2026-08-13
+
+**Nõustaja: „Loo töö" ja „Salvesta mustand" nägid välja nagu surnud nupud**
+
+Kumbki ei olnud katki — mõlemal puudus tagasiside seal, kus kasutaja vaatab.
+
+- **„Loo töö"** — kui lisamine ebaõnnestus, renderdus veateade *sammu sisu
+  lõpus*. 6. samm on pikk keritav ülevaade ja nupp on kinnitatud jalusesse, nii
+  et veateade jäi allapoole nähtavat ala. Nüüd ilmub see **nupu kõrvale jalusesse**
+- **„Salvesta mustand"** — kirjutas localStorage'i ja ei öelnud mitte midagi,
+  mis on eristamatu mittetöötavast nupust. Nüüd ütleb „Mustand salvestatud siia
+  arvutisse" — ja kui salvestusruum on täis või blokeeritud, ütleb ka seda,
+  selle asemel et vaikselt valetada
+
+**Veateated nimetavad nüüd puuduva veeru ja õige migratsiooni**
+
+- Iga insert on toores spread, nii et üks käivitamata migratsioon lükkab terve
+  rea tagasi ja mitte midagi ei salvestu. PostgREST-i „Could not find the
+  'mudel_id' column of 'jobs' in the schema cache" ei ütle omanikule midagi
+- Nüüd: **„Andmebaasis puudub veerg „mudel_id". Käivita
+  sql/041_job_mudel_id.sql Supabase SQL-redaktoris."** — veerg loetakse veast
+  välja ja seotakse õige failiga
+
 ## [1.32.0] — 2026-08-12
 
 **Köndivärv**

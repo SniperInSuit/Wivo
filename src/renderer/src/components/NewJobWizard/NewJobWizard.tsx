@@ -28,6 +28,7 @@ import { toJobInput } from './state/toJobInput'
 import { WizardShell } from './WizardShell'
 import { WizardSuccess } from './WizardSuccess'
 import { WizardCloseDialog } from './WizardCloseDialog'
+import { describeError } from '../Patients/errors'
 
 export interface NewJobWizardProps {
   /** App renders <AnimatePresence>{open && <NewJobWizard …/>}</AnimatePresence>. */
@@ -120,9 +121,10 @@ export function NewJobWizard({
       setCreated(job)
     } catch (e) {
       wizard.patch({ status: 'draft' })
-      setCreateError(
-        `Töö loomine ebaõnnestus. ${e instanceof Error && e.message ? e.message : 'Proovi uuesti.'}`
-      )
+      // describeError, not e.message: the most likely failure here by far is an
+      // un-run migration, and PostgREST's raw "Could not find the 'x' column of
+      // 'jobs' in the schema cache" tells the owner nothing they can act on.
+      setCreateError(`Töö loomine ebaõnnestus. ${describeError(e)}`)
     } finally {
       inFlight.current = false
     }
