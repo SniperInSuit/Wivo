@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.36.1] — 2026-08-13
+
+**Tulu valem oli katki — mõlemas suunas**
+
+Mitme tööosaga töö hind jagati tööosade vahel `job.hambad` hammaste arvu järgi.
+See ei anna kokku 1, sest `job.hambad` on **dedupliteeritud** tööosade hammaste
+ühend. Kaks tõestatud viga (`lib/finance.test.ts`):
+
+- **Kadu:** hambatu tööosa (nt kaitse) jättis oma osa nõudmata → 1000 € töö
+  raporteeris **500 €**
+- **Ülepaisutus:** sild 14-16 + kroon 14 nõudsid 4 hammast 3-hambalise töö
+  vastu → 1000 € töö raporteeris **1333 €**
+
+Osakaalud normaliseeritakse nüüd selle järgi, mida tööosad **ise** nõuavad, nii
+et need annavad täpselt 1 ja Tulu võrdub tööde hindade summaga. Kui ühelgi
+tööosal pole hambaid, jagatakse võrdselt.
+
+**Mõju:** mitme tööosaga tööde Tulu muutub. Ühe tööosaga tööd ei muutu üldse.
+Ühesuunalist nihet ette ennustada ei saa — osal töödel oli number liiga väike,
+osal liiga suur.
+
 ## [1.36.0] — 2026-08-13
 
 **Uue töö nõustaja: masin tööosa kaupa**

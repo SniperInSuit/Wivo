@@ -373,15 +373,32 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       b.costs += jobCons + perJobFixed
       typeBuckets.set(name, b)
     } else {
-      // Multi-type — each work item gets its share
+      // Multi-type — each work item gets its share.
+      //
+      // Normalised against what the ITEMS claim, not against `job.hambad`.
+      // Dividing by the job's tooth count did not sum to 1 and broke both ways:
+      //
+      //   · `job.hambad` is DEDUPLICATED (toJobInput unions the item teeth), so
+      //     a bridge on 14-16 plus a crown on 14 claims 4 teeth against a
+      //     3-tooth job — shares summed to 1.33 and a 1000 € job reported 1333.
+      //   · an item with no teeth of its own (an appliance) left its share
+      //     unclaimed, so the same 1000 € job reported 500.
+      //
+      // Both are proven in finance.test.ts. The invariant is that the shares
+      // sum to exactly 1, so Tulu equals the sum of the job prices it is built
+      // from — which is the whole claim the Rahandus page makes.
+      const perItemTeeth = items.map(i => toothCount(i.hambad))
+      const claimedTeeth = perItemTeeth.reduce((a, b) => a + b, 0)
       const fixedShare = perJobFixed / items.length
-      for (const item of items) {
+      for (const [idx, item] of items.entries()) {
         const name = resolveWorkType(item.too, types).nimi
         const b = typeBuckets.get(name) ?? {
           name, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0,
         }
-        const itemTeeth = toothCount(item.hambad)
-        const share = totalTeeth > 0 ? itemTeeth / totalTeeth : 1 / items.length
+        const itemTeeth = perItemTeeth[idx]
+        // No item has teeth at all (two appliances): split evenly rather than
+        // dropping the price on the floor.
+        const share = claimedTeeth > 0 ? itemTeeth / claimedTeeth : 1 / items.length
         b.jobs++
         b.teeth += itemTeeth
         b.income += round2(jobIncome * share)
