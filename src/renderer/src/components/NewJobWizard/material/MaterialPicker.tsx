@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Layers, Plus } from 'lucide-react'
 import { useSettings } from '@/stores/useSettings'
+import { MATERIAL_SHADES } from '@/types/job'
 import { SelectableCard } from '../ui/SelectableCard'
 import { WizardField } from '../ui/WizardField'
 import { WizardSearch } from '../ui/WizardSearch'
-import { WIZARD_INPUT, WIZARD_BTN } from '../wizardTheme'
+import { WIZARD_INPUT, WIZARD_BTN, FOCUS_RING } from '../wizardTheme'
 import { pushRecentMaterial, readRecentMaterials } from './recentMaterials'
 
 export interface MaterialPickerProps {
@@ -48,6 +49,21 @@ export function MaterialPicker({
   // would move the card they were about to click.
   const [recents] = useState(readRecentMaterials)
 
+  // A material and its shade are ONE string — `jobs.materjal` holds
+  // "Crown HT A1", and `jobMaterialCost` prefix-matches it back to the "Crown
+  // HT" price. Split the same way the Edit page does (JobDetailPanel), longest
+  // name first so "Crown HT" wins over a hypothetical "Crown".
+  const base = useMemo(() => {
+    const cur = value?.trim() ?? ''
+    if (!cur) return null
+    return [...settings.materjalid]
+      .sort((a, b) => b.length - a.length)
+      .find(m => cur === m || cur.startsWith(m + ' ')) ?? null
+  }, [value, settings.materjalid])
+
+  const shades = base ? MATERIAL_SHADES[base] : undefined
+  const shade = base && value && value !== base ? value.slice(base.length + 1) : null
+
   const options = useMemo(() => {
     const known = settings.materjalid
     const recentFirst = [
@@ -65,9 +81,17 @@ export function MaterialPicker({
   // Clicking the chosen one clears it, so a wrong pick is one click to undo
   // rather than a state you cannot leave.
   const pick = (material: string) => {
-    if (value === material) { onChange(null); return }
+    // Compared against the base, not the whole value: with "Crown HT A1"
+    // chosen, the Crown HT card is the selected one and clicking it clears.
+    if (base === material) { onChange(null); return }
     pushRecentMaterial(material)
     onChange(material)
+  }
+
+  /** Clicking the chosen shade clears it back to the bare material. */
+  const pickShade = (s: string) => {
+    if (!base) return
+    onChange(shade === s ? base : `${base} ${s}`)
   }
 
   const addCustom = () => {
@@ -103,7 +127,7 @@ export function MaterialPicker({
           return (
             <SelectableCard
               key={m}
-              selected={value === m}
+              selected={base === m}
               onToggle={() => pick(m)}
               label={m}
               sublabel={priceLabel(pricing?.small ?? 0, pricing?.large ?? 0)}
@@ -117,6 +141,44 @@ export function MaterialPicker({
           </p>
         )}
       </div>
+
+      {/* Shade of the MATERIAL, not of the tooth. "Crown HT A1" is one resin,
+          ordered and priced as one thing; the VITA toon on the next step is
+          what the finished restoration has to match. Two different questions
+          that both look like a shade, so they are asked in different places and
+          named differently. Only materials that come in shades show this. */}
+      {shades && shades.length > 0 && (
+        <div role="radiogroup" aria-label={`${base} toon`} className="space-y-2">
+          <p className="text-base font-semibold text-ink-soft">
+            {base} toon
+            {shade && <span className="text-accent font-medium"> — {shade}</span>}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {shades.map(s => {
+              const on = shade === s
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => pickShade(s)}
+                  className={`min-h-[44px] px-4 rounded-xl border-2 text-base font-medium transition-colors ${FOCUS_RING} ${
+                    on
+                      ? 'border-accent bg-accent text-white'
+                      : 'border-ink-faint/40 bg-bg-card text-ink-soft hover:border-accent/50'
+                  }`}
+                >
+                  {s}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-base text-ink-muted">
+            Valimata jätmine tellib materjali ilma toonita ({base}).
+          </p>
+        </div>
+      )}
 
       <WizardField
         label="Lisa oma materjal"

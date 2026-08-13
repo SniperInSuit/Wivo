@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.35.2] — 2026-08-13
+
+**Uue töö nõustaja: materjali toon**
+
+- Materjali sai valida ainult ilma toonita — „Crown HT", mitte „Crown HT A1".
+  Nüüd ilmub toonivalik kohe materjali alla, kui sellel materjalil toonid on
+  (Crown HT, Ceramic Crown, OnX Tough 2 — sama nimekiri, mida töö muutmise
+  vorm juba kasutas)
+- Salvestub ühe stringina `materjal` välja, nagu töö muutmise vormil, nii et
+  `jobMaterialCost` leiab prefiksi järgi õige hinna üles
+- Toonita jätmine on endiselt korrektne valik ja seda öeldakse välja
+
+**Selgituseks:** materjali toon ja VITA toon on kaks eri küsimust — esimene on
+vaigu tellimuskood, teine see, mida valmis töö peab matkima. Seepärast küsitakse
+neid eri kohtades ja eri nimede all.
+
 ## [1.35.1] — 2026-08-13
 
 **Tööd ei sünkroniseerunud arvutite vahel**
