@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.36.2] — 2026-08-17
+
+**Valmis veergu lohistatud töö kadus ära**
+
+- „Valmis" veerg filtreeris nädalat **`kuupaev` järgi — päev, mil töö laborisse
+  JÕUDIS**. Lohistamine märgib `valmis_kuupaev` tänaseks, aga filter vaatas
+  saabumiskuupäeva, nii et iga töö, mis oli tulnud rohkem kui nädal tagasi,
+  kadus kohe pärast lohistamist ära. Loendur „kokku" kasvas (46 → 47), kaart ei
+  ilmunud kuhugi
+- Filter kasutab nüüd `jobPeriodDate` — sama valmimisankrut, mille järgi palk ja
+  Rahandus juba arvestavad (`valmis_kuupaev`, siis tähtaeg, siis saabumine).
+  Muudatuste kuupäevad käivad läbi sama `revisionPeriodDate` funktsiooni
+- Seepärast Liina tööga probleemi ei olnud: see saabus jooksval nädalal, nii et
+  vale kuupäev juhtus samasse aknasse sattuma
+
 ## [1.36.1] — 2026-08-13
 
 **Tulu valem oli katki — mõlemas suunas**

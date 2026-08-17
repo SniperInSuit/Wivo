@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Job, Revision } from '../types/job'
+import { jobPeriodDate } from '../types/job'
 import type { InvoiceFull, Payment } from '../types/invoice'
 import { periodMetrics, unitSplitLabel, teethSplitLabel, type Range } from './periodMetrics'
 
@@ -212,5 +213,30 @@ describe('two surfaces, same params, same numbers', () => {
       { dateAnchor: 'too', includeChanges: true, moneyConcept: 'kaive' })
     expect(allTime.range).toBeNull()
     expect(allTime.tood).toBe(4)      // includes the September job
+  })
+})
+
+describe('the Valmis column anchors on completion, not arrival', () => {
+  // Regression for "dragging a job to Valmis makes it disappear": the board
+  // filtered the done column on `kuupaev` (when the case arrived) while the
+  // column header says "see nädal" and the drag stamps `valmis_kuupaev` today.
+  // Anything that arrived more than a week before it was finished vanished.
+  const week: Range = { start: '2026-08-17', end: '2026-08-23' }
+
+  const arrivedLongAgoFinishedToday = {
+    kuupaev: '2026-07-30',
+    valmis_aeg: null,
+    valmis_kuupaev: '2026-08-17',
+  }
+
+  it('a job received in July and finished this week is in this week', () => {
+    expect(jobPeriodDate(arrivedLongAgoFinishedToday)).toBe('2026-08-17')
+    const d = jobPeriodDate(arrivedLongAgoFinishedToday)
+    expect(d >= week.start && d <= week.end).toBe(true)
+  })
+
+  it('…and would have been excluded by the old arrival-date filter', () => {
+    const arrival = arrivedLongAgoFinishedToday.kuupaev
+    expect(arrival >= week.start && arrival <= week.end).toBe(false)
   })
 })

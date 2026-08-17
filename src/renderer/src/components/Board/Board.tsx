@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfWeek, endOfWeek, addWeeks, parseISO, isWithinInterval, format } from 'date-fns'
 import type { Job, StageKey, Revision } from '../../types/job'
+import { jobPeriodDate } from '../../types/job'
+import { revisionPeriodDate } from '../../lib/periodMetrics'
 import { usePipeline } from '../../context/PipelineContext'
 import { BoardColumn } from './BoardColumn'
 
@@ -62,15 +64,25 @@ export function Board({
     if (hasActiveRevCard) return
 
     if (job.status === doneStageKey) {
-      // Week filter: show if original job OR any completed revision falls in this week
+      // Week filter: show if the job OR any completed revision was FINISHED in
+      // this week.
+      //
+      // Was `job.kuupaev` — the day the case ARRIVED. Dragging a job into
+      // Valmis therefore made it vanish: it was stamped finished today, but
+      // filtered on a date from whenever it came in, which for anything older
+      // than a week is not this week. The column says "see nädal" and the badge
+      // counts it, so the card simply disappeared with the count going up.
+      //
+      // jobPeriodDate is the same completion anchor payroll and Rahandus use —
+      // valmis_kuupaev, falling back to the deadline, then to arrival.
       const inWeek = (dateStr: string) => {
         try { return isWithinInterval(parseISO(dateStr), { start: weekStart, end: weekEnd }) }
         catch { return false }
       }
       const doneRevDates = revs
         .filter(r => r.status === doneStageKey)
-        .map(r => r.deadline ?? r.ts)
-      const appearsThisWeek = inWeek(job.kuupaev) || doneRevDates.some(inWeek)
+        .map(revisionPeriodDate)
+      const appearsThisWeek = inWeek(jobPeriodDate(job)) || doneRevDates.some(inWeek)
       if (byStage[doneStageKey] && appearsThisWeek) {
         byStage[doneStageKey].push({ type: 'job', job })
       }
