@@ -811,6 +811,31 @@ describe('mudel', () => {
     ))).toBe(5)
   })
 
+  it('names a model recorded as a work item instead of the flag', () => {
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [
+        rate({ kind: 'hammas', amount: 15 }),
+        rate({ kind: 'too', amount: 10, applies_to: 'mudel' }),
+      ],
+      jobs: [job({ mudel: false, work_items: [item('Kroon', '11'), item('Mudel', '')] })],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    expect(issues.some(i => i.label.includes('tööosana'))).toBe(true)
+  })
+
+  it('stays quiet about work-item models for someone with no model rate', () => {
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 })],
+      jobs: [job({ mudel: false, work_items: [item('Kroon', '11'), item('Mudel', '')] })],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    expect(issues.some(i => i.label.includes('tööosana'))).toBe(false)
+  })
+
   it('names a missing model rule in the diagnostics', () => {
     const issues = diagnoseEarnings({
       profileId: TECH,

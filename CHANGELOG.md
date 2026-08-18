@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.40.1] — 2026-08-18
+
+**Palgadiagnostika ütleb, kui mudel on valesse kohta märgitud**
+
+Mudeli tasu loeb `job.mudel` lippu (Kiirtöö kõrval). Töö, mille mudel on kirjas
+„Mudel" TÖÖOSANA, ei näinud sellest midagi ja nägi välja täpselt nagu töö, millel
+mudelit ei olegi — see on täpselt see segadus, mille pärast kaks kohta kaotati.
+
+- Uus diagnostikarida: „Mudel on kirjas tööosana, mitte Mudel-märkena Kiirtöö
+  kõrval — mudeli tasu jääb arvestamata". Nii on vanad tööd, mis vajavad
+  märkeruudu järeletegemist, palgalehel nimeliselt kirjas
+- Ütleb seda ainult inimesele, kellel mudeli tasureegel tegelikult on — muidu ei
+  lähe raha kaduma ja rida oleks lihtsalt müra igal tööl
+
 ## [1.40.0] — 2026-08-18
 
 **Mudel on lipp, mitte töötüüp**

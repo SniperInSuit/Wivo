@@ -869,6 +869,20 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       if (job.mudel && !payProduction(mine, items, earnedOn, types, 'mudel', price)) {
         add('reegel', 'Tööl on mudel, aga mudeli eest makstavat reeglit ei ole', job)
       }
+      // The same confusion from the other side. A model could be recorded two
+      // ways — the flag next to Kiirtöö, or a "Mudel" WORK TYPE in the grid —
+      // and pay reads only the flag. A job recorded the other way earns nothing
+      // for its model and looks exactly like a job that has none.
+      //
+      // Only worth saying to someone who HAS a model rate: without one there is
+      // no money going missing and this would be noise on every job.
+      if (!job.mudel
+        && mine.some(r => (r.applies_to ?? 'too') === 'mudel')
+        && items.some(i => /mudel|model/i.test(i.too ?? ''))) {
+        add('reegel',
+          'Mudel on kirjas tööosana, mitte Mudel-märkena Kiirtöö kõrval — '
+          + 'mudeli tasu jääb arvestamata', job)
+      }
       if (pay.amount === 0 && pay.kind === 'hammas') {
         add('hambad', 'Tasu on hamba kohta, aga tööosadel ei ole hambaid valitud', job)
         continue
