@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.38.2] — 2026-08-18
+
+**`NEXT.md` — seis, mis rändab kaasa**
+
+- Uus `NEXT.md` repo juurikas: mis on tehtud, **mis ootab sind koos täpsete
+  käskudega**, mis on blokeeritud ja mille taga, ning kus plaan ja auditid asuvad
+- Kirjutatakse iga töö lõpus üle — see on hetkeseis, mitte logi
+- Eristub `HANDOFF.md`-st teadlikult: seal on arendaja püsireeglid („ära kunagi
+  tee X"), siin on „mida ma järgmisena teen"
+
 ## [1.38.1] — 2026-08-18
 
 **Avalik `/services` otspunkt — esimene edge-funktsioon**
