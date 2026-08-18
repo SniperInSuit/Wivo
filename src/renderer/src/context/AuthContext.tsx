@@ -19,6 +19,8 @@ export interface Clinic {
   bank_name: string | null
   bank_account: string | null
   logo_url: string | null
+  /** Public website URL key, set in Seaded → Kliinik. Null = no public site. */
+  public_slug: string | null
   created_at: string
   updated_at: string
 }

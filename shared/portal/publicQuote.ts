@@ -20,8 +20,15 @@
  * THE HONESTY RULE, INHERITED FROM `quoteJob`
  *   A service whose price cannot be stated is NOT PUBLISHED. It is never shown
  *   as "0 €". `publishProblems()` is this file's `Quote.unpriced`.
+ *
+ * THE `.ts` EXTENSION BELOW IS LOAD-BEARING — DO NOT "TIDY" IT AWAY
+ *   Deno requires an extension on relative imports, and this file is imported by
+ *   the Supabase edge function. The rest of `shared/` can stay extensionless
+ *   because nothing outside the bundler imports it; `shared/portal/` cannot.
+ *   Vite and `moduleResolution: "bundler"` accept the extension happily, so
+ *   both worlds are satisfied by writing it.
  */
-import type { PublicService } from './publicService'
+import type { PublicService } from './publicService.ts'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 

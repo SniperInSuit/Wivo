@@ -2,6 +2,38 @@
 
 ## [1.38.1] — 2026-08-18
 
+**Avalik `/services` otspunkt — esimene edge-funktsioon**
+
+Dentasest sõltumatu, seega ehitatav juba enne API vastuseid. Loeb ainult
+`clinic_settings.public_services` ja tagastab patsiendile mõeldud kataloogi.
+
+- `supabase/functions/public-booking/` + `_shared/` (cors, respond, ratelimit,
+  settings). Üks funktsioon, mitte kolm — kolm tähendaks kolme külmkäivitust,
+  kolme CORS-poliitikat ja kolme koopiat allowlist-mapperist
+- **`_shared/settings.ts` on ainus koht, mis `clinic_settings`-i pärib**, ja
+  selle päring on `.select('public_services')`. Mapperi viga ei saa lekitada
+  veergu, mida kunagi ei toodud — see on kolmest kaitsest tugevaim
+- Vastus alati ümbrikus `{ ok, data }` / `{ ok:false, error }`, et Frameri
+  komponent ei parsiks kunagi HTTP 500 keha
+- CORS on lubatud päritolude nimekiri, `Vary: Origin` alati — ilma selleta
+  serveerib CDN ühe päritolu päise teisele
+- IP räsitakse pipraga ja ei salvestata
+
+**Kliiniku veebilehe tunnus**
+- Seaded → Kliinik saab välja `Veebilehe tunnus` (`clinics.public_slug`).
+  Tühjaks jättes avalikku broneerimist ei ole. Kirjapilt parandatakse
+  automaatselt `slugify()` kaudu
+
+**Deno vs bundler — laiendite asümmeetria**
+- Deno nõuab relatiivsetel importidel faililaiendit, bundler mitte. Seetõttu
+  `shared/portal/publicQuote.ts` impordib `./publicService.ts` **laiendiga** ja
+  seda ei tohi „korrastada"
+- Leitud katsetades: TypeScript lubab `.ts` laiendi **tüübi**-impordil, aga
+  **väärtuse**-impordil nõuab `allowImportingTsExtensions`. Kirjas
+  `supabase/functions/README.md`-s, et järgmine inimene ei avastaks seda uuesti
+
+## [1.38.1] — 2026-08-18
+
 **Disainija küsiti kaks korda**
 
 1.37.0 pani tööosade read job-taseme „Disainija" kasti ALLA, nii et sama küsimus

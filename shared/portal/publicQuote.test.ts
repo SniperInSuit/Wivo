@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest'
+// Extensionless on purpose: this file is only ever compiled by vitest/vite,
+// never by Deno. `publicQuote.ts` DOES carry the extension because the edge
+// function imports it — see the note in its header.
 import type { PublicService } from './publicService'
 import { emptyPublicService, slugify } from './publicService'
 import {

@@ -13,6 +13,7 @@ import { supabase, updateProfile, displayIdentity } from '../lib/supabase'
 import type { PipelineStage } from '../config/pipeline'
 import { LicenseSection } from './Settings/LicenseSection'
 import { PublicServicesSection } from './Settings/PublicServicesSection'
+import { slugify } from '@shared/portal/publicService'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -996,6 +997,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
     vat_number: clinic.vat_number ?? '',
     bank_name: clinic.bank_name ?? '',
     bank_account: clinic.bank_account ?? '',
+    public_slug: clinic.public_slug ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -1063,6 +1065,28 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
         <Field label="KMKR number" field="vat_number" placeholder="EE123456789" />
         <Field label="Pank" field="bank_name" placeholder="LHV, SEB…" />
         <Field label="IBAN" field="bank_account" placeholder="EE00 1234 5678 9012 3456" />
+      </div>
+
+      {/* The public site's URL key. Its own block because it is the one field
+          here that is not a company detail — it decides whether the clinic has
+          a public booking page at all. */}
+      <div className="max-w-lg pt-3 border-t border-ink-faint/15">
+        <label className="label flex items-center gap-1.5">
+          <Globe size={11} /> Veebilehe tunnus
+        </label>
+        <input
+          value={form.public_slug}
+          onChange={e => set('public_slug', e.target.value)}
+          onBlur={e => set('public_slug', slugify(e.target.value))}
+          placeholder="fullgevity"
+          className="input py-1.5 text-sm font-mono"
+          disabled={!isOwner}
+        />
+        <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
+          Lühike nimi, mille abil veebileht selle kliiniku hinnakirja küsib.
+          Tühjaks jättes avalikku broneerimist ei ole. Ainult tähed, numbrid ja
+          sidekriipsud — kirjapilt parandatakse automaatselt.
+        </p>
       </div>
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
