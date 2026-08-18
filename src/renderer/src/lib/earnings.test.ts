@@ -836,6 +836,27 @@ describe('mudel', () => {
     expect(issues.some(i => i.label.includes('tööosana'))).toBe(false)
   })
 
+  it('keeps two different reasons apart even though both are "reegel"', () => {
+    // They used to share one bucket keyed by code, so only the first message
+    // survived and the rest were counted under a heading about something else.
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [
+        rate({ kind: 'hammas', amount: 15, work_type: 'Kroon' }),
+        rate({ kind: 'too', amount: 10, applies_to: 'mudel' }),
+      ],
+      jobs: [
+        job({ mudel: true, work_items: [item('Kroon', '11')] }),
+        job({ mudel: false, work_items: [item('Kroon', '11'), item('Mudel', '')] }),
+      ],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    const reegel = issues.filter(i => i.code === 'reegel')
+    expect(reegel.length).toBeGreaterThan(1)
+    expect(new Set(reegel.map(i => i.label)).size).toBe(reegel.length)
+  })
+
   it('names a missing model rule in the diagnostics', () => {
     const issues = diagnoseEarnings({
       profileId: TECH,

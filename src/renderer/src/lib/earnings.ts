@@ -816,16 +816,23 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   const mine = rates.filter(r => r.profile_id === profileId)
   const inPeriod = (d: string) => !!d && d >= periodStart && d <= periodEnd
 
-  const buckets = new Map<EarningsIssue['code'], EarningsIssue>()
+  // Keyed by code AND label, not by code alone. Several different reasons share
+  // the code 'reegel' — no rule matches the work, part of the work is
+  // uncovered, the model is recorded in the wrong place — and bucketing them
+  // together kept only the FIRST message. The other reasons were counted into a
+  // total under a heading that did not describe them, which is worse than not
+  // reporting them: the screen looked like it had answered.
+  const buckets = new Map<string, EarningsIssue>()
   const add = (code: EarningsIssue['code'], label: string, job: Job) => {
-    const b = buckets.get(code) ?? { code, label, count: 0, examples: [] }
+    const key = `${code}|${label}`
+    const b = buckets.get(key) ?? { code, label, count: 0, examples: [] }
     b.count++
     if (b.examples.length < 3) {
       // Every work type on the job, not just the first — the whole reason a
       // mixed job earned nothing is usually the type that was not named here.
       b.examples.push(`${itemsLabel(payItemsOf(job))} · ${job.patsient}`)
     }
-    buckets.set(code, b)
+    buckets.set(key, b)
   }
 
   for (const job of jobs) {

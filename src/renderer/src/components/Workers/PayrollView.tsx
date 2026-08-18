@@ -457,7 +457,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                     <div className="space-y-1.5 mb-2">
                       {issues.map(iss => (
                         <div
-                          key={iss.code}
+                          key={`${iss.code}|${iss.label}`}
                           className="flex items-start gap-2 text-[11px] rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5"
                         >
                           <AlertTriangle size={11} className="text-orange-500 flex-shrink-0 mt-0.5" />

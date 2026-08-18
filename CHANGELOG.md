@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.40.2] — 2026-08-18
+
+**Palgadiagnostika neelas pooled põhjused alla**
+
+- `diagnoseEarnings` grupeeris probleeme ainult koodi järgi. Koodi „reegel" all
+  on mitu eri põhjust — ükski reegel ei sobi, osa tööosi jääb katmata, mudel on
+  valesse kohta märgitud — ja need liideti üheks kirjeks, millel oli **esimesena
+  tulnud silt**. Ülejäänud loeti kokku pealkirja alla, mis neid ei kirjelda
+- See on halvem kui teatamata jätmine: ekraan nägi välja, nagu oleks vastanud
+- Grupeerimine käib nüüd koodi JA sildi järgi, nii et iga põhjus on oma real
+  oma arvuga
+
 ## [1.40.1] — 2026-08-18
 
 **Palgadiagnostika ütleb, kui mudel on valesse kohta märgitud**
