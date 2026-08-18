@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
+import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { workTypeImage } from '../../lib/workTypeImages'
 
@@ -70,6 +71,9 @@ export function WorkItemsField({
   dark = false, typeColumns = 3,
 }: WorkItemsFieldProps) {
   const wt = useWorkTypes()
+  // Only to LABEL a per-item designer, never to pick one — that field is set on
+  // the job page, where the job's own designer is on screen to inherit from.
+  const { data: clinicWorkers = [] } = useClinicProfiles()
   const [showAllTypes, setShowAllTypes] = useState(false)
 
   const colorMap: Record<string, string> = {}
@@ -264,6 +268,17 @@ export function WorkItemsField({
                       {item.materjal}
                     </span>
                   )}
+                  {item.designed_by && (() => {
+                    const name = clinicWorkers.find(w => w.id === item.designed_by)?.full_name ?? ''
+                    return (
+                      <span
+                        title={`Disainija: ${name || '—'}`}
+                        className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
+                      >
+                        ✎ {name.split(' ')[0] || '?'}
+                      </span>
+                    )
+                  })()}
                   <span
                     role="button"
                     onClick={e => { e.stopPropagation(); toggleBridge(item.id) }}

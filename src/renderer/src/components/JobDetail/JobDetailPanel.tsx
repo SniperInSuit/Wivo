@@ -139,6 +139,13 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
   const info = workTypePriceFor(form.too, settings.tooTuubid, teeth, useDiscount)
   const typePrice = info?.amount ?? null
 
+  // Read here for the same reason: a job split between two designers needs
+  // their names on the cost lines, and a prop would be one more thing two
+  // layouts could pass differently.
+  const { data: costWorkers = [] } = useClinicProfiles()
+  const workerNameOf = (id: string | null | undefined): string =>
+    (id ? costWorkers.find(w => w.id === id)?.full_name : '') || ''
+
   // Same reasoning as above: computed here, from the same function the
   // auto-price effect and the repricer call, rather than passed down.
   const unpriced = quoteJob({
@@ -298,10 +305,11 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         const costTeeth = toothCountOf(allHambad)
         const today = new Date().toISOString().slice(0, 10)
 
-        // Build work items for rate matching
+        // Build work items for rate matching. `designed_by` rides along because
+        // the design side of the cost is per item now — see below.
         const workItems = form.work_items.length > 0
-          ? form.work_items.map(i => ({ too: i.too, hambad: i.hambad }))
-          : [{ too: form.too ?? '', hambad: allHambad }]
+          ? form.work_items.map(i => ({ too: i.too, hambad: i.hambad, designed_by: i.designed_by }))
+          : [{ too: form.too ?? '', hambad: allHambad, designed_by: undefined }]
 
         const tId = form.assigned_to
         const tRates = tId ? allRates.filter(r => r.profile_id === tId) : []
@@ -332,29 +340,46 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         }
         const tCost = Math.round(techLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
 
-        const dId = form.designed_by
-        const dRates = dId ? allRates.filter(r => r.profile_id === dId) : []
+        // Design cost, per work item, because the designers can differ within one
+        // job. Each item's own designer, else the job's — the same fallback the
+        // pay engine uses, so this figure and the payslip agree.
+        const designerOf = (i: { designed_by?: string | null }): string | null =>
+          i.designed_by ?? form.designed_by ?? null
+        const designerIds = [...new Set(
+          workItems.map(designerOf).filter((id): id is string => !!id)
+        )]
+        // Whose name to put on a line. Only worth saying when the job is split.
+        const designerTag = (id: string): string =>
+          designerIds.length > 1 ? ` (${workerNameOf(id).split(' ')[0] || '?'})` : ''
         const designLines: CostLine[] = []
         for (const item of workItems) {
+          const dId = designerOf(item)
+          if (!dId) continue
+          const dRates = allRates.filter(r => r.profile_id === dId)
           const tc = toothCountOf(item.hambad)
-          const rate = dId ? pickRateFor(dRates, item.too, today, settings.tooTuubid, 'disain') : null
+          const rate = pickRateFor(dRates, item.too, today, settings.tooTuubid, 'disain')
           if (rate) {
             const amt = rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0
-            if (amt > 0) designLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €`, amount: amt })
+            if (amt > 0) designLines.push({ label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €`, amount: amt })
           }
         }
-        // Additive design rules
-        for (const r of dRates) {
-          if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
-          const covered = workItems.filter(i => {
-            const rt = (r.work_type ?? '').toLowerCase()
-            if (!rt) return true
-            return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
-          })
-          if (covered.length === 0) continue
-          const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
-          const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
-          if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €`, amount: amt })
+        // Additive design rules — each designer's, over only the items they
+        // designed. A gum-design bonus on the laminates belongs to whoever
+        // designed the laminates.
+        for (const dId of designerIds) {
+          const theirs = workItems.filter(i => designerOf(i) === dId)
+          for (const r of allRates.filter(r => r.profile_id === dId)) {
+            if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
+            const covered = theirs.filter(i => {
+              const rt = (r.work_type ?? '').toLowerCase()
+              if (!rt) return true
+              return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
+            })
+            if (covered.length === 0) continue
+            const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
+            const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
+            if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €`, amount: amt })
+          }
         }
         const dCost = Math.round(designLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
 
@@ -380,7 +405,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 
         const adHocCost = (form.extra_costs ?? []).reduce((s, c) => s + (c.summa || 0), 0)
         const totalCost = Math.round((tCost + dCost + costMat + consCost + adHocCost) * 100) / 100
-        if (totalCost === 0 && !tId && !dId) return null
+        if (totalCost === 0 && !tId && designerIds.length === 0) return null
         return (
           <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
             <p className="text-xs font-semibold text-ink-muted mb-1.5">Omahind (labori kulu)</p>
@@ -398,6 +423,9 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             )}
             {tId && tCost === 0 && !tHourlyCost && (
               <div className="text-[10px] text-ink-faint">Tehnikul puudub tasureegel</div>
+            )}
+            {designerIds.length > 0 && dCost === 0 && (
+              <div className="text-[10px] text-ink-faint">Disainijal puudub tasureegel</div>
             )}
             {designLines.map((l, i) => (
               <div key={`d${i}`} className="flex justify-between text-xs text-ink-muted">
@@ -556,6 +584,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const markPaid = useMarkJobsPaid()
   const { data: jobPayments = [] } = usePayments()
   const { data: workerRates = [] } = useWorkerRates()
+  // Named here as well as inside WorkerSelect, because the per-item designer
+  // rows below need the same list and the cost breakdown needs the names.
+  const { data: clinicWorkers = [] } = useClinicProfiles()
   const { stages, doneStageKey } = usePipeline()
   const [form, setForm] = useState<JobInput>(EMPTY_FORM)
   const [activeWorkItemId, setActiveWorkItemId] = useState<string | null>(null)
@@ -649,6 +680,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const set = useCallback(<K extends keyof JobInput>(key: K, val: JobInput[K]) => {
     setForm(f => ({ ...f, [key]: val }))
   }, [])
+
+  /** A worker's name for display. Empty for "nobody", never a raw uuid. */
+  const workerNameOf = useCallback((id: string | null | undefined): string =>
+    (id ? clinicWorkers.find(w => w.id === id)?.full_name : '') || '',
+  [clinicWorkers])
+  // What a work item inherits when it names no designer of its own.
+  const jobDesignerName = workerNameOf(form.designed_by)
 
   // What this job is worth, by the same rules the repricer and the web order
   // form use — see shared/pricing/quote.ts. Every work item is priced on its
@@ -1263,6 +1301,16 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                                 {item.materjal}
                               </span>
                             )}
+                            {/* Its own designer, first name only — the chip row
+                                is where you SEE that the case is split. */}
+                            {item.designed_by && (
+                              <span
+                                title={`Disainija: ${workerNameOf(item.designed_by) || '—'}`}
+                                className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
+                              >
+                                ✎ {workerNameOf(item.designed_by).split(' ')[0] || '?'}
+                              </span>
+                            )}
                             {/* Bridge toggle */}
                             <span
                               role="button"
@@ -1526,6 +1574,64 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   onChange={v => set('designed_by', v)}
                 />
               </div>
+
+              {/* Disainija tööosade kaupa.
+                  Üks töö = üks disainija oli vale eeldus: kroonid ja laminaadid
+                  ühel ja samal juhtumil on tihti eri inimeste disainitud, ja
+                  tasuarvestus maksis siis kogu disaini ühele neist. Ülemine
+                  "Disainija" jääb vaikeväärtuseks — tööosa, mis ise kedagi ei
+                  nimeta, kuulub temale, nagu kõik enne seda välja kirjutatud
+                  tööd. Ainult mitme tööosaga tööl, muidu oleks see sama valik
+                  kaks korda kõrvuti. */}
+              {form.work_items.length > 1 && (
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    <UserRound size={11} /> Disainija tööosade kaupa
+                  </label>
+                  <p className="text-[11px] text-ink-faint mb-1.5 leading-snug">
+                    Jäta „sama mis tööl“, kui terve töö disainib üks inimene.
+                  </p>
+                  <div className="space-y-1.5">
+                    {form.work_items.map((item, idx) => {
+                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+                      // "Sild 1" / "Sild 2" only when the type actually repeats,
+                      // same rule as the chips above.
+                      const repeats = form.work_items.filter(i => i.too === item.too).length > 1
+                      const nth = form.work_items.slice(0, idx + 1).filter(i => i.too === item.too).length
+                      return (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <span className="flex items-center gap-1.5 text-xs font-medium w-[110px] flex-shrink-0">
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                            <span className="truncate" style={{ color: hex }}>
+                              {repeats ? `${item.too} ${nth}` : item.too}
+                            </span>
+                          </span>
+                          <select
+                            value={item.designed_by ?? ''}
+                            onChange={e => {
+                              const v = e.target.value || undefined
+                              setForm(f => ({
+                                ...f,
+                                work_items: f.work_items.map(i =>
+                                  i.id === item.id ? { ...i, designed_by: v } : i
+                                ),
+                              }))
+                            }}
+                            className="input text-xs flex-1 min-w-0"
+                          >
+                            <option value="">
+                              Sama mis tööl{jobDesignerName ? ` — ${jobDesignerName}` : ''}
+                            </option>
+                            {clinicWorkers.map(w => (
+                              <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Print ID + Disain ID */}
               <div className="grid grid-cols-2 gap-4">

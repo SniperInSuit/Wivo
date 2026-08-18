@@ -13,6 +13,7 @@ import {
 import { format, startOfMonth, endOfMonth, addMonths, parseISO, isValid } from 'date-fns'
 import { et } from 'date-fns/locale'
 import type { Job } from '../../types/job'
+import { jobHasDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -152,8 +153,10 @@ export function PayrollView({ jobs }: PayrollViewProps) {
         profileId: w.id, rates, jobs, hours, types: wt.types,
         periodStart: period.start, periodEnd: period.end, doneStageKey, alreadyPaid,
       }).filter(iss => iss.code !== 'makstud'),
+      // jobHasDesigner, not `designed_by === w.id`: someone who designed only
+      // the laminates on a split case still has that job counted for them.
       assignedDone: jobs.filter(j =>
-        (j.assigned_to === w.id || j.designed_by === w.id) && j.status === doneStageKey
+        (j.assigned_to === w.id || jobHasDesigner(j, w.id)) && j.status === doneStageKey
       ).length,
     }
   }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey])

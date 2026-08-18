@@ -513,3 +513,111 @@ describe('already-paid work', () => {
     expect(lines).toHaveLength(0)
   })
 })
+
+describe('two designers on one job', () => {
+  const OTHER = 'designer-2'
+  // The case that prompted this: crowns and laminates on one job, designed by
+  // different people. `designed_by` was a single name, so one of them was paid
+  // for the whole case and the other for none of it.
+  const split = () => job({
+    assigned_to: TECH,
+    designed_by: DESIGNER,
+    work_items: [
+      item('Kroon', '11,12,13'),
+      { ...item('Sild', '24,25'), designed_by: OTHER },
+    ],
+  })
+
+  it('pays each designer only for the items they designed', () => {
+    const rates = [
+      rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER }),
+      rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: OTHER }),
+    ]
+    const j = split()
+    expect(earningsTotal(run(rates, [j], DESIGNER))).toBe(15)  // 3 crowns
+    expect(earningsTotal(run(rates, [j], OTHER))).toBe(10)     // 2 bridge units
+  })
+
+  it("names only that designer’s own work on the line", () => {
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: OTHER })],
+      [split()], OTHER
+    )
+    expect(lines).toHaveLength(1)
+    expect(lines[0].description).toContain('Sild')
+    expect(lines[0].description).not.toContain('Kroon')
+  })
+
+  it('splits a percentage design fee by teeth instead of paying it twice', () => {
+    const rates = [
+      rate({ kind: 'protsent', amount: 50, applies_to: 'disain', profile_id: DESIGNER }),
+      rate({ kind: 'protsent', amount: 50, applies_to: 'disain', profile_id: OTHER }),
+    ]
+    const j = job({
+      assigned_to: TECH,
+      designed_by: DESIGNER,
+      disain_hind: 100,
+      work_items: [
+        item('Kroon', '11,12,13'),
+        { ...item('Sild', '24,25'), designed_by: OTHER },
+      ],
+    })
+    // 100 € of design, 5 teeth: 3/5 of it against one rule, 2/5 against the
+    // other. Both taking the full 100 € would pay the design out twice.
+    expect(earningsTotal(run(rates, [j], DESIGNER))).toBe(30)
+    expect(earningsTotal(run(rates, [j], OTHER))).toBe(20)
+  })
+
+  it("pays the job’s designer for items that name nobody", () => {
+    // The whole back-compat guarantee in one case: an item with no designer of
+    // its own belongs to the job's, which is what every row written before this
+    // field existed means.
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER })],
+      [job({ designed_by: DESIGNER, work_items: [item('Kroon', '11,12')] })],
+      DESIGNER
+    )
+    expect(earningsTotal(lines)).toBe(10)
+  })
+
+  it('leaves a designer who owns no item unpaid', () => {
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER })],
+      [job({
+        designed_by: DESIGNER,
+        work_items: [{ ...item('Kroon', '11,12'), designed_by: OTHER }],
+      })],
+      DESIGNER
+    )
+    expect(lines).toHaveLength(0)
+  })
+
+  it("gives an additive design rule only that designer’s items", () => {
+    const lines = run(
+      [
+        rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: OTHER }),
+        rate({
+          kind: 'hammas', amount: 2, applies_to: 'disain', profile_id: OTHER,
+          additive: true, label: 'Igeme disain',
+        }),
+      ],
+      [split()], OTHER
+    )
+    // Two bridge units: 2 × 5 design + 2 × 2 gum. The crowns are not theirs.
+    expect(earningsTotal(lines)).toBe(14)
+  })
+
+  it('diagnoses a missing rule only against the parts they designed', () => {
+    const issues = diagnoseEarnings({
+      profileId: OTHER,
+      rates: [rate({
+        kind: 'hammas', amount: 5, applies_to: 'disain',
+        profile_id: OTHER, work_type: 'Kroon',
+      })],
+      jobs: [split()], hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    // Their item is the bridge and their only rule names crowns.
+    expect(issues.some(i => i.code === 'reegel')).toBe(true)
+  })
+})

@@ -94,7 +94,44 @@ export interface WorkItem {
   masina?: string         // machine for this specific work item
   kruvi?: string          // screw/abutment reference for implant work
   note?: string           // optional per-item note
+  /**
+   * Who designed THIS item. Undefined means "whoever is on the job", which is
+   * what every work item written before this field meant, so nothing had to be
+   * backfilled.
+   *
+   * It exists because one case is routinely split: the crowns are designed by
+   * one person and the laminates by another. `designed_by` on the job is a
+   * single name, so the pay engine handed the whole case to one of them and the
+   * other was not paid at all. `work_items` is a JSONB column — no migration.
+   */
+  designed_by?: string | null
 }
+
+/** Who designed one item: its own designer, else the job's. */
+export const workItemDesigner = (
+  item: Pick<WorkItem, 'designed_by'>, jobDesigner: string | null | undefined
+): string | null => item.designed_by ?? jobDesigner ?? null
+
+/**
+ * Every distinct designer on a job, job-level fallback included.
+ *
+ * For display and for the "does this job concern me" filters. Order follows the
+ * work items, so the first name is the one the job leads with.
+ */
+export function jobDesigners(
+  job: Pick<Job, 'work_items' | 'too' | 'hambad' | 'designed_by'>
+): string[] {
+  const items = jobWorkItems(job)
+  const ids = items.length > 0
+    ? items.map(i => workItemDesigner(i, job.designed_by))
+    : [job.designed_by ?? null]
+  return [...new Set(ids.filter((id): id is string => !!id))]
+}
+
+/** True when this person designed any part of the job. */
+export const jobHasDesigner = (
+  job: Pick<Job, 'work_items' | 'too' | 'hambad' | 'designed_by'>, profileId: string
+): boolean => jobDesigners(job).includes(profileId)
 
 /** Canonical work items for a job, whether it uses the new or old shape. */
 export function jobWorkItems(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): WorkItem[] {

@@ -22,7 +22,7 @@
  *   single job, so they are computed from logged hours and from the period.
  */
 import type { Job, Revision, WorkItem } from '../types/job'
-import { jobWorkItems, jobPeriodDate } from '../types/job'
+import { jobWorkItems, jobPeriodDate, workItemDesigner } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
@@ -170,6 +170,38 @@ export interface PayItem { too: string; hambad: string }
 const payItemsOf = (job: Job): PayItem[] =>
   jobWorkItems(job).map(i => ({ too: i.too, hambad: i.hambad }))
 
+/**
+ * The items of a job THIS person designed.
+ *
+ * Design used to be all-or-nothing: `job.designed_by` was one name, so a case
+ * holding crowns and laminates designed by two different people paid one of
+ * them for the lot and the other nothing. An item without its own designer
+ * belongs to the job's, which is what every work item written before the field
+ * existed meant — so a single-designer job returns all of them, exactly as it
+ * did before.
+ */
+const designPayItemsOf = (job: Job, profileId: string): PayItem[] =>
+  jobWorkItems(job)
+    .filter(i => workItemDesigner(i, job.designed_by) === profileId)
+    .map(i => ({ too: i.too, hambad: i.hambad }))
+
+/**
+ * The share of a job's price that belongs to a subset of its items.
+ *
+ * Only bites once two people split one case: a percentage rule is priced off
+ * the JOB's price, and handing each designer the whole price would pay the
+ * design out twice over. Split by teeth, by item count when nothing has teeth.
+ * A subset covering everything gets 1, so nothing about a single-designer job
+ * changes.
+ */
+function priceShare(all: PayItem[], subset: PayItem[]): number {
+  if (subset.length >= all.length) return 1
+  if (subset.length === 0) return 0
+  const total = all.reduce((s, i) => s + toothCount(i.hambad), 0)
+  if (total === 0) return subset.length / all.length
+  return subset.reduce((s, i) => s + toothCount(i.hambad), 0) / total
+}
+
 /** The items on a revision, falling back to the job's own when it names none. */
 function revisionPayItems(rev: Revision, job: Job): PayItem[] {
   const items = rev.work_items
@@ -177,6 +209,21 @@ function revisionPayItems(rev: Revision, job: Job): PayItem[] {
     return items.map((i: WorkItem) => ({ too: i.too, hambad: i.hambad }))
   }
   return [{ too: job.too ?? '', hambad: rev.hambad ?? job.hambad ?? '' }]
+}
+
+/**
+ * The items of a revision this person designed. Same fallback chain as the job:
+ * the item's own designer, else the revision's, else the job's.
+ */
+function revisionDesignItems(rev: Revision, job: Job, profileId: string): PayItem[] {
+  const fallback = rev.designed_by ?? job.designed_by ?? null
+  const items = rev.work_items
+  if (Array.isArray(items) && items.length > 0) {
+    return items
+      .filter((i: WorkItem) => workItemDesigner(i, fallback) === profileId)
+      .map((i: WorkItem) => ({ too: i.too, hambad: i.hambad }))
+  }
+  return fallback === profileId ? revisionPayItems(rev, job) : []
 }
 
 /**
@@ -422,20 +469,28 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
   // ── Production: per job ───────────────────────────────────────────────────
   for (const job of jobs) {
     const isTech = job.assigned_to === profileId
-    const isDesigner = job.designed_by === profileId
+    const items = payItemsOf(job)
+    // Only the parts THIS person designed. A job whose items name no designer
+    // of their own yields all of them for whoever `designed_by` names, so the
+    // ordinary one-designer case is the same list it always was.
+    const designItems = designPayItemsOf(job, profileId)
+    const isDesigner = designItems.length > 0
     // A remake may name someone who touched no other part of the case. Skipping
     // the job outright would have hidden their rework entirely — the guard has
     // to ask about the revisions too, not only the job's own two names.
     const onARevision = (job.revisions ?? []).some(r =>
       (r.assigned_to ?? job.assigned_to) === profileId
-      || (r.designed_by ?? job.designed_by) === profileId
+      || revisionDesignItems(r, job, profileId).length > 0
     )
     if (!isTech && !isDesigner && !onARevision) continue
 
     const earnedOn = jobEarnedOn(job)
     const jobDone = job.status === doneStageKey
-    const items = payItemsOf(job)
     const label = itemsLabel(items)
+    const designLabel = itemsLabel(designItems)
+    // The slice of the job's price the design side is priced off. 1 whenever one
+    // person designed the whole thing.
+    const designShare = priceShare(items, designItems)
     const countable = jobDone && inPeriod(earnedOn)
 
     if (isTech && countable && !alreadyPaid.has(`job:${job.id}`)) {
@@ -457,14 +512,14 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // rule could not express. Added on top of the production line, and payable
     // to someone who did no other part of the job.
     if (isDesigner && countable && !alreadyPaid.has(`design:${job.id}`)) {
-      const price = Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)
-      const pay = payProduction(mine, items, earnedOn, types, 'disain', price)
+      const price = (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
+      const pay = payProduction(mine, designItems, earnedOn, types, 'disain', price)
       if (pay && pay.amount > 0) {
         lines.push({
           key: `design:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Disain: ${label} · ${job.patsient}`,
+          description: `Disain: ${designLabel} · ${job.patsient}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -477,10 +532,15 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     if (countable) {
       for (const scope of ['too', 'disain'] as const) {
         if (scope === 'too' ? !isTech : !isDesigner) continue
+        // The design scope sees only this designer's own items, for the same
+        // reason the design rule above does: the gum design on the laminates is
+        // the other designer's line, not this one's.
+        const scopeItems = scope === 'disain' ? designItems : items
+        const scopeLabel = scope === 'disain' ? designLabel : label
         const price = scope === 'disain'
-          ? (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0))
+          ? (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
           : Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-        for (const extra of payAdditive(mine, items, earnedOn, types, scope, price)) {
+        for (const extra of payAdditive(mine, scopeItems, earnedOn, types, scope, price)) {
           // Keyed by RULE, so two extras on one job stay two payable lines and
           // freezing one never suppresses the other.
           const key = `extra:${extra.rule.id}:${job.id}`
@@ -489,7 +549,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key,
             job_id: job.id, revision_id: null, work_hours_id: null,
             kind: extra.rule.kind,
-            description: `${additiveLabel(extra.rule)}: ${label} · ${job.patsient}`,
+            description: `${additiveLabel(extra.rule)}: ${scopeLabel} · ${job.patsient}`,
             qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
             earned_on: earnedOn,
           })
@@ -508,9 +568,11 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // did none of the original work still has to be paid for redoing it.
     for (const [i, rev] of (job.revisions ?? []).entries()) {
       const revTech = rev.assigned_to ?? job.assigned_to
-      const revDesigner = rev.designed_by ?? job.designed_by
       const isRevTech = revTech === profileId
-      const isRevDesigner = revDesigner === profileId
+      // Same split as the job: a remake covering both the crowns and the
+      // laminates can have been redesigned by two people.
+      const revDesignItems = revisionDesignItems(rev, job, profileId)
+      const isRevDesigner = revDesignItems.length > 0
       if (!isRevTech && !isRevDesigner) continue
 
       const revDate = revisionEarnedOn(rev)
@@ -549,13 +611,14 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       // designer field, which is not something anybody asked for.
       const designPayable = mine.filter(r => r.pay_revisions)
       if (isRevDesigner && !alreadyPaid.has(`revdesign:${job.id}:${rev.id}`)) {
-        const design = payProduction(designPayable, revItems, revDate, types, 'disain', revPrice)
+        const revDesignPrice = revPrice * priceShare(revItems, revDesignItems)
+        const design = payProduction(designPayable, revDesignItems, revDate, types, 'disain', revDesignPrice)
         if (design && design.amount > 0) {
           lines.push({
             key: `revdesign:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: design.kind,
-            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}`,
+            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revDesignItems)} · ${job.patsient}`,
             qty: design.qty, rate: design.rate, amount: design.amount, earned_on: revDate,
           })
         }
@@ -691,7 +754,8 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
 
   for (const job of jobs) {
     const isTech = job.assigned_to === profileId
-    const isDesigner = job.designed_by === profileId
+    const designItems = designPayItemsOf(job, profileId)
+    const isDesigner = designItems.length > 0
     if (!isTech && !isDesigner) continue
 
     if (job.status !== doneStageKey) {
@@ -766,10 +830,12 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       }
     } else if (isDesigner) {
       // A designer with no design-scoped rule earns nothing and would otherwise
-      // vanish from the reckoning without a word.
-      const items = payItemsOf(job)
-      const price = Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)
-      const design = payProduction(mine, items, earnedOn, types, 'disain', price)
+      // vanish from the reckoning without a word. Only the parts they actually
+      // designed are examined — a rule missing for the OTHER designer's items is
+      // that person's problem and shows up on their own row.
+      const price = (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0))
+        * priceShare(payItemsOf(job), designItems)
+      const design = payProduction(mine, designItems, earnedOn, types, 'disain', price)
       if (!design) {
         add('reegel', 'Disainijaks on määratud, aga disaini eest makstavat reeglit ei ole', job)
         continue

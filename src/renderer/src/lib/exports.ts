@@ -8,6 +8,7 @@
  */
 import { toCsv, csvFileName, type CsvColumn } from '@shared/export/csv'
 import type { Job } from '../types/job'
+import { jobDesigners } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { Customer } from '../types/customer'
 import type { WorkerPayout } from '../hooks/useWorkerPay'
@@ -58,7 +59,10 @@ export function jobColumns(
     { header: 'Mudel ID',      value: j => j.mudel_id ?? null },
     { header: 'Masin',         value: j => j.masina },
     { header: 'Teostaja',      value: j => workerName(j.assigned_to) },
-    { header: 'Disainija',     value: j => workerName(j.designed_by) },
+    // Every designer on the job, not just the one named at job level: a case
+    // split between two of them exported one name and read as if the other had
+    // done nothing.
+    { header: 'Disainija',     value: j => jobDesigners(j).map(workerName).join(', ') },
     { header: 'Kiirtöö',       value: j => j.kiirtoo },
     { header: 'Tähtaeg',       value: j => j.valmis_aeg },
     { header: 'Valmis',        value: j => j.valmis_kuupaev },

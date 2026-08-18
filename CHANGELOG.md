@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.37.0] — 2026-08-18
+
+**Disainija tööosa kaupa**
+
+Ühel tööl võib olla kroone ja laminaate, mille disainivad eri inimesed.
+`designed_by` oli üks nimi kogu töö peale, nii et tasuarvestus maksis kogu
+disaini ühele neist ja teine ei saanud oma osa eest midagi.
+
+- `WorkItem.designed_by` — tööosa oma disainija. Puudub = „sama mis tööl",
+  täpselt see, mida iga varem kirjutatud tööosa tähendas. `work_items` on JSONB,
+  migratsiooni ei olnud vaja
+- Töö lehel uus plokk „Disainija tööosade kaupa" — üks rippmenüü tööosa kohta,
+  nähtav ainult mitme tööosaga tööl. Ülemine „Disainija" jääb vaikeväärtuseks
+- Tööosa siltidel näitab ✎ märgis oma disainija eesnime, et jagatud juhtum oleks
+  ühe pilguga näha
+- Tasuarvestus maksab igale disainijale ainult tema enda tööosade eest.
+  Protsendireegel jagatakse hammaste järgi — muidu makstaks sama disainihind
+  kaks korda välja. Lisatasureeglid (nt igeme disain) samuti tööosade kaupa
+- Sama loogika muudatustel: tööosa disainija, siis muudatuse oma, siis töö oma
+- Omahind, palgadiagnostika ja CSV eksport („Disainija" veerus kõik nimed)
+  arvestavad nüüd kõiki disainijaid
+
 ## [1.36.2] — 2026-08-17
 
 **Valmis veergu lohistatud töö kadus ära**
