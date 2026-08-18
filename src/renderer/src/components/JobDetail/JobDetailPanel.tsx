@@ -314,6 +314,14 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         const tId = form.assigned_to
         const tRates = tId ? allRates.filter(r => r.profile_id === tId) : []
 
+        // What a rush costs the lab, per person — the same number the payslip
+        // uses. Fixed rates only: a percentage rule rides on the job's price,
+        // which already carries the clinic's rush multiplier.
+        const rushOf = (id: string | null | undefined): number =>
+          form.kiirtoo && id ? (costWorkers.find(w => w.id === id)?.kiirtoo_kordaja ?? 1) : 1
+        const rushTag = (m: number) => (m !== 1 ? ` ×${m} kiirtöö` : '')
+        const tRush = rushOf(tId)
+
         // Sum production rates across all work items
         type CostLine = { label: string; amount: number }
         const techLines: CostLine[] = []
@@ -321,8 +329,18 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           const tc = toothCountOf(item.hambad)
           const rate = tId ? pickRateFor(tRates, item.too, today, settings.tooTuubid, 'too') : null
           if (rate) {
-            const amt = rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0
-            if (amt > 0) techLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €`, amount: amt })
+            const amt = (rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0) * tRush
+            if (amt > 0) techLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €${rushTag(tRush)}`, amount: amt })
+          }
+        }
+        // The model. Its own scope, so it adds to the production rate rather
+        // than competing with it — printing one is work the technician did.
+        if (form.mudel && tId) {
+          const mRate = pickRateFor(tRates, workItems[0]?.too, today, settings.tooTuubid, 'mudel')
+          if (mRate) {
+            const tc = toothCountOf(allHambad)
+            const amt = (mRate.kind === 'hammas' ? tc * mRate.amount : mRate.kind === 'too' ? mRate.amount : 0) * tRush
+            if (amt > 0) techLines.push({ label: `Mudel: 1 × ${mRate.amount} €${rushTag(tRush)}`, amount: amt })
           }
         }
         // Additive rules (e.g. "igeme disain" per tooth on Allon types)
@@ -335,8 +353,8 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           })
           if (covered.length === 0) continue
           const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
-          const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
-          if (amt > 0) techLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €`, amount: amt })
+          const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * tRush
+          if (amt > 0) techLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €${rushTag(tRush)}`, amount: amt })
         }
         const tCost = Math.round(techLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
 
@@ -356,11 +374,12 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           const dId = designerOf(item)
           if (!dId) continue
           const dRates = allRates.filter(r => r.profile_id === dId)
+          const dRush = rushOf(dId)
           const tc = toothCountOf(item.hambad)
           const rate = pickRateFor(dRates, item.too, today, settings.tooTuubid, 'disain')
           if (rate) {
-            const amt = rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0
-            if (amt > 0) designLines.push({ label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €`, amount: amt })
+            const amt = (rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0) * dRush
+            if (amt > 0) designLines.push({ label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €${rushTag(dRush)}`, amount: amt })
           }
         }
         // Additive design rules — each designer's, over only the items they
@@ -368,6 +387,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         // designed the laminates.
         for (const dId of designerIds) {
           const theirs = workItems.filter(i => designerOf(i) === dId)
+          const dRush = rushOf(dId)
           for (const r of allRates.filter(r => r.profile_id === dId)) {
             if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
             const covered = theirs.filter(i => {
@@ -377,8 +397,8 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             })
             if (covered.length === 0) continue
             const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
-            const amt = r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0
-            if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €`, amount: amt })
+            const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * dRush
+            if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €${rushTag(dRush)}`, amount: amt })
           }
         }
         const dCost = Math.round(designLines.reduce((s, l) => s + l.amount, 0) * 100) / 100

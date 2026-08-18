@@ -112,7 +112,12 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     payouts,
     rates,
     hours,
-    workers: workers.map(w => ({ id: w.id, full_name: w.full_name, toosuhe: w.toosuhe })),
+    workers: workers.map(w => ({
+      id: w.id, full_name: w.full_name, toosuhe: w.toosuhe,
+      // Without this the lab cost of every rush job is understated by exactly
+      // the uplift the payroll screen does pay out.
+      kiirtoo_kordaja: w.kiirtoo_kordaja,
+    })),
     types: wt.types,
     materialCosts: settings.materialCosts,
     materialPrices: settings.materialPrices,

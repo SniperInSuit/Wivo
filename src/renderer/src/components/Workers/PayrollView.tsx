@@ -37,7 +37,7 @@ import { describeError } from '../Patients/errors'
 import { exportCsv, payoutColumns, payoutLineColumns } from '../../lib/exports'
 
 const KINDS: RateKind[] = ['hammas', 'too', 'protsent', 'tund', 'kuu']
-const SCOPES: RateScope[] = ['too', 'disain', 'muudatus']
+const SCOPES: RateScope[] = ['too', 'disain', 'muudatus', 'mudel']
 
 /** Kinds that pay for a piece of work, so they can be scoped and type-targeted.
  *  'tund' and 'kuu' belong to the period and have nothing to point at. */
@@ -122,6 +122,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
       periodEnd: period.end,
       doneStageKey,
       alreadyPaid,
+      rushMultiplier: w.kiirtoo_kordaja ?? 1,
     })
     const periodPayouts = payouts.filter(
       p => p.profile_id === w.id && p.period_start === period.start
@@ -152,6 +153,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
       issues: diagnoseEarnings({
         profileId: w.id, rates, jobs, hours, types: wt.types,
         periodStart: period.start, periodEnd: period.end, doneStageKey, alreadyPaid,
+        rushMultiplier: w.kiirtoo_kordaja ?? 1,
       }).filter(iss => iss.code !== 'makstud'),
       // jobHasDesigner, not `designed_by === w.id`: someone who designed only
       // the laminates on a split case still has that job counted for them.
@@ -435,6 +437,9 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                   />
                 )}
                 {isOwner && (
+                  <RushPicker profileId={worker.id} value={worker.kiirtoo_kordaja ?? null} />
+                )}
+                {isOwner && (
                   <RateEditor profileId={worker.id} rates={workerRates} />
                 )}
 
@@ -617,6 +622,90 @@ function EngagementPicker({ profileId, value }: { profileId: string; value: Enga
   )
 }
 
+/**
+ * What a rush job pays THIS person, as a multiplier on their piece rates.
+ *
+ * Per worker and not one number in Seaded, because the two multipliers answer
+ * different questions. `settings.kiirtooKordaja` is what the CUSTOMER pays for
+ * a rush — it is already baked into `job.hind` by the time the job is saved.
+ * How much of that uplift reaches the bench is an agreement with each person:
+ * one gets the same 2×, another 1.5×, a salaried technician nothing at all. A
+ * single field for both meant raising the rush price quietly raised the payroll.
+ *
+ * Empty = 1× and nothing is added, which is exactly how every payout before
+ * this behaved — so nobody's past pay moved when this shipped.
+ */
+function RushPicker({ profileId, value }: { profileId: string; value: number | null }) {
+  const qc = useQueryClient()
+  const { settings } = useSettings()
+  const [draft, setDraft] = useState(value != null ? String(value) : '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function commit() {
+    const raw = draft.trim()
+    // Blank and "1" are the same answer — store null so the field reads as
+    // unset rather than as a deliberate 1.00 somebody once typed.
+    const next = raw === '' || parseFloat(raw) === 1 ? null : parseFloat(raw)
+    if (raw !== '' && (!Number.isFinite(next as number) && next !== null)) {
+      setError('Sisesta kordaja, nt 2 või 1.5.'); return
+    }
+    if (next === value) return
+    setSaving(true); setError(null)
+    try {
+      await updateProfile(profileId, { kiirtoo_kordaja: next })
+      await qc.invalidateQueries({ queryKey: ['clinic_profiles'] })
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section>
+      <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+        Kiirtöö kordaja
+      </h4>
+      <div className="flex items-center gap-2">
+        <div className="relative w-24">
+          <input
+            type="number" min="1" step="0.1" value={draft}
+            disabled={saving}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            placeholder="1"
+            className="input py-1.5 pr-7 text-sm text-right"
+          />
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint pointer-events-none">
+            ×
+          </span>
+        </div>
+        <div className="flex gap-1">
+          {[1.5, 2].map(m => (
+            <button
+              key={m}
+              type="button"
+              disabled={saving}
+              onClick={() => { setDraft(String(m)); void updateProfile(profileId, { kiirtoo_kordaja: m }).then(() => qc.invalidateQueries({ queryKey: ['clinic_profiles'] })) }}
+              className="text-[11px] font-medium px-2 py-1 rounded-md bg-bg-sidebar text-ink-muted hover:text-ink transition-colors disabled:opacity-50"
+            >
+              {m}×
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
+        Kiirtööl korrutatakse selle inimese hamba- ja töötasu selle arvuga.
+        Tühi = 1×, ülekurssi ei maksta. Protsendireeglit ei korrutata — töö hind
+        kannab kliiniku kordajat ({settings.kiirtooKordaja}×) juba endas, nii et
+        protsent kasvab niigi.
+      </p>
+      {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+    </section>
+  )
+}
+
 // ─── Payout delete ────────────────────────────────────────────────────────────
 // Two clicks, and a louder warning once the money is marked as paid — undoing a
 // Expandable payout row — shows lines (jobs) when expanded
@@ -791,9 +880,13 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         sama hinna jaoks ei pea kirjutama kümmet ühesugust reeglit.
         <br />
         <strong className="text-ink-muted">Mille eest</strong> ütleb, mida reegel katab:
-        teostatud töö, disain või muudatus. Muudatustele oma hinna panekuks lisa eraldi
-        reegel "Muudatus" — nt 8 €/hammas. Kui muudatuse reeglit ei ole, katab tööreegel
-        muudatused ainult siis, kui sellel on linnuke "Katab ka muudatused".
+        teostatud töö, disain, muudatus või mudel. Muudatustele oma hinna panekuks lisa
+        eraldi reegel "Muudatus" — nt 8 €/hammas. Kui muudatuse reeglit ei ole, katab
+        tööreegel muudatused ainult siis, kui sellel on linnuke "Katab ka muudatused".
+        <br />
+        <strong className="text-ink-muted">Mudel</strong> makstakse tööle, millel on
+        mudeli märge — lisandub tootmistasule, ei võistle sellega. Kõige tavalisem on
+        "Töö tasu (fikseeritud)", nt 5 € mudeli kohta.
       </p>
 
       <div className="space-y-1 mb-3">
@@ -821,6 +914,11 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             {(r.applies_to ?? 'too') === 'muudatus' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700">
                 muudatuste eest
+              </span>
+            )}
+            {(r.applies_to ?? 'too') === 'mudel' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                mudeli eest
               </span>
             )}
             {r.kind === 'tund' && r.auto_hours && (

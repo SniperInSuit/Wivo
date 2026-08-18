@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.39.0] — 2026-08-18
+
+**Kiirtöö ja mudel jõuavad palgalehele**
+
+Kaks auku, mis mõlemad lõppesid kliendi arvel ja töötasuni ei jõudnud.
+**Vajab migratsiooni `sql/048_worker_rush_and_model.sql`.**
+
+- **Kiirtöö** korrutas ainult kliendi hinda — `quoteJob` paneb ülekursi
+  `job.hind` sisse ja sinna see jäigi. Palgamootor ei vaadanud `job.kiirtoo`
+  välja üldse, nii et 15 €/hammas jäi kiirtööl 15 €-ks
+- Kordaja on nüüd **inimese Töötasud lehel**, mitte üks number Seadetes.
+  Kliiniku kordaja on HIND, mida klient maksab; kui palju sellest jõuab
+  tegijani, on iga inimesega eraldi kokku lepitud. Üks väli mõlema jaoks
+  tähendas, et kliendi hinna tõstmine tõstab vaikselt kõigi palka
+- **Tühi = 1×**, ülekurssi ei maksta. Ükski juba tehtud töö tasu ei muutunud —
+  kordaja tuleb teadlikult sisse panna
+- Protsendireeglit **ei korrutata**: töö hind kannab kliiniku kordajat juba
+  endas, teistkordne korrutamine maksaks ülekursi kaks korda välja
+- Muudatusel on oma kiirtöö lipp ja see loeb muudatuse ridadel
+- Palgalehe real on nüüd „· kiirtöö ×2" juures, et number oleks kontrollitav
+- **Mudel** sai oma tasureegli — „Mille eest → Mudel". Lisandub tootmistasule,
+  ei võistle sellega, ja fikseeritud reegel maksab korra töö kohta. Mudel
+  muudatusel tasustatakse ainult reegliga, millel on „Katab ka muudatused"
+- Diagnostika ütleb välja: „Tööl on mudel, aga mudeli eest makstavat reeglit
+  ei ole"
+- Omahind töö lehel ja Rahanduse tööjõukulu arvestavad mõlemat
+
 ## [1.38.2] — 2026-08-18
 
 **`NEXT.md` — seis, mis rändab kaasa**

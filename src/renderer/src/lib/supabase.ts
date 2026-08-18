@@ -48,6 +48,16 @@ export interface Profile {
   // Palgal või esitab arve. Määrab, kas summa on brutopalk (millele lisanduvad
   // tööandja maksud) või ostuarve (mille maksud on esitaja enda asi).
   toosuhe?: Engagement
+  /**
+   * What this person's piece rates are multiplied by on a rush job. Null or 1
+   * means the uplift is not shared with them.
+   *
+   * NOT `settings.kiirtooKordaja`: that one is the price the CUSTOMER pays for
+   * a rush, and how much of it reaches the bench is a separate agreement with
+   * each person. One field for both would have meant raising the rush price
+   * quietly raised everyone's pay.
+   */
+  kiirtoo_kordaja?: number | null
   /** Login name for accounts without a real mailbox. */
   username?: string | null
   clinic_id: string | null
@@ -134,7 +144,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfile(
   userId: string,
-  updates: Partial<Pick<Profile, 'full_name' | 'toosuhe'>>
+  updates: Partial<Pick<Profile, 'full_name' | 'toosuhe' | 'kiirtoo_kordaja'>>
 ) {
   const { data, error } = await supabase
     .from('profiles')

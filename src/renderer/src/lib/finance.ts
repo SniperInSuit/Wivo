@@ -215,7 +215,7 @@ export interface FinanceInput {
   payouts: WorkerPayout[]
   rates: WorkerRate[]
   hours: WorkHours[]
-  workers: { id: string; full_name: string; toosuhe?: string | null }[]
+  workers: { id: string; full_name: string; toosuhe?: string | null; kiirtoo_kordaja?: number | null }[]
   types: WorkType[]
   materialCosts: Record<string, MaterialPricing>
   /** Selling prices — used as fallback when materialCosts has no entry. */
@@ -286,6 +286,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       profileId: w.id, rates, jobs, hours, types,
       periodStart, periodEnd, doneStageKey,
       alreadyPaid: new Set(),   // gross accrual, not "what is still owed"
+      rushMultiplier: w.kiirtoo_kordaja ?? 1,
     })
     const earned = earningsTotal(lines)
     const paidOut = round2(payouts
@@ -446,6 +447,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       profileId: w.id, rates, jobs, hours, types,
       periodStart, periodEnd, doneStageKey, alreadyPaid: new Set(),
       includeMonthly: false,   // salary belongs to nobody's work type
+      rushMultiplier: w.kiirtoo_kordaja ?? 1,
     })
     for (const l of lines) {
       if (!l.job_id) continue
@@ -506,6 +508,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     const lines = calculateEarnings({
       profileId: w.id, rates, jobs, hours, types,
       periodStart, periodEnd, doneStageKey, alreadyPaid: new Set(), includeMonthly: false,
+      rushMultiplier: w.kiirtoo_kordaja ?? 1,
     })
     for (const l of lines) {
       if (!l.revision_id || !l.job_id) continue

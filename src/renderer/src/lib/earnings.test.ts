@@ -639,3 +639,159 @@ describe('two designers on one job', () => {
     expect(issues.some(i => i.code === 'reegel')).toBe(true)
   })
 })
+
+describe('kiirtöö uplift', () => {
+  // Same shape as the one in `revisions` above; scoped per describe so a change
+  // to one block's fixture cannot quietly retune another's expectations.
+  const revision = (over: Partial<Revision> = {}): Revision => ({
+    id: `rev-${++seq}`,
+    ts: '2026-08-05T10:00:00Z',
+    note: 'Uuesti',
+    status: DONE,
+    valmis_kuupaev: '2026-08-12',
+    ...over,
+  })
+
+  const rush = (rates: WorkerRate[], jobs: Job[], rushMultiplier: number, profileId = TECH) =>
+    calculateEarnings({
+      profileId, rates, jobs, hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+      rushMultiplier,
+    })
+
+  it('multiplies a per-tooth rate on a rush job', () => {
+    const lines = rush(
+      [rate({ kind: 'hammas', amount: 15 })],
+      [job({ kiirtoo: true, work_items: [item('Kroon', '11,12,13')] })],
+      2
+    )
+    expect(earningsTotal(lines)).toBe(90)   // 3 × 15 × 2
+    // qty × rate has to reach the amount, or the line cannot be checked.
+    expect(lines[0].qty * lines[0].rate).toBe(90)
+    expect(lines[0].description).toContain('kiirtöö ×2')
+  })
+
+  it('multiplies a flat per-job rate too', () => {
+    const lines = rush(
+      [rate({ kind: 'too', amount: 200 })],
+      [job({ kiirtoo: true, work_items: [item('All-on-X', '11,12')] })],
+      1.5
+    )
+    expect(earningsTotal(lines)).toBe(300)
+  })
+
+  it('leaves a percentage rule alone — the price already carries the rush', () => {
+    // quoteJob multiplies production by the clinic multiplier BEFORE the price
+    // is stored, so a percentage of that price has the uplift in it already.
+    const lines = rush(
+      [rate({ kind: 'protsent', amount: 40 })],
+      [job({ kiirtoo: true, hind: 200, work_items: [item('Kroon', '11,12')] })],
+      2
+    )
+    expect(earningsTotal(lines)).toBe(80)   // 40% of 200, not of 400
+  })
+
+  it('does not touch an ordinary job', () => {
+    const lines = rush(
+      [rate({ kind: 'hammas', amount: 15 })],
+      [job({ kiirtoo: false, work_items: [item('Kroon', '11,12') ] })],
+      2
+    )
+    expect(earningsTotal(lines)).toBe(30)
+    expect(lines[0].description).not.toContain('kiirtöö')
+  })
+
+  it('changes nothing for a worker with no multiplier of their own', () => {
+    // The whole back-compat guarantee: 1 is the default, so shipping this moved
+    // nobody's pay until somebody was given a number.
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 15 })],
+      [job({ kiirtoo: true, work_items: [item('Kroon', '11,12')] })]
+    )
+    expect(earningsTotal(lines)).toBe(30)
+  })
+
+  it('follows the revision’s own rush flag, not the job’s', () => {
+    const lines = rush(
+      [rate({ kind: 'hammas', amount: 10, applies_to: 'muudatus' })],
+      [job({
+        kiirtoo: false,
+        work_items: [item('Kroon', '11')],
+        revisions: [revision({ kiirtoo: true, work_items: [item('Kroon', '11,12')] })],
+      })],
+      2
+    )
+    expect(earningsTotal(lines)).toBe(40)   // 2 teeth × 10 × 2
+  })
+})
+
+describe('mudel', () => {
+  // Same shape as the one in `revisions` above; scoped per describe so a change
+  // to one block's fixture cannot quietly retune another's expectations.
+  const revision = (over: Partial<Revision> = {}): Revision => ({
+    id: `rev-${++seq}`,
+    ts: '2026-08-05T10:00:00Z',
+    note: 'Uuesti',
+    status: DONE,
+    valmis_kuupaev: '2026-08-12',
+    ...over,
+  })
+
+  it('pays a flat model rule once on a job with a model', () => {
+    const lines = run(
+      [
+        rate({ kind: 'hammas', amount: 15 }),
+        rate({ kind: 'too', amount: 5, applies_to: 'mudel' }),
+      ],
+      [job({ mudel: true, work_items: [item('Kroon', '11,12'), item('Sild', '24,25')] })]
+    )
+    // The model adds to the production line, it does not replace it: 4 × 15 + 5.
+    expect(earningsTotal(lines)).toBe(65)
+    expect(lines.some(l => l.description.startsWith('Mudel:'))).toBe(true)
+  })
+
+  it('pays nothing for a model when the job has none', () => {
+    const lines = run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })],
+      [job({ mudel: false, work_items: [item('Kroon', '11')] })]
+    )
+    expect(lines).toHaveLength(0)
+  })
+
+  it('does not let a model rule compete with the production rule', () => {
+    // Its own scope, so pickRateFor never sees it while choosing how the work
+    // itself is paid — the failure a fourth "kind" would have caused.
+    const lines = run(
+      [
+        rate({ kind: 'hammas', amount: 15 }),
+        rate({ kind: 'too', amount: 500, applies_to: 'mudel', priority: 99 }),
+      ],
+      [job({ mudel: false, work_items: [item('Kroon', '11,12')] })]
+    )
+    expect(earningsTotal(lines)).toBe(30)
+  })
+
+  it('leaves a model on a remake unpaid unless the rule covers rework', () => {
+    const j = () => job({
+      work_items: [item('Kroon', '11')],
+      revisions: [revision({ mudel: true, work_items: [item('Kroon', '11')] })],
+    })
+    expect(earningsTotal(run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })], [j()]
+    ))).toBe(0)
+    expect(earningsTotal(run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel', pay_revisions: true })], [j()]
+    ))).toBe(5)
+  })
+
+  it('names a missing model rule in the diagnostics', () => {
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 })],
+      jobs: [job({ mudel: true, work_items: [item('Kroon', '11')] })],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    expect(issues.some(i => i.label.includes('mudel'))).toBe(true)
+  })
+})

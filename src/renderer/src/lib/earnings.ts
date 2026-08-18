@@ -41,12 +41,13 @@ export type RateKind = 'tund' | 'hammas' | 'too' | 'protsent' | 'kuu'
  * design, and a rule that had to declare itself "extra" instead of "design"
  * left the lab with nowhere to put the ordinary design rule. See sql/040.
  */
-export type RateScope = 'too' | 'disain' | 'muudatus'
+export type RateScope = 'too' | 'disain' | 'muudatus' | 'mudel'
 
 export const RATE_SCOPE_LABEL: Record<RateScope, string> = {
   too:      'Teostatud töö',
   disain:   'Disain',
   muudatus: 'Muudatus (ümbertegemine)',
+  mudel:    'Mudel',
 }
 
 export const RATE_KIND_LABEL: Record<RateKind, string> = {
@@ -330,7 +331,7 @@ export interface ProductionPay {
  */
 function payAdditive(
   mine: WorkerRate[], items: PayItem[], isoDate: string, types: WorkType[],
-  scope: RateScope, price: number
+  scope: RateScope, price: number, rush = 1
 ): { rule: WorkerRate; amount: number; qty: number }[] {
   const out: { rule: WorkerRate; amount: number; qty: number }[] = []
   for (const r of mine) {
@@ -346,8 +347,9 @@ function payAdditive(
     let amount = 0
     let qty = 1
     switch (r.kind) {
-      case 'hammas':   amount = teeth * r.amount; qty = teeth; break
-      case 'too':      amount = r.amount * covered.length; qty = covered.length; break
+      case 'hammas':   amount = teeth * r.amount * rush; qty = teeth; break
+      case 'too':      amount = r.amount * covered.length * rush; qty = covered.length; break
+      // NOT uplifted. See payProduction — the price already carries the rush.
       case 'protsent': amount = price * r.amount / 100; break
     }
     if (amount <= 0) continue
@@ -360,9 +362,16 @@ function payAdditive(
 const additiveLabel = (r: WorkerRate): string =>
   r.label?.trim() || (r.applies_to === 'disain' ? 'Lisatasu disaini eest' : 'Lisatasu')
 
+/**
+ * @param rush What a piece rate is multiplied by on a rush job. Applies to the
+ *   FIXED methods only — per tooth and per job. A percentage rule is left
+ *   alone deliberately: `quoteJob` already multiplies the job's price by the
+ *   clinic's rush multiplier before it is stored, so a percentage of that price
+ *   has the uplift in it and scaling it again would pay the rush out twice.
+ */
 function payProduction(
   mine: WorkerRate[], items: PayItem[], isoDate: string, types: WorkType[],
-  scope: RateScope, price: number
+  scope: RateScope, price: number, rush = 1
 ): ProductionPay | null {
   const groups = new Map<string, { rate: WorkerRate; teeth: number }>()
   const unmatched: string[] = []
@@ -386,10 +395,10 @@ function payProduction(
   for (const g of groups.values()) {
     switch (g.rate.kind) {
       case 'hammas':
-        amount += g.teeth * g.rate.amount
+        amount += g.teeth * g.rate.amount * rush
         break
       case 'too':
-        amount += g.rate.amount
+        amount += g.rate.amount * rush
         break
       case 'protsent': {
         // A percentage is of the JOB's price, which belongs to the job and not
@@ -414,7 +423,9 @@ function payProduction(
   // also holds hours and job counts, and a mixed job's "14" would be summed
   // into a total of nothing.
   const qty = allPerTooth ? matchedTeeth : 1
-  const rate = groupList.length === 1
+  // The uplifted rate, not the one in the rule: a payslip line whose qty × rate
+  // does not reach its own amount is a line nobody can check.
+  const rate = groupList.length === 1 && rush === 1
     ? groupList[0].rate.amount
     : (qty > 0 ? round2(amount / qty) : round2(amount))
 
@@ -447,6 +458,17 @@ export interface EarningsContext {
   alreadyPaid?: Set<string>
   /** Count part-periods of a monthly salary — off by default, see below. */
   includeMonthly?: boolean
+  /**
+   * What this person's piece rates are multiplied by on a RUSH job. 1 = the
+   * uplift is not shared with them, which is what every payout before this
+   * existed meant, so leaving it out changes nothing.
+   *
+   * Per worker and not per clinic on purpose: `settings.kiirtooKordaja` is the
+   * price the CUSTOMER pays, and how much of that reaches the bench is a
+   * separate agreement with each person. One number for both would have meant
+   * raising the customer's rush price quietly raised everybody's pay.
+   */
+  rushMultiplier?: number
 }
 
 /**
@@ -460,6 +482,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
   const {
     profileId, rates, jobs, hours, types, periodStart, periodEnd,
     doneStageKey, alreadyPaid = new Set(), includeMonthly = true,
+    rushMultiplier = 1,
   } = ctx
 
   const mine = rates.filter(r => r.profile_id === profileId)
@@ -492,16 +515,22 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // person designed the whole thing.
     const designShare = priceShare(items, designItems)
     const countable = jobDone && inPeriod(earnedOn)
+    // A rush job's piece rates, uplifted by this person's own share of a rush.
+    // 1 unless a multiplier was set for them, so nothing moves by default.
+    const rush = job.kiirtoo ? rushMultiplier : 1
+    // Said out loud on the line: "45.00 €" against a 15 €/tooth rule and three
+    // teeth is a number the person has to be able to check for themselves.
+    const rushNote = rush !== 1 ? ` · kiirtöö ×${rush}` : ''
 
     if (isTech && countable && !alreadyPaid.has(`job:${job.id}`)) {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-      const pay = payProduction(mine, items, earnedOn, types, 'too', price)
+      const pay = payProduction(mine, items, earnedOn, types, 'too', price, rush)
       if (pay && pay.amount > 0) {
         lines.push({
           key: `job:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `${label} · ${job.patsient}`,
+          description: `${label} · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -513,13 +542,33 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // to someone who did no other part of the job.
     if (isDesigner && countable && !alreadyPaid.has(`design:${job.id}`)) {
       const price = (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
-      const pay = payProduction(mine, designItems, earnedOn, types, 'disain', price)
+      const pay = payProduction(mine, designItems, earnedOn, types, 'disain', price, rush)
       if (pay && pay.amount > 0) {
         lines.push({
           key: `design:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Disain: ${designLabel} · ${job.patsient}`,
+          description: `Disain: ${designLabel} · ${job.patsient}${rushNote}`,
+          qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
+        })
+      }
+    }
+
+    // The model. `settings.mudeliHind` puts one on the customer's bill and
+    // stopped there, but printing and finishing a model is bench work and there
+    // was nowhere to say what it pays. Its own scope, so it lands ON TOP of the
+    // production rule rather than competing with it, and a flat rule pays once
+    // per job however many work items the case holds. Paid to the technician —
+    // the model is made, not designed.
+    if (isTech && countable && job.mudel && !alreadyPaid.has(`mudel:${job.id}`)) {
+      const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
+      const pay = payProduction(mine, items, earnedOn, types, 'mudel', price, rush)
+      if (pay && pay.amount > 0) {
+        lines.push({
+          key: `mudel:${job.id}`,
+          job_id: job.id, revision_id: null, work_hours_id: null,
+          kind: pay.kind,
+          description: `Mudel: ${label} · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -540,7 +589,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         const price = scope === 'disain'
           ? (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
           : Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-        for (const extra of payAdditive(mine, scopeItems, earnedOn, types, scope, price)) {
+        for (const extra of payAdditive(mine, scopeItems, earnedOn, types, scope, price, rush)) {
           // Keyed by RULE, so two extras on one job stay two payable lines and
           // freezing one never suppresses the other.
           const key = `extra:${extra.rule.id}:${job.id}`
@@ -549,7 +598,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key,
             job_id: job.id, revision_id: null, work_hours_id: null,
             kind: extra.rule.kind,
-            description: `${additiveLabel(extra.rule)}: ${scopeLabel} · ${job.patsient}`,
+            description: `${additiveLabel(extra.rule)}: ${scopeLabel} · ${job.patsient}${rushNote}`,
             qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
             earned_on: earnedOn,
           })
@@ -583,21 +632,25 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
 
       const revItems = revisionPayItems(rev, job)
       const revPrice = Number(rev.price ?? 0)
+      // A remake carries its OWN rush flag — the original may have been routine
+      // and the redo needed by Friday, or the other way round.
+      const revRush = rev.kiirtoo ? rushMultiplier : 1
+      const revRushNote = revRush !== 1 ? ` · kiirtöö ×${revRush}` : ''
 
       // A revision-specific rule wins. Only when there is none does the job's
       // own rule apply, and then only if it says it covers rework — which is
       // how this behaved before revisions could be priced separately.
       if (isRevTech && !alreadyPaid.has(`rev:${job.id}:${rev.id}`)) {
-        const onRevisionScope = payProduction(mine, revItems, revDate, types, 'muudatus', revPrice)
+        const onRevisionScope = payProduction(mine, revItems, revDate, types, 'muudatus', revPrice, revRush)
         const payable = mine.filter(r => r.pay_revisions)
         const pay = onRevisionScope
-          ?? payProduction(payable, revItems, revDate, types, 'too', revPrice)
+          ?? payProduction(payable, revItems, revDate, types, 'too', revPrice, revRush)
         if (pay && pay.amount > 0) {
           lines.push({
             key: `rev:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: pay.kind,
-            description: `Muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}`,
+            description: `Muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}${revRushNote}`,
             qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: revDate,
           })
         }
@@ -612,14 +665,31 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       const designPayable = mine.filter(r => r.pay_revisions)
       if (isRevDesigner && !alreadyPaid.has(`revdesign:${job.id}:${rev.id}`)) {
         const revDesignPrice = revPrice * priceShare(revItems, revDesignItems)
-        const design = payProduction(designPayable, revDesignItems, revDate, types, 'disain', revDesignPrice)
+        const design = payProduction(designPayable, revDesignItems, revDate, types, 'disain', revDesignPrice, revRush)
         if (design && design.amount > 0) {
           lines.push({
             key: `revdesign:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: design.kind,
-            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revDesignItems)} · ${job.patsient}`,
+            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revDesignItems)} · ${job.patsient}${revRushNote}`,
             qty: design.qty, rate: design.rate, amount: design.amount, earned_on: revDate,
+          })
+        }
+      }
+
+      // A model printed for the remake. Same gate as the redesign above: rework
+      // is unpaid unless a rule says it covers it, and the model on a remake is
+      // part of that rework however new the physical model is.
+      if (isRevTech && rev.mudel && !alreadyPaid.has(`revmudel:${job.id}:${rev.id}`)) {
+        const modelPayable = mine.filter(r => r.pay_revisions)
+        const model = payProduction(modelPayable, revItems, revDate, types, 'mudel', revPrice, revRush)
+        if (model && model.amount > 0) {
+          lines.push({
+            key: `revmudel:${job.id}:${rev.id}`,
+            job_id: job.id, revision_id: rev.id, work_hours_id: null,
+            kind: model.kind,
+            description: `Mudel, muudatus #${i + 1} · ${job.patsient}${revRushNote}`,
+            qty: model.qty, rate: model.rate, amount: model.amount, earned_on: revDate,
           })
         }
       }
@@ -627,14 +697,14 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       // Extras on a remake. Scoped to 'muudatus', so redoing the gum work is
       // paid without the ordinary gum rule firing on every original job too.
       if (!isRevTech) continue
-      for (const extra of payAdditive(mine, revItems, revDate, types, 'muudatus', revPrice)) {
+      for (const extra of payAdditive(mine, revItems, revDate, types, 'muudatus', revPrice, revRush)) {
         const key = `extra:${extra.rule.id}:${job.id}:${rev.id}`
         if (alreadyPaid.has(key)) continue
         lines.push({
           key,
           job_id: job.id, revision_id: rev.id, work_hours_id: null,
           kind: extra.rule.kind,
-          description: `${additiveLabel(extra.rule)} (muudatus #${i + 1}) · ${job.patsient}`,
+          description: `${additiveLabel(extra.rule)} (muudatus #${i + 1}) · ${job.patsient}${revRushNote}`,
           qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
           earned_on: revDate,
         })
@@ -787,6 +857,11 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         add('reegel',
           `Osa tööosi jääb tasustamata — neile ei sobi ükski reegel: ${[...new Set(pay.unmatched)].join(', ')}`,
           job)
+      }
+      // A model on the job with no rule to pay it is silent money: the job is
+      // paid, the line for the model simply never appears.
+      if (job.mudel && !payProduction(mine, items, earnedOn, types, 'mudel', price)) {
+        add('reegel', 'Tööl on mudel, aga mudeli eest makstavat reeglit ei ole', job)
       }
       if (pay.amount === 0 && pay.kind === 'hammas') {
         add('hambad', 'Tasu on hamba kohta, aga tööosadel ei ole hambaid valitud', job)
