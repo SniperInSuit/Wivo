@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.38.1] — 2026-08-18
+
+**Disainija küsiti kaks korda**
+
+1.37.0 pani tööosade read job-taseme „Disainija" kasti ALLA, nii et sama küsimus
+oli ekraanil kaks korda ja ei olnud näha, kumb vastus loeb.
+
+- Kaks kontrolli on nüüd alternatiivid, mitte kihid — täpselt nagu masinavalik.
+  Üks tööosa → üks „Disainija" kast. Mitu tööosa → ainult read, üks tööosa kohta
+- Rida näitab **tegelikku** disainijat (päritud nimi kaasa arvatud), mitte
+  „sama mis tööl" — nii ei näita ükski rida tühja välja töö eest, millel on
+  disainija olemas
+- `WorkItem.designed_by` on nüüd kolm olekut: **puudub** = päri töölt,
+  **id** = see inimene, **null** = mitte keegi. Null on vajalik, sest jagatud
+  tööl ei ole job-taseme välja ekraanil, ja „laminaadid tellisime väljast" pidi
+  olema öeldav. `??` oleks null tagasi töö disainijaks muutnud ja talle maksnud
+- Salvestamine teeb valiku lõplikuks: jagatud tööl saab iga tööosa oma nime
+  kirja, jagamata tööl ei kanna ükski tööosa nime. Muidu muutus tööosa disainija
+  vaikselt siis, kui `job.designed_by` liikus
+- ✎ märgis tööosa sildil ainult siis, kui disainijaid on tegelikult mitu
+
 ## [1.38.0] — 2026-08-18
 
 **Patsiendi hinnakiri — avaliku veebilehe alus**

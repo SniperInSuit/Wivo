@@ -580,6 +580,24 @@ describe('two designers on one job', () => {
     expect(earningsTotal(lines)).toBe(10)
   })
 
+  it('treats an explicit null as nobody, not as "inherit"', () => {
+    // The job page hides the job-level Disainija field once a job is split, so
+    // "these laminates were outsourced" has to be sayable on the item. `??`
+    // would have collapsed that back into the job's designer and paid them.
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER })],
+      [job({
+        designed_by: DESIGNER,
+        work_items: [
+          item('Kroon', '11,12'),
+          { ...item('Laminaat', '21,22'), designed_by: null },
+        ],
+      })],
+      DESIGNER
+    )
+    expect(earningsTotal(lines)).toBe(10)  // the crowns only
+  })
+
   it('leaves a designer who owns no item unpaid', () => {
     const lines = run(
       [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER })],

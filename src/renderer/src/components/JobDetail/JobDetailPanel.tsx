@@ -4,7 +4,7 @@ import {
   X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2, ChevronDown, ChevronUp
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
-import { MATERIAL_SHADES, jobWorkItems } from '../../types/job'
+import { MATERIAL_SHADES, jobWorkItems, workItemDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
@@ -344,7 +344,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         // job. Each item's own designer, else the job's — the same fallback the
         // pay engine uses, so this figure and the payslip agree.
         const designerOf = (i: { designed_by?: string | null }): string | null =>
-          i.designed_by ?? form.designed_by ?? null
+          workItemDesigner(i, form.designed_by)
         const designerIds = [...new Set(
           workItems.map(designerOf).filter((id): id is string => !!id)
         )]
@@ -685,8 +685,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const workerNameOf = useCallback((id: string | null | undefined): string =>
     (id ? clinicWorkers.find(w => w.id === id)?.full_name : '') || '',
   [clinicWorkers])
-  // What a work item inherits when it names no designer of its own.
-  const jobDesignerName = workerNameOf(form.designed_by)
+  // Two work items or more and the designer is asked per item instead of once
+  // for the job — the two controls are alternatives, never both at once.
+  const designerPerItem = form.work_items.length > 1
+  // Two different answers among the items — the only case worth badging a chip.
+  const splitDesign = new Set(
+    form.work_items.map(i => workItemDesigner(i, form.designed_by))
+  ).size > 1
 
   // What this job is worth, by the same rules the repricer and the web order
   // form use — see shared/pricing/quote.ts. Every work item is priced on its
@@ -743,7 +748,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       hambad: form.work_items.length > 0
         ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || null
         : (form.hambad || null),
-      work_items: form.work_items,
+      // Whichever control was on screen is the one that decides. Split, every
+      // item carries its own answer, so nothing still leans on the flat column
+      // — an item left inheriting would silently change hands the moment that
+      // column moved. Unsplit, no item carries one at all, so the single field
+      // above cannot be quietly overridden by a leftover from when it was.
+      work_items: designerPerItem
+        ? form.work_items.map(i => ({ ...i, designed_by: workItemDesigner(i, form.designed_by) }))
+        : form.work_items.map(({ designed_by: _unset, ...i }) => i),
       kirjeldus: form.kirjeldus || null,
       materjal: (form.work_items.length > 1
         ? form.work_items[0]?.materjal ?? form.materjal
@@ -751,6 +763,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       masina: (form.work_items.length > 1
         ? form.work_items[0]?.masina ?? form.masina
         : form.masina) || null,
+      // Same as materjal and masina: the flat column follows the first item, so
+      // anything reading `job.designed_by` on its own — a bulk assign, an older
+      // report — sees a name the job actually has. The pay engine reads the
+      // items themselves and never depends on this.
+      designed_by: form.work_items.length > 1
+        ? workItemDesigner(form.work_items[0], form.designed_by)
+        : form.designed_by,
       print_id: form.print_id || null,
       disain_id: form.disain_id || null,
       // Follows the flag. The field is only on screen while Mudel is on, so
@@ -1301,16 +1320,21 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                                 {item.materjal}
                               </span>
                             )}
-                            {/* Its own designer, first name only — the chip row
-                                is where you SEE that the case is split. */}
-                            {item.designed_by && (
-                              <span
-                                title={`Disainija: ${workerNameOf(item.designed_by) || '—'}`}
-                                className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
-                              >
-                                ✎ {workerNameOf(item.designed_by).split(' ')[0] || '?'}
-                              </span>
-                            )}
+                            {/* First name of this item's designer, and only
+                                when the job is actually split between two of
+                                them — stamping one name on every chip would say
+                                nothing the Disainija field does not. */}
+                            {splitDesign && (() => {
+                              const d = workItemDesigner(item, form.designed_by)
+                              return (
+                                <span
+                                  title={`Disainija: ${workerNameOf(d) || '—'}`}
+                                  className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
+                                >
+                                  ✎ {workerNameOf(d).split(' ')[0] || '—'}
+                                </span>
+                              )
+                            })()}
                             {/* Bridge toggle */}
                             <span
                               role="button"
@@ -1561,36 +1585,45 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* Teostaja + Disainija — what worker pay is calculated from.
                   Two fields because design is compensated separately: often the
-                  same person, sometimes not, sometimes outsourced (leave empty). */}
+                  same person, sometimes not, sometimes outsourced (leave empty).
+
+                  Disainija is ONE field or one PER WORK ITEM, never both: a job
+                  holding crowns and laminates is routinely designed by two
+                  people, and showing the job-level select above the per-item
+                  rows asked the same question twice with no way to tell which
+                  answer won. Same shape the machine picker above already has. */}
               <div className="grid grid-cols-2 gap-4">
                 <WorkerSelect
                   label="Teostaja"
                   value={form.assigned_to}
                   onChange={v => set('assigned_to', v)}
                 />
-                <WorkerSelect
-                  label="Disainija"
-                  value={form.designed_by}
-                  onChange={v => set('designed_by', v)}
-                />
+                {!designerPerItem && (
+                  <WorkerSelect
+                    label="Disainija"
+                    value={form.designed_by}
+                    onChange={v => setForm(f => ({
+                      ...f,
+                      designed_by: v,
+                      // One field governs, so no item may quietly override it.
+                      // Without this, dropping a split job back to a single work
+                      // item would leave that item's own designer in force and
+                      // the field on screen saying someone else.
+                      work_items: f.work_items.map(({ designed_by: _drop, ...i }) => i),
+                    }))}
+                  />
+                )}
               </div>
 
-              {/* Disainija tööosade kaupa.
-                  Üks töö = üks disainija oli vale eeldus: kroonid ja laminaadid
-                  ühel ja samal juhtumil on tihti eri inimeste disainitud, ja
-                  tasuarvestus maksis siis kogu disaini ühele neist. Ülemine
-                  "Disainija" jääb vaikeväärtuseks — tööosa, mis ise kedagi ei
-                  nimeta, kuulub temale, nagu kõik enne seda välja kirjutatud
-                  tööd. Ainult mitme tööosaga tööl, muidu oleks see sama valik
-                  kaks korda kõrvuti. */}
-              {form.work_items.length > 1 && (
+              {/* Disainija, tööosa kaupa. The job-level field is gone while this
+                  is up — each row already carries the answer for its own item,
+                  seeded from whatever the job said. */}
+              {designerPerItem && (
                 <div>
                   <label className="label flex items-center gap-1.5">
-                    <UserRound size={11} /> Disainija tööosade kaupa
+                    <UserRound size={11} /> Disainija
+                    <span className="text-ink-faint font-normal ml-1">— tööosa kaupa</span>
                   </label>
-                  <p className="text-[11px] text-ink-faint mb-1.5 leading-snug">
-                    Jäta „sama mis tööl“, kui terve töö disainib üks inimene.
-                  </p>
                   <div className="space-y-1.5">
                     {form.work_items.map((item, idx) => {
                       const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
@@ -1607,9 +1640,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             </span>
                           </span>
                           <select
-                            value={item.designed_by ?? ''}
+                            // The EFFECTIVE designer, so a row never shows "—"
+                            // for an item that is in fact inheriting a name.
+                            value={workItemDesigner(item, form.designed_by) ?? ''}
                             onChange={e => {
-                              const v = e.target.value || undefined
+                              // Always explicit — null for nobody, so picking
+                              // "—" means nobody rather than falling back to
+                              // whoever the job used to name.
+                              const v = e.target.value || null
                               setForm(f => ({
                                 ...f,
                                 work_items: f.work_items.map(i =>
@@ -1619,9 +1657,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                             }}
                             className="input text-xs flex-1 min-w-0"
                           >
-                            <option value="">
-                              Sama mis tööl{jobDesignerName ? ` — ${jobDesignerName}` : ''}
-                            </option>
+                            <option value="">—</option>
                             {clinicWorkers.map(w => (
                               <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
                             ))}

@@ -162,6 +162,10 @@ export function WorkItemsField({
     }))
   }
 
+  // Whether the items name more than one designer between them. Only then is a
+  // per-chip name worth the space — otherwise it repeats the Disainija field.
+  const splitDesign = new Set(value.map(i => i.designed_by ?? null)).size > 1
+
   // "Sild 1" / "Sild 2" only once a type actually repeats — numbering a lone
   // item would imply a second one exists somewhere.
   const perType = new Map<string, number>()
@@ -268,14 +272,14 @@ export function WorkItemsField({
                       {item.materjal}
                     </span>
                   )}
-                  {item.designed_by && (() => {
+                  {splitDesign && (() => {
                     const name = clinicWorkers.find(w => w.id === item.designed_by)?.full_name ?? ''
                     return (
                       <span
                         title={`Disainija: ${name || '—'}`}
                         className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
                       >
-                        ✎ {name.split(' ')[0] || '?'}
+                        ✎ {name.split(' ')[0] || '—'}
                       </span>
                     )
                   })()}

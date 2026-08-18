@@ -95,22 +95,30 @@ export interface WorkItem {
   kruvi?: string          // screw/abutment reference for implant work
   note?: string           // optional per-item note
   /**
-   * Who designed THIS item. Undefined means "whoever is on the job", which is
-   * what every work item written before this field meant, so nothing had to be
-   * backfilled.
+   * Who designed THIS item.
+   *
+   * Three states, not two. ABSENT means "whoever is on the job" — what every
+   * work item written before this field existed meant, so nothing had to be
+   * backfilled. A profile id names one person. NULL means nobody, explicitly:
+   * a job with two work items has no job-level designer field on screen at all,
+   * so "the laminates were outsourced" needs a way to be said that inheriting
+   * cannot express. `??` would collapse null back into the job's designer,
+   * which is why every reader goes through `workItemDesigner`.
    *
    * It exists because one case is routinely split: the crowns are designed by
    * one person and the laminates by another. `designed_by` on the job is a
    * single name, so the pay engine handed the whole case to one of them and the
-   * other was not paid at all. `work_items` is a JSONB column — no migration.
+   * other was not paid at all. `work_items` is a JSONB column — no migration,
+   * and `undefined` drops out of the JSON while `null` survives it.
    */
   designed_by?: string | null
 }
 
-/** Who designed one item: its own designer, else the job's. */
+/** Who designed one item: its own designer, else the job's. Null = nobody. */
 export const workItemDesigner = (
   item: Pick<WorkItem, 'designed_by'>, jobDesigner: string | null | undefined
-): string | null => item.designed_by ?? jobDesigner ?? null
+): string | null =>
+  item.designed_by === undefined ? (jobDesigner ?? null) : item.designed_by
 
 /**
  * Every distinct designer on a job, job-level fallback included.
