@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.40.0] — 2026-08-18
+
+**Mudel on lipp, mitte töötüüp**
+
+Mudelit sai öelda kahes kohas: lipuga Kiirtöö kõrval ja „Mudel" töötüübiga
+tüübiruudustikus. Kontrollitud ja ühtlustatud — **lipp on ainus koht, mis loeb**.
+
+- **Töötasu** luges juba lipult (1.39.0), mitte töötüübilt. Kaeti testiga, et
+  „Mudel" nimeline tööosa EI vallanda mudelitasu ja lipp vallandab
+- Mudelireegel maksab nüüd ka tööl, millel ei ole ühtegi tööosa — mudel on
+  midagi, mis tööl ON, mitte üks selle tööosadest. Varem ei olnud reeglil
+  midagi vastu panna ja tasu jäi vaikselt nulliks
+- **Kliendi hind:** `settings.mudeliHind` seisis Seadetes ja Mudel-nupu sildil
+  sellest saati, kui lipp olemas oli, ja **mitte keegi ei lugenud seda** — ainus
+  viis mudelit arvele saada oli lisada „Mudel" töötüüp. Nüüd lisab `quoteJob`
+  selle lipu peale, nagu seade ise on kogu aeg lubanud
+- Mudeli tasu **ei korrutata kiirtööga**, samal põhjusel millega disaini oma ei
+  korrutata: printimine võtab oma aja, olgu juhtum kui kiire tahes
+- Nõustaja „Mudel" kaart näitab nüüd hinda — see oli teadlikult peidus seni,
+  kuni seadet keegi ei lugenud
+- Seadete vihjed ütlevad välja, et kiirtöö kordaja ja mudeli hind on KLIENDI
+  numbrid; töötasu pool on inimese Töötasud lehel
+- Ümberhindaja ei loe kiirtööd ega mudelit hinnastamisviisiks — mõlemad
+  lisanduvad selle otsa, mitte ei ole see
+
 ## [1.39.0] — 2026-08-18
 
 **Kiirtöö ja mudel jõuavad palgalehele**

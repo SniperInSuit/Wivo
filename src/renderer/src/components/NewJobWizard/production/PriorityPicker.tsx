@@ -46,11 +46,10 @@ export function PriorityPicker({ value, onChange }: PriorityPickerProps) {
           onToggle={() => onChange('mudel')}
           multi={false}
           label="Mudel"
-          // NOT settings.mudeliHind. quoteJob has no mudel concept — nothing in
-          // shared/pricing reads that setting — so printing it here on a card
-          // that otherwise reads as a price list promises an amount the created
-          // job will not carry.
-          sublabel="Ainult mudel"
+          // Safe to print now: quoteJob adds `book.mudeliHind` on the mudel
+          // flag, so the number on this card is the number the created job
+          // carries. It was deliberately hidden while nothing read that setting.
+          sublabel={settings.mudeliHind > 0 ? `Ainult mudel · ${settings.mudeliHind} €` : 'Ainult mudel'}
           icon={<Cpu className="w-5 h-5 text-amber-500" aria-hidden="true" />}
         />
       </div>

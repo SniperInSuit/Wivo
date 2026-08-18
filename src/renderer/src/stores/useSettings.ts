@@ -857,6 +857,7 @@ export function priceBookOf(s: WivoSettings = snapshot): PriceBook {
     hambaHind: s.hambaHind,
     kiirtooKordaja: s.kiirtooKordaja,
     designFee: s.designFee,
+    mudeliHind: s.mudeliHind,
   }
 }
 

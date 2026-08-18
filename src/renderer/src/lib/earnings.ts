@@ -562,7 +562,13 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // the model is made, not designed.
     if (isTech && countable && job.mudel && !alreadyPaid.has(`mudel:${job.id}`)) {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-      const pay = payProduction(mine, items, earnedOn, types, 'mudel', price, rush)
+      // A model is something the job HAS, not one of its work items, so a job
+      // that names no work at all still carries one. Without the stand-in,
+      // `payProduction` finds nothing to match and the model silently pays 0.
+      // A rule may still be scoped to a work type — "mudel All-on-X puhul on
+      // 15 €" — which is why the real items are used whenever there are any.
+      const modelItems = items.length > 0 ? items : [{ too: '', hambad: '' }]
+      const pay = payProduction(mine, modelItems, earnedOn, types, 'mudel', price, rush)
       if (pay && pay.amount > 0) {
         lines.push({
           key: `mudel:${job.id}`,

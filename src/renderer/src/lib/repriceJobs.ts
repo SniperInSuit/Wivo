@@ -117,6 +117,7 @@ export function planReprice(
       })),
       materjal: job.materjal,
       kiirtoo: job.kiirtoo ?? false,
+      mudel: job.mudel ?? false,
     }, book)
 
     // Any part unpriced skips the WHOLE job. Writing a partial total onto the
@@ -126,8 +127,13 @@ export function planReprice(
       continue
     }
 
+    // Add-ons are not a pricing METHOD. Rush and the model ride on top of
+    // however the work itself was priced, so counting them would report every
+    // rush job with a model as a "segu" of three sources.
     const sources = new Set(
-      quote.lines.filter(l => l.source !== 'kiirtöö').map(l => l.source)
+      quote.lines
+        .filter(l => l.source !== 'kiirtöö' && l.source !== 'mudel')
+        .map(l => l.source)
     )
     const source = (sources.size === 1
       ? [...sources][0]

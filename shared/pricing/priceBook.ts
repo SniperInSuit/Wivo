@@ -55,6 +55,15 @@ export interface PriceBook {
   kiirtooKordaja: number
   /** Default design fee. Added on top, never multiplied by the rush factor. */
   designFee: number
+  /**
+   * What a printed model costs the customer. Added when the job carries the
+   * `mudel` flag — the toggle next to Kiirtöö, not a work type.
+   *
+   * A model is something a case HAS alongside its crowns, not a kind of work
+   * instead of them, which is why it is a flag on the job and a flat fee here.
+   * Treated like the design fee: added on top, never multiplied by the rush.
+   */
+  mudeliHind: number
 }
 
 export interface WorkTypePriceResult {

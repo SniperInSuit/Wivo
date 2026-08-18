@@ -26,6 +26,7 @@ const book = (over: Partial<PriceBook> = {}): PriceBook => ({
   hambaHind: 15,
   kiirtooKordaja: 2,
   designFee: 0,
+  mudeliHind: 0,
   ...over,
 })
 
@@ -226,5 +227,48 @@ describe('rounding', () => {
     const types: WorkType[] = [{ nimi: 'Sild', hex: '#000', hind: 33.33, hinnaTyyp: 'hammas' }]
     const q = quoteJob({ items: [{ too: 'Sild', hambad: '11,12,13' }] }, book({ workTypes: types }))
     expect(q.production).toBe(99.99)
+  })
+})
+
+describe('mudel', () => {
+  // The flag next to Kiirtöö, not a work type. `mudeliHind` sat in Seaded and on
+  // the button's own label for as long as the flag existed and NOTHING read it:
+  // the only way to bill a model was to add a "Mudel" work type, which is a
+  // second place to say the same thing and prices it as if it were teeth.
+  it('adds the model fee when the job carries one', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11' }], mudel: true },
+      book({ mudeliHind: 25 })
+    )
+    expect(q.production).toBe(425)
+    expect(q.lines.some(l => l.source === 'mudel' && l.amount === 25)).toBe(true)
+  })
+
+  it('adds nothing when the job has no model', () => {
+    const q = quoteJob({ items: [{ too: 'Kroon', hambad: '11' }] }, book({ mudeliHind: 25 }))
+    expect(q.production).toBe(400)
+    expect(q.lines.some(l => l.source === 'mudel')).toBe(false)
+  })
+
+  it('adds nothing when no model price is configured', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11' }], mudel: true },
+      book({ mudeliHind: 0 })
+    )
+    expect(q.production).toBe(400)
+  })
+
+  it('is NOT multiplied by the rush, exactly like the design fee', () => {
+    // Printing one takes what it takes however urgent the case is.
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11' }], mudel: true, kiirtoo: true },
+      book({ mudeliHind: 25 })
+    )
+    expect(q.production).toBe(825)   // 400 × 2 + 25, not (400 + 25) × 2
+  })
+
+  it('prices a model-only job from the fee alone', () => {
+    const q = quoteJob({ items: [], mudel: true }, book({ mudeliHind: 25 }))
+    expect(q.production).toBe(25)
   })
 })

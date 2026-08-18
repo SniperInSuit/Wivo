@@ -750,6 +750,33 @@ describe('mudel', () => {
     expect(lines.some(l => l.description.startsWith('Mudel:'))).toBe(true)
   })
 
+  it('reads the FLAG, not a "Mudel" work type', () => {
+    // Two places said "model": the toggle next to Kiirtöö and a work type in
+    // the grid. Pay keys on the flag alone, so deleting that work type takes
+    // nothing with it.
+    const withFlag = run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })],
+      [job({ mudel: true, work_items: [item('Kroon', '11')] })]
+    )
+    expect(earningsTotal(withFlag)).toBe(5)
+
+    const asWorkType = run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })],
+      [job({ mudel: false, work_items: [item('Kroon', '11'), item('Mudel', '')] })]
+    )
+    expect(earningsTotal(asWorkType)).toBe(0)
+  })
+
+  it('pays a flat model rule on a job that names no work at all', () => {
+    // A model is something the job HAS, not one of its work items — without a
+    // stand-in there is nothing for the rule to match and it silently pays 0.
+    const lines = run(
+      [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })],
+      [job({ mudel: true, work_items: [] })]
+    )
+    expect(earningsTotal(lines)).toBe(5)
+  })
+
   it('pays nothing for a model when the job has none', () => {
     const lines = run(
       [rate({ kind: 'too', amount: 5, applies_to: 'mudel' })],

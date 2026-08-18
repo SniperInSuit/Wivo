@@ -156,6 +156,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
     }).map(i => ({ too: i.too, hambad: i.hambad, materjal: i.materjal ?? null })),
     materjal: form.materjal,
     kiirtoo: form.kiirtoo,
+    mudel: form.mudel,
     useDiscount,
   }, priceBookOf(settings)).unpriced
 
@@ -725,9 +726,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     }).map(i => ({ too: i.too, hambad: i.hambad, materjal: i.materjal ?? null })),
     materjal: form.materjal,
     kiirtoo: form.kiirtoo,
+    mudel: form.mudel,
     useDiscount,
   }, priceBookOf(settings)),
-  [form.work_items, form.too, form.hambad, form.materjal, form.kiirtoo, useDiscount, settings])
+  [form.work_items, form.too, form.hambad, form.materjal, form.kiirtoo, form.mudel, useDiscount, settings])
 
   // Live auto-price (new jobs only). Leaves the field ALONE when any part of
   // the job cannot be priced: this used to write `teeth * hambaHind` even when

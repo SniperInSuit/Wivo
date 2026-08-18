@@ -55,6 +55,14 @@ export interface QuoteInput {
   materjal?: string | null
   /** Rush job — multiplies production only, never the design fee or extras. */
   kiirtoo?: boolean
+  /**
+   * The job carries a printed model — `job.mudel`, the toggle next to Kiirtöö.
+   *
+   * NOT a work item. A model is something a case has ALONGSIDE its crowns, and
+   * putting it in `items` would have made it compete for the work-type price of
+   * the teeth. `book.mudeliHind` is what it costs.
+   */
+  mudel?: boolean
   /** Use the work type's discount price where one is configured. */
   useDiscount?: boolean
   /** Design fee as it stands on the job. Added on top; not a production cost. */
@@ -63,7 +71,7 @@ export interface QuoteInput {
   extras?: { nimi: string; hind: number }[]
 }
 
-export type QuoteSource = 'tüüp' | 'materjal' | 'hambad' | 'kiirtöö' | 'disain' | 'lisateenus'
+export type QuoteSource = 'tüüp' | 'materjal' | 'hambad' | 'kiirtöö' | 'mudel' | 'disain' | 'lisateenus'
 
 export interface QuoteLine {
   source: QuoteSource
@@ -163,6 +171,19 @@ export function quoteJob(input: QuoteInput, book: PriceBook): Quote {
     const uplift = round2(production * book.kiirtooKordaja - production)
     lines.push({ source: 'kiirtöö', label: `Kiirtöö ×${book.kiirtooKordaja}`, amount: uplift })
     production = round2(production * book.kiirtooKordaja)
+  }
+
+  // The model. `mudeliHind` has been in Seaded and on the Mudel button's label
+  // since the flag existed, and nothing ever read it — the only way to bill a
+  // model was to add a "Mudel" WORK TYPE, which is a second place to say the
+  // same thing and prices the model as if it were the teeth.
+  //
+  // After the rush, deliberately, and for the same reason the design fee is:
+  // printing one takes what it takes however urgent the case is.
+  if (input.mudel && book.mudeliHind > 0) {
+    const amount = round2(book.mudeliHind)
+    lines.push({ source: 'mudel', label: 'Mudel', amount })
+    production = round2(production + amount)
   }
 
   const disain = round2(Number(input.disainHind ?? 0))

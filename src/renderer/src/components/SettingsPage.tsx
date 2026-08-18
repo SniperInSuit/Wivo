@@ -1737,13 +1737,13 @@ export function SettingsPage() {
                 label="Kiirtöö kordaja" suffix="×" min={1} max={5} step={0.1}
                 value={settings.kiirtooKordaja}
                 onChange={v => setNumber('kiirtooKordaja', v)}
-                hint="Kiirtöö puhul korrutatakse arvutatud hind selle arvuga."
+                hint="Kiirtöö puhul korrutatakse arvutatud hind selle arvuga. See on KLIENDI hind — palju sellest töötasusse jõuab, määrad iga inimese juures Töötasud lehel."
               />
               <NumField
                 label="Mudeli hind" suffix="€" min={0} max={500} step={5}
                 value={settings.mudeliHind}
                 onChange={v => setNumber('mudeliHind', v)}
-                hint="Lisatakse automaatselt hinnale kui tööl on mudel märgitud."
+                hint="Lisatakse hinnale, kui tööl on Kiirtöö kõrval Mudel märgitud. See on KLIENDI hind — tehniku tasu mudeli eest on eraldi tasureegel (Mille eest → Mudel)."
               />
               <NumField
                 label="Käibemaksumäär" suffix="%" min={0} max={30} step={0.5}
