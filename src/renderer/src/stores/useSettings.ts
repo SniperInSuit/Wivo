@@ -5,6 +5,7 @@ import {
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
 import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
+import { emptyPublicService, slugify, type PublicService } from '@shared/portal/publicService'
 import {
   CLINIC_COLUMNS, COLUMN_OF, toRow as toClinicRow,
   type ClinicColumn, type ClinicPatch, type ClinicSettingsRow
@@ -109,6 +110,13 @@ export interface WivoSettings {
   tooTuubid: WorkType[]
   // Visiidi põhjused ja nende värvid. Sama kuju mis tooTuubid, sama redaktor.
   visiidiTyybid: VisitType[]
+  /**
+   * Patsiendile nähtav teenusekataloog avaliku veebilehe jaoks.
+   *
+   * Teadlikult EI ole see `tooTuubid` laiendus: seal on järjekord sobitamise
+   * järjekord ja seal on `kulud`. Vt sql/047 ja shared/portal/publicService.ts.
+   */
+  avalikudTeenused: PublicService[]
   // Internal bookkeeping, not a user setting: marks that the 1.7.13 colour
   // repair has already run, so it cannot re-run and overwrite a deliberate pick.
   tooVarvidParandatud: boolean
@@ -185,6 +193,7 @@ function defaultSettings(): WivoSettings {
     materjalid: [...MATERIAL_OPTIONS],
     tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
+    avalikudTeenused: [],
     tooVarvidParandatud: true,
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
@@ -343,6 +352,11 @@ function loadSettings(): WivoSettings {
       visiidiTyybid: Array.isArray(stored.visiidiTyybid)
         ? (stored.visiidiTyybid as VisitType[]).filter(t => t?.nimi && t?.hex).map(t => ({ ...t }))
         : def.visiidiTyybid,
+      // Nagu visiiditüüpidel: tühi salvestatud nimekiri on teadlik valik, ainult
+      // PUUDUV võti langeb tagasi vaikeväärtusele.
+      avalikudTeenused: Array.isArray(stored.avalikudTeenused)
+        ? (stored.avalikudTeenused as PublicService[]).filter(t => t?.id).map(t => ({ ...t }))
+        : def.avalikudTeenused,
       tooVarvidParandatud: true,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
@@ -439,6 +453,12 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
     // than blanking the list on the first sync after an upgrade.
     ...(Array.isArray(row.visit_types) && row.visit_types.length > 0
       ? { visiidiTyybid: (row.visit_types as VisitType[]).filter(t => t?.nimi && t?.hex) }
+      : {}),
+    // Unlike the two above, an EMPTY array is honoured: a clinic that deleted
+    // every public service must not have them reappear from local cache on the
+    // next sync. Only a missing column is ignored.
+    ...(Array.isArray(row.public_services)
+      ? { avalikudTeenused: (row.public_services as PublicService[]).filter(t => t?.id) }
       : {}),
     ...(row.materials ? { materjalid: strList(row.materials, prev.materjalid) } : {}),
     ...(row.material_prices ? { materialPrices: row.material_prices } : {}),
@@ -730,6 +750,55 @@ export function useSettings() {
     }, ['visit_types'])
   }, [])
 
+  // ─── Avalikud teenused ─────────────────────────────────────────────────────
+  // Sama kuju mis visiiditüüpide mutaatoritel. Eraldi hoitud, sest see nimekiri
+  // läheb veebilehele: iga muudatus siin on AVALDAMINE, mitte sisemine seade.
+
+  const addPublicService = useCallback((nimi: string) => {
+    const n = nimi.trim()
+    if (!n) return
+    setSettings(prev => {
+      // Slug tuletatakse ainult LOOMISEL. Ümbernimetamine ei tohi id-d muuta,
+      // muidu jäävad juba tehtud broneeringud orvuks.
+      const base = slugify(n) || 'teenus'
+      let id = base
+      for (let i = 2; prev.avalikudTeenused.some(t => t.id === id); i++) id = `${base}-${i}`
+      const next = {
+        ...emptyPublicService(id, prev.avalikudTeenused.length + 1),
+        nimi: n,
+      }
+      return { ...prev, avalikudTeenused: [...prev.avalikudTeenused, next] }
+    }, ['public_services'])
+  }, [])
+
+  const removePublicService = useCallback((id: string) => {
+    setSettings(prev => (
+      { ...prev, avalikudTeenused: prev.avalikudTeenused.filter(t => t.id !== id) }
+    ), ['public_services'])
+  }, [])
+
+  const updatePublicService = useCallback((id: string, patch: Partial<PublicService>) => {
+    setSettings(prev => ({
+      ...prev,
+      // SPREAD the stored object — never rebuild field by field. See HANDOFF.md:
+      // that trap silently deleted every WorkType field added after 1.7.13.
+      avalikudTeenused: prev.avalikudTeenused.map(t => (t.id === id ? { ...t, ...patch } : t)),
+    }), ['public_services'])
+  }, [])
+
+  const movePublicService = useCallback((id: string, dir: 'up' | 'down') => {
+    setSettings(prev => {
+      const i = prev.avalikudTeenused.findIndex(t => t.id === id)
+      const j = dir === 'up' ? i - 1 : i + 1
+      if (i < 0 || j < 0 || j >= prev.avalikudTeenused.length) return prev
+      const next = [...prev.avalikudTeenused]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      // Järjekord on salvestatud väli, mitte massiivi asend — veeb sorteerib
+      // selle järgi ja massiivi asend ei jõua sinna.
+      return { ...prev, avalikudTeenused: next.map((t, n) => ({ ...t, jarjekord: n + 1 })) }
+    }, ['public_services'])
+  }, [])
+
   const resetVisitTypes = useCallback(() => {
     setSettings(prev => (
       { ...prev, visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })) }
@@ -742,6 +811,7 @@ export function useSettings() {
     addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
+    addPublicService, removePublicService, updatePublicService, movePublicService,
     setTooHind,
   }
 }

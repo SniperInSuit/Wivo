@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound} from 'lucide-react'
+import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound} from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
@@ -12,6 +12,7 @@ import { RepriceJobsSection } from './Settings/RepriceJobsSection'
 import { supabase, updateProfile, displayIdentity } from '../lib/supabase'
 import type { PipelineStage } from '../config/pipeline'
 import { LicenseSection } from './Settings/LicenseSection'
+import { PublicServicesSection } from './Settings/PublicServicesSection'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -21,7 +22,7 @@ const STAGE_PALETTE = [
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#0E1116'
 ]
 
-type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents'
+type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents' | 'avalik'
 
 // Personal preferences vs clinic configuration.
 //
@@ -49,6 +50,9 @@ const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: 
     title: 'Kliinik',
     items: [
       { key: 'kliinik', label: 'Kliinik', icon: Building2 },
+      // Its own tab, NOT inside Hinnad. One list is what the lab charges the
+      // clinic, the other is what the patient pays — the separation is the point.
+      { key: 'avalik', label: 'Patsiendi hinnakiri', icon: Globe },
       { key: 'litsents', label: 'Litsents', icon: KeyRound },
     ]
   },
@@ -1258,6 +1262,17 @@ export function SettingsPage() {
         )}
 
         {activeGroup === 'litsents' && <LicenseSection />}
+
+        {/* Only where a public site exists at all. */}
+        {activeGroup === 'avalik' && settings.kliinilineRezhiim && <PublicServicesSection />}
+        {activeGroup === 'avalik' && !settings.kliinilineRezhiim && (
+          <section>
+            <p className="text-sm text-ink-muted max-w-xl leading-relaxed">
+              Patsiendi hinnakiri on veebilehe jaoks ja eeldab kliinilist poolt.
+              Lülita see sisse Seaded → Kalender → Režiim (WivoDental või WivoX).
+            </p>
+          </section>
+        )}
 
         {/* Teema */}
         {activeGroup === 'kasutajaliides' && (

@@ -17,7 +17,7 @@ import type { PipelineStage } from '../config/pipeline'
 import type { WorkType } from '../config/workTypes'
 
 export const CLINIC_COLUMNS = [
-  'work_types', 'visit_types', 'materials', 'material_prices', 'material_costs', 'machines',
+  'work_types', 'visit_types', 'public_services', 'materials', 'material_prices', 'material_costs', 'machines',
   'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features',
 ] as const
 
@@ -27,6 +27,8 @@ export interface ClinicSettingsRow {
   clinic_id: string
   work_types: WorkType[]
   visit_types: import('../config/visitTypes').VisitType[]
+  /** Patient-facing catalogue for the public website. See sql/047. */
+  public_services: import('@shared/portal/publicService').PublicService[]
   materials: string[]
   material_prices: Record<string, MaterialPricing>
   material_costs: Record<string, MaterialPricing>
@@ -72,6 +74,7 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
   return {
     work_types: s.tooTuubid,
     visit_types: s.visiidiTyybid,
+    public_services: s.avalikudTeenused,
     materials: s.materjalid,
     material_prices: s.materialPrices,
     material_costs: s.materialCosts,
@@ -129,6 +132,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
   visiidiTyybid: 'visit_types',
+  avalikudTeenused: 'public_services',
   kliinilineRezhiim: 'features',
   laboriRezhiim: 'features',
   fixedCostsPerJob: 'pricing',

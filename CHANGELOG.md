@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.38.0] — 2026-08-18
+
+**Patsiendi hinnakiri — avaliku veebilehe alus**
+
+Esimene osa Frameri broneerimisvoost. See on **Dentasest täiesti sõltumatu** ja
+kasulik ka üksi: kliinik saab hallatud patsiendihinnakirja koos üldise raviplaaniga.
+
+- Uus Seaded vahekaart **„Patsiendi hinnakiri"** Kliiniku grupis — teadlikult
+  **mitte** Hinnad sees. Üks nimekiri on see, mida labor kliinikult küsib, teine
+  see, mida patsient maksab; need on eri numbrid ja nüüd ka eri kohtades
+- Teenusel on hinnavahemik (alates–kuni), käibemaksu märge, kategooria,
+  lühikirjeldus ja **üldine raviplaan** visiitide kaupa (pealkiri, kestus,
+  ootaeg). Visiitide arv tuletatakse nimekirjast, mitte ei salvestata eraldi
+- **Eelvaade renderdub samadest funktsioonidest, mida veebileht kasutab** — kaks
+  renderdajat läheksid lahku ja see on rahaasi
+- Teenus jõuab veebi ainult siis, kui ta on avalik JA tal ei ole puudusi.
+  `publishProblems()` loetleb puudused välja; hinnata teenust **ei näidata kunagi
+  „0 €"-na** — sama ausus, mida `quoteJob()` juba järgib
+- Vajab migratsiooni `sql/047_public_services.sql`
+
+**Uus `shared/portal/` — avaliku pinna leping**
+
+- `publicService.ts` ja `publicQuote.ts`, mõlemad sõltuvusteta. Eraldi kaustas,
+  et „avalik kood ei impordi kunagi `PriceBook`-i" oleks näha **kaustaloendist**,
+  mitte ainult kommentaarist
+- Ei laiendatud `work_types`: seal on **järjekord sobitamise järjekord** (ümber
+  järjestamine hinnastaks tööd ümber) ja seal on `kulud`. Eraldi veerg teeb
+  „marginaal ei lahku andmebaasist" struktuurselt tõeseks
+- `toPublicCatalogue()` on allowlist-mapper: uus väli on vaikimisi privaatne.
+  Deny-list läheks lahti iga kord, kui keegi välja lisab
+- **Lekketest**, mis loeb nagu süüdistus: fixture, kus iga kuluväli on täidetud
+  sentineliga `LEAK`, ja väide, et serialiseeritud vastus ei sisalda seda ega
+  ühtki keelatud võtit. 22 testi kokku
+
 ## [1.37.0] — 2026-08-18
 
 **Disainija tööosa kaupa**
