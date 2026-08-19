@@ -138,6 +138,11 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       // What is genuinely still owed: every job's client total, less what has
       // actually come in against it.
       unpaidTotal: pay.outstanding,
+      // The denominator, so the card can be reconciled instead of guessed at.
+      // Rahandus answers a narrower question — finished jobs, one period, price
+      // only — so the two will never match unless both are stated in full.
+      billedTotal: pay.total,
+      paidTotal: pay.paid,
       paidCount: jobs.filter(j => jobPaymentState(j, allPayments, allInvoices).settled).length,
       partialCount: pay.partialCount,
       // `unpaidCount` counts every job with anything outstanding, part payments
@@ -247,6 +252,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
           label="Laekumata" scope={scopeLabel}
           value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
+          sub={`${stats.billedTotal.toFixed(2)} € kogu väärtusest, ${stats.paidTotal.toFixed(2)} € laekunud`}
           note={`${stats.paidCount} makstud · ${stats.partialCount} osaliselt · ${stats.untouchedCount} maksmata`}
           noteDanger={stats.untouchedCount + stats.partialCount > 0}
         />
@@ -406,7 +412,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
 }
 
 // ─── Small building blocks ─────────────────────────────────────────────────
-function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDanger, scope }: {
+function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDanger, scope, sub }: {
   label: string
   value: string
   icon: LucideIcon
@@ -417,6 +423,10 @@ function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDang
   noteDanger?: boolean
   /** "kogu aeg", "see kuu"… An unlabelled total is a total nobody can check. */
   scope?: string
+  /** The denominator. A money figure with nothing to divide by cannot be checked
+   *  against any other screen, which is exactly how "45 285 €" turned into a
+   *  half-hour of trying to reconcile it with Rahandus. */
+  sub?: string
 }) {
   return (
     <div className="card p-4">
@@ -434,6 +444,7 @@ function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDang
         </span>
       </div>
       <p className="text-2xl font-bold text-ink leading-none mt-1.5">{value}</p>
+      {sub && <p className="text-[11px] text-ink-faint mt-1">{sub}</p>}
       {delta !== undefined && deltaLabel && (
         <p className="flex items-center gap-1 text-[11px] mt-1.5">
           {delta === 0 ? (

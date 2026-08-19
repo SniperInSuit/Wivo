@@ -245,8 +245,15 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               ticked, which is why the two screens reported 12 800 and 21 980
               for one month. */}
           <Money icon={Wallet} label="Laekunud" value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
-          <Money icon={Clock} label="Tasumata" value={fin.outstanding} accent="#F59E0B"
-            sub={fin.overdue > 0 ? `${fin.overdue.toFixed(2)} € üle tähtaja` : undefined} />
+          {/* Invoice-based, and it has to say so. A lab that settles jobs
+              without invoicing has no invoices to owe against, so this reads
+              0.00 € — "nobody owes anything" — while Arveldamata next to it
+              says otherwise. The Ülevaade counts the same debt job by job and
+              reaches a different number for exactly this reason. */}
+          <Money icon={Clock} label="Tasumata arvete järgi" value={fin.outstanding} accent="#F59E0B"
+            sub={fin.overdue > 0
+              ? `${fin.overdue.toFixed(2)} € üle tähtaja`
+              : 'Ainult väljastatud arved. Arveta tööd on kõrval „Arveldamata" all.'} />
           <Money
             icon={FileWarning} label="Arveldamata" value={fin.unbilled} accent="#EF4444"
             sub={`${fin.unbilledJobs} valmis tööd ilma arveta`}

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.42.1] — 2026-08-19
+
+**Kaks rahanumbrit, mida ei saanud omavahel võrrelda**
+
+Ülevaade ütles „Laekumata 45 285 €", Rahandus „Tulu 111 390 € / Laekunud
+92 985 €". Kumbki ei olnud vale — nad vastavad **eri küsimustele** ja kummalgi
+ei olnud ekraanil piisavalt infot, et seda välja lugeda.
+
+- **Laekumata** on nüüd isekontrollitav: suure numbri all seisab, mille seest
+  see tuleb — kogu väärtus ja laekunud summa. Number, millel ei ole nimetajat,
+  ei ole ühegi teise ekraaniga võrreldav
+- **„Tasumata"** Rahanduses on ümber nimetatud **„Tasumata arvete järgi"** ja
+  ütleb välja, et loeb ainult väljastatud arveid. Labor, kes märgib töid
+  makstuks arvet tegemata, näeb seal 0.00 € — „keegi ei võlgne midagi" — samal
+  ajal kui kõrval seisab „Arveldamata 111 390 €"
+
+Neli asja, mis neid numbreid lahku viivad, ja kõik neli on kavatsetud:
+periood (kogu aeg vs valitud vahemik), staatus (Ülevaade loeb ka pooleliolevaid
+töid, Rahandus ainult valmis omi), alus (`jobTotalValue` vs ainult `hind`) ja
+maksete aken (Laekunud on perioodi sees, Laekumata lahutab kõik).
+
 ## [1.42.0] — 2026-08-19
 
 **Arvega tasutud töö jäi igaveseks „maksmata"**
