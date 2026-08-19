@@ -747,7 +747,7 @@ describe('mudel', () => {
     )
     // The model adds to the production line, it does not replace it: 4 × 15 + 5.
     expect(earningsTotal(lines)).toBe(65)
-    expect(lines.some(l => l.description.startsWith('Mudel:'))).toBe(true)
+    expect(lines.some(l => l.description.startsWith('Mudel ·'))).toBe(true)
   })
 
   it('reads the FLAG, not a "Mudel" work type', () => {
@@ -866,5 +866,68 @@ describe('mudel', () => {
       periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
     })
     expect(issues.some(i => i.label.includes('mudel'))).toBe(true)
+  })
+})
+
+describe('a payslip line names only what it paid for', () => {
+  // "Disain: Kroon + Sild + Mudel · Elena Lund — 23 × 18.00 €" was the report.
+  // The Mudel work item had no teeth, so a per-tooth rule paid exactly nothing
+  // for it — but the line named it anyway, and the only way to find out that no
+  // money had moved was to read the engine.
+  it('leaves out a work item that earned nothing under a per-tooth rule', () => {
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 18, applies_to: 'disain', profile_id: DESIGNER })],
+      [job({
+        designed_by: DESIGNER,
+        work_items: [item('Kroon', '11,12'), item('Sild', '24,25'), item('Mudel', '')],
+      })],
+      DESIGNER
+    )
+    expect(lines).toHaveLength(1)
+    expect(lines[0].amount).toBe(72)          // 4 teeth, the model adds none
+    expect(lines[0].description).toContain('Kroon')
+    expect(lines[0].description).toContain('Sild')
+    expect(lines[0].description).not.toContain('Mudel')
+  })
+
+  it('KEEPS an item that a per-tooth rule genuinely paid for', () => {
+    // The other outcome of the same check: teeth on the model item ARE money,
+    // and hiding the name would then be the dishonest half.
+    const lines = run(
+      [rate({ kind: 'hammas', amount: 18, applies_to: 'disain', profile_id: DESIGNER })],
+      [job({
+        designed_by: DESIGNER,
+        work_items: [item('Kroon', '11,12'), item('Mudel', '21,22')],
+      })],
+      DESIGNER
+    )
+    expect(lines[0].amount).toBe(72)
+    expect(lines[0].description).toContain('Mudel')
+  })
+
+  it('keeps a toothless item when the rule is flat, because that one does pay', () => {
+    const lines = run(
+      [rate({ kind: 'too', amount: 50, work_type: 'Proteez' })],
+      [job({ work_items: [item('Proteez', '')] })]
+    )
+    expect(lines[0].amount).toBe(50)
+    expect(lines[0].description).toContain('Proteez')
+  })
+
+  it('names only the types an additive rule covered', () => {
+    const lines = run(
+      [
+        rate({ kind: 'hammas', amount: 18 }),
+        rate({
+          kind: 'hammas', amount: 9, additive: true,
+          label: 'Igeme tasu', work_type: 'All-on-X',
+        }),
+      ],
+      [job({ work_items: [item('Kroon', '11,12'), item('All-on-X', '21,22')] })]
+    )
+    const extra = lines.find(l => l.description.startsWith('Igeme tasu'))
+    expect(extra).toBeDefined()
+    expect(extra!.description).toContain('All-on-X')
+    expect(extra!.description).not.toContain('Kroon')
   })
 })

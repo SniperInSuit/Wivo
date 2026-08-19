@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.43.0] — 2026-08-19
+
+**Palgarida nimetas tööd, mille eest raha ei makstud**
+
+„Disain: Kroon + Sild + **Mudel** · Elena Lund — 23 × 18.00 €" luges nii, nagu
+oleks mudeli eest makstud. Rida loetles KÕIK töö tööosad, olenemata sellest,
+kas need summasse midagi andsid.
+
+- Hambapõhine reegel maksab tööosa eest, millel hambaid ei ole, **täpselt null**.
+  Mudel ilma hammasteta pani oma nime reale ja mitte sentigi summasse — ainus
+  viis seda teada saada oli mootorit lugeda
+- `payProduction` tagastab nüüd `paidItems` — tööosad, mille eest tegelikult
+  maksti — ja iga palgarida nimetab ainult neid
+- Sama lisatasureeglitel: „Igeme disain: Allon6" ei loetle enam tüüpe, mida see
+  reegel ei katnudki
+- Mudeli rida on lihtsalt „Mudel · patsient" — mudeli tasu ei sõltu tööosadest,
+  nii et nende loetlemine ütles seal alati vale asja
+
+**NB:** kui tööosal Mudel ON hambad, siis on see raha ja rida nimetab teda
+edasi. Hambapõhine reegel ilma töötüübi piiranguta („Kõik tööd") katab ka
+Mudeli — kui mudeli eest ei tohi disaini tasu maksta, tuleb reeglil tüübid
+nimeliselt valida.
+
 ## [1.42.1] — 2026-08-19
 
 **Kaks rahanumbrit, mida ei saanud omavahel võrrelda**

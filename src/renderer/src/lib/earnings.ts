@@ -305,6 +305,16 @@ export interface ProductionPay {
   kind: RateKind
   /** Work types on this job that no rule covered. Drives the diagnostics. */
   unmatched: string[]
+  /**
+   * The items this payment ACTUALLY paid for — what the payslip line may name.
+   *
+   * Not the same list as the items that went in. A per-tooth rule over a work
+   * item carrying no teeth pays nothing, and naming it anyway produced lines
+   * like "Disain: Kroon + Sild + Mudel" for someone whose model was worth zero
+   * in that very sum. A line that names work its own amount does not contain is
+   * unanswerable: the only way to find out was to read the engine.
+   */
+  paidItems: PayItem[]
 }
 
 /**
@@ -332,8 +342,8 @@ export interface ProductionPay {
 function payAdditive(
   mine: WorkerRate[], items: PayItem[], isoDate: string, types: WorkType[],
   scope: RateScope, price: number, rush = 1
-): { rule: WorkerRate; amount: number; qty: number }[] {
-  const out: { rule: WorkerRate; amount: number; qty: number }[] = []
+): { rule: WorkerRate; amount: number; qty: number; items: PayItem[] }[] {
+  const out: { rule: WorkerRate; amount: number; qty: number; items: PayItem[] }[] = []
   for (const r of mine) {
     if (!r.additive) continue
     if (!PRODUCTION_KINDS.includes(r.kind)) continue
@@ -353,7 +363,13 @@ function payAdditive(
       case 'protsent': amount = price * r.amount / 100; break
     }
     if (amount <= 0) continue
-    out.push({ rule: r, amount: round2(amount), qty })
+    // Only what this rule actually covered, for the same reason as above: an
+    // "Igeme disain" line naming every type on the job is a line about work the
+    // rule was never applied to.
+    out.push({
+      rule: r, amount: round2(amount), qty,
+      items: r.kind === 'hammas' ? covered.filter(i => toothCount(i.hambad) > 0) : covered,
+    })
   }
   return out
 }
@@ -375,6 +391,7 @@ function payProduction(
 ): ProductionPay | null {
   const groups = new Map<string, { rate: WorkerRate; teeth: number }>()
   const unmatched: string[] = []
+  const paidItems: PayItem[] = []
   let matchedTeeth = 0
 
   for (const item of items) {
@@ -384,6 +401,10 @@ function payProduction(
       continue
     }
     const teeth = toothCount(item.hambad)
+    // Per tooth and no teeth means this item contributed nothing, so it does not
+    // belong on the line. A flat or percentage rule pays for the item's
+    // existence, not its teeth, so those keep it.
+    if (!(rate.kind === 'hammas' && teeth === 0)) paidItems.push(item)
     const g = groups.get(rate.id) ?? { rate, teeth: 0 }
     g.teeth += teeth
     groups.set(rate.id, g)
@@ -429,7 +450,7 @@ function payProduction(
     ? groupList[0].rate.amount
     : (qty > 0 ? round2(amount / qty) : round2(amount))
 
-  return { amount: round2(amount), qty, rate, kind, unmatched }
+  return { amount: round2(amount), qty, rate, kind, unmatched, paidItems }
 }
 
 /**
@@ -509,8 +530,6 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
 
     const earnedOn = jobEarnedOn(job)
     const jobDone = job.status === doneStageKey
-    const label = itemsLabel(items)
-    const designLabel = itemsLabel(designItems)
     // The slice of the job's price the design side is priced off. 1 whenever one
     // person designed the whole thing.
     const designShare = priceShare(items, designItems)
@@ -530,7 +549,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `job:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `${label} · ${job.patsient}${rushNote}`,
+          description: `${itemsLabel(pay.paidItems)} · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -548,7 +567,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `design:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Disain: ${designLabel} · ${job.patsient}${rushNote}`,
+          description: `Disain: ${itemsLabel(pay.paidItems)} · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -574,7 +593,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `mudel:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Mudel: ${label} · ${job.patsient}${rushNote}`,
+          description: `Mudel · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -591,7 +610,6 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         // reason the design rule above does: the gum design on the laminates is
         // the other designer's line, not this one's.
         const scopeItems = scope === 'disain' ? designItems : items
-        const scopeLabel = scope === 'disain' ? designLabel : label
         const price = scope === 'disain'
           ? (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
           : Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
@@ -604,7 +622,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key,
             job_id: job.id, revision_id: null, work_hours_id: null,
             kind: extra.rule.kind,
-            description: `${additiveLabel(extra.rule)}: ${scopeLabel} · ${job.patsient}${rushNote}`,
+            description: `${additiveLabel(extra.rule)}: ${itemsLabel(extra.items)} · ${job.patsient}${rushNote}`,
             qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
             earned_on: earnedOn,
           })
@@ -656,7 +674,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key: `rev:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: pay.kind,
-            description: `Muudatus #${i + 1}: ${itemsLabel(revItems)} · ${job.patsient}${revRushNote}`,
+            description: `Muudatus #${i + 1}: ${itemsLabel(pay.paidItems)} · ${job.patsient}${revRushNote}`,
             qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: revDate,
           })
         }
@@ -677,7 +695,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key: `revdesign:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: design.kind,
-            description: `Disain, muudatus #${i + 1}: ${itemsLabel(revDesignItems)} · ${job.patsient}${revRushNote}`,
+            description: `Disain, muudatus #${i + 1}: ${itemsLabel(design.paidItems)} · ${job.patsient}${revRushNote}`,
             qty: design.qty, rate: design.rate, amount: design.amount, earned_on: revDate,
           })
         }
