@@ -364,10 +364,13 @@ export function JobReadView({
             )}
 
             {/* Payment lives on the job, so it is stated once and never per revision */}
+            {/* Said once on the job, never per revision — and it says what is
+                actually charged. It used to read "koos muudatustega", which is
+                the opposite of what the total does: revision costs are the
+                lab's own and stay off the client's bill. */}
             <p className="text-[11px] text-ink-muted mt-1.5">
-              {pay.settled
-                ? 'Makse käib kogu töö kohta, koos muudatustega.'
-                : 'Makse käib kogu töö kohta, koos muudatustega.'}
+              Makse käib kogu töö kohta. Muudatuste kulu on labori sisemine ja
+              kliendi arvele ei lisandu.
             </p>
             {!pay.settled && onMarkPaid && (
               <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/30 mt-1.5">

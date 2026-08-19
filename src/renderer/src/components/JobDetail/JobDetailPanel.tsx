@@ -28,6 +28,7 @@ import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { pickRateFor } from '../../lib/earnings'
 import { jobMaterialCost } from '../../lib/finance'
+import { jobPaymentState } from '../../lib/jobPayments'
 import { workTypeConsumables } from '../../config/workTypes'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
@@ -1893,11 +1894,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
       {/* Marking paid always records HOW — never a bare boolean flip. */}
       {paidDialog && job && (() => {
-        const total = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
-          + (job.revisions ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0)
-        const already = jobPayments
-          .filter(p => p.job_id === job.id)
-          .reduce((s, p) => s + Number(p.amount), 0)
+        // Through jobTotalValue and paidForJob, never summed by hand. Summed by
+        // hand it ADDED the revision prices, which are the lab's own cost and
+        // have never been on the client's bill — so the read view said 6800 €
+        // owed and this dialog opened at 7048 €, on the same screen. It also
+        // dropped `extras`, so an Ülesehitus went uncharged in the other
+        // direction. One function, one answer.
+        const { total, paid: already } = jobPaymentState(job, jobPayments)
         return (
           <MarkPaidDialog
             title={`Märgi makstuks · ${job.too ?? 'Töö'}`}

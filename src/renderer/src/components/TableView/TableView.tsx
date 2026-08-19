@@ -18,6 +18,7 @@ import { useWorkTypes } from '../../stores/useSettings'
 import { useCustomers } from '../../hooks/useCustomers'
 import { exportCsv, jobColumns } from '../../lib/exports'
 import { toDate, fmtDate } from '../../lib/dates'
+import { jobTotalValue } from '../../lib/jobPayments'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
@@ -731,10 +732,11 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
         <MarkPaidDialog
           title="Märgi valitud tööd makstuks"
           count={selected.size}
+          // Same function the single-job dialog and the invoice use, so a batch
+          // cannot be settled for a different number than its rows.
           amount={filtered
             .filter(j => selected.has(j.id))
-            .reduce((s, j) => s + Number(j.hind ?? 0) + Number(j.disain_hind ?? 0)
-              + (j.revisions ?? []).reduce((a, r) => a + Number(r.price ?? 0), 0), 0)}
+            .reduce((s, j) => s + jobTotalValue(j), 0)}
           busy={bulkWorking}
           onClose={() => setPaidDialog(false)}
           onConfirm={handleBulkMarkPaid}

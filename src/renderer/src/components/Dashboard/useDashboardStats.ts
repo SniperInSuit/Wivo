@@ -9,6 +9,7 @@ import { revisionReasons, jobPeriodDate } from '../../types/job'
 import type { Visit } from '../../types/visit'
 import type { Patient } from '../../types/patient'
 import { usePipeline } from '../../context/PipelineContext'
+import { jobTotalValue } from '../../lib/jobPayments'
 import { useWorkTypes } from '../../stores/useSettings'
 import { periodMetrics, rangeFor } from '../../lib/periodMetrics'
 import type { Payment } from '../../types/invoice'
@@ -96,9 +97,10 @@ export function useDashboardStats(
   const wt = useWorkTypes()
 
   return useMemo(() => {
-    // Total price for a job = main price + all revision prices
-    const jobTotal = (j: Job) =>
-      (j.hind ?? 0) + (j.revisions ?? []).reduce((s, r) => s + (r.price ?? 0), 0)
+    // What a job is worth to the client — jobTotalValue, the same answer the
+    // invoice, the payment dialogs and the export give. Revision prices are the
+    // lab's own rework cost and belong to none of them.
+    const jobTotal = (j: Job) => jobTotalValue(j)
 
     // ── Headline counts and money come from the shared aggregator ───────────
     // Everything below this block is Tootmine-only detail (machines, patients,

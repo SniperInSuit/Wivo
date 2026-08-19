@@ -12,6 +12,7 @@ import { CalendarTopControls } from './components/CalendarView/CalendarTopContro
 import { PatientsView } from './components/Patients/PatientsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
+import { jobTotalValue } from './lib/jobPayments'
 import { NewJobWizard } from './components/NewJobWizard/NewJobWizard'
 import { SettingsPage } from './components/SettingsPage'
 import { InvoicesView } from './components/Invoices/InvoicesView'
@@ -274,8 +275,9 @@ function AppContent() {
       await markJobsPaid.mutateAsync({
         jobs: ids.map(id => {
           const job = jobs.find(j => j.id === id)
-          const amount = Number(job?.hind ?? 0) + Number(job?.disain_hind ?? 0)
-            + (job?.revisions ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0)
+          // jobTotalValue, not a hand-rolled sum: revision prices are the lab's
+          // own cost and do not belong on what the client owes, and `extras` do.
+          const amount = job ? jobTotalValue(job) : 0
           return { id, amount, total: amount }
         }),
         ...details,

@@ -2,7 +2,7 @@
 // stat strip, the tooth chart and the ARVED panel can never disagree.
 import type { Job } from '../../types/job'
 import type { Payment } from '../../types/invoice'
-import { jobsPaymentTotals } from '../../lib/jobPayments'
+import { jobsPaymentTotals, jobTotalValue } from '../../lib/jobPayments'
 import type { Patient } from '../../types/patient'
 
 // Count comma-separated FDI tokens. Trims first: `filter(Boolean)` (TableView.tsx:188)
@@ -10,10 +10,16 @@ import type { Patient } from '../../types/patient'
 export const toothCount = (s: string | null | undefined) =>
   s ? s.split(',').filter(t => t.trim()).length : 0
 
-// Total charged for a job = main price + every revision price. disain_hind is
-// deliberately excluded — it is already folded into hind by the price calculator.
-export const jobTotal = (j: Job) =>
-  (j.hind ?? 0) + (j.revisions ?? []).reduce((s, r) => s + (r.price ?? 0), 0)
+/**
+ * What a job is worth to the patient. Straight through to `jobTotalValue`.
+ *
+ * It used to add every revision price and leave `disain_hind` out, on the
+ * belief that the price calculator folds the design fee into `hind`. It does
+ * not — `quoteJob` returns `production` and `disain` separately and they land
+ * in separate columns. So this over-reported by the lab's own rework cost and
+ * under-reported by the design fee, on the patient's own history panel.
+ */
+export const jobTotal = (j: Job): number => jobTotalValue(j)
 
 // Linked by id, or by name for rows the backfill has not touched yet. The name
 // fallback is REQUIRED because every CSV-imported row has patient_id = null.

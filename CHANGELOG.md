@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.41.0] — 2026-08-19
+
+**Muudatuste kulu läks ikka veel patsiendi arvele**
+
+`jobTotalValue` on kogu aeg õige olnud — hind + disaini hind + lisateenused,
+muudatused välja jäetud, sest need on labori enda ümbertegemise kulu. Aga **kuus
+ekraani arvutasid summa käsitsi** ja iga koopia liitis muudatused tagasi sisse.
+
+- Nähtav tagajärg: töö lugemisvaade ütles 6800 € maksmata ja „Märgi makstuks"
+  avanes **samal ekraanil** 7048 € peal. Kumbki number ei olnud kokkuleppes
+  teisega ja üks neist oli vale
+- Parandatud kõik kuus: töö „Märgi makstuks", hulgi „Märgi makstuks" (App ja
+  tabelivaade), patsiendi ajalugu, Ülevaate maksmata summa, Töölaua statistika
+- Käsitsi summa jättis ka **`extras` välja** — 60 € Ülesehitusega töö luges end
+  täielikult makstuks niipea, kui põhihind laekus. Vale mõlemas suunas korraga
+- Patsiendi ajalugu jättis lisaks `disain_hind` välja, uskudes et hinnaarvutus
+  on selle juba `hind` sisse kokku pannud. Ei ole — `quoteJob` tagastab
+  `production` ja `disain` eraldi ja need lähevad eraldi veergudesse
+- Töö lugemisvaate lause „Makse käib kogu töö kohta, **koos muudatustega**"
+  ütles täpselt vastupidist sellele, mida summa teeb. Ümber sõnastatud
+- Uus `lib/jobPayments.test.ts` — see viga on nüüd kaks korda tehtud, seega on
+  reegel testis kirjas, mitte ainult kommentaaris
+
+Teadaolev, PUUDUTAMATA: `periodMetrics` „käive" liidab muudatuste hinnad ikka
+juurde. See on eraldi mõiste (käive, mitte arve) oma seadistuse ja testidega —
+ütle, kui ka see peab muudatused välja jätma.
+
 ## [1.40.2] — 2026-08-18
 
 **Palgadiagnostika neelas pooled põhjused alla**

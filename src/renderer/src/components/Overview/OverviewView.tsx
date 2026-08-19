@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
 import { periodMetrics, unitSplitLabel, teethSplitLabel } from '../../lib/periodMetrics'
+import { jobTotalValue } from '../../lib/jobPayments'
 
 interface OverviewViewProps {
   jobs: Job[]
@@ -33,8 +34,10 @@ interface OverviewViewProps {
 const toothCount = (s: string | null | undefined) =>
   s ? s.split(',').filter(t => t.trim()).length : 0
 
-const jobTotal = (j: Job) =>
-  (j.hind ?? 0) + (j.revisions ?? []).reduce((s, r) => s + (r.price ?? 0), 0)
+// What a job is worth to the client. jobTotalValue and nothing hand-rolled:
+// revision prices are the lab's own rework cost and never reached the bill, so
+// adding them here reported a debt larger than any invoice could collect.
+const jobTotal = (j: Job): number => jobTotalValue(j)
 
 // Revision teeth, including the legacy rev_hambad field on imported rows
 const revTeeth = (j: Job) => {
