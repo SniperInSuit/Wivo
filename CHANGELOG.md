@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.41.2] — 2026-08-19
+
+**„kogu aeg" valetas otsingu ajal**
+
+Ülevaate kaardid saavad `searchedJobs` — **otsingukastiga filtreeritud** nimekirja.
+Tühja otsinguga on „kogu aeg" täpne, aga niipea kui otsingusse midagi kirjutada,
+kitsenesid kõik numbrid vaikselt ja silt väitis endiselt „kogu aeg".
+
+- Otsingu ajal on sildiks nüüd **„otsingu tulemused"** — kõigil kolmel kaardil,
+  mis varem „kogu aeg" väitsid (Tööd kokku, Hambaid toodetud, Laekumata)
+- Kuupäevafiltrit sellel lehel ei ole ega olnud — „kogu aeg" on selles mõttes
+  sõna-sõnalt tõsi
+
 ## [1.41.1] — 2026-08-19
 
 **„Maksete seis" ei olnud käive — ja number oli vale**

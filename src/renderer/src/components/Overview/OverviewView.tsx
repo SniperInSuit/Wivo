@@ -23,7 +23,16 @@ import { DayTimeline } from './DayTimeline'
 import { periodMetrics, unitSplitLabel, teethSplitLabel } from '../../lib/periodMetrics'
 
 interface OverviewViewProps {
+  /**
+   * The jobs to describe. This is the SEARCH-FILTERED list — typing in the
+   * global search narrows every number on this page, which is why `searchActive`
+   * exists: a card headed "kogu aeg" while showing four matching rows is a
+   * total nobody can check, and the scope label is the only thing that can say
+   * so. Every job in the clinic when the box is empty.
+   */
   jobs: Job[]
+  /** True while the global search box has text in it. */
+  searchActive?: boolean
   loading: boolean
   onJobClick: (job: Job) => void
   onNewJob: () => void
@@ -48,7 +57,11 @@ function greeting(h: number): string {
   return 'Tere õhtust'
 }
 
-export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }: OverviewViewProps) {
+export function OverviewView({ jobs, searchActive = false, loading, onJobClick, onNewJob, onNavigate }: OverviewViewProps) {
+  // What the numbers below actually cover. No date filter anywhere on this page
+  // — "kogu aeg" is the literal truth — but the search box silently reduces the
+  // set, and a card that keeps claiming "kogu aeg" while it does is lying.
+  const scopeLabel = searchActive ? 'otsingu tulemused' : 'kogu aeg'
   const { stages, stageMap, doneStageKey } = usePipeline()
   const { data: patients = [] } = usePatients()
   const { settings } = useSettings()
@@ -200,7 +213,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       {/* ─── KPI row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Kpi
-          label="Tööd kokku" scope="kogu aeg"
+          label="Tööd kokku" scope={scopeLabel}
           value={String(allTime.yksused)} icon={FileText}
           tint="bg-blue-50 text-blue-500"
           note={unitSplitLabel(allTime)}
@@ -219,7 +232,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
           noteDanger={stats.overdue.length > 0}
         />
         <Kpi
-          label="Hambaid toodetud" scope="kogu aeg"
+          label="Hambaid toodetud" scope={scopeLabel}
           value={String(allTime.hambad)} icon={Smile}
           tint="bg-emerald-50 text-emerald-500"
           note={teethSplitLabel(allTime)}
@@ -228,7 +241,7 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
         {/* "Maksete seis" said nothing about which way the € pointed, so a big
             red number read as turnover. It is a DEBT: what clients still owe. */}
         <Kpi
-          label="Laekumata" scope="kogu aeg"
+          label="Laekumata" scope={scopeLabel}
           value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
           note={`${stats.paidCount} makstud · ${stats.partialCount} osaliselt · ${stats.untouchedCount} maksmata`}

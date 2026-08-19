@@ -331,6 +331,7 @@ function AppContent() {
           {view === 'overview' && (
             <OverviewView
               jobs={searchedJobs}
+              searchActive={search.trim().length > 0}
               loading={isLoading}
               onJobClick={openEdit}
               onNewJob={openNew}
