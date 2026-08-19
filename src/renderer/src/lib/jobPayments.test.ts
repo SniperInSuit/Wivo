@@ -14,7 +14,9 @@
 import { describe, it, expect } from 'vitest'
 import type { Job, Revision } from '../types/job'
 import type { Payment } from '../types/invoice'
-import { jobTotalValue, jobExtrasTotal, jobPaymentState, paidForJob } from './jobPayments'
+import {
+  jobTotalValue, jobExtrasTotal, jobPaymentState, paidForJob, jobsPaymentTotals,
+} from './jobPayments'
 
 let seq = 0
 
@@ -142,5 +144,41 @@ describe('jobPaymentState', () => {
   it('ignores payments belonging to other jobs', () => {
     const j = job({ hind: 400 })
     expect(paidForJob(j.id, [payment('someone-else', 400)])).toBe(0)
+  })
+})
+
+describe('jobsPaymentTotals', () => {
+  it('counts only what is STILL owed, not the full price of part-paid jobs', () => {
+    // What the Ülevaade card got wrong: it summed the whole list price of every
+    // job whose legacy `makstud` flag was false, so 6000 € already in the bank
+    // was still being reported as owed.
+    const a = job({ hind: 6800 })
+    const b = job({ hind: 400 })
+    const t = jobsPaymentTotals([a, b], [payment(a.id, 6000)])
+    expect(t.total).toBe(7200)
+    expect(t.paid).toBe(6000)
+    expect(t.outstanding).toBe(1200)
+  })
+
+  it('counts a part-paid job in BOTH unpaidCount and partialCount', () => {
+    // Deliberate, and the reason the card subtracts one from the other: the
+    // three groups on screen have to be disjoint or they sum to more than the
+    // jobs that exist.
+    const a = job({ hind: 6800 })
+    const t = jobsPaymentTotals([a], [payment(a.id, 6000)])
+    expect(t.unpaidCount).toBe(1)
+    expect(t.partialCount).toBe(1)
+  })
+
+  it('ignores jobs with no price — an unpriced job is not a debt', () => {
+    const t = jobsPaymentTotals([job(), job({ hind: 400 })], [])
+    expect(t.unpaidCount).toBe(1)
+    expect(t.outstanding).toBe(400)
+  })
+
+  it('never lets an overpayment show as negative debt', () => {
+    const a = job({ hind: 400 })
+    const t = jobsPaymentTotals([a], [payment(a.id, 500)])
+    expect(t.outstanding).toBe(0)
   })
 })

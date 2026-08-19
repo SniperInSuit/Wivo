@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.41.1] — 2026-08-19
+
+**„Maksete seis" ei olnud käive — ja number oli vale**
+
+Ülevaate suur punane number luges nagu käive. See on **võlg**: mis kliendid veel
+võlgu on. Kaardil ei olnud ühtegi sõna, mis suunda ütleks.
+
+- Silt on nüüd **„Laekumata"**
+- Number liitis kokku iga töö **täishinna**, mille vana `makstud` lipp oli maas.
+  Töö, kus 6800 €-st oli 6000 € juba laekunud, andis kaardile ikka 6800 €.
+  Pangas olev raha oli kirjas võlana
+- Kaart kasutas ühel ekraanil **kahte eri „makstud" mõistet**: € läks lipu järgi,
+  loendurid all päris maksete ridade järgi. Seepärast olid needsamad 8 tööd
+  korraga „8 osaliselt" JA täishinnaga summa sees
+- Käib nüüd läbi `jobsPaymentTotals` — sama funktsioon, mida patsiendileht ja
+  tööde nimekiri loevad. Loendurid on lahus: makstud · osaliselt · puutumata
+- `useDashboardStats` sama mustriga surnud rida välja
+
 ## [1.41.0] — 2026-08-19
 
 **Muudatuste kulu läks ikka veel patsiendi arvele**

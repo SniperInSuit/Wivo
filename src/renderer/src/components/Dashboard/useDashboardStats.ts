@@ -213,7 +213,6 @@ export function useDashboardStats(
     // while Rahandus said 21 980 for the same month. A flag is not money.
     const paidRevenue = cash.money
     const unpaidRevenue = Math.round(Math.max(0, totalRevenue - paidRevenue) * 100) / 100
-    const unpaid = filtered.filter((j) => !j.makstud && jobTotal(j) > 0)
     const jobsWithPrice = filtered.filter((j) => jobTotal(j) > 0)
     const avgPrice = jobsWithPrice.length > 0 ? totalRevenue / jobsWithPrice.length : 0
     const avgPricePerTooth = totalTeeth > 0 ? totalRevenue / totalTeeth : 0

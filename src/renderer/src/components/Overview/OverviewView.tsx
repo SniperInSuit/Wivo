@@ -16,12 +16,11 @@ import { usePatients } from '../../hooks/usePatients'
 import { useVisits } from '../../hooks/useVisits'
 import { useSettings } from '../../stores/useSettings'
 import { usePayments } from '../../hooks/useInvoices'
-import { jobPaymentState } from '../../lib/jobPayments'
+import { jobPaymentState, jobsPaymentTotals } from '../../lib/jobPayments'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
 import { periodMetrics, unitSplitLabel, teethSplitLabel } from '../../lib/periodMetrics'
-import { jobTotalValue } from '../../lib/jobPayments'
 
 interface OverviewViewProps {
   jobs: Job[]
@@ -33,11 +32,6 @@ interface OverviewViewProps {
 
 const toothCount = (s: string | null | undefined) =>
   s ? s.split(',').filter(t => t.trim()).length : 0
-
-// What a job is worth to the client. jobTotalValue and nothing hand-rolled:
-// revision prices are the lab's own rework cost and never reached the bill, so
-// adding them here reported a debt larger than any invoice could collect.
-const jobTotal = (j: Job): number => jobTotalValue(j)
 
 // Revision teeth, including the legacy rev_hambad field on imported rows
 const revTeeth = (j: Job) => {
@@ -107,7 +101,16 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       const d = parseISO(j.valmis_aeg)
       return isValid(d) && isBefore(d, now) && !isSameDay(d, now)
     })
-    const unpaid = jobs.filter(j => !j.makstud && jobTotal(j) > 0)
+    // Through jobsPaymentTotals — the same function the patient page and the
+    // job list read. The card used to sum the FULL list price of every job whose
+    // legacy `makstud` flag was false, which meant a job with 6800 € owed and
+    // 6000 € already received still contributed 6800 €. Money that is in the
+    // bank was being reported as money still owed.
+    //
+    // It also mixed two definitions of "paid" on one card: the € figure went by
+    // the flag, the counts underneath by the actual payment rows. So the same
+    // eight jobs appeared as "8 osaliselt" AND at full value inside the total.
+    const pay = jobsPaymentTotals(jobs, allPayments)
 
     return {
       total: jobs.length,
@@ -116,10 +119,15 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
       overdue,
       teeth: teethOf(jobs),
       teethDelta: teethOf(thisWeek) - teethOf(lastWeek),
-      unpaidTotal: unpaid.reduce((s, j) => s + jobTotal(j), 0),
-      unpaidCount: unpaid.length,
+      // What is genuinely still owed: every job's client total, less what has
+      // actually come in against it.
+      unpaidTotal: pay.outstanding,
       paidCount: jobs.filter(j => jobPaymentState(j, allPayments).settled).length,
-      partialCount: jobs.filter(j => jobPaymentState(j, allPayments).partial).length,
+      partialCount: pay.partialCount,
+      // `unpaidCount` counts every job with anything outstanding, part payments
+      // included. The card wants the three groups to be disjoint, so the ones
+      // nothing has been received against are what is left after the partials.
+      untouchedCount: pay.unpaidCount - pay.partialCount,
       wip: stages.map(s => ({
         name: s.label,
         hex: s.hex,
@@ -217,12 +225,14 @@ export function OverviewView({ jobs, loading, onJobClick, onNewJob, onNavigate }
           note={teethSplitLabel(allTime)}
           delta={stats.teethDelta} deltaLabel="võrreldes eelmise nädalaga"
         />
+        {/* "Maksete seis" said nothing about which way the € pointed, so a big
+            red number read as turnover. It is a DEBT: what clients still owe. */}
         <Kpi
-          label="Maksete seis" scope="kogu aeg"
+          label="Laekumata" scope="kogu aeg"
           value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
-          note={`${stats.paidCount ?? 0} makstud · ${stats.partialCount ?? 0} osaliselt · ${stats.unpaidCount} maksmata`}
-          noteDanger={stats.unpaidCount > 0}
+          note={`${stats.paidCount} makstud · ${stats.partialCount} osaliselt · ${stats.untouchedCount} maksmata`}
+          noteDanger={stats.untouchedCount + stats.partialCount > 0}
         />
       </div>
 
