@@ -2,7 +2,7 @@ import { CornerDownRight, Stethoscope, Zap } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
-import { usePayments } from '../../hooks/useInvoices'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -61,7 +61,10 @@ function buildLines(jobs: Job[]): Line[] {
 export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }: JobHistoryPanelProps) {
   // Part payments mean "Maksmata" is no longer the only alternative to "Makstud".
   const { data: payments = [] } = usePayments()
-  const payState = (job: Job) => jobPaymentState(job, payments)
+  // And the invoices: on the patient page most work is settled by invoice, so
+  // without them every billed job here reads "Maksmata".
+  const { data: invoices = [] } = useInvoices()
+  const payState = (job: Job) => jobPaymentState(job, payments, invoices)
   const { stageMap } = usePipeline()
   const lines = buildLines(jobs)
   const revisionCount = lines.filter(l => l.revision).length

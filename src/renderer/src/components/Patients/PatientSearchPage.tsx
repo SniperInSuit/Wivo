@@ -6,6 +6,7 @@ import { format, parseISO, isValid } from 'date-fns'
 import type { Job } from '../../types/job'
 import type { Patient } from '../../types/patient'
 import { jobsForPatient, patientStats } from './derive'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 
 export type SortKey = 'nimi' | 'tood' | 'viimane' | 'tasumata'
 
@@ -41,6 +42,12 @@ export function PatientSearchPage({
   patients, jobs, loading, search, onSearchChange, onSelect, onNew, creating,
   unlinkedCount, onBackfill, backfilling, backfillMsg, actionError, onDismissError
 }: PatientSearchPageProps) {
+  // The "tasumata" column and the "only unpaid" filter used to go by the legacy
+  // `makstud` flag alone — patientStats was called with no payments at all — so
+  // a patient who had paid in instalments, or through an invoice, still showed
+  // the full price owed and stayed in the unpaid filter.
+  const { data: payments = [] } = usePayments()
+  const { data: invoices = [] } = useInvoices()
   const [arstFilter, setArstFilter] = useState('')
   const [kliinikFilter, setKliinikFilter] = useState('')
   const [onlyUnpaid, setOnlyUnpaid] = useState(false)
@@ -49,7 +56,7 @@ export function PatientSearchPage({
 
   const rows = useMemo<Row[]>(() => patients.map(p => {
     const pj = jobsForPatient(jobs, p)
-    const s = patientStats(pj)
+    const s = patientStats(pj, payments, invoices)
     return {
       patient: p,
       jobCount: s.jobCount,
@@ -58,7 +65,7 @@ export function PatientSearchPage({
       unpaidTotal: s.unpaidTotal,
       latestJobDate: s.latestJobDate
     }
-  }), [patients, jobs])
+  }), [patients, jobs, payments, invoices])
 
   // Filter dropdown options come from the data itself — there is no doctor or
   // clinic registry, they are free text on the patient record.

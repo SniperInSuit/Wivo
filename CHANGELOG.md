@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.42.0] — 2026-08-19
+
+**Arvega tasutud töö jäi igaveseks „maksmata"**
+
+Raha jõuab tööni kahte teed pidi ja `paidForJob` nägi ainult esimest:
+
+1. makse otse tööle — `payments.job_id`, mida kirjutab „Märgi makstuks"
+2. makse ARVELE, mille peal töö on real — `payments.invoice_id`, `job_id` NULL,
+   mida kirjutab arvete ekraan
+
+Teine ei vähendanud kellegi võlga. Töö, mis arveldati ja mille arve maksti
+**täies mahus**, luges endiselt „Maksmata" oma paneelil, patsiendi lehel,
+tööde tabelis, tahvli kaardil ja Ülevaate summas. Raha oli näha ainult Rahandus
+→ Laekunud all. Sellepärast ütles Ülevaade 45 285 € laekumata, samal ajal kui
+Tulu miinus Laekunud andis 20 405 € — vahe oli täpselt see, mis oli arveldatud,
+mitte töö kaupa märgitud.
+
+- `paidForJob` arvestab nüüd mõlemat teed. Arve jagatakse **tasumise suhtarvu**
+  järgi: täies mahus makstud arve tasub iga töö selle peal, pooleldi makstud
+  pooled. Suhtarv võetakse `gross_total` vastu ja rakendatakse neto ridadele,
+  nii et käibemaks taandub ega kirjuta tööle liiga palju
+- Kes millise rea eest maksis, on küsimus, millele andmed ei vasta — keegi ei
+  maksa arverida — nii et väärtuse järgi jagamine on ainus aus jaotus
+- Tühistatud arve ei tasu midagi
+- Kõik lugejad saavad nüüd arved kaasa: töö paneel, lugemisvaade, tahvli kaart,
+  tabelivaade, Ülevaade, patsiendi profiil ja patsientide nimekiri
+- Patsientide **nimekiri** ei saanud varem üldse makseridu (`patientStats(pj)`),
+  ehk „tasumata" veerg ja „ainult tasumata" filter käisid vana `makstud` lipu
+  järgi. Nüüd päris andmete järgi
+
 ## [1.41.2] — 2026-08-19
 
 **„kogu aeg" valetas otsingu ajal**

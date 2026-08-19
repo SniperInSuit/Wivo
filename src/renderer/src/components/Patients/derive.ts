@@ -1,7 +1,7 @@
 // Every number shown on the patient page is computed here, so the header, the
 // stat strip, the tooth chart and the ARVED panel can never disagree.
 import type { Job } from '../../types/job'
-import type { Payment } from '../../types/invoice'
+import type { InvoiceFull, Payment } from '../../types/invoice'
 import { jobsPaymentTotals, jobTotalValue } from '../../lib/jobPayments'
 import type { Patient } from '../../types/patient'
 
@@ -73,7 +73,9 @@ export function derivedTeeth(patientJobs: Job[]): Set<string> {
 }
 
 // All patient-page totals in one pass.
-export function patientStats(patientJobs: Job[], payments: Payment[] = []) {
+export function patientStats(
+  patientJobs: Job[], payments: Payment[] = [], invoices: InvoiceFull[] = []
+) {
   const jobCount = patientJobs.length
   // Matches useDashboardStats:45 — a legacy un-migrated revision has no entry in
   // the array, so it is not counted as a revision, only as revision teeth below.
@@ -97,7 +99,7 @@ export function patientStats(patientJobs: Job[], payments: Payment[] = []) {
   // Reads the payment ROWS, not just the `makstud` flag: since part payments
   // exist a job can be flagged unpaid and still be half settled, and a panel
   // that ignored that would report a debt the patient has already reduced.
-  const totals = jobsPaymentTotals(patientJobs, payments)
+  const totals = jobsPaymentTotals(patientJobs, payments, invoices)
   const totalInvoiced = totals.total
   const paidTotal = totals.paid
   // By subtraction, NOT by summing the unpaid jobs: an unpaid job with a total of

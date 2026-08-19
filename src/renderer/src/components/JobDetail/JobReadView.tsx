@@ -6,7 +6,7 @@ import type { Job, Revision, WorkItem } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
-import { usePayments, useDeletePayment } from '../../hooks/useInvoices'
+import { usePayments, useDeletePayment, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { PAYMENT_METHOD_LABEL } from '../../types/invoice'
 import { useWorkTypes } from '../../stores/useSettings'
@@ -60,7 +60,8 @@ export function JobReadView({
   const { data: allPayments = [] } = usePayments()
   const deletePayment = useDeletePayment()
   const jobPayments = allPayments.filter(p => p.job_id === job.id)
-  const pay = jobPaymentState(job, allPayments)
+  const { data: allInvoices = [] } = useInvoices()
+  const pay = jobPaymentState(job, allPayments, allInvoices)
   const rev: Revision | null = activeRevisionId
     ? revisions.find(r => r.id === activeRevisionId) ?? null
     : null

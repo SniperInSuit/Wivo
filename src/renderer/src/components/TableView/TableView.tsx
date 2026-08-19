@@ -11,7 +11,7 @@ import { MarkPaidDialog, type PaidDetails } from '../JobDetail/MarkPaidDialog'
 import { stageChipStyle } from '../../config/pipeline'
 import { StatusPill } from '../ui/StatusPill'
 import { ShadeChip } from '../ui/ShadeChip'
-import { usePayments } from '../../hooks/useInvoices'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
 import { useWorkTypes } from '../../stores/useSettings'
@@ -67,6 +67,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   const { data: workers = [] } = useClinicProfiles()
   const { data: customers = [] } = useCustomers()
   const { data: allPayments = [] } = usePayments()
+  const { data: allInvoices = [] } = useInvoices()
   const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   // Resolved type NAMES from Seaded, not the raw `too` strings. The raw field is
@@ -641,7 +642,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   {/* Makstud */}
                   <td className="px-4 py-3">
                     {(() => {
-                      const pay = jobPaymentState(job, allPayments)
+                      const pay = jobPaymentState(job, allPayments, allInvoices)
                       if (pay.settled) return (
                         <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
                           <Check size={10} /> Jah

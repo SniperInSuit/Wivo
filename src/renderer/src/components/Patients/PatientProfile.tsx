@@ -117,7 +117,12 @@ export function PatientProfile({
     )
   }, [payments, invoices, patientJobs, patient.id, patient.nimi])
 
-  const stats = useMemo(() => patientStats(patientJobs, payments), [patientJobs, payments])
+  // Invoices as well as payments: on this page most work is settled by
+  // invoice, and those payment rows carry `invoice_id` with no `job_id` — so
+  // without them every billed job reported its full price as still owed.
+  const stats = useMemo(
+    () => patientStats(patientJobs, payments, invoices),
+    [patientJobs, payments, invoices])
 
   // Only the fields this form owns; markused is written by NotesPanel and is an
   // array, so a reference compare would read permanently dirty.

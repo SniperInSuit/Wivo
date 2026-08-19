@@ -24,7 +24,7 @@ import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { WorkerSelect } from './WorkerSelect'
 import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
-import { useMarkJobsPaid, usePayments } from '../../hooks/useInvoices'
+import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { pickRateFor } from '../../lib/earnings'
 import { jobMaterialCost } from '../../lib/finance'
@@ -605,6 +605,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const [paidDialog, setPaidDialog] = useState(false)
   const markPaid = useMarkJobsPaid()
   const { data: jobPayments = [] } = usePayments()
+  // A job billed on an invoice is settled through that invoice, not by a row of
+  // its own — without these the dialog opens at the full price of a paid job.
+  const { data: allInvoices = [] } = useInvoices()
   const { data: workerRates = [] } = useWorkerRates()
   // Named here as well as inside WorkerSelect, because the per-item designer
   // rows below need the same list and the cost breakdown needs the names.
@@ -1900,7 +1903,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         // owed and this dialog opened at 7048 €, on the same screen. It also
         // dropped `extras`, so an Ülesehitus went uncharged in the other
         // direction. One function, one answer.
-        const { total, paid: already } = jobPaymentState(job, jobPayments)
+        const { total, paid: already } = jobPaymentState(job, jobPayments, allInvoices)
         return (
           <MarkPaidDialog
             title={`Märgi makstuks · ${job.too ?? 'Töö'}`}

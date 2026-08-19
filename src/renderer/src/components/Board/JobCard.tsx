@@ -4,7 +4,7 @@ import type { Job, StageKey } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
-import { usePayments } from '../../hooks/useInvoices'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
@@ -21,7 +21,10 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
   const { stages } = usePipeline()
   const wt = useWorkTypes()
   const { data: allPayments = [] } = usePayments()
-  const pay = jobPaymentState(job, allPayments)
+  // Invoices too: a job settled through an invoice has no payment row of its
+  // own, and without them the card shows a paid job as unpaid forever.
+  const { data: invoices = [] } = useInvoices()
+  const pay = jobPaymentState(job, allPayments, invoices)
   const hasRevision = (job.revisions?.length ?? 0) > 0 || !!job.muudatused
   const workItems = jobWorkItems(job)
   const isMultiType = workItems.length > 1

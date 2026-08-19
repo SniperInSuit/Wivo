@@ -15,7 +15,7 @@ import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { useVisits } from '../../hooks/useVisits'
 import { useSettings } from '../../stores/useSettings'
-import { usePayments } from '../../hooks/useInvoices'
+import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState, jobsPaymentTotals } from '../../lib/jobPayments'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
@@ -79,6 +79,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
 
   const [day, setDay] = useState(() => startOfDay(new Date()))
   const { data: allPayments = [] } = usePayments()
+  // Money reaches a job two ways — straight onto it, or through an invoice it
+  // is a line on. Without the invoices this total counts only the first.
+  const { data: allInvoices = [] } = useInvoices()
 
   // Ülevaade is deliberately ALL-TIME: it is the front door, not a report.
   // It used to compute `jobs.length` inline with no filter and no label, so its
@@ -123,7 +126,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
     // It also mixed two definitions of "paid" on one card: the € figure went by
     // the flag, the counts underneath by the actual payment rows. So the same
     // eight jobs appeared as "8 osaliselt" AND at full value inside the total.
-    const pay = jobsPaymentTotals(jobs, allPayments)
+    const pay = jobsPaymentTotals(jobs, allPayments, allInvoices)
 
     return {
       total: jobs.length,
@@ -135,7 +138,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       // What is genuinely still owed: every job's client total, less what has
       // actually come in against it.
       unpaidTotal: pay.outstanding,
-      paidCount: jobs.filter(j => jobPaymentState(j, allPayments).settled).length,
+      paidCount: jobs.filter(j => jobPaymentState(j, allPayments, allInvoices).settled).length,
       partialCount: pay.partialCount,
       // `unpaidCount` counts every job with anything outstanding, part payments
       // included. The card wants the three groups to be disjoint, so the ones
@@ -148,7 +151,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       })),
       inProduction: jobs.filter(j => j.status !== doneStageKey).length
     }
-  }, [jobs, stages, doneStageKey, now, allPayments])
+  }, [jobs, stages, doneStageKey, now, allPayments, allInvoices])
 
   // Recent activity, derived from the timestamps we actually have. There is no
   // audit-log table, so this is every event that can be shown truthfully.

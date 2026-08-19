@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import type { Job, Revision } from '../types/job'
-import type { Payment } from '../types/invoice'
+import type { InvoiceFull, InvoiceLine, Payment } from '../types/invoice'
 import {
   jobTotalValue, jobExtrasTotal, jobPaymentState, paidForJob, jobsPaymentTotals,
 } from './jobPayments'
@@ -180,5 +180,123 @@ describe('jobsPaymentTotals', () => {
     const a = job({ hind: 400 })
     const t = jobsPaymentTotals([a], [payment(a.id, 500)])
     expect(t.outstanding).toBe(0)
+  })
+})
+
+// ── Invoice-settled jobs ─────────────────────────────────────────────────────
+// The second half of the same story. "Märgi makstuks" writes a payment with a
+// `job_id`; the invoice screen writes one with an `invoice_id` and job_id NULL.
+// `paidForJob` filtered on `job_id` alone, so money that arrived by invoice was
+// visible under Rahandus → Laekunud and reduced nobody's debt. A job billed and
+// paid in full still read "Maksmata" on its own panel, forever.
+
+const line = (jobId: string | null, value: number): InvoiceLine => ({
+  id: `line-${++seq}`,
+  invoice_id: 'inv',
+  job_id: jobId,
+  revision_id: null,
+  description: 'Töö',
+  qty: 1,
+  unit_price: value,
+  sort_order: 0,
+  created_at: '2026-08-19',
+})
+
+const invoice = (over: Partial<InvoiceFull> & {
+  lines: InvoiceLine[]; payments: Payment[]; gross_total: number
+}): InvoiceFull => ({
+  id: 'inv',
+  clinic_id: 'clinic',
+  number: '2026-001',
+  status: 'saadetud',
+  patsient: 'Mari Maasikas',
+  issue_date: '2026-08-19',
+  due_date: '2026-09-19',
+  net_total: over.gross_total,
+  vat_total: 0,
+  created_at: '2026-08-19',
+  updated_at: '2026-08-19',
+  ...over,
+} as unknown as InvoiceFull)
+
+describe('paidForJob, through an invoice', () => {
+  it('settles a job whose invoice was paid in full', () => {
+    const j = job({ hind: 400 })
+    const inv = invoice({
+      gross_total: 400,
+      lines: [line(j.id, 400)],
+      payments: [payment(null, 400)],
+    })
+    expect(paidForJob(j.id, [], [inv])).toBe(400)
+    expect(jobPaymentState(j, [], [inv]).settled).toBe(true)
+  })
+
+  it('splits a part-paid invoice across its jobs by value', () => {
+    // Nobody pays an invoice LINE, so which job the money was "for" is a
+    // question the data cannot answer. Pro-rata is the only honest split.
+    const a = job({ hind: 300 })
+    const b = job({ hind: 100 })
+    const inv = invoice({
+      gross_total: 400,
+      lines: [line(a.id, 300), line(b.id, 100)],
+      payments: [payment(null, 200)],   // half
+    })
+    expect(paidForJob(a.id, [], [inv])).toBe(150)
+    expect(paidForJob(b.id, [], [inv])).toBe(50)
+  })
+
+  it('does not over-credit a job by the VAT on its invoice', () => {
+    // The ratio is taken against gross and applied to net line values, so a
+    // fully paid 22% VAT invoice settles the job exactly, not 122% of it.
+    const j = job({ hind: 400 })
+    const inv = invoice({
+      gross_total: 488,
+      net_total: 400,
+      vat_total: 88,
+      lines: [line(j.id, 400)],
+      payments: [payment(null, 488)],
+    })
+    expect(paidForJob(j.id, [], [inv])).toBe(400)
+  })
+
+  it('ignores a cancelled invoice', () => {
+    const j = job({ hind: 400 })
+    const inv = invoice({
+      status: 'tuhistatud',
+      gross_total: 400,
+      lines: [line(j.id, 400)],
+      payments: [payment(null, 400)],
+    })
+    expect(paidForJob(j.id, [], [inv])).toBe(0)
+  })
+
+  it('adds a direct payment and an invoice payment together', () => {
+    const j = job({ hind: 400 })
+    const inv = invoice({
+      gross_total: 400,
+      lines: [line(j.id, 400)],
+      payments: [payment(null, 100)],
+    })
+    expect(paidForJob(j.id, [payment(j.id, 250)], [inv])).toBe(350)
+  })
+
+  it('never counts a row carrying both ids twice', () => {
+    const j = job({ hind: 400 })
+    const both: Payment = { ...payment(j.id, 400), invoice_id: 'inv' }
+    const inv = invoice({ gross_total: 400, lines: [line(j.id, 400)], payments: [both] })
+    expect(paidForJob(j.id, [both], [inv])).toBe(400)
+  })
+
+  it('leaves the Ülevaade total counting only what is genuinely owed', () => {
+    const a = job({ hind: 6800 })
+    const b = job({ hind: 400 })
+    const inv = invoice({
+      gross_total: 6800,
+      lines: [line(a.id, 6800)],
+      payments: [payment(null, 6800)],
+    })
+    const t = jobsPaymentTotals([a, b], [], [inv])
+    expect(t.outstanding).toBe(400)
+    expect(t.unpaidCount).toBe(1)
   })
 })
