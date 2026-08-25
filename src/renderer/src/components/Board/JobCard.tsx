@@ -26,8 +26,13 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
   const { data: invoices = [] } = useInvoices()
   const pay = jobPaymentState(job, allPayments, invoices)
   const hasRevision = (job.revisions?.length ?? 0) > 0 || !!job.muudatused
-  const workItems = jobWorkItems(job)
-  const isMultiType = workItems.length > 1
+  // Every job is a LIST of work items, one of them included: `jobWorkItems`
+  // builds a single legacy item from `too`/`hambad` when a job has none. The
+  // card used to branch on the count and render one-item jobs as plain grey
+  // text, so two cards showing the same kind of thing looked like two kinds of
+  // card. Colour is the fastest thing on a board to scan and the one-item job
+  // was the only one not getting it.
+  const workItems = jobWorkItems(job).filter(i => i.too?.trim())
 
   const stageIdx  = stages.findIndex(s => s.key === job.status)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -49,11 +54,12 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
     >
       {/* Color strip — absolute, clips to card's border-radius via overflow-hidden */}
       <div className="absolute left-0 top-0 bottom-0 w-[4px] flex flex-col">
-        {isMultiType ? (
+        {workItems.length > 0 ? (
           workItems.map(item => (
             <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
           ))
         ) : (
+          // Nothing named at all — a job can exist before anyone says what it is.
           <span className="flex-1" style={{ backgroundColor: wt.hex(job.too) }} />
         )}
         {job.mudel && <span className="flex-1" style={{ backgroundColor: '#F59E0B' }} />}
@@ -94,8 +100,8 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
         </div>
       </div>
 
-      {/* Töö type(s) */}
-      {isMultiType ? (
+      {/* Töö type(s) — a chip each, however many there are. */}
+      {workItems.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap mb-2">
           {workItems.map(item => (
             <span key={item.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${wt.hex(item.too)}20`, color: wt.hex(item.too) }}>
@@ -103,9 +109,7 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
             </span>
           ))}
         </div>
-      ) : job.too ? (
-        <p className="text-xs text-ink-muted mb-2 truncate">{job.too}</p>
-      ) : null}
+      )}
 
       {/* Tooth badges */}
       {job.hambad && (

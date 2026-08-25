@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.43.1] — 2026-08-20
+
+**Ühe tööosaga töö sai ka värvilise sildi**
+
+Tahvli kaart hargnes tööosade ARVU järgi: mitu tööosa → värvilised sildid,
+üks tööosa → hall tekst. Kaks kaarti, mis näitavad sama asja, nägid välja nagu
+kaks eri liiki kaarti, ja ainus, mis neid eristas, oli loendur.
+
+- Iga tööosa saab nüüd oma sildi, olenemata sellest, kui palju neid on.
+  `jobWorkItems` ehitab vanast `too`/`hambad` paarist ühe tööosa, nii et vanad
+  read saavad sildi täpselt samamoodi
+- Värviriba vasakul järgib sama loogikat
+- Sama muudatus muudatuse kaardil: sildid tulevad muudatuse enda tööosadest,
+  ja kui muudatus neid ei nimeta, siis töö omadest — sama tagavara, mida
+  tasuarvestus kasutab. Varem näitas see `job.too`, ehk töö ESIMEST tüüpi,
+  ka siis kui ümber tehti hoopis midagi muud
+- Nimeta tööosa ei saa tühja silti
+
 ## [1.43.0] — 2026-08-19
 
 **Palgarida nimetas tööd, mille eest raha ei makstud**

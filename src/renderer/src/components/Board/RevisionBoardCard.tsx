@@ -5,6 +5,7 @@
 import { motion } from 'framer-motion'
 import { CornerDownLeft, ChevronLeft, ChevronRight, Euro, Zap } from 'lucide-react'
 import type { Job, StageKey, Revision } from '../../types/job'
+import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
@@ -24,6 +25,13 @@ export function RevisionBoardCard({
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
   const { settings } = useSettings()
+  // What was REDONE, chipped the same way the job card chips what was made. A
+  // remake that names its own work items is about those; one that names none is
+  // about the job's, which is the same fallback the pay engine uses.
+  const revItems = (revision.work_items ?? []).filter(i => i.too?.trim())
+  const workItems = revItems.length > 0
+    ? revItems
+    : jobWorkItems(job).filter(i => i.too?.trim())
   const revStage  = revision.status ?? stages[0]?.key ?? 'disain'
   const stageIdx  = stages.findIndex(s => s.key === revStage)
   const prevStage = stageIdx > 0 ? stages[stageIdx - 1] : null
@@ -43,7 +51,15 @@ export function RevisionBoardCard({
         ${isDragging ? 'opacity-50 rotate-1 shadow-panel' : ''}`}
     >
       {/* Color strip */}
-      <div className="absolute left-0 top-0 bottom-0 w-[4px]" style={{ backgroundColor: wt.hex(job.too) }} />
+      <div className="absolute left-0 top-0 bottom-0 w-[4px] flex flex-col">
+        {workItems.length > 0 ? (
+          workItems.map(item => (
+            <span key={item.id} className="flex-1" style={{ backgroundColor: wt.hex(item.too) }} />
+          ))
+        ) : (
+          <span className="flex-1" style={{ backgroundColor: wt.hex(job.too) }} />
+        )}
+      </div>
       <div className="p-3.5 pl-[18px]">
       {/* ── Navy muudatus badge ── */}
       <div className="flex items-center gap-1.5 mb-2">
@@ -75,7 +91,19 @@ export function RevisionBoardCard({
 
       {/* Patient + work type */}
       <p className="font-semibold text-sm text-ink leading-tight mb-1">{job.patsient}</p>
-      {job.too && <p className="text-xs text-ink-muted truncate mb-1.5">{job.too}</p>}
+      {workItems.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap mb-1.5">
+          {workItems.map(item => (
+            <span
+              key={item.id}
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+              style={{ backgroundColor: `${wt.hex(item.too)}20`, color: wt.hex(item.too) }}
+            >
+              {item.too}{item.bridge ? ' (sild)' : ''}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Revision note */}
       <p className="text-xs text-slate-500 italic line-clamp-2 mb-2 leading-snug">{revision.note}</p>
