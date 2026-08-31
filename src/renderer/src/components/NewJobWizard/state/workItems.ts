@@ -62,12 +62,19 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     const hambad =
       rules.toothMode === 'none' ? '' : teethToHambad(state.selectedTeeth[key] ?? [])
 
+    // Which abutment each implant sits on. The type-wide code is the item's
+    // `kruvi`; only teeth that were given something DIFFERENT are written into
+    // `kruvid`, so the common "all four are MIS C1" case stores one string and
+    // the mixed case stores exactly the exceptions.
+    const abut = abutmentsFor(state, key, hambad, rules.supportsAbutment)
+
     return [{
       id: `wiz:${key}`,
       too: nimi,
       hambad,
       ...mat,
       ...mach,
+      ...abut,
       ...(rules.isBridge ? { bridge: true } : {}),
     }]
   })
@@ -83,6 +90,31 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
  * auto-price: the design fee is added on top and is not a production cost, and
  * the wizard never offers extras.
  */
+/**
+ * The abutment fields for one work item, or nothing at all.
+ *
+ * Only the teeth whose code differs from the type-wide one are stored per
+ * tooth. Writing every tooth would work, but it turns "these are all MIS C1"
+ * into four rows that have to be edited four times when the system changes.
+ */
+function abutmentsFor(
+  state: NewJobState, key: string, hambad: string, supported: boolean
+): { kruvi?: string; kruvid?: Record<string, string> } {
+  if (!supported) return {}
+  const all = (state.abutmentByType[key] ?? '').trim()
+  const perTooth: Record<string, string> = {}
+  for (const raw of hambad.split(',')) {
+    const tooth = raw.trim()
+    if (!tooth) continue
+    const own = (state.abutmentByTooth[tooth] ?? '').trim()
+    if (own && own !== all) perTooth[tooth] = own
+  }
+  return {
+    ...(all ? { kruvi: all } : {}),
+    ...(Object.keys(perTooth).length > 0 ? { kruvid: perTooth } : {}),
+  }
+}
+
 export function wizardQuoteInput(state: NewJobState, types: readonly WorkType[]): QuoteInput {
   return {
     // materjal travels with the item: quoteJob prices each one by what it is

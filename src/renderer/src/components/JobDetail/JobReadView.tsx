@@ -3,7 +3,7 @@ import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Tras
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision, WorkItem } from '../../types/job'
-import { jobWorkItems } from '../../types/job'
+import { jobWorkItems, abutmentSummary } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { usePayments, useDeletePayment, useInvoices } from '../../hooks/useInvoices'
@@ -212,9 +212,16 @@ export function JobReadView({
                   {v.title}
                   {v.rush && <Zap size={11} className="inline ml-1 text-orange-500 fill-orange-400" />}
                 </p>
-                {!rev && jobWorkItems(job).length <= 1 && jobWorkItems(job)[0]?.kruvi && (
-                  <p className="text-[11px] text-indigo-600 mt-0.5">🔩 {jobWorkItems(job)[0].kruvi}</p>
-                )}
+                {/* Through abutmentSummary, not `kruvi`: an item can name a
+                    different abutment per tooth, and reading the item-wide code
+                    alone showed one system for a case that used two. */}
+                {!rev && jobWorkItems(job).length <= 1 && (() => {
+                  const first = jobWorkItems(job)[0]
+                  const summary = first ? abutmentSummary(first) : ''
+                  return summary
+                    ? <p className="text-[11px] text-indigo-600 mt-0.5">🔩 {summary}</p>
+                    : null
+                })()}
               </div>
               {!rev && job.kirjeldus && (
                 <div className="col-span-2 min-w-0">
@@ -497,11 +504,15 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
             {item.materjal && (
               <span className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[120px]">{item.materjal}</span>
             )}
-            {item.kruvi && (
-              <span className="text-[10px] text-ink-muted bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded truncate max-w-[140px]" title={item.kruvi}>
-                🔩 {item.kruvi}
-              </span>
-            )}
+            {(() => {
+              const summary = abutmentSummary(item)
+              if (!summary) return null
+              return (
+                <span className="text-[10px] text-ink-muted bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded truncate max-w-[180px]" title={summary}>
+                  🔩 {summary}
+                </span>
+              )
+            })()}
             <span className="text-xs text-ink-muted ml-auto">{teethCount} hammast</span>
             <ToothBadges hambad={item.hambad} max={8} />
           </div>

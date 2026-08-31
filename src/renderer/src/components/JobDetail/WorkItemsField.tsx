@@ -21,8 +21,10 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
+import { workTypeRules } from '@shared/wizard'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { AbutmentField } from './AbutmentField'
 import { workTypeImage } from '../../lib/workTypeImages'
 
 export interface WorkItemsFieldProps {
@@ -75,6 +77,9 @@ export function WorkItemsField({
   // the job page, where the job's own designer is on screen to inherit from.
   const { data: clinicWorkers = [] } = useClinicProfiles()
   const [showAllTypes, setShowAllTypes] = useState(false)
+  // Which item has its per-tooth abutment rows open. One at a time: the list is
+  // an exception editor, not something to leave unfolded on every item.
+  const [perToothFor, setPerToothFor] = useState<string | null>(null)
 
   const colorMap: Record<string, string> = {}
   for (const t of wt.types) colorMap[t.nimi] = t.hex
@@ -331,25 +336,25 @@ export function WorkItemsField({
         </div>
       )}
 
-      {/* Screw/abutment field — shown for implant-type work items */}
+      {/* Screw/abutment. `supportsAbutment` rather than a regex written here:
+          the same classifier the wizard uses, so "Abutmendile kroon" is
+          recognised on both screens instead of only the one whose regex
+          happened to list it. */}
       {(() => {
         const activeItem = value.find(i => i.id === activeId)
         if (!activeItem) return null
-        const isImplant = /implant|abutment/i.test(activeItem.too)
-        if (!isImplant) return null
+        if (!workTypeRules(activeItem.too, wt.types).supportsAbutment) return null
         return (
-          <div>
-            <label className={`text-[10px] font-medium ${dark ? 'text-slate-400' : 'text-ink-muted'}`}>
-              Kruvi / abutment — {activeItem.too}
-            </label>
-            <input
-              type="text"
-              value={activeItem.kruvi ?? ''}
-              onChange={e => onChange(value.map(i => i.id === activeItem.id ? { ...i, kruvi: e.target.value || undefined } : i))}
-              placeholder="Nt: MIS C1 3.75×11.5mm"
-              className={`input text-xs mt-0.5 ${dark ? 'bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500' : ''}`}
-            />
-          </div>
+          <AbutmentField
+            item={activeItem}
+            disabled={disabled}
+            dark={dark}
+            open={perToothFor === activeItem.id}
+            onToggleOpen={() => setPerToothFor(perToothFor === activeItem.id ? null : activeItem.id)}
+            onChange={patch => onChange(
+              value.map(i => i.id === activeItem.id ? { ...i, ...patch } : i)
+            )}
+          />
         )
       })()}
 

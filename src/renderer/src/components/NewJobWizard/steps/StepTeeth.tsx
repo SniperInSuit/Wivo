@@ -27,6 +27,7 @@ import { ArchSelector } from '../teeth/ArchSelector'
 import { ToothControls, type ToothLegendEntry } from '../teeth/ToothControls'
 import { WizardOdontogram } from '../teeth/WizardOdontogram'
 import { WorkTypeTabs, type WorkTypeTab } from '../teeth/WorkTypeTabs'
+import { AbutmentPicker } from '../teeth/AbutmentPicker'
 import { WIZARD_FALLBACK_HEX } from '../wizardTheme'
 
 export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
@@ -296,6 +297,27 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
             onSetActiveTeeth={teeth => activeType && setTeethFor(activeType, teeth)}
             onClearAll={clearAll}
           />
+
+          {/* Which abutment each implant sits on. Here rather than on a later
+              step because the answer belongs to the teeth that were just
+              picked, and the wizard could not record it at all before. */}
+          {rules.abutmentTypes.length > 0 && (
+            <AbutmentPicker
+              types={rules.abutmentTypes.map(too => ({
+                too,
+                hex: colorMap[baseTypeName(too)] ?? WIZARD_FALLBACK_HEX,
+                teeth: state.selectedTeeth[too] ?? [],
+              }))}
+              byType={state.abutmentByType}
+              byTooth={state.abutmentByTooth}
+              onChangeType={(too, code) => patch({
+                abutmentByType: { ...state.abutmentByType, [too]: code },
+              })}
+              onChangeTooth={(tooth, code) => patch({
+                abutmentByTooth: { ...state.abutmentByTooth, [tooth]: code },
+              })}
+            />
+          )}
 
           {/* Arch selector if needed */}
           {rules.archTypes.length > 0 && (

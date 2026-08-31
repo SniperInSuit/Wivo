@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.44.0] — 2026-08-20
+
+**Abutmendi kood nõustajas, ja hammaste kaupa**
+
+Nõustajas ei saanud kruvi/abutmenti üldse märkida — see väli oli ainult töö
+lehel, nii et nõustajaga loodud implantaaditöö tuli pärast lahti teha ja
+üle salvestada, et kirja panna miski, mida tehnik teadis juba hambaid valides.
+
+- **Nõustaja 2. samm** küsib nüüd koodi iga implantaaditöö kohta, kohe hammaste
+  kõrval. Üks väli katab kõik selle töö hambad — „kõik neli on MIS C1" on üks
+  vastus, mitte neli
+- **„Hammaste kaupa"** avab erandid: kolm ühte süsteemi ja üks teist on
+  tavaline juhtum, mis varem lõppes märkmes, mida keegi tagasi ei loe
+- Tühi hambarida **pärib** töö koodi, ei tähenda „abutmenti ei ole". Sama reegel
+  lugemisel (`abutmentFor`), nii et ekraan ja salvestatu ei saa lahku minna
+- `WorkItem.kruvid` — hammas → kood. Salvestatakse ainult erandid, nii et
+  tavajuhtum jääb üheks stringiks. JSONB veerg, migratsiooni ei olnud vaja
+- **Töö leht** sai sama: üks väli + hammaste kaupa erandid. Ühtlasi ilmub see
+  väli nüüd ka **külgpaneelis** — varem oli see ainult täisekraanivaates, ehk
+  see, kas abutmenti sai üldse kirja panna, sõltus Seadetes valitud paneeli
+  suunast
+- Implantaaditöö tuvastus käib nüüd `workTypeRules.supportsAbutment` kaudu, mitte
+  töö lehele kirjutatud regexi järgi. Vana `/implant|abutment/i` ei tundnud ära
+  „Abutmendile kroon" — sama töö sai välja ühel ekraanil ja teisel mitte
+- Lugemisvaade ja nõustaja kokkuvõte näitavad koode koodi kaupa grupeerituna:
+  „MIS C1: 14, 15 · Straumann BL: 16"
+
 ## [1.43.1] — 2026-08-20
 
 **Ühe tööosaga töö sai ka värvilise sildi**

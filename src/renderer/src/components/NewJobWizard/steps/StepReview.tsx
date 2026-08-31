@@ -9,6 +9,7 @@ import { quoteJob } from '@shared/pricing/quote'
 import type { WizardStepComponent } from '../types'
 import { WizardSummaryRow } from '../ui/WizardSummaryRow'
 import { ReviewSection } from '../review/ReviewSection'
+import { abutmentList } from '@/types/job'
 import { PriceSummary } from '../review/PriceSummary'
 import { wizardWorkItems, wizardQuoteInput } from '../state/workItems'
 import type { WorkItem } from '@/types/job'
@@ -220,6 +221,33 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                     )
                   }
                 />
+                )
+              })}
+              {/* Abutments, one row per implant item. Grouped by CODE rather
+                  than listed per tooth: "MIS C1 — 14, 15, 16" is the sentence a
+                  technician says, and four identical rows is not. */}
+              {items.map(item => {
+                const codes = abutmentList(item)
+                if (codes.length === 0) return null
+                const grouped = new Map<string, string[]>()
+                for (const { tooth, code } of codes) {
+                  grouped.set(code, [...(grouped.get(code) ?? []), tooth])
+                }
+                return (
+                  <WizardSummaryRow
+                    key={`abut:${item.id}`}
+                    label={`Kruvi / abutment — ${item.too}`}
+                    value={
+                      <span className="flex flex-col gap-0.5">
+                        {[...grouped.entries()].map(([code, teeth]) => (
+                          <span key={code}>
+                            <span className="font-medium">{code}</span>
+                            <span className="text-ink-muted"> — {teeth.join(', ')}</span>
+                          </span>
+                        ))}
+                      </span>
+                    }
+                  />
                 )
               })}
             </>

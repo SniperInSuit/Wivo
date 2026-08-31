@@ -11,6 +11,7 @@ import { MultiOdontogramPicker } from './MultiOdontogramPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
 import { WorkItemsField } from './WorkItemsField'
+import { AbutmentField } from './AbutmentField'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { JobReadView } from './JobReadView'
@@ -18,6 +19,7 @@ import { JobTimeline } from './JobTimeline'
 import { StatusPill } from '../ui/StatusPill'
 import { useSettings, useWorkTypes, calcProduction, countSmallTeeth, countLargeTeeth, workTypePriceFor, priceBookOf } from '../../stores/useSettings'
 import { quoteJob } from '@shared/pricing/quote'
+import { workTypeRules } from '@shared/wizard'
 
 const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -619,6 +621,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   // Revision overlay on read view: '__new__' = add, revision id = edit, null = hidden
   const [quickRevisionId, setQuickRevisionId] = useState<string | null>(null)
   const [showAllTypes, setShowAllTypes] = useState(false)
+  const [abutmentOpenFor, setAbutmentOpenFor] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   // Opening an existing job shows it, it does not offer to change it. A new job
   // has nothing to look at, so it starts in the form.
@@ -1608,6 +1611,33 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   )
                 })()}
               </div>
+
+              {/* Kruvi / abutment for the active work item. Rendered here as
+                  well as inside WorkItemsField because the two job-page layouts
+                  draw the chips differently — the side panel has its own — and
+                  the field used to live only in the fullscreen one, so whether
+                  an abutment could be recorded depended on the panel position
+                  chosen in Seaded. */}
+              {!isFullscreen && (() => {
+                const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
+                if (!activeItem) return null
+                if (!workTypeRules(activeItem.too, wt.types).supportsAbutment) return null
+                return (
+                  <AbutmentField
+                    item={activeItem}
+                    open={abutmentOpenFor === activeItem.id}
+                    onToggleOpen={() => setAbutmentOpenFor(
+                      abutmentOpenFor === activeItem.id ? null : activeItem.id
+                    )}
+                    onChange={patch => setForm(f => ({
+                      ...f,
+                      work_items: f.work_items.map(i =>
+                        i.id === activeItem.id ? { ...i, ...patch } : i
+                      ),
+                    }))}
+                  />
+                )
+              })()}
 
               {/* Teostaja + Disainija — what worker pay is calculated from.
                   Two fields because design is compensated separately: often the

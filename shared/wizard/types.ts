@@ -91,6 +91,17 @@ export interface NewJobState {
    * margin — the same bug per-type materials were introduced to fix.
    */
   machineByType: Record<string, string>
+  /**
+   * Screw / abutment reference for every tooth of a work TYPE. Same shape and
+   * same reason as materialByType: one answer that covers the usual case.
+   *
+   * `abutmentByTooth` overrides it for the teeth that differ, because a case
+   * can perfectly well be three MIS C1 and one Straumann BL. Both exist so the
+   * common case is one field and the awkward case is still expressible.
+   */
+  abutmentByType: Record<string, string>
+  /** key = FDI number as a string. Beats `abutmentByType` for that tooth. */
+  abutmentByTooth: Record<string, string>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
   /** Köndivärv — the prepared stump's shade (VITA ND1–ND9 or free text). */
@@ -207,6 +218,8 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     selectedArch: null,
     materialByType: {},
     machineByType: {},
+    abutmentByType: {},
+    abutmentByTooth: {},
     defaultShade: null,
     dieShade: null,
     glaze: null,

@@ -167,3 +167,30 @@ describe('workTypeRules — identity is the asked-for name, not the resolved one
     expect(r.suggestSingleTooth).toBe(false)
   })
 })
+
+describe('supportsAbutment — work that sits on an implant', () => {
+  const LAB = TYPES
+  it('offers a code for an implant crown', () => {
+    expect(workTypeRules('Implantkroon', LAB).supportsAbutment).toBe(true)
+  })
+
+  it('recognises the Estonian synonym the old regex missed', () => {
+    // The job page tested /implant|abutment/i, which does not match
+    // "Abutmendile kroon" — so the field appeared on one screen and not the
+    // other for the same job.
+    expect(workTypeRules('Abutmendile kroon', LAB).supportsAbutment).toBe(true)
+  })
+
+  it('does not offer one for an ordinary crown', () => {
+    expect(workTypeRules('Kroon', LAB).supportsAbutment).toBe(false)
+  })
+
+  it('does not offer one for an appliance or a model', () => {
+    expect(workTypeRules('Retainer', LAB).supportsAbutment).toBe(false)
+    expect(workTypeRules('Mudel', LAB).supportsAbutment).toBe(false)
+  })
+
+  it('stays quiet for an unrecognised type', () => {
+    expect(workTypeRules('Miski uus asi', LAB).supportsAbutment).toBe(false)
+  })
+})

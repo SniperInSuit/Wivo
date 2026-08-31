@@ -113,6 +113,13 @@ function sanitize(
   merged.machineByType = (merged.machineByType && typeof merged.machineByType === 'object')
     ? merged.machineByType
     : {}
+  // Absent on a draft written before abutment codes existed. Same treatment.
+  merged.abutmentByType = (merged.abutmentByType && typeof merged.abutmentByType === 'object')
+    ? merged.abutmentByType
+    : {}
+  merged.abutmentByTooth = (merged.abutmentByTooth && typeof merged.abutmentByTooth === 'object')
+    ? merged.abutmentByTooth
+    : {}
   merged.pricing = { ...base.pricing, ...(merged.pricing ?? {}) }
   // A draft is never resumed mid-insert.
   merged.status = 'draft'

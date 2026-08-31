@@ -92,7 +92,17 @@ export interface WorkItem {
   bridge?: boolean        // true = teeth form a connected bridge unit
   materjal?: string       // material for this specific work item
   masina?: string         // machine for this specific work item
-  kruvi?: string          // screw/abutment reference for implant work
+  kruvi?: string          // screw/abutment reference for every tooth of this item
+  /**
+   * Per-TOOTH screw / abutment reference, keyed by FDI number as a string.
+   *
+   * `kruvi` alone could only say "this whole item uses one abutment", and a
+   * four-implant case is routinely three of one system and one of another —
+   * which the lab then has to keep in a note nobody reads back. A tooth listed
+   * here wins; one that is not falls back to `kruvi`. Read through
+   * `abutmentFor()`, never directly, so the fallback is applied everywhere.
+   */
+  kruvid?: Record<string, string>
   note?: string           // optional per-item note
   /**
    * Who designed THIS item.
@@ -140,6 +150,46 @@ export function jobDesigners(
 export const jobHasDesigner = (
   job: Pick<Job, 'work_items' | 'too' | 'hambad' | 'designed_by'>, profileId: string
 ): boolean => jobDesigners(job).includes(profileId)
+
+/** The abutment for ONE tooth: its own code, else the item's, else nothing. */
+export const abutmentFor = (
+  item: Pick<WorkItem, 'kruvi' | 'kruvid'>, tooth: string
+): string => (item.kruvid?.[tooth.trim()] ?? item.kruvi ?? '').trim()
+
+/**
+ * Every distinct abutment on an item, in tooth order, as "14: MIS C1" pairs.
+ * For display — the read view and the review step both need the same summary.
+ */
+export function abutmentList(
+  item: Pick<WorkItem, 'hambad' | 'kruvi' | 'kruvid'>
+): { tooth: string; code: string }[] {
+  return (item.hambad ?? '')
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(tooth => ({ tooth, code: abutmentFor(item, tooth) }))
+    .filter(x => !!x.code)
+}
+
+/**
+ * One line naming an item's abutments. "MIS C1" when the whole item is one
+ * system, "MIS C1: 14, 15 · Straumann BL: 16" when it is not.
+ *
+ * Grouped by CODE and not listed per tooth because that is the sentence a
+ * technician says. Four identical rows is not.
+ */
+export function abutmentSummary(
+  item: Pick<WorkItem, 'hambad' | 'kruvi' | 'kruvid'>
+): string {
+  const list = abutmentList(item)
+  if (list.length === 0) return ''
+  const grouped = new Map<string, string[]>()
+  for (const { tooth, code } of list) {
+    grouped.set(code, [...(grouped.get(code) ?? []), tooth])
+  }
+  if (grouped.size === 1) return [...grouped.keys()][0]
+  return [...grouped.entries()].map(([code, teeth]) => `${code}: ${teeth.join(', ')}`).join(' · ')
+}
 
 /** Canonical work items for a job, whether it uses the new or old shape. */
 export function jobWorkItems(job: Pick<Job, 'work_items' | 'too' | 'hambad'>): WorkItem[] {

@@ -57,6 +57,14 @@ export interface WorkTypeRules {
   supportsShade: boolean
   supportsGlaze: boolean
   supportsTexture: boolean
+  /**
+   * Offer a screw / abutment reference for this work.
+   *
+   * Tooth-mode only. An arch-level type already carries a whole jaw, so a code
+   * per tooth there would be a dozen inputs answering one question; a full-arch
+   * case that genuinely needs codes is named per implant on the job itself.
+   */
+  supportsAbutment: boolean
 }
 
 // ── Keyword families ─────────────────────────────────────────────────────────
@@ -68,6 +76,8 @@ const APPLIANCE_WORDS = [
   'mudel', 'model', 'ibt', 'kapp', 'tray', 'lahas',
 ]
 const BRIDGE_WORDS = ['sild', 'bridge']
+/** Work that sits on an implant, and therefore on a specific abutment. */
+const IMPLANT_WORDS = ['implant', 'abutment', 'abutmendile']
 const SINGLE_WORDS = ['kroon', 'crown']
 /** A shade is meaningless on a clear appliance, a surgical guide or a model. */
 const NO_SHADE_WORDS = [...APPLIANCE_WORDS, 'kirurg', 'surgic', 'mudel', 'model', 'ibt']
@@ -118,6 +128,9 @@ export function workTypeRules(too: string, types: readonly WorkType[]): WorkType
       supportsShade: true,
       supportsGlaze: false,
       supportsTexture: false,
+      // Same reasoning as the rest of the unknown branch: demand nothing and
+      // offer nothing that was not asked for.
+      supportsAbutment: false,
     }
   }
 
@@ -147,6 +160,7 @@ export function workTypeRules(too: string, types: readonly WorkType[]): WorkType
     supportsShade: !noShade,
     supportsGlaze: toothMode === 'tooth' && !noShade,
     supportsTexture: toothMode === 'tooth' && !noShade,
+    supportsAbutment: toothMode === 'tooth' && hits(tokens, IMPLANT_WORDS),
   }
 }
 
@@ -169,6 +183,8 @@ export interface JobRules {
   supportsShade: boolean
   supportsGlaze: boolean
   supportsTexture: boolean
+  /** `too` keys that want a screw / abutment reference. */
+  abutmentTypes: string[]
   /** Types that should auto-fill the arch when selectedArch changes. */
   autoFullArchTypes: string[]
   /** Any type wants the single-tooth convenience toggle. */
@@ -205,6 +221,7 @@ export function jobRules(jobTypes: readonly string[], types: readonly WorkType[]
     supportsShade: perType.some(r => r.supportsShade),
     supportsGlaze: perType.some(r => r.supportsGlaze),
     supportsTexture: perType.some(r => r.supportsTexture),
+    abutmentTypes: perType.filter(r => r.supportsAbutment).map(r => r.too),
     autoFullArchTypes: perType.filter(r => r.autoFullArch).map(r => r.too),
     suggestSingleTooth: perType.some(r => r.suggestSingleTooth),
   }
