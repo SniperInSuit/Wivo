@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.45.2] — 2026-09-01
+
+**Maksegraafikud on nüüd nähtavad**
+
+Graafiku sai luua, aga mitte vaadata: viis osamakset olid viis tavalist rida
+neljakümne arve seas ja miski ekraanil ei öelnud, et nad on üks kokkulepe.
+
+- Uus plokk Arvete vaate ülaosas. Ei renderda midagi, kui graafikuid ei ole
+- Iga graafik: tasutud/kokku, edenemisriba, hilinenud osamaksed punaselt, ja
+  lahtivolditult iga osamakse oma numbri, tähtaja ja jäägiga. Rida viib arve
+  juurde
+- Edenemine käib **raha, mitte osamaksete arvu** järgi — neli väikest tasutud ja
+  suur maksmata ei ole 80% valmis
+- **„Peata graafik"** ütleb enne, mitu maksmata osamakset ta tühistab, ja et
+  laekunut ei tagastata. `payments_amount_positive` (sql/020) ei luba laekumist
+  miinusega tagasi pöörata, nii et peatamine on peatamine, mitte tagasimakse
+- Tühistatud graafik jääb nimekirja alla alles — tema arved on päris ajalugu ja
+  peitmine jätaks nad kuuluma mitte millegi külge
+
 ## [1.45.1] — 2026-09-01
 
 **Maksegraafik arve vormil**

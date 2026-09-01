@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
 import { InvoiceForm } from './InvoiceForm'
+import { PaymentPlansPanel } from './PaymentPlansPanel'
 import { InvoicePrintView } from './InvoicePrintView'
 import { exportCsv, INVOICE_COLUMNS } from '../../lib/exports'
 
@@ -151,6 +152,16 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
           <SummaryCard icon={Clock} label="Tasumata" value={totals.due} accent="#F59E0B" />
           <SummaryCard icon={AlertTriangle} label="Üle tähtaja" value={totals.overdue} accent="#EF4444" />
         </div>
+
+        {/* ── Payment plans ── */}
+        {/* Above the list, not inside it: a plan's five instalments are five
+            ordinary rows in there, and nothing in that list says they are one
+            agreement. Renders nothing at all when no plan exists. */}
+        <PaymentPlansPanel
+          invoices={invoices}
+          canWrite={canWrite}
+          onOpenInvoice={setSelectedId}
+        />
 
         {/* ── Filters ── */}
         <div className="flex items-center gap-1.5 flex-wrap">
