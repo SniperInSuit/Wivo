@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.49.0] — 2026-09-01
+
+**Arvete saatja — deploy'tud ja proovitud**
+
+`supabase/functions/send-invoices/`. Deploy näitas, et `shared/billing/`
+jõuab kohale: üleslaadimises olid `invoiceDoc.ts` ja `sendGuard.ts` nimeliselt.
+
+- **Ei ole avalik.** Erinevalt `public-booking`-ist deploy'tud **ilma**
+  `--no-verify-jwt`-ta: see funktsioon saadab kirju kliiniku põhiaadressilt,
+  nii et autentimata kutsuja saaks kätte kahuri
+- **Ei otsusta ise midagi.** Iga „kas tohib" vastus tuleb `sendGuard`-ist —
+  samast funktsioonist, millega Seadete ekraan end seletab. Siin väljamõeldud
+  reegel oleks reegel, mida kliinik ei näe ega saa välja lülitada
+- **`?dry=1`** käib kogu ahela läbi — poliitika, valvur, renderdus — ja ütleb,
+  mida ta SAADAKS, avamata ühtegi ühendust. Sellepärast käibki valvur enne
+  SMTP-seansi avamist
+- Vastus ütleb ka **iga kliiniku kohta, miks** midagi ei juhtunud: „saatmine on
+  väljas", „päevalimiit täis", „saatmata arveid ei ole". Tühi tulemus üksi oli
+  mitmetähenduslik ja see on esimene asi, mida keegi selle otspunktiga teeb
+- Üks SMTP-seanss kogu käivituse peale, mitte üks kirja kohta — jagatud
+  majutuse limiidile näeb see välja nagu üks seanss, mitte nagu puhang
+- Üks vigane aadress ei peata käivitust: viga läheb `send_error`-isse ja
+  järjekord jookseb edasi
+- `sent_at` stampitakse **kohe** pärast serveri kinnitust — aken, mille sees
+  kokkujooksmine saaks topelt saata, on üks `await`
+- SMTP veateated puhastatakse enne salvestamist: serverid tsiteerivad, mida sa
+  neile saatsid, ja `send_error` on loetav igale kliiniku liikmele
+- Kiri on tabelites ja inline-stiilides, sisu `invoiceDoc`-ist. Kaasas ka
+  plain-text osa — kirjal ilma selleta on halvem rämpsuskoor, ja see läheb välja
+  kliiniku ainsalt aadressilt, mis ei tohi rämpsuks minna
+
 ## [1.48.0] — 2026-09-01
 
 **E-posti õigused ja kaitsed — enne saatjat**
