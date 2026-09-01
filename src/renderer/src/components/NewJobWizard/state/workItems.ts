@@ -12,7 +12,7 @@ import type { QuoteInput } from '@shared/pricing/quote'
 import type { WorkType } from '@shared/pricing/workTypes'
 import type { NewJobState } from '@shared/wizard'
 import {
-  archTeeth, archesOf, teethToHambad, workTypeRules, baseTypeName,
+  archesOf, teethForArch, teethToHambad, workTypeRules, baseTypeName,
   materialFor, materialsOf, machineFor,
 } from '@shared/wizard'
 
@@ -48,10 +48,14 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     if (rules.toothMode === 'arch') {
       if (!state.selectedArch) return [{ id: `wiz:${key}`, too: nimi, hambad: '', ...mat, ...mach }]
       const arches = archesOf(state.selectedArch)
+      // The arch answer fills the jaw; an explicit selection narrows it. An
+      // All-on-4 that stops short of the last molar had no way to say so while
+      // the arch buttons were the only control on the step.
+      const custom = state.selectedTeeth[key]
       return arches.map(arch => ({
         id: arches.length > 1 ? `wiz:${key}:${arch}` : `wiz:${key}`,
         too: nimi,
-        hambad: teethToHambad(archTeeth(arch)),
+        hambad: teethToHambad(teethForArch(arch, custom)),
         ...mat,
         ...mach,
       }))

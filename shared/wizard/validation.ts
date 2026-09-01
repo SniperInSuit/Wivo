@@ -14,6 +14,7 @@
  */
 import type { WorkType } from '../pricing/workTypes'
 import { checkConsecutive } from './archRules'
+import { baseTypeName } from './types'
 import type { NewJobState, StepId } from './types'
 import { materialsOf } from './types'
 import { jobRules } from './workTypeRules'
@@ -108,6 +109,19 @@ export function validateStep(
     // (and reported) once rather than per type.
     if (rules.archTypes.length > 0 && !state.selectedArch) {
       out.push(err('arch', 'Vali lõualuu: ülemine, alumine või mõlemad.'))
+    }
+
+    // The jaw can now be narrowed tooth by tooth, which means it can be emptied.
+    // An arch type with nothing left on it is not a smaller job, it is a job
+    // that says it covers a jaw and covers nothing — and it would price and
+    // print as if it did.
+    if (state.selectedArch) {
+      for (const key of rules.archTypes) {
+        const picked = state.selectedTeeth[key]
+        if (picked !== undefined && picked.length === 0) {
+          out.push(err('teeth', `„${baseTypeName(key)}" — vähemalt üks hammas peab jääma.`, key))
+        }
+      }
     }
     return out
   }

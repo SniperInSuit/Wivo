@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  archIndex, archOf, archTeeth, archesOf, checkConsecutive, hambadToTeeth, sortTeeth, teethToHambad,
+  archIndex, archOf, archTeeth, archesOf, checkConsecutive, hambadToTeeth, sortTeeth,
+  teethToHambad, teethForArch,
 } from './archRules'
 
 describe('archOf / archIndex', () => {
@@ -103,5 +104,41 @@ describe('hambad round trip', () => {
 
   it('survives a round trip', () => {
     expect(hambadToTeeth(teethToHambad([21, 11, 46]))).toEqual([11, 21, 46])
+  })
+})
+
+describe('teethForArch — kaare kitsendamine hamba kaupa', () => {
+  // The arch buttons are all-or-nothing, and an All-on-4 routinely stops short
+  // of the last molar. Until this existed there was no way to say so.
+  it('takes the whole arch when nobody has touched it', () => {
+    expect(teethForArch('upper', undefined)).toEqual(archTeeth('upper'))
+    expect(teethForArch('lower', undefined)).toEqual(archTeeth('lower'))
+  })
+
+  it('narrows to the chosen teeth', () => {
+    expect(teethForArch('upper', [11, 12, 13])).toEqual([13, 12, 11])
+  })
+
+  it('keeps FDI order, not the order they were clicked in', () => {
+    // The order comes from archTeeth, so a document never lists 21 before 11
+    // just because someone clicked it first.
+    expect(teethForArch('upper', [21, 11, 13]))
+      .toEqual(archTeeth('upper').filter(t => [21, 11, 13].includes(t)))
+  })
+
+  it('drops teeth from the OTHER arch instead of trusting the list', () => {
+    // A selection left over from a previous arch answer must not put upper
+    // teeth on a lower item.
+    expect(teethForArch('lower', [11, 12, 41, 42])).toEqual([42, 41])
+  })
+
+  it('honours an explicit empty selection rather than refilling the jaw', () => {
+    // undefined means "untouched"; [] is a deliberate answer. Collapsing the
+    // two would make deselecting the last tooth silently refill the arch.
+    expect(teethForArch('upper', [])).toEqual([])
+  })
+
+  it('is not confused by a tooth that is in neither arch', () => {
+    expect(teethForArch('upper', [11, 99])).toEqual([11])
   })
 })

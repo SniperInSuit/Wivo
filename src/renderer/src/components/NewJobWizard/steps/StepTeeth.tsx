@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Info } from 'lucide-react'
 import type { ArchSelection, ValidationError } from '@shared/wizard'
-import { hambadToTeeth, sortTeeth, baseTypeName, makeTypeKey } from '@shared/wizard'
+import { hambadToTeeth, sortTeeth, baseTypeName, makeTypeKey, archTeeth } from '@shared/wizard'
 import { useWorkTypes } from '@/stores/useSettings'
 import type { WizardStepComponent } from '../types'
 import { wizardWorkItems } from '../state/workItems'
@@ -173,6 +173,46 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     patch({ selectedTeeth: {} })
   }
 
+  /**
+   * Toggle one tooth on an arch-level type.
+   *
+   * Seeded from the arch on the first click, because until then the selection
+   * is "untouched" and taking a tooth off an untouched jaw has to start from
+   * the full jaw — not from an empty list, which would drop 15 teeth to remove
+   * one. Refuses anything outside the chosen arch: the arch answer is above it
+   * on the same screen and the two must not contradict each other.
+   */
+  // Which arch type the chart's clicks land on. Only ever matters when a job
+  // carries more than one — the usual case has exactly one and needs no tabs.
+  const [activeArchType, setActiveArchType] = useState<string | null>(null)
+  useEffect(() => {
+    if (rules.archTypes.length === 0) { setActiveArchType(null); return }
+    if (!activeArchType || !rules.archTypes.includes(activeArchType)) {
+      setActiveArchType(rules.archTypes[0])
+    }
+  }, [rules.archTypes, activeArchType])
+
+  const archTabs: WorkTypeTab[] = rules.archTypes.map(key => ({
+    key,
+    nimi: baseTypeName(key),
+    hex: colorMap[baseTypeName(key)] ?? WIZARD_FALLBACK_HEX,
+    count: hambadToTeeth(items.find(i => i.too === key)?.hambad ?? '').length,
+    // An arch type is never a bridge — the flag exists for the chip row's
+    // connector drawing, which a full jaw has no use for.
+    isBridge: false,
+  }))
+
+  function toggleArchTooth(key: string, tooth: number) {
+    if (!state.selectedArch) return
+    const inArch = new Set(archTeeth(state.selectedArch))
+    if (!inArch.has(tooth)) return
+    const current = state.selectedTeeth[key] ?? archTeeth(state.selectedArch)
+    const next = current.includes(tooth)
+      ? current.filter(t => t !== tooth)
+      : [...current, tooth]
+    patch({ selectedTeeth: { ...state.selectedTeeth, [key]: next } })
+  }
+
   function changeArch(arch: ArchSelection) {
     // Just the arch, and deliberately nothing else. There is no auto-fill of
     // selectedTeeth for arch-mode types anywhere any more (it used to live in
@@ -180,7 +220,14 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     // wizardWorkItems() derives an arch type's teeth straight from
     // `selectedArch`, and archTeeth() in archRules.ts is the one answer to
     // "which teeth does this arch cover".
-    patch({ selectedArch: arch })
+    //
+    // Any per-tooth narrowing IS dropped, though: a selection made against the
+    // upper jaw means nothing once the answer becomes "lower", and carrying it
+    // over would silently hand the new arch a hole someone chose for the old
+    // one. Changing the arch starts the jaw whole again.
+    const cleared = { ...state.selectedTeeth }
+    for (const key of rules.archTypes) delete cleared[key]
+    patch({ selectedArch: arch, selectedTeeth: cleared })
   }
 
   // ─── View data ─────────────────────────────────────────────────────────────
@@ -245,6 +292,36 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         </p>
 
         <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
+
+        {/* The jaw, once one is chosen. The arch buttons are all-or-nothing and
+            an All-on-4 routinely stops short of the last molar — until this was
+            here there was no way to say so at all. */}
+        {state.selectedArch && (
+          <div className="space-y-2">
+            <div>
+              <h3 className="text-sm font-semibold text-ink-soft">Hambad selles lõualuus</h3>
+              <p className="text-base text-ink-muted">
+                Kõik on vaikimisi kaasas. Klõpsa hambal, mida see töö{' '}
+                <strong>ei</strong> puuduta — näiteks viimane molaar.
+              </p>
+            </div>
+
+            {rules.archTypes.length > 1 && (
+              <WorkTypeTabs
+                tabs={archTabs}
+                activeType={activeArchType}
+                onSelect={setActiveArchType}
+              />
+            )}
+
+            <WizardOdontogram
+              items={items.filter(i => i.too === (activeArchType ?? rules.archTypes[0]))}
+              activeType={activeArchType ?? rules.archTypes[0]}
+              colorMap={colorMap}
+              onToggleTooth={t => toggleArchTooth(activeArchType ?? rules.archTypes[0], t)}
+            />
+          </div>
+        )}
 
         <WizardErrors errors={visibleErrors} />
       </div>

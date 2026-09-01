@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.51.0] — 2026-09-01
+
+**Allon4: viimast hammast sai lisada, aga mitte välja jätta**
+
+Kaarevalik oli kogu 2. sammu ainus juhtnupp ja see on kõik-või-mitte-midagi:
+„ülemine" täitis kõik 16 hammast ja üksikut maha võtta ei saanud. Allon4 lõpeb
+aga tavaliselt enne viimast molaari.
+
+- **Pärast lõualuu valikut tuleb odontogramm.** Kõik hambad on vaikimisi kaasas,
+  klõps võtab maha. Sama kaart, mida tavaline töö juba kasutab
+- Kaare vastus jääb kiireks teeks — see täidab lõualuu, valik kitsendab
+- **Puutumata ≠ tühi.** `undefined` võtab terve kaare, selgesõnaline tühi
+  nimekiri jääb tühjaks. Nende kokkusulatamine tähendaks, et viimase hamba
+  eemaldamine täidab lõualuu vaikselt uuesti
+- Lõualuu vahetamine **kustutab kitsenduse** — ülemise vastu tehtud valik ei
+  tähenda midagi, kui vastuseks saab „alumine", ja üle kandmine annaks uuele
+  kaarele augu, mille keegi valis vana jaoks
+- Teise lõualuu hambad filtreeritakse välja, mitte ei usaldata nimekirja: vana
+  vastuse jäänuk ei tohi panna ülemisi hambaid alumisele tööosale
+- **Kõiki hambaid ei saa ära võtta.** Tööosa, mis ütleb et katab lõualuu ja ei
+  kata midagi, hinnastuks ja prindiks nii nagu kataks
+- `teethForArch()` `shared/wizard/archRules.ts`-is — üks vastus küsimusele
+  „mida see kaare tööosa katab", nii nõustajas kui tööosade koostamisel
+
 ## [1.50.0] — 2026-09-01
 
 **Kirja tekst on nüüd seadistatav**

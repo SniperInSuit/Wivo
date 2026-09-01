@@ -51,6 +51,30 @@ export function archesOf(arch: ArchSelection): ArchKey[] {
   return arch === 'both' ? ['upper', 'lower'] : [arch]
 }
 
+/**
+ * The teeth ONE arch of an arch-level work item actually covers.
+ *
+ * The arch answer fills the jaw, and that is right almost every time — but not
+ * always. An All-on-4 routinely stops short of the last molar, and until this
+ * existed there was no way to say so: the arch buttons were the only control on
+ * the step and they are all-or-nothing.
+ *
+ * `custom` UNDEFINED means "nobody has touched it", which is not the same as an
+ * empty selection. Undefined takes the whole arch; an explicit empty list is a
+ * deliberate answer and stays empty. Collapsing the two would make deselecting
+ * the last tooth silently refill the jaw.
+ */
+export function teethForArch(
+  arch: ArchKey, custom: readonly number[] | undefined
+): number[] {
+  const all = archTeeth(arch)
+  if (custom === undefined) return all
+  const inArch = new Set(all)
+  // Intersected, never taken as given: a selection left over from a previous
+  // arch answer must not put upper teeth on a lower item.
+  return all.filter(t => custom.includes(t) && inArch.has(t))
+}
+
 /** Every FDI in the given arch(es), in FDI_UPPER/FDI_LOWER order. */
 export function archTeeth(arch: ArchSelection): number[] {
   if (arch === 'upper') return [...FDI_UPPER]
