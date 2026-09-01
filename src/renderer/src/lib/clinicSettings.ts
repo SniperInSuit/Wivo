@@ -18,7 +18,7 @@ import type { WorkType } from '../config/workTypes'
 
 export const CLINIC_COLUMNS = [
   'work_types', 'visit_types', 'public_services', 'materials', 'material_prices', 'material_costs', 'machines',
-  'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features',
+  'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features', 'email',
 ] as const
 
 export type ClinicColumn = (typeof CLINIC_COLUMNS)[number]
@@ -48,6 +48,27 @@ export interface ClinicSettingsRow {
   }
   payroll: {
     tooandjaMaksudProtsent: number
+  }
+  /**
+   * Outgoing mail: where from, and WHAT IS ALLOWED. See sql/051.
+   *
+   * No password, ever. This row is readable by every clinic member, and the
+   * credential is for the clinic's main mailbox — it lives in
+   * `supabase secrets` and nowhere else. `connected` is a person's note that
+   * they set those secrets, not proof of anything.
+   */
+  email: {
+    connected: boolean
+    host: string
+    port: number
+    saatjaAadress: string
+    saatjaNimi: string
+    /** Master switch. Off = nothing is ever sent. */
+    saatmineLubatud: boolean
+    lubaArved: boolean
+    paevaLimiit: number
+    /** Redirects every message here instead of the real recipient. */
+    testAadress: string | null
   }
   // Which halves of the product this lab uses. See sql/037.
   features: {
@@ -105,6 +126,10 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
       clinical: s.kliinilineRezhiim,
       laboratory: s.laboriRezhiim,
     },
+    // Spread, so a field added to the settings shape is carried here without
+    // this mapper having to be remembered — the omission that silently dropped
+    // `fixedCostsPerJob` and `lisateenused` on every write.
+    email: { ...s.epost },
     calendar: {
       ajajoonAlgus: s.ajajoonAlgus,
       ajajoonLopp: s.ajajoonLopp,
@@ -135,6 +160,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   avalikudTeenused: 'public_services',
   kliinilineRezhiim: 'features',
   laboriRezhiim: 'features',
+  epost: 'email',
   fixedCostsPerJob: 'pricing',
   lisateenused: 'pricing',
   yldkulud: 'pricing',

@@ -24,6 +24,7 @@ export {
 } from '@shared/pricing/priceBook'
 import { workTypeImageFile } from '../lib/workTypeImages'
 import { workTypePriceFor } from '@shared/pricing/priceBook'
+import type { MailPolicy } from '@shared/billing/sendGuard'
 import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } from '@shared/pricing/priceBook'
 
 // Bump key when structure changes so old storage is discarded cleanly
@@ -87,6 +88,23 @@ export const TEXT_SIZES: TextSizeOption[] = [
 export const TEXT_SCALE_MIN = 0.8
 export const TEXT_SCALE_MAX = 1.6
 
+/**
+ * Outgoing mail settings, as they sync to `clinic_settings.email`.
+ *
+ * `extends MailPolicy` on purpose: the permission half IS the shape the sender
+ * obeys (`shared/billing/sendGuard`), so the switch on the screen and the check
+ * in the sender can never be two different ideas of "allowed". The rest is
+ * transport detail — and never the password, see sql/051.
+ */
+export interface MailSettings extends MailPolicy {
+  /** The person's note that the SMTP secrets are set. Not proof; nothing here
+   *  can see them. */
+  connected: boolean
+  host: string
+  port: number
+  saatjaNimi: string
+}
+
 export interface WivoSettings {
   materialPrices: Record<string, MaterialPricing>
   // What the material COSTS the lab, as opposed to what it sells for. Empty
@@ -107,6 +125,15 @@ export interface WivoSettings {
   materjalid: string[]    // Materjalid — material buttons + the price table rows
   // Töö tüübid — suggestions on the job form's Töö field AND the colour key for
   // every calendar fill, dashboard swatch and legend row.
+  /**
+   * Outgoing mail: where from, and what the system is ALLOWED to send.
+   *
+   * No password. The credential is for the clinic's MAIN mailbox and this
+   * object syncs to a row every clinic member can read — it lives in
+   * `supabase secrets`, reachable only by the edge function while it runs.
+   * `connected` is a person's note that they set those secrets.
+   */
+  epost: MailSettings
   tooTuubid: WorkType[]
   // Visiidi põhjused ja nende värvid. Sama kuju mis tooTuubid, sama redaktor.
   visiidiTyybid: VisitType[]
@@ -191,6 +218,15 @@ function defaultSettings(): WivoSettings {
     tekstiSuurus: 1,
     masinad: [...MACHINE_OPTIONS],
     materjalid: [...MATERIAL_OPTIONS],
+    // Every permission off. A clinic that connects a mailbox and walks away
+    // has connected a mailbox and nothing else.
+    epost: {
+      connected: false,
+      host: '', port: 465,
+      saatjaAadress: '', saatjaNimi: '',
+      saatmineLubatud: false, lubaArved: false,
+      paevaLimiit: 20, testAadress: null,
+    },
     tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
     avalikudTeenused: [],
@@ -371,6 +407,11 @@ function loadSettings(): WivoSettings {
       avalikudTeenused: Array.isArray(stored.avalikudTeenused)
         ? (stored.avalikudTeenused as PublicService[]).filter(t => t?.id).map(t => ({ ...t }))
         : def.avalikudTeenused,
+      // Merged onto the defaults rather than taken whole: a stored object
+      // written before a permission existed must not leave that permission
+      // undefined — and `undefined` reads as falsy, which for a NEW switch
+      // would be right by luck rather than by design.
+      epost: { ...def.epost, ...(stored.epost as Partial<MailSettings> | undefined ?? {}) },
       tooVarvidParandatud: true,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
@@ -488,6 +529,10 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
           laboriRezhiim: row.features.laboratory ?? true,
         }
       : {}),
+    // Merged onto what is already loaded, never taken whole: a row written
+    // before a permission existed would otherwise set it to undefined, and an
+    // undefined switch is only safe by accident.
+    ...(row.email ? { epost: { ...prev.epost, ...row.email } } : {}),
     ...(row.calendar ?? {}),
   }
   persistLocal(next)
@@ -645,6 +690,16 @@ export function useSettings() {
   const setFlag = useCallback(<K extends keyof WivoSettings>(key: K, value: boolean) => {
     const col = COLUMN_OF[key as string]
     setSettings(prev => ({ ...prev, [key]: value } as WivoSettings), col ? [col] : undefined)
+  }, [setSettings])
+
+  /**
+   * Patch the mail settings. Merged, never replaced: the caller sends the one
+   * field it changed, and a permission it did not mention keeps its value
+   * rather than becoming undefined — which for a switch would read as "off" by
+   * luck rather than by decision.
+   */
+  const setEpost = useCallback((patch: Partial<MailSettings>) => {
+    setSettings(prev => ({ ...prev, epost: { ...prev.epost, ...patch } }), ['email'])
   }, [setSettings])
 
   // ── Work types (name + colour) ─────────────────────────────────────────────
@@ -823,6 +878,7 @@ export function useSettings() {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
     setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
+    setEpost,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
     addPublicService, removePublicService, updatePublicService, movePublicService,

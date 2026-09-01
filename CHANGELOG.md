@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.48.0] — 2026-09-01
+
+**E-posti õigused ja kaitsed — enne saatjat**
+
+Kliinik ühendab oma PÕHIPOSTKASTI, sama aadressi, kuhu patsiendid ja tarnijad
+kirjutavad. Kaitsed tulevad seega enne saatjat, mitte pärast.
+**Vajab migratsiooni `sql/051_email_settings.sql`.**
+
+- Uus `shared/billing/sendGuard.ts` — üks funktsioon otsustab, kas kiri tohib
+  välja minna, ja **iga vastus on vaikimisi keeldumine**. 38 testi, sest see on
+  pidur, mitte funktsioon
+- **Peakaitse ja iga luba eraldi, kõik vaikimisi väljas.** Uus kirjaliik
+  tulevikus tähendab uut lülitit, mitte olemasoleva laienemist
+- **Ei kunagi kaks korda:** `sent_at` blokeerib. Cron käivitub sagedamini kui
+  keegi arvab
+- **Ei kunagi tulevikuarvet.** Maksegraafik kirjutab viis arvet ette, neist neli
+  tulevikukuupäevaga — ilma selle kontrollita saadaks esimene käivitus kõik viis
+  välja esimesel päeval. Kõige hullem asi, mida see funktsioon teha saaks
+- **Päevalimiit**, mida kontrollitakse ENNE aadressi, et kättesaamatute
+  aadresside nimekiri ei põletaks päeva kvooti ära. Katkine limiit loetakse
+  nulliks, mitte lõpmatuseks
+- **Testaadress:** täidetuna läheb iga kiri sinna, ka siis kui patsiendil on
+  aadress olemas. Sama kood, sama kiri, sama limiit — üks aadress
+- Koma ja semikoolon aadressis lükatakse tagasi: päis, mis smugeldab teise saaja
+  limiidist mööda, on odavaim viis see spämmiks muuta
+- Tühistatud arvet ega tasutud arvet ei saadeta
+- Uus Seaded → Kliinik → **E-post**: ühendus ja õigused eraldi plokkidena, ja
+  kokkuvõte, mis ütleb täpselt, miks midagi ei saadeta
+- **Parooli seadetes ei ole ega tule.** `clinic_settings` on loetav igale
+  kliiniku liikmele; parool elab ainult `supabase secrets` sees
+- Ekraanil on kirjas ka see, mida süsteem EI saa: IMAP-i seadeid ei küsita
+  kuskil, seega postkasti ei loeta, ei kustutata ega liigutata
+
 ## [1.47.0] — 2026-09-01
 
 **Arve sisu ühte kohta — e-posti ettevalmistus**
