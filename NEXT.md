@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.52.0 · 01.09.2026 · haru `main`, commit `fc318b5`**
+**Seis: v1.53.0 · 01.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -10,44 +10,41 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ---
 
-## ✅ Suurim risk on maas — `@shared/` import töötab
+## 🔴 Esimene asi uues masinas
 
-`supabase functions deploy` **pakib kaasa impordi, mis väljub funktsiooni
-kaustast**. Üleslaadimise nimekiri näitas otse:
-
-```
-Uploading asset (public-booking): shared/portal/publicQuote.ts
-Uploading asset (public-booking): shared/portal/publicService.ts
+```bash
+npm ci          # NB: lukufail on sünkroonis, vt allpool
+npm test        # 418 rohelist, 3 punast (workTypeRules, ammune võlg)
+npm run build
 ```
 
-Ja funktsioon käivitub: `GET /public-booking/services` ilma `?clinic=`
-parameetrita annab `{"ok":false,"error":{"code":"UNKNOWN_CLINIC",…}}`, HTTP 400.
-Deno lahendab impordid mooduli laadimisel — katkine import oleks andnud
-boot-vea, mitte struktureeritud vastust.
+`.env` **ei ole gitis**. Uues masinas tuleb see käsitsi teha:
+`VITE_SUPABASE_URL` ja `VITE_SUPABASE_ANON_KEY`. Projekt on
+`wrtucsfmpbwekugzzzxw`.
 
-**Tähendab:** `shared/billing/invoiceDoc.ts` ja `sendGuard.ts` saab saatja otse
-importida. Genereeritud koopia varuplaani (`_shared/generated/`) **ei ole vaja**.
+Supabase CLI vajab uues masinas `supabase login` (brauseripõhine). Projekt on
+juba lingitud selle repo kaudu; saladused elavad Supabase'is, mitte failides.
 
 ---
 
-## 🔴 Sinu käes
+## 🔴 Jooksutamata migratsioon
 
-### 1. E-post TÖÖTAB — aga testaadressi peal
+**`sql/053_patient_marketing.sql`** — turundusnõusolek patsiendil. Ilma selleta
+ei salvestu patsiendi lehel nõusoleku valik ja eksport annab alati 0 kontakti.
 
-Arved lähevad välja `treialbusiness@gmail.com` peale, **mitte patsientidele**.
-Kaks päris kirja on saadetud ja kohale jõudnud (2026-0005, 2026-0006), PDF-iga.
+*(049–052 on jooksutatud ja töötavad.)*
 
-**Kui eemaldad Seadetes testaadressi, hakkavad kirjad minema päris patsientidele
-juba järgmisel täistunnil.** Enne seda tasub veenduda, et:
+---
 
-- patsientidel on e-posti aadress täidetud (`patients.email`)
-- kirja tekst Seadetes on sinu sõnadega, mitte vaikimisi oma
-- kiri ei lähe rämpsu (kontrolli oma domeeni SPF/DKIM)
+## ✅ E-post töötab — aga testaadressi peal
 
-### 2. Ajastus on sees
+Arved lähevad `treialbusiness@gmail.com` peale, **mitte patsientidele**.
+Kaks päris kirja saadetud (2026-0005, 2026-0006), PDF-manusega.
 
-`sql/052` jooksutatud, `pg_cron` töö `wivo-send-invoices` iga tunni 7. minutil.
-Kontroll:
+`pg_cron` töö `wivo-send-invoices` käivitub **iga tunni 7. minutil**.
+
+**2. septembril väljastub maksegraafiku esimene osamakse ja peaks minema ise
+välja.** See on esimene päris automaatne saatmine — vaata, kas juhtus:
 
 ```sql
 select status, return_message, start_time from cron.job_run_details
@@ -55,23 +52,25 @@ select status, return_message, start_time from cron.job_run_details
  order by start_time desc limit 5;
 ```
 
-Väljalülitamine on kahes kohas: Seadetes „Automaatne saatmine" välja, või
+⚠ **Testaadressi eemaldamine Seadetes hakkab saatma päris patsientidele juba
+järgmisel täistunnil** — mitte siis, kui sa midagi vajutad. Enne kontrolli:
+patsientidel on e-post täidetud, kirja tekst on sinu sõnadega, ja kiri ei lähe
+rämpsu (see selgub alles Gmailist väljapoole saates).
+
+Väljalülitamine kahes kohas: Seaded → E-post → „Automaatne saatmine" välja, või
 `update cron.job set active = false where jobname = 'wivo-send-invoices'`.
 
-### 3. Seadetes täitmata (avaliku poole jaoks)
+---
 
-- **Seaded → Kliinik → „Veebilehe tunnus"** — ilma selleta `/services` päris
-  kataloogi ei tagasta
-- **Seaded → Patsiendi hinnakiri** — vähemalt üks avalikuks märgitud teenus
-
-## ✅ Valmis ja commit'itud
+## ✅ Mis selles seerias valmis sai
 
 | Versioon | Mis |
 |---|---|
+| 1.53.0 | Turunduskontaktide eksport + nõusolek, `sql/053` |
 | 1.52.0 | PDF manus, `=20` parandus, `sql/052` tunnine ajastus |
 | 1.51.x | Allon4 hammaste kitsendamine; saatja diagnostika |
 | 1.50.0 | Kirja tekst seadistatav (`mailTemplate`) |
-| 1.49.0 | **Arvete saatja** `send-invoices`, deploy'tud ja tööle saadud |
+| 1.49.0 | **Arvete saatja** `send-invoices` — deploy'tud, tööle saadud |
 | 1.48.0 | E-posti õigused ja kaitsed (`sendGuard`), `sql/051` |
 | 1.47.0 | `invoiceDoc` — arve sisu ühte kohta, `sql/050` |
 | 1.46.x | Kogusehinnad — mitu krooni, teine hambahind |
@@ -79,26 +78,23 @@ Väljalülitamine on kahes kohas: Seadetes „Automaatne saatmine" välja, või
 | 1.44.x | Osamaksed jätsid töö 1/5 makstuks; abutmendi kood nõustajas |
 | 1.41–1.43 | Rahapoole lepitamine: muudatuste kulu, arvemaksed, palgaread |
 
-
-**Migratsioonid `sql/`** — jooksutatud kuni **052**. Kõik tehtud.
+**Tõestatud tee peal:** `supabase functions deploy` pakib kaasa `shared/`
+impordi, mis väljub funktsiooni kaustast. Genereeritud koopia varuplaani ei ole
+vaja — `invoiceDoc.ts`, `sendGuard.ts` ja `mailTemplate.ts` jooksevad pilves.
 
 ---
 
 ## 🟡 Teadaolevad võlad
 
-- **3 punast testi** `shared/wizard/workTypeRules.test.ts`-is. Olid katki juba
-  ammu — `Kroonisild` klassifitseeritakse iseendaks, test ootab `Kroon`.
-  **Ainus punane asi repos.**
+- **3 punast testi** `shared/wizard/workTypeRules.test.ts`-is. Ammune —
+  `Kroonisild` klassifitseeritakse iseendaks, test ootab `Kroon`. **Ainus punane
+  asi repos.**
 - **`periodMetrics` „käive" liidab muudatuste hinnad juurde.** Ülejäänud
   rahapool ütleb, et muudatuse kulu on labori oma ega lähe kliendi arvele.
   Otsustamata, kas käive peab järgnema.
 - **Põrkeid ei näe.** Jagatud majutuse SMTP-l ei ole webhooke: `sent_at`
-  tähendab „server võttis vastu", mitte „inimene sai kätte". Seda vahet ei tohi
-  UI-s ära kaotada.
+  tähendab „server võttis vastu", mitte „inimene sai kätte".
 - **`sql/044` 1. samm on jooksutamata.**
-- **Litsentsivõtit ei saa väljastada** — `LICENCE_PUBLIC_KEY` on tühi.
-- **Värskest andmebaasist ei saa Wivot püsti panna** — ükski migratsioon ei loo
-  `jobs` tabelit.
 - **Nõustajas on Kiirtöö ja Mudel teineteist välistavad**, töö lehel mitte.
 
 ---
@@ -114,26 +110,56 @@ Väljalülitamine on kahes kohas: Seadetes „Automaatne saatmine" välja, või
 | Edge-funktsiooni deploy | `supabase/functions/README.md` |
 | Arendaja püsireeglid | `HANDOFF.md` |
 
+*(Plaanifailid on `~/.claude/plans/` all, MITTE gitis — uues masinas neid ei ole.
+Kui neid vaja, kopeeri need üle või küsi kokkuvõtet.)*
+
 ---
 
-## Järgmised faasid
+## Järgmine samm — kolm valikut
 
-Plaan `aga-kui-klient-maksab-spicy-hippo.md`. **Faasid A1 ja A2 on valmis** —
-maksegraafik loob arved ette, saatja saadab need välja, cron käivitab tunnis.
+Sinu enda öeldu põhjal, tähtsuse järjekorras:
 
-- **B1–B3 — visiiditaotluste postkast.** `sql/053_visit_requests.sql`
-  *(050–052 on võetud)*, `POST /request` olemasolevas `public-booking`
-  funktsioonis, postkast Wivos. **Miski ei blokeeri** — deploy on tõestatud ja
-  `_shared/{cors,ratelimit,respond,settings}.ts` on juba kirjutatud.
-- **B4 — widget** kliiniku lehel, alles pärast B1–B3.
+### 1. Raamatupidamise pakett *(kõrgeim äriline väärtus)*
 
-**Väiksemad, mis on välja öeldud aga tegemata:**
+Su märkmetes on ainus konkreetne maksevalmiduse andmepunkt: tehnik ütles
+**39 / 100 / 170 € kuus, tingimusel et raamatupidamise dokumendid tulevad
+automaatselt**. See tingimus on täitmata.
 
-- Töö lehele „Maksegraafik" nupp, mis avab arve vormi selle töö ja patsiendiga
-  täidetuna. Praegu tuleb Arvete alla minna ja patsient uuesti üles otsida.
-- `periodMetrics` „käive" ja muudatuste hinnad — vt võlgade nimekirja.
+Mõte ei ole raamatupidamine ise — see on Meriti territoorium ja päris vastutus.
+Mõte on **„raamatupidajale valmis pakett"**: lukustatud periood, müügireskontro,
+käibemaksu kokkuvõte määrade kaupa, laekumised, kulupool
+(`material_costs`, `worker_pay`, `yldkulud`). Andmed on kõik olemas, puudub
+ainult koondamine ja eksport.
 
-**GDPR hoiatus B kohta:** Wivo-native postkast salvestab patsiendi nime ja
-telefoni **meie baasi**, mida vana Dentase-plaan teadlikult vältis. Vaja
+### 2. Müügiblokeerijad *(enne kui Wivot kellelegi müüa)*
+
+- **Litsentsivõtit ei saa väljastada** — `LICENCE_PUBLIC_KEY` on tühi, praegused
+  build'id **ei kontrolli litsentsi üldse**. „Labor+" ja „Labor" on
+  funktsionaalselt identsed, uuendusel ei ole midagi müüa.
+- **Värskest andmebaasist ei saa Wivot püsti panna** — ükski migratsioon ei loo
+  `jobs` tabelit ja viis veergu puuduvad `sql/`-ist. Teine kliinik ei saa
+  alustada. Vt `docs/onboarding-audit.md`.
+
+### 3. Broneerimissüsteem *(see, mida sa tahad teha)*
+
+Plaan `aga-kui-klient-maksab-spicy-hippo.md`, faasid B1–B4. **Miski ei blokeeri
+enam** — deploy on tõestatud ja `_shared/{cors,ratelimit,respond,settings}.ts`
+on juba kirjutatud.
+
+- **B1** `sql/054_visit_requests.sql` *(053 on nüüd võetud)* — eraldi tabel,
+  mitte `visits` uus staatus. Põhjused plaanis.
+- **B2** `POST /request` olemasolevas `public-booking` funktsioonis
+- **B3** taotluste postkast Wivos, „Kinnita" avab olemasoleva `VisitForm`-i
+- **B4** widget kliiniku lehel
+
+**GDPR hoiatus:** Wivo-native postkast salvestab patsiendi nime ja telefoni
+**meie baasi**, mida vana Dentase-plaan teadlikult vältis. Vaja
 säilitustähtaega (pg_cron kustutab tagasilükatud read), privaatsusteadet ja
 300-tähemärgist piiri vabal tekstiväljal.
+
+### Väiksemad, välja öeldud aga tegemata
+
+- Töö lehele **„Maksegraafik"** nupp, mis avab arve vormi selle töö ja
+  patsiendiga täidetuna. Praegu tuleb Arvete alla minna ja patsient uuesti üles
+  otsida — sa läksid seda ise töö lehelt otsima.
+- `periodMetrics` „käive" ja muudatuste hinnad — vt võlgade nimekirja.
