@@ -118,16 +118,20 @@ Väljalülitamine on kahes kohas: Seadetes „Automaatne saatmine" välja, või
 
 ## Järgmised faasid
 
-Plaan `aga-kui-klient-maksab-spicy-hippo.md`. **Faas A1 valmis.**
+Plaan `aga-kui-klient-maksab-spicy-hippo.md`. **Faasid A1 ja A2 on valmis** —
+maksegraafik loob arved ette, saatja saadab need välja, cron käivitab tunnis.
 
-- **A2 — saatja.** `supabase/functions/send-invoices/` denomaileriga pordile
-  465, importides `invoiceDoc` ja `sendGuard` otse `shared/`-ist. Siis
-  `pg_cron` + `pg_net` päevane kutse — projekti **esimene `create extension`
-  väljaspool `pgcrypto`-t**. Blokeeritud punktide 1–3 taga.
-- **B1–B3 — visiiditaotluste postkast.** `sql/052_visit_requests.sql`
-  *(number nihkus, 050 ja 051 on võetud)*, `POST /request` olemasolevas
-  funktsioonis, postkast Wivos. **Deploy enam ei blokeeri.**
+- **B1–B3 — visiiditaotluste postkast.** `sql/053_visit_requests.sql`
+  *(050–052 on võetud)*, `POST /request` olemasolevas `public-booking`
+  funktsioonis, postkast Wivos. **Miski ei blokeeri** — deploy on tõestatud ja
+  `_shared/{cors,ratelimit,respond,settings}.ts` on juba kirjutatud.
 - **B4 — widget** kliiniku lehel, alles pärast B1–B3.
+
+**Väiksemad, mis on välja öeldud aga tegemata:**
+
+- Töö lehele „Maksegraafik" nupp, mis avab arve vormi selle töö ja patsiendiga
+  täidetuna. Praegu tuleb Arvete alla minna ja patsient uuesti üles otsida.
+- `periodMetrics` „käive" ja muudatuste hinnad — vt võlgade nimekirja.
 
 **GDPR hoiatus B kohta:** Wivo-native postkast salvestab patsiendi nime ja
 telefoni **meie baasi**, mida vana Dentase-plaan teadlikult vältis. Vaja
