@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.46.1] — 2026-09-01
+
+**Kogusehinna rea kustutas hinna ümberkirjutamine**
+
+- Astmete redaktor käis läbi `sortedTiers`, mis viskab välja astme, mille hind
+  on 0. Ehk hinna välja tühjendamine ümberkirjutamiseks **kustutas rea kursori
+  alt ära**, ja koguse muutmine oleks rea keset kirjutamist ümber järjestanud
+- Redaktor käib nüüd toorele massiivile. Järjekord ja praht lahendatakse
+  **lugemisel** (`tierFor`) ja laadimisel, mitte kirjutamise ajal
+
 ## [1.46.0] — 2026-09-01
 
 **Kogusehinnad: mitu krooni, teine hambahind**

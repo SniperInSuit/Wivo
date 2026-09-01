@@ -852,14 +852,19 @@ function WorkTypePriceCard({ type, onPatch }: {
             ületavatele.
           </p>
 
-          {sortedTiers(type).map((tier, i) => (
+          {/* Edited against the RAW array, never the sorted-and-cleaned one.
+              `sortedTiers` drops a tier whose price is 0 — so clearing the
+              field to retype it would delete the row out from under the cursor,
+              and renumbering mid-typing would make it jump. Order and junk are
+              settled at READ time (`tierFor`) and on load, not while typing. */}
+          {(type.astmed ?? []).map((tier, i) => (
             <div key={`${tier.alates}-${i}`} className="flex items-center gap-1 mb-1">
               <span className="text-[10px] text-ink-faint w-8 flex-shrink-0">alates</span>
               <input
                 type="number" min="2" step="1"
                 value={tier.alates}
                 onChange={e => onPatch({
-                  astmed: sortedTiers(type).map((x, j) =>
+                  astmed: (type.astmed ?? []).map((x, j) =>
                     j === i ? { ...x, alates: Math.max(1, parseInt(e.target.value) || 1) } : x
                   ),
                 })}
@@ -870,7 +875,7 @@ function WorkTypePriceCard({ type, onPatch }: {
                   type="number" min="0" step="0.5"
                   value={tier.hind}
                   onChange={e => onPatch({
-                    astmed: sortedTiers(type).map((x, j) =>
+                    astmed: (type.astmed ?? []).map((x, j) =>
                       j === i ? { ...x, hind: parseFloat(e.target.value) || 0 } : x
                     ),
                   })}
@@ -882,7 +887,7 @@ function WorkTypePriceCard({ type, onPatch }: {
                 type="button"
                 title="Eemalda aste"
                 onClick={() => onPatch({
-                  astmed: sortedTiers(type).filter((_, j) => j !== i),
+                  astmed: (type.astmed ?? []).filter((_, j) => j !== i),
                 })}
                 className="p-1 rounded text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
               >
@@ -894,13 +899,16 @@ function WorkTypePriceCard({ type, onPatch }: {
           <button
             type="button"
             onClick={() => {
+              // Seeded FROM the cleaned view so the suggestion is sensible,
+              // but written onto the raw array so nothing already typed is lost.
               const rows = sortedTiers(type)
+              const raw = type.astmed ?? []
               // Seeded above the last one so a second click never lands on a
               // quantity that already has a tier — two rows at the same
               // `alates` would make which one wins a matter of luck.
               const nextFrom = rows.length > 0 ? rows[rows.length - 1].alates + 1 : 3
               const from = rows.length > 0 ? rows[rows.length - 1].hind : (type.hind ?? 0)
-              onPatch({ astmed: [...rows, { alates: nextFrom, hind: from }] })
+              onPatch({ astmed: [...raw, { alates: nextFrom, hind: from }] })
             }}
             className="text-[10px] font-medium text-accent hover:underline"
           >
