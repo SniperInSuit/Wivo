@@ -105,7 +105,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .limit(Math.max(0, remainingToday(policy, used)))
 
     if (!due || due.length === 0) {
-      clinics.push({ clinic: row.clinic_id, status: 'saatmata arveid ei ole', due: 0 })
+      // "None due" and "none at all" are different answers, and the first thing
+      // anyone does after making their first invoice is run this and wonder
+      // which one they got. A plan writes its instalments dated ahead, so
+      // "there are five, none of them today" is the normal case — not an error,
+      // but not "nothing exists" either.
+      const { count: waiting } = await db
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', row.clinic_id)
+        .is('sent_at', null)
+        .gt('issue_date', day)
+      clinics.push({
+        clinic: row.clinic_id,
+        status: (waiting ?? 0) > 0
+          ? `täna ei ole midagi saata — ${waiting} arve ootab hilisemat väljastuskuupäeva`
+          : 'saatmata arveid ei ole',
+        due: 0,
+      })
       continue
     }
     clinics.push({ clinic: row.clinic_id, status: 'töötlen', due: due.length })

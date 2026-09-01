@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.51.1] — 2026-09-01
+
+**Saatja ütles „saatmata arveid ei ole", kui neid oli kaks**
+
+- Päring filtreerib tulevikukuupäevaga arved juba enne valvurit välja, nii et
+  teade oli tehniliselt tõsi ja praktikas eksitav: kaks arvet olid olemas, aga
+  homse kuupäevaga
+- Ütleb nüüd „täna ei ole midagi saata — N arve ootab hilisemat
+  väljastuskuupäeva". Maksegraafik kirjutabki oma osamaksed ette, nii et see on
+  **tavaline olukord**, mitte viga — aga ka mitte „midagi ei ole"
+
 ## [1.51.0] — 2026-09-01
 
 **Allon4: viimast hammast sai lisada, aga mitte välja jätta**
