@@ -226,11 +226,13 @@ export function teethSplitLabel(m: Pick<PeriodMetrics, 'hambadOriginaal' | 'hamb
  * `elapsedEndOf` below rather than by shrinking everybody's counting window.
  */
 export function rangeFor(
-  period: 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom',
+  period: 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom' | 'kuu',
   custom: { start: string; end: string } | null | undefined,
   now: Date = new Date(),
 ): Range | null {
-  if (period === 'custom') {
+  // 'kuu' — a month picked by name — arrives as a ready-made range, exactly
+  // like a typed one. Nothing downstream needs to know which of the two it was.
+  if (period === 'custom' || period === 'kuu') {
     if (!custom?.start || !custom?.end) return null
     return custom.start <= custom.end
       ? { start: custom.start, end: custom.end }

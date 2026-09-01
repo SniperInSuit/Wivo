@@ -26,15 +26,30 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
+  grossOf, payslipFromGross,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
+  type PayrollTaxRates, type WorkerTaxProfile,
 } from '../../lib/earnings'
 import { useQueryClient } from '@tanstack/react-query'
-import { updateProfile, type Engagement } from '../../lib/supabase'
+import { updateProfile, type Engagement, type PayBasis } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
 import { exportCsv, payoutColumns, payoutLineColumns } from '../../lib/exports'
+
+/**
+ * The person's own tax settings, as overrides. Undefined where they have none —
+ * `grossFromNet` reads null/undefined as "use the clinic default" and 0 as a
+ * real zero, and collapsing the two here would quietly put someone back in the
+ * second pillar they opted out of.
+ */
+function taxProfileOf(w: { kogumispension_protsent?: number | null; maksuvaba_tulu?: number | null }): WorkerTaxProfile {
+  return {
+    kogumispensionProtsent: w.kogumispension_protsent,
+    maksuvabaTulu: w.maksuvaba_tulu,
+  }
+}
 
 const KINDS: RateKind[] = ['hammas', 'too', 'protsent', 'tund', 'kuu']
 const SCOPES: RateScope[] = ['too', 'disain', 'muudatus', 'mudel']
@@ -112,6 +127,20 @@ export function PayrollView({ jobs }: PayrollViewProps) {
     [isOwner, workers, auth.user?.id]
   )
 
+  // One object, assembled once, passed to every payslip on the screen. The
+  // rates are settings rather than constants because tax law is annual and the
+  // pension rate is the employee's own choice — see lib/earnings.
+  const taxRates = useMemo<PayrollTaxRates>(() => ({
+    tooandjaMaksudProtsent: settings.tooandjaMaksudProtsent,
+    tulumaksProtsent: settings.tulumaksProtsent,
+    maksuvabaTuluKuus: settings.maksuvabaTuluKuus,
+    tootajaTootuskindlustusProtsent: settings.tootajaTootuskindlustusProtsent,
+    kogumispensionProtsent: settings.kogumispensionProtsent,
+  }), [
+    settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus,
+    settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent,
+  ])
+
   const perWorker = useMemo(() => visible.map(w => {
     const alreadyPaid = paidKeysFrom(payouts, w.id)
     const lines = calculateEarnings({
@@ -144,6 +173,13 @@ export function PayrollView({ jobs }: PayrollViewProps) {
       // cheaper. Showing only `outstanding` there emptied the whole header the
       // moment a payout was confirmed.
       total: outstanding + paid,
+      // The same month read as GROSS. For a 'bruto' person that is the total
+      // itself; for a 'neto' one it is what the clinic must run through payroll
+      // to leave that amount in their account. Every cost figure below —
+      // employer tax, the clinic's total — is computed from this, never from
+      // the entered number, because employer tax on a net figure is a smaller
+      // tax on a smaller wage: wrong twice.
+      gross: grossOf(outstanding + paid, w.tasu_arvestus, taxRates, taxProfileOf(w)),
       rates: rates.filter(r => r.profile_id === w.id),
       payouts: periodPayouts,
       // Computed ALWAYS, not only when the total is zero. Gating it on an empty
@@ -161,19 +197,28 @@ export function PayrollView({ jobs }: PayrollViewProps) {
         (j.assigned_to === w.id || jobHasDesigner(j, w.id)) && j.status === doneStageKey
       ).length,
     }
-  }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey])
+  }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey, taxRates])
 
   // Employees and contractors cannot be added into one "gross" figure: only the
   // first kind carries employer taxes, and calling an invoice "brutopalk" would
   // overstate what the clinic owes the tax office.
   const employeeGross = perWorker
     .filter(x => (x.worker.toosuhe ?? 'tootaja') === 'tootaja')
-    .reduce((s, x) => s + x.total, 0)
+    .reduce((s, x) => s + x.gross, 0)
+  // What the people on the payroll actually take home. Equal to the gross when
+  // nobody is on a net agreement, and the number the owner recognises when
+  // somebody is.
+  const employeeNet = perWorker
+    .filter(x => (x.worker.toosuhe ?? 'tootaja') === 'tootaja')
+    .reduce((s, x) => s + (x.worker.tasu_arvestus === 'neto'
+      ? x.total
+      : payslipFromGross(x.total, taxRates, taxProfileOf(x.worker)).net), 0)
+  const hasNetWorkers = perWorker.some(x =>
+    x.worker.tasu_arvestus === 'neto' && (x.worker.toosuhe ?? 'tootaja') === 'tootaja')
   const contractorTotal = perWorker
     .filter(x => x.worker.toosuhe === 'ettevote')
     .reduce((s, x) => s + x.total, 0)
   const employerTax = employerTaxAmount(employeeGross, settings.tooandjaMaksudProtsent)
-  const grandTotal = employeeGross + contractorTotal
   // How much of the period's cost has already left the account. Shown under the
   // total rather than subtracted from it — the month cost what it cost.
   const paidTotal = perWorker.reduce((s, x) => s + x.paid, 0)
@@ -295,6 +340,13 @@ export function PayrollView({ jobs }: PayrollViewProps) {
             <div>
               <p className="text-xs text-ink-muted">Palgal, bruto ({period.label})</p>
               <p className="text-xl font-bold text-ink tabular-nums">{employeeGross.toFixed(2)} €</p>
+              {/* Only when somebody is on a net agreement. Otherwise it is a
+                  derived figure nobody asked for, sitting under one they did. */}
+              {hasNetWorkers && (
+                <p className="text-[10px] text-ink-faint tabular-nums">
+                  kätte {employeeNet.toFixed(2)} €
+                </p>
+              )}
             </div>
           </div>
 
@@ -336,6 +388,17 @@ export function PayrollView({ jobs }: PayrollViewProps) {
               kogukulu palgalistel ainult brutopalka.
             </p>
           )}
+
+          {/* A net agreement with no employee-side rates grosses up to itself:
+              the toggle would look set and change nothing. Say so here rather
+              than let the cost figure be quietly short by the tax wedge. */}
+          {hasNetWorkers && settings.tulumaksProtsent === 0 && (
+            <p className="text-[11px] text-orange-500 max-w-xs leading-relaxed">
+              Mõne inimese tasu on sisestatud netona, aga tulumaksu määr on 0% —
+              bruto arvutatakse netost samaks numbriks. Määra Seaded → Hinnad →
+              Palgamaksud.
+            </p>
+          )}
         </div>
       )}
 
@@ -374,8 +437,10 @@ export function PayrollView({ jobs }: PayrollViewProps) {
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
           <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
         </div>
-      ) : perWorker.map(({ worker, lines, total, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
+      ) : perWorker.map(({ worker, lines, total, gross, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
+        const onPayroll = (worker.toosuhe ?? 'tootaja') === 'tootaja'
+        const netBasis = onPayroll && worker.tasu_arvestus === 'neto'
         return (
           <div key={worker.id} className="card overflow-hidden">
             <button
@@ -418,13 +483,22 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                   Maksmata {outstanding.toFixed(2)} €
                 </span>
               )}
+              {/* The headline is always the number that was AGREED — the one
+                  the owner recognises. What it costs is spelled out beneath it
+                  rather than substituted for it. */}
               <span className="text-right">
                 <span className="block text-lg font-bold text-ink tabular-nums leading-none">
                   {total.toFixed(2)} €
                 </span>
                 <span className="block text-[10px] text-ink-faint">
-                  {worker.toosuhe === 'ettevote' ? 'arve summa' : 'bruto'}
+                  {worker.toosuhe === 'ettevote' ? 'arve summa' : netBasis ? 'neto (kätte)' : 'bruto'}
                 </span>
+                {netBasis && gross > 0 && (
+                  <span className="block text-[10px] text-ink-faint tabular-nums">
+                    bruto {gross.toFixed(2)} € · kulu{' '}
+                    {employerCost(gross, settings.tooandjaMaksudProtsent).toFixed(2)} €
+                  </span>
+                )}
               </span>
             </button>
 
@@ -434,6 +508,23 @@ export function PayrollView({ jobs }: PayrollViewProps) {
                   <EngagementPicker
                     profileId={worker.id}
                     value={worker.toosuhe ?? 'tootaja'}
+                  />
+                )}
+                {isOwner && onPayroll && (
+                  <PayBasisPicker profileId={worker.id} value={worker.tasu_arvestus ?? 'bruto'} />
+                )}
+                {isOwner && onPayroll && (
+                  <TaxProfilePicker
+                    profileId={worker.id}
+                    kogumispension={worker.kogumispension_protsent ?? null}
+                    maksuvabaTulu={worker.maksuvaba_tulu ?? null}
+                  />
+                )}
+                {onPayroll && total > 0 && (
+                  <PayslipPanel
+                    slip={payslipFromGross(gross, taxRates, taxProfileOf(worker))}
+                    rates={taxRates}
+                    worker={taxProfileOf(worker)}
                   />
                 )}
                 {isOwner && (
@@ -618,6 +709,219 @@ function EngagementPicker({ profileId, value }: { profileId: string; value: Enga
           : 'Summa on brutopalk, millele lisanduvad tööandja maksud.'}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+    </section>
+  )
+}
+
+// ─── Bruto või neto ───────────────────────────────────────────────────────────
+/**
+ * How to READ the numbers in this person's pay rules: as gross wage, or as the
+ * amount that lands in their account.
+ *
+ * Most small employers agree on take-home pay. Reading that as gross does not
+ * merely mislabel it — it understates the clinic's cost by the entire
+ * employee-side tax wedge, because employer tax is then charged on a wage that
+ * is too small. In Estonia 2026 that is 432.28 € a month on a single 1600 €
+ * agreement, and it lands straight in the profit figure on Statistika.
+ *
+ * Per person, not one clinic-wide switch: an owner drawing gross and an
+ * assistant on a net agreement are both ordinary, and often the same clinic.
+ */
+function PayBasisPicker({ profileId, value }: { profileId: string; value: PayBasis }) {
+  const qc = useQueryClient()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function set(next: PayBasis) {
+    if (next === value) return
+    setSaving(true); setError(null)
+    try {
+      await updateProfile(profileId, { tasu_arvestus: next })
+      await qc.invalidateQueries({ queryKey: ['clinic_profiles'] })
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section>
+      <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+        Tasureeglite summad on
+      </h4>
+      <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
+        {([
+          { key: 'bruto', label: 'Bruto' },
+          { key: 'neto', label: 'Neto (kätte)' },
+        ] as const).map(o => (
+          <button
+            key={o.key}
+            type="button"
+            disabled={saving}
+            onClick={() => set(o.key)}
+            className={`text-xs font-medium px-3 py-1 rounded-md transition-colors disabled:opacity-50 ${
+              value === o.key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
+        {value === 'neto'
+          ? 'Sisestatud summa on see, mis inimesele kätte jõuab. Bruto ja tööandja kulu arvutatakse sellest tagurpidi — maksumäärad on Seaded → Hinnad → Palgamaksud.'
+          : 'Sisestatud summa on brutopalk. Kui lepite kokku kättesaadava summa, vali „Neto" — muidu jääb kliiniku kulust töötaja maksuosa välja.'}
+      </p>
+      {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+    </section>
+  )
+}
+
+// ─── Isiklik maksuprofiil ─────────────────────────────────────────────────────
+/**
+ * The two tax facts that genuinely differ from person to person, and that a
+ * clinic-wide default gets wrong for somebody:
+ *
+ *   II sammas — the employee's own choice of 2, 4 or 6%, or none at all.
+ *   Maksuvaba tulu — only where they have applied for it. Someone with a second
+ *   job has usually used it there, and giving it to them here understates the
+ *   gross their net requires.
+ *
+ * Both are stored as NULL when unset, which reads as "clinic default" — kept
+ * distinct from 0, which is a real answer meaning "none".
+ */
+function TaxProfilePicker({ profileId, kogumispension, maksuvabaTulu }: {
+  profileId: string; kogumispension: number | null; maksuvabaTulu: number | null
+}) {
+  const qc = useQueryClient()
+  const { settings } = useSettings()
+  const [draft, setDraft] = useState(maksuvabaTulu != null ? String(maksuvabaTulu) : '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save(updates: Parameters<typeof updateProfile>[1]) {
+    setSaving(true); setError(null)
+    try {
+      await updateProfile(profileId, updates)
+      await qc.invalidateQueries({ queryKey: ['clinic_profiles'] })
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function commitTaxFree() {
+    const raw = draft.trim()
+    const next = raw === '' ? null : parseFloat(raw)
+    if (next != null && !Number.isFinite(next)) {
+      setError('Sisesta summa eurodes, nt 700.'); return
+    }
+    if (next === maksuvabaTulu) return
+    await save({ maksuvaba_tulu: next })
+  }
+
+  const options: { key: number | null; label: string }[] = [
+    { key: null, label: `Vaikimisi (${settings.kogumispensionProtsent}%)` },
+    { key: 0, label: 'Ei ole' },
+    { key: 2, label: '2%' },
+    { key: 4, label: '4%' },
+    { key: 6, label: '6%' },
+  ]
+
+  return (
+    <section>
+      <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+        Maksuprofiil
+      </h4>
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <p className="text-[10px] text-ink-faint mb-1">Kogumispension (II sammas)</p>
+          <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
+            {options.map(o => (
+              <button
+                key={String(o.key)}
+                type="button"
+                disabled={saving}
+                onClick={() => void save({ kogumispension_protsent: o.key })}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md transition-colors disabled:opacity-50 ${
+                  kogumispension === o.key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] text-ink-faint mb-1">Maksuvaba tulu</p>
+          <div className="relative w-28">
+            <input
+              type="number" min="0" step="10" value={draft}
+              disabled={saving}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={() => void commitTaxFree()}
+              placeholder={String(settings.maksuvabaTuluKuus)}
+              className="input py-1.5 pr-6 text-sm text-right"
+            />
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint pointer-events-none">
+              €
+            </span>
+          </div>
+        </div>
+      </div>
+      <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
+        Mõjutab ainult netost brutosse arvutamist. Tühi lahter = kliiniku
+        vaikeväärtus ({settings.maksuvabaTuluKuus} €). Kirjuta 0, kui inimene
+        maksuvaba tulu siin ei kasuta — nt teise tööandja juures.
+      </p>
+      {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+    </section>
+  )
+}
+
+// ─── Palgaleht ────────────────────────────────────────────────────────────────
+/**
+ * Bruto → kätte, line by line. Shown for everyone on the payroll and not only
+ * for net agreements: the same arithmetic answers "what will they receive" for
+ * a gross one, and that is the question a contract is signed on.
+ */
+function PayslipPanel({ slip, rates, worker }: {
+  slip: ReturnType<typeof payslipFromGross>
+  rates: PayrollTaxRates
+  worker: WorkerTaxProfile
+}) {
+  const ii = worker.kogumispensionProtsent ?? rates.kogumispensionProtsent
+  const rows: { label: string; value: number; muted?: boolean }[] = [
+    { label: 'Bruto', value: slip.gross },
+    { label: `Kogumispension (${ii}%)`, value: -slip.kogumispension, muted: true },
+    { label: `Töötuskindlustus (${rates.tootajaTootuskindlustusProtsent}%)`, value: -slip.tootuskindlustus, muted: true },
+    { label: `Tulumaks (${rates.tulumaksProtsent}%)`, value: -slip.tulumaks, muted: true },
+    { label: 'Kätte', value: slip.net },
+    { label: `Tööandja maksud (${rates.tooandjaMaksudProtsent}%)`, value: slip.tooandjaMaksud, muted: true },
+    { label: 'Kulu kliinikule', value: slip.employerCost },
+  ]
+  return (
+    <section>
+      <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
+        Palgaleht (arvestuslik)
+      </h4>
+      <div className="rounded-lg border border-ink-faint/15 divide-y divide-ink-faint/10 max-w-sm">
+        {rows.map(r => (
+          <div key={r.label} className="flex justify-between px-3 py-1.5 text-[11px]">
+            <span className={r.muted ? 'text-ink-faint' : 'text-ink-muted font-medium'}>{r.label}</span>
+            <span className={`tabular-nums ${r.muted ? 'text-ink-faint' : 'text-ink font-semibold'}`}>
+              {r.value.toFixed(2)} €
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
+        Arvutatud Seaded → Hinnad → Palgamaksud määradega. See ei ole
+        raamatupidamise palgateatis — sotsiaalmaksu miinimumkohustust ja
+        aastapõhiseid ümberarvestusi siin ei arvestata.
+      </p>
     </section>
   )
 }

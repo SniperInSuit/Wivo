@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Job, Revision } from '../types/job'
 import { jobPeriodDate } from '../types/job'
 import type { InvoiceFull, Payment } from '../types/invoice'
-import { periodMetrics, unitSplitLabel, teethSplitLabel, type Range } from './periodMetrics'
+import { periodMetrics, rangeFor, unitSplitLabel, teethSplitLabel, type Range } from './periodMetrics'
 
 /**
  * The reconciliation diff, as a runnable fixture.
@@ -238,5 +238,26 @@ describe('the Valmis column anchors on completion, not arrival', () => {
   it('…and would have been excluded by the old arrival-date filter', () => {
     const arrival = arrivedLongAgoFinishedToday.kuupaev
     expect(arrival >= week.start && arrival <= week.end).toBe(false)
+  })
+})
+
+/**
+ * A month chosen by name resolves like a typed range, so no caller has to know
+ * which control produced the window it was handed.
+ */
+describe('rangeFor — a named month', () => {
+  const NOW = new Date(2026, 8, 1)   // 1. september 2026
+
+  it('takes the chosen month, not the current one', () => {
+    expect(rangeFor('kuu', { start: '2026-02-01', end: '2026-02-28' }, NOW))
+      .toEqual({ start: '2026-02-01', end: '2026-02-28' })
+  })
+
+  it('falls back to all-time while the month is unset', () => {
+    expect(rangeFor('kuu', { start: '', end: '' }, NOW)).toBeNull()
+  })
+
+  it('leaves "this month" answering its own, smaller question', () => {
+    expect(rangeFor('month', null, NOW)).toEqual({ start: '2026-09-01', end: '2026-09-30' })
   })
 })

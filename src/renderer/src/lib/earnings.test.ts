@@ -11,7 +11,8 @@ import type { Job, Revision, WorkItem } from '../types/job'
 import type { WorkType } from '../config/workTypes'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal,
-  type WorkerRate, type RateKind, type RateScope,
+  grossFromNet, grossOf, payslipFromGross,
+  type WorkerRate, type RateKind, type RateScope, type PayrollTaxRates,
 } from './earnings'
 
 const TECH = 'tech-1'
@@ -929,5 +930,88 @@ describe('a payslip line names only what it paid for', () => {
     expect(extra).toBeDefined()
     expect(extra!.description).toContain('All-on-X')
     expect(extra!.description).not.toContain('Kroon')
+  })
+})
+
+/**
+ * The net→gross wedge. Every number below is checked against kalkulaator.ee's
+ * 2026 palgakalkulaator, because a payroll figure this app derived on its own
+ * is only worth having if it agrees with the one the accountant will produce.
+ */
+describe('palgamaksud', () => {
+  const EE_2026: PayrollTaxRates = {
+    tooandjaMaksudProtsent: 33.8,
+    tulumaksProtsent: 22,
+    maksuvabaTuluKuus: 700,
+    tootajaTootuskindlustusProtsent: 1.6,
+    kogumispensionProtsent: 2,
+  }
+
+  it('grosses 1600 € net up to the figure kalkulaator.ee gives', () => {
+    expect(grossFromNet(1600, EE_2026)).toBe(1923.08)
+  })
+
+  it('costs the employer 2573.08 € to pay 1600 € net', () => {
+    const slip = payslipFromGross(grossFromNet(1600, EE_2026), EE_2026)
+    expect(slip.tooandjaMaksud).toBe(650.0)  // 1923.08 × 33.8%
+    expect(slip.employerCost).toBe(2573.08)
+  })
+
+  it('splits the payslip the way the tax office does', () => {
+    const slip = payslipFromGross(1923.08, EE_2026)
+    expect(slip.kogumispension).toBe(38.46)
+    expect(slip.tootuskindlustus).toBe(30.77)
+    expect(slip.tulumaks).toBe(253.85)
+    expect(slip.net).toBe(1600.0)
+  })
+
+  it('round-trips gross → net → gross', () => {
+    for (const gross of [700, 1200, 1790.08, 1923.08, 4000]) {
+      const net = payslipFromGross(gross, EE_2026).net
+      expect(Math.abs(grossFromNet(net, EE_2026) - gross)).toBeLessThan(0.02)
+    }
+  })
+
+  it('charges no income tax below the tax-free income', () => {
+    // 500 € net: only the two withholdings stand between net and gross.
+    const gross = grossFromNet(500, EE_2026)
+    expect(gross).toBe(518.67)   // 500 / 0.964
+    expect(payslipFromGross(gross, EE_2026).tulumaks).toBe(0)
+  })
+
+  it("uses the person's own second-pillar rate over the clinic default", () => {
+    // 6% withheld instead of 2% means a higher gross is needed for the same
+    // take-home — the case that makes this a per-person field.
+    expect(grossFromNet(1600, EE_2026, { kogumispensionProtsent: 6 }))
+      .toBeGreaterThan(grossFromNet(1600, EE_2026))
+    expect(grossFromNet(1600, EE_2026, { kogumispensionProtsent: 0 }))
+      .toBeLessThan(grossFromNet(1600, EE_2026))
+  })
+
+  it('distinguishes an opted-out zero from an unset null', () => {
+    const optedOut = grossFromNet(1600, EE_2026, { kogumispensionProtsent: 0 })
+    const unset = grossFromNet(1600, EE_2026, { kogumispensionProtsent: null })
+    expect(unset).toBe(grossFromNet(1600, EE_2026))
+    expect(optedOut).not.toBe(unset)
+  })
+
+  it('grosses up more for someone with no tax-free income', () => {
+    // Second job: the allowance is used at the other employer.
+    expect(grossFromNet(1600, EE_2026, { maksuvabaTulu: 0 })).toBe(2127.89)
+  })
+
+  it('leaves a gross-entered figure alone', () => {
+    expect(grossOf(1600, 'bruto', EE_2026)).toBe(1600)
+    expect(grossOf(1600, null, EE_2026)).toBe(1600)
+    expect(grossOf(1600, 'neto', EE_2026)).toBe(1923.08)
+  })
+
+  it('reads unset tax rates as no tax rather than exploding', () => {
+    const none: PayrollTaxRates = {
+      tooandjaMaksudProtsent: 0, tulumaksProtsent: 0, maksuvabaTuluKuus: 0,
+      tootajaTootuskindlustusProtsent: 0, kogumispensionProtsent: 0,
+    }
+    expect(grossFromNet(1600, none)).toBe(1600)
+    expect(payslipFromGross(1600, none).employerCost).toBe(1600)
   })
 })

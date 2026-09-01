@@ -24,7 +24,8 @@ import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
 import {
-  calculateEarnings, earningsTotal, type WorkerRate, type WorkHours
+  calculateEarnings, earningsTotal, grossOf,
+  type WorkerRate, type WorkHours, type PayrollTaxRates,
 } from './earnings'
 import type { WorkerPayout } from '../hooks/useWorkerPay'
 import { outstanding, paidAmount, PAYMENT_METHOD_LABEL } from '../types/invoice'
@@ -161,7 +162,14 @@ export interface WorkerFinance {
   engagement: 'tootaja' | 'ettevote'
   jobs: number
   teeth: number
+  /** What was agreed — gross for most people, take-home for a net agreement. */
   earned: number
+  /**
+   * The same money read as gross. Equals `earned` unless this person's pay is
+   * agreed net, in which case it is what the clinic must run through payroll to
+   * leave `earned` in their account. Every COST figure is built from this one.
+   */
+  grossPay: number
   paidOut: number
 }
 
@@ -215,7 +223,20 @@ export interface FinanceInput {
   payouts: WorkerPayout[]
   rates: WorkerRate[]
   hours: WorkHours[]
-  workers: { id: string; full_name: string; toosuhe?: string | null; kiirtoo_kordaja?: number | null }[]
+  workers: {
+    id: string; full_name: string; toosuhe?: string | null; kiirtoo_kordaja?: number | null
+    /** 'neto' means the pay rules hold take-home pay. See sql/054. */
+    tasu_arvestus?: string | null
+    kogumispension_protsent?: number | null
+    maksuvaba_tulu?: number | null
+  }[]
+  /**
+   * Payroll tax rates, for turning a net agreement into the gross it costs.
+   * Optional: without it a net wage is read at face value, which is exactly how
+   * this file behaved before net agreements existed — an omission here can
+   * understate cost, never invent it.
+   */
+  taxRates?: PayrollTaxRates
   types: WorkType[]
   materialCosts: Record<string, MaterialPricing>
   /** Selling prices — used as fallback when materialCosts has no entry. */
@@ -241,7 +262,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   const {
     jobs, invoices, payments, payouts, rates, hours, workers, types,
     materialCosts, materialPrices, fixedCosts, overheads, doneStageKey, periodStart, periodEnd, allJobs,
-    overheadEnd,
+    overheadEnd, taxRates,
   } = input
 
   const inPeriod = (d: string | null) => !!d && d >= periodStart && d <= periodEnd
@@ -289,12 +310,22 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       rushMultiplier: w.kiirtoo_kordaja ?? 1,
     })
     const earned = earningsTotal(lines)
+    // A net agreement is grossed up here and nowhere else, so every consumer of
+    // labourAccrued — margin, cost tiles, per-type cate — inherits the real
+    // wage rather than the take-home one. A contractor's invoice is never
+    // grossed: it is a purchase, and the taxes on it are the sender's.
+    const grossPay = taxRates && w.toosuhe !== 'ettevote'
+      ? grossOf(earned, w.tasu_arvestus === 'neto' ? 'neto' : 'bruto', taxRates, {
+          kogumispensionProtsent: w.kogumispension_protsent,
+          maksuvabaTulu: w.maksuvaba_tulu,
+        })
+      : earned
     const paidOut = round2(payouts
       .filter(p => p.profile_id === w.id && p.period_start >= periodStart && p.period_end <= periodEnd)
       .reduce((s, p) => s + Number(p.total), 0))
     const jobsDone = done.filter(j => j.assigned_to === w.id)
     if (earned === 0 && paidOut === 0 && jobsDone.length === 0) continue
-    labourAccrued += earned
+    labourAccrued += grossPay
     byWorker.push({
       profileId: w.id,
       name: w.full_name || 'Nimeta',
@@ -302,6 +333,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       jobs: jobsDone.length,
       teeth: jobsDone.reduce((s, j) => s + toothCount(j.hambad), 0),
       earned,
+      grossPay,
       paidOut,
     })
   }
@@ -533,7 +565,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
 
   const labourEmployeeGross = round2(byWorker
     .filter(w => w.engagement === 'tootaja')
-    .reduce((s, w) => s + w.earned, 0))
+    .reduce((s, w) => s + w.grossPay, 0))
   const labourContractor = round2(byWorker
     .filter(w => w.engagement === 'ettevote')
     .reduce((s, w) => s + w.earned, 0))
@@ -572,3 +604,74 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
 }
 
 export { paidAmount }
+
+// ─── Kasum ────────────────────────────────────────────────────────────────────
+
+/**
+ * Income minus every cost the clinic actually carries, with the parts kept
+ * separate so a screen can show the breakdown without re-deriving it.
+ *
+ * This lived inline in FinanceView, which was fine while exactly one card
+ * showed it. "Kasum" is a NAMED number that several panels want, and a named
+ * number computed in a view is the start of two views disagreeing about it —
+ * the 19-vs-15 lesson, applied to money.
+ *
+ * Employer tax is charged on WAGES only. A contractor's invoice carries its own
+ * tax treatment and grossing it up here would invent a liability. That is why
+ * this takes the tax rate rather than a finished number: the split between wage
+ * and invoice lives in FinanceStats, and only this function may combine them.
+ */
+export interface ProfitBreakdown {
+  /** Σ job prices for the period, from the per-type aggregation. */
+  income: number
+  /** Gross wages + employer tax + contractor invoices. */
+  labour: number
+  employerTax: number
+  /** Material + consumables. */
+  material: number
+  fixed: number
+  overheads: number
+  costs: number
+  profit: number
+  /** Profit as % of income. 0 when there is no income to divide by. */
+  profitPct: number
+}
+
+export function profitOf(fin: FinanceStats, employerTaxPct: number): ProfitBreakdown {
+  const income = round2(fin.byWorkType.reduce((s, t) => s + t.income, 0))
+  const employerTax = round2(fin.labourEmployeeGross * (employerTaxPct || 0) / 100)
+  const labour = round2(fin.labourAccrued + employerTax)
+  const material = round2(fin.materialCost + fin.consumableCost)
+  const costs = round2(labour + material + fin.fixedCostTotal + fin.overheadCost)
+  const profit = round2(income - costs)
+  return {
+    income,
+    labour,
+    employerTax,
+    material,
+    fixed: fin.fixedCostTotal,
+    overheads: fin.overheadCost,
+    costs,
+    profit,
+    profitPct: income > 0 ? round2((profit / income) * 100) : 0,
+  }
+}
+
+/**
+ * A zero-filled result, for when no visible panel has asked for finance.
+ *
+ * Exists so consumers can keep a non-nullable `FinanceStats` instead of forty
+ * render functions each carrying a null check. The zeros are unreachable in
+ * practice — nothing that reads finance is rendered while it is in use — and
+ * `finReady` on the context says which of the two is in hand.
+ */
+export const EMPTY_FINANCE: FinanceStats = {
+  billed: 0, received: 0, outstanding: 0, overdue: 0, unbilled: 0, unbilledJobs: 0,
+  labourAccrued: 0, labourPaid: 0, labourEmployeeGross: 0, labourContractor: 0,
+  materialCost: 0, consumableCost: 0, fixedCostTotal: 0, overheadCost: 0,
+  grossMargin: 0, grossMarginPct: 0, netMargin: 0, netMarginPct: 0,
+  byWorkType: [], revisionLoss: [], revisionLossTotal: 0,
+  byWorker: [], byPaymentMethod: [],
+  labourCoverage: { total: 0, covered: 0, missing: 0 },
+  materialCoverage: { total: 0, covered: 0, missing: 0 },
+}

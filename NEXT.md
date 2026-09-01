@@ -27,12 +27,27 @@ juba lingitud selle repo kaudu; saladused elavad Supabase'is, mitte failides.
 
 ---
 
-## 🔴 Jooksutamata migratsioon
+## 🔴 Jooksutamata migratsioonid
 
-**`sql/053_patient_marketing.sql`** — turundusnõusolek patsiendil. Ilma selleta
-ei salvestu patsiendi lehel nõusoleku valik ja eksport annab alati 0 kontakti.
+Kolm, järjekorras, Supabase SQL editoris **Wivo kinni**:
+
+1. **`sql/053_patient_marketing.sql`** — turundusnõusolek patsiendil. Ilma
+   selleta ei salvestu patsiendi lehel nõusoleku valik ja eksport annab alati
+   0 kontakti.
+2. **`sql/054_worker_net_pay.sql`** — neto/bruto valik ja isiklik maksuprofiil
+   (II sammas, maksuvaba tulu). Ilma selleta ei salvestu Töötasud lehel
+   „Tasureeglite summad on: Neto" valik ja kogukulu jääb töötaja maksuosa võrra
+   alla.
+3. **`sql/055_profile_ui_prefs.sql`** — `profiles.ui_prefs`, isiklikud
+   vaateseaded. Ilma selleta töötab „Minu vaade" ainult selle masina
+   localStorage'ist: valik ei sünkroonita ja konsool ütleb korra
+   „vaateseadeid ei saanud salvestada".
 
 *(049–052 on jooksutatud ja töötavad.)*
+
+**Pärast 054 jooksutamist:** Seaded → Hinnad → Palgamaksud (tulumaks 22,
+maksuvaba tulu 700, töötaja töötuskindlustus 1.6, II sammas 2) ja siis
+Töötasud → iga palgalise juures „Neto (kätte)", kui kokkulepe on netos.
 
 ---
 
@@ -66,6 +81,13 @@ Väljalülitamine kahes kohas: Seaded → E-post → „Automaatne saatmine" vä
 
 | Versioon | Mis |
 |---|---|
+| 1.60.0 | **23 uut paneeli** — võlgnevuse vanus, ühikumajandus, tarne, kliendid, „Lõbus teada" |
+| 1.59.x | Paneeli saab panna ka rea algusesse; joon on paneeli mõõtu |
+| 1.58.x | Paneelide suurus ruutudes (1–4 × 1–6), lohistamine, „Paiguta" režiim |
+| 1.57.0 | **Minu vaade** — kohandatav Statistika, 33 paneeli, valmisvaated, `sql/055` |
+| 1.56.0 | Ø läbiaeg mõõtis tähtaega; visiitidel puudus ülempiir; `profitOf()` `lib/`-i |
+| 1.55.0 | Jagatud `StatTile` ja `chartTheme`; kolm kuvamisviga Rahanduses |
+| 1.54.0 | **Neto/bruto palk** + isiklik maksuprofiil, `sql/054` |
 | 1.53.0 | Turunduskontaktide eksport + nõusolek, `sql/053` |
 | 1.52.0 | PDF manus, `=20` parandus, `sql/052` tunnine ajastus |
 | 1.51.x | Allon4 hammaste kitsendamine; saatja diagnostika |

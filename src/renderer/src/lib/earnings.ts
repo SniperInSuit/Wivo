@@ -983,3 +983,134 @@ export const employerCost = (gross: number, employerTaxPct: number): number =>
 
 export const employerTaxAmount = (gross: number, employerTaxPct: number): number =>
   round2(gross * (employerTaxPct || 0) / 100)
+
+// ─── Palgamaksud ─────────────────────────────────────────────────────────────
+//
+// WHY this exists at all: the pay rules answer "how much does this person get",
+// and for most of the world's small employers the number they agreed on is the
+// one that lands in the person's bank account — a NET figure. Reading it as
+// gross understates the clinic's cost by the whole employee-side tax wedge:
+// 1600 € net in Estonia 2026 is 1923.08 € gross and 2573.08 € of employer cost,
+// not the 2140.80 € that grossing 1600 € up by employer taxes alone produces.
+//
+// Every rate here is a SETTING, never a constant. Tax law changes yearly, the
+// pension rate is the employee's own choice (2/4/6%), and the tax-free income
+// only applies where the person has asked for it. A number this file invented
+// would be wrong for someone, silently, in a figure they plan around.
+
+/** Clinic-wide rates. Estonia 2026: 33.8 / 22 / 700 / 1.6 / 2. */
+export interface PayrollTaxRates {
+  /** Employer's share ON TOP of gross: sotsiaalmaks + tööandja töötuskindlustus. */
+  tooandjaMaksudProtsent: number
+  tulumaksProtsent: number
+  /** Monthly tax-free income, €. The default for people who have applied for it. */
+  maksuvabaTuluKuus: number
+  /** Employee's unemployment insurance, withheld from gross. */
+  tootajaTootuskindlustusProtsent: number
+  /** Default funded-pension (II sammas) rate for people who have not set one. */
+  kogumispensionProtsent: number
+}
+
+/**
+ * Per-person overrides. Null means "use the clinic default" — NOT zero. The
+ * difference matters: someone who opted out of the second pillar has 0, and
+ * someone who simply has not been configured yet has null, and those two must
+ * not produce the same payslip by accident.
+ */
+export interface WorkerTaxProfile {
+  kogumispensionProtsent?: number | null
+  maksuvabaTulu?: number | null
+}
+
+export interface Payslip {
+  gross: number
+  kogumispension: number
+  tootuskindlustus: number
+  /** Gross minus the two withholdings, minus tax-free income. Never below 0. */
+  maksustatav: number
+  tulumaks: number
+  net: number
+  /** Sotsiaalmaks + tööandja töötuskindlustus. */
+  tooandjaMaksud: number
+  /** gross + tooandjaMaksud — what the month actually costs the clinic. */
+  employerCost: number
+}
+
+const pct = (n: number | null | undefined): number => (Number(n) || 0) / 100
+
+/** Employee-side withholding rate: what never reaches taxable income. */
+function withheldRate(rates: PayrollTaxRates, worker?: WorkerTaxProfile): number {
+  const ii = worker?.kogumispensionProtsent ?? rates.kogumispensionProtsent
+  return pct(ii) + pct(rates.tootajaTootuskindlustusProtsent)
+}
+
+const taxFreeOf = (rates: PayrollTaxRates, worker?: WorkerTaxProfile): number =>
+  Number(worker?.maksuvabaTulu ?? rates.maksuvabaTuluKuus) || 0
+
+/** Full breakdown from a gross monthly figure. */
+export function payslipFromGross(
+  gross: number,
+  rates: PayrollTaxRates,
+  worker?: WorkerTaxProfile,
+): Payslip {
+  const g = Math.max(0, Number(gross) || 0)
+  const ii = worker?.kogumispensionProtsent ?? rates.kogumispensionProtsent
+  const kogumispension = round2(g * pct(ii))
+  const tootuskindlustus = round2(g * pct(rates.tootajaTootuskindlustusProtsent))
+  const afterWithholding = g - kogumispension - tootuskindlustus
+  const maksustatav = round2(Math.max(0, afterWithholding - taxFreeOf(rates, worker)))
+  const tulumaks = round2(maksustatav * pct(rates.tulumaksProtsent))
+  const tooandjaMaksud = round2(g * pct(rates.tooandjaMaksudProtsent))
+  return {
+    gross: round2(g),
+    kogumispension,
+    tootuskindlustus,
+    maksustatav,
+    tulumaks,
+    net: round2(afterWithholding - tulumaks),
+    tooandjaMaksud,
+    employerCost: round2(g + tooandjaMaksud),
+  }
+}
+
+/**
+ * The inverse: what gross produces this take-home. Closed form, not a search —
+ *
+ *   X    = gross × (1 − pension − unemployment)      … income before income tax
+ *   net  = X − rate × max(0, X − taxFree)
+ *
+ * so below the tax-free line net = X, and above it X = (net − rate × taxFree) /
+ * (1 − rate). Two branches, no iteration, exact to the cent.
+ */
+export function grossFromNet(
+  net: number,
+  rates: PayrollTaxRates,
+  worker?: WorkerTaxProfile,
+): number {
+  const n = Math.max(0, Number(net) || 0)
+  if (n === 0) return 0
+  const keep = 1 - withheldRate(rates, worker)
+  // A configuration that withholds everything has no gross that yields this
+  // net. Returning the net unchanged is the only non-explosive answer, and the
+  // rate that caused it is visible in settings.
+  if (keep <= 0) return round2(n)
+  const taxFree = taxFreeOf(rates, worker)
+  const tm = pct(rates.tulumaksProtsent)
+  // Below the tax-free income no income tax is due, so the whole withholding
+  // gross-up is the only step.
+  if (n <= taxFree || tm <= 0 || tm >= 1) return round2(n / keep)
+  return round2((n - tm * taxFree) / (keep * (1 - tm)))
+}
+
+/**
+ * Read a pay figure as gross, whichever way it was entered. `mode` comes from
+ * the person's profile: 'neto' means the pay rules hold take-home pay.
+ */
+export function grossOf(
+  amount: number,
+  mode: 'bruto' | 'neto' | null | undefined,
+  rates: PayrollTaxRates,
+  worker?: WorkerTaxProfile,
+): number {
+  return mode === 'neto' ? grossFromNet(amount, rates, worker) : round2(Number(amount) || 0)
+}

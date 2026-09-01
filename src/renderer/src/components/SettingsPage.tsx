@@ -1846,6 +1846,35 @@ export function SettingsPage() {
                 onChange={v => setNumber('tooandjaMaksudProtsent', v)}
                 hint="Lisandub brutopalgale, et näha tegelikku tööjõukulu. Eestis on see sotsiaalmaks + tööandja töötuskindlustusmakse — kontrolli kehtivat määra ise, rakendus ei paku seda ette."
               />
+              {/* The employee side. Needed only when someone's pay is entered
+                  NET — then bruto, and with it the clinic's real cost, has to
+                  be computed backwards from take-home pay. Left at 0 they do
+                  nothing, and Töötasud says so rather than quietly showing a
+                  gross equal to the net. */}
+              <NumField
+                label="Tulumaks" suffix="%" min={0} max={100} step={0.1}
+                value={settings.tulumaksProtsent}
+                onChange={v => setNumber('tulumaksProtsent', v)}
+                hint="Töötajalt kinnipeetav tulumaks. Vaja ainult siis, kui mõne inimese tasu on sisestatud netona. Eestis 2026: 22%."
+              />
+              <NumField
+                label="Maksuvaba tulu" suffix="€/kuus" min={0} max={5000} step={10}
+                value={settings.maksuvabaTuluKuus}
+                onChange={v => setNumber('maksuvabaTuluKuus', v)}
+                hint="Kliiniku vaikeväärtus. Iga inimese juures saab üle kirjutada — nt 0, kui maksuvaba tulu kasutatakse teise tööandja juures. Eestis 2026: 700 €."
+              />
+              <NumField
+                label="Töötaja töötuskindlustus" suffix="%" min={0} max={10} step={0.1}
+                value={settings.tootajaTootuskindlustusProtsent}
+                onChange={v => setNumber('tootajaTootuskindlustusProtsent', v)}
+                hint="Brutopalgast kinnipeetav osa. Eestis 2026: 1.6%. Tööandja enda 0.8% on ülal „Tööandja maksude“ sees."
+              />
+              <NumField
+                label="Kogumispension (II sammas)" suffix="%" min={0} max={20} step={1}
+                value={settings.kogumispensionProtsent}
+                onChange={v => setNumber('kogumispensionProtsent', v)}
+                hint="Vaikimisi määr. See on iga inimese enda valik (2/4/6% või üldse mitte) — konkreetse inimese määr on Töötasud → tema kaart → Maksuprofiil."
+              />
             </div>
           </section>
                   <section>

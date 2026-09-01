@@ -11,7 +11,7 @@ import {
   TrendingUp, TrendingDown, Euro, Wallet, Package, AlertTriangle, Clock,
   FileWarning, Repeat, Users, Info, Building2
 } from 'lucide-react'
-import { startOfWeek, startOfMonth, startOfQuarter, startOfYear, format } from 'date-fns'
+import { format } from 'date-fns'
 import type { Job } from '../../types/job'
 import { jobPeriodDate } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
@@ -19,43 +19,18 @@ import { useSettings, useWorkTypes } from '../../stores/useSettings'
 import { useInvoices, usePayments } from '../../hooks/useInvoices'
 import { useWorkerRates, useWorkHours, useWorkerPayouts } from '../../hooks/useWorkerPay'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
-import { calculateFinance, type Coverage } from '../../lib/finance'
+import { calculateFinance, profitOf, type Coverage } from '../../lib/finance'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { employerCost, employerTaxAmount } from '../../lib/earnings'
+import { StatTile } from '../ui/StatTile'
 import type { Period, DateRange } from './useDashboardStats'
-import { customIsUsable, orderRange } from './useDashboardStats'
 import { periodMetrics, rangeFor, elapsedEndOf, unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
 
 interface FinanceViewProps {
   jobs: Job[]
   period: Period
-  /** Only read when `period` is 'custom'. */
+  /** Only read when `period` is 'custom' or 'kuu' — both carry their window here. */
   custom?: DateRange | null
-}
-
-/**
- * The window every figure on this page is measured over.
- *
- * "Kõik" gets `null` rather than a sentinel span. It used to return
- * 1900-01-01 → 2999-12-31, and overheads are charged BY THE MONTH and prorated
- * across the period — so 2 000 €/kuus rent came out as 13 199 months of it,
- * 26 397 306 €, and the profit line read minus twenty-six million. The caller
- * fills the null from the data's own span, which is the only honest answer to
- * "how long has this lab been running".
- */
-function periodRange(period: Period, custom?: DateRange | null): { start: string; end: string } | null {
-  const now = new Date()
-  // An explicit range is taken exactly as typed, both ends inclusive.
-  if (period === 'custom') return customIsUsable(custom) ? orderRange(custom) : null
-  // Always today, never the end of the period: money that has not arrived yet
-  // is not revenue, and a month-to-date figure compared against a full month's
-  // overheads would read as a loss for the first three weeks of every month.
-  const end = format(now, 'yyyy-MM-dd')
-  if (period === 'week')    return { start: format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd'), end }
-  if (period === 'month')   return { start: format(startOfMonth(now), 'yyyy-MM-dd'), end }
-  if (period === 'quarter') return { start: format(startOfQuarter(now), 'yyyy-MM-dd'), end }
-  if (period === 'year')    return { start: format(startOfYear(now), 'yyyy-MM-dd'), end }
-  return null
 }
 
 export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
@@ -117,7 +92,20 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       // Without this the lab cost of every rush job is understated by exactly
       // the uplift the payroll screen does pay out.
       kiirtoo_kordaja: w.kiirtoo_kordaja,
+      // And without these three, a wage agreed NET is read as gross: employer
+      // tax then lands on a wage too small, and the shortfall goes straight
+      // into the profit figure. See sql/054.
+      tasu_arvestus: w.tasu_arvestus,
+      kogumispension_protsent: w.kogumispension_protsent,
+      maksuvaba_tulu: w.maksuvaba_tulu,
     })),
+    taxRates: {
+      tooandjaMaksudProtsent: settings.tooandjaMaksudProtsent,
+      tulumaksProtsent: settings.tulumaksProtsent,
+      maksuvabaTuluKuus: settings.maksuvabaTuluKuus,
+      tootajaTootuskindlustusProtsent: settings.tootajaTootuskindlustusProtsent,
+      kogumispensionProtsent: settings.kogumispensionProtsent,
+    },
     types: wt.types,
     materialCosts: settings.materialCosts,
     materialPrices: settings.materialPrices,
@@ -129,13 +117,17 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     // Rent does not accrue for days that have not happened. Counts use the
     // whole period; overheads use only the elapsed part of it.
     overheadEnd: elapsedEndOf(range),
-  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, doneStageKey, range])
+  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent, doneStageKey, range])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
   // real money leaving the account.
   // Employer tax applies to WAGES only. A contractor's invoice already carries
   // its own tax treatment, and grossing it up here would invent a liability.
   const employerTax = employerTaxAmount(fin.labourEmployeeGross, settings.tooandjaMaksudProtsent)
+  const p = useMemo(
+    () => profitOf(fin, settings.tooandjaMaksudProtsent),
+    [fin, settings.tooandjaMaksudProtsent],
+  )
   // grossMargin already nets off material + consumables. Overheads come off on
   // top, so the headline is profit rather than contribution — but ONLY when
   // overheads are actually recorded. Subtracting an unentered zero and calling
@@ -160,11 +152,10 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
 
       {/* ── Summary: Tulu vs Kulu ── */}
       {(() => {
-        const totalIncome = fin.byWorkType.reduce((s, t) => s + t.income, 0)
-        const labourTotal = fin.labourAccrued + employerTax
-        const materialTotal = fin.materialCost + fin.consumableCost
-        const totalCosts = labourTotal + materialTotal + fin.fixedCostTotal + fin.overheadCost
-        const profit = totalIncome - totalCosts
+        // profitOf(), not arithmetic here: "Kasum" is a named number and more
+        // than one panel now reads it. See lib/finance.ts.
+        const { income: totalIncome, labour: labourTotal, material: materialTotal,
+                costs: totalCosts, profit } = p
         const costParts = [
           labourTotal > 0 ? `Tööjõud ${labourTotal.toFixed(0)}` : null,
           materialTotal > 0 ? `Materjal ${materialTotal.toFixed(0)}` : null,
@@ -239,22 +230,22 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           <TrendingUp size={13} /> Sisse
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Money icon={Euro} label="Arveldatud" value={fin.billed} sub={MONEY_HINT.arveldatud} />
+          <StatTile money size="sm" icon={Euro} label="Arveldatud" value={fin.billed} sub={MONEY_HINT.arveldatud} />
           {/* Same quantity Tootmine now shows under the same name. It used to
               show the list price of jobs whose legacy `makstud` boolean was
               ticked, which is why the two screens reported 12 800 and 21 980
               for one month. */}
-          <Money icon={Wallet} label="Laekunud" value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
+          <StatTile money size="sm" icon={Wallet} label="Laekunud" value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
           {/* Invoice-based, and it has to say so. A lab that settles jobs
               without invoicing has no invoices to owe against, so this reads
               0.00 € — "nobody owes anything" — while Arveldamata next to it
               says otherwise. The Ülevaade counts the same debt job by job and
               reaches a different number for exactly this reason. */}
-          <Money icon={Clock} label="Tasumata arvete järgi" value={fin.outstanding} accent="#F59E0B"
+          <StatTile money size="sm" icon={Clock} label="Tasumata arvete järgi" value={fin.outstanding} accent="#F59E0B"
             sub={fin.overdue > 0
               ? `${fin.overdue.toFixed(2)} € üle tähtaja`
               : 'Ainult väljastatud arved. Arveta tööd on kõrval „Arveldamata" all.'} />
-          <Money
+          <StatTile money size="sm"
             icon={FileWarning} label="Arveldamata" value={fin.unbilled} accent="#EF4444"
             sub={`${fin.unbilledJobs} valmis tööd ilma arveta`}
           />
@@ -274,11 +265,13 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           <TrendingDown size={13} /> Välja
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Money icon={Users} label="Tööjõukulu (bruto)" value={fin.labourAccrued} accent="#8B5CF6"
+          {/* Gross, including the gross-up of anyone paid a net wage — the
+              figure payroll taxes are actually charged on. */}
+          <StatTile money size="sm" icon={Users} label="Tööjõukulu (bruto)" value={fin.labourAccrued} accent="#8B5CF6"
             coverage={fin.labourCoverage} coverageLabel="tööl on teostaja" />
           {/* Gross pay is not the cost of employing someone — the employer's
               share of payroll taxes is, and that is what has to be funded. */}
-          <Money
+          <StatTile money size="sm"
             icon={Wallet}
             label="Tööjõud + maksud + arve"
             value={fin.labourAccrued + employerTax}
@@ -291,20 +284,20 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               settings.tooandjaMaksudProtsent > 0 ? undefined : 'tööandja maksude määr on 0%'
             )}
           />
-          <Money icon={Package} label="Materjal ja tarvikud" value={fin.materialCost + fin.consumableCost} accent="#F97316"
+          <StatTile money size="sm" icon={Package} label="Materjal ja tarvikud" value={fin.materialCost + fin.consumableCost} accent="#F97316"
             sub={fin.consumableCost > 0
               ? `sh. tarvikud ${fin.consumableCost.toFixed(2)} €`
               : undefined}
             coverage={fin.materialCoverage} coverageLabel="tööl on omahind" />
           {fin.fixedCostTotal > 0 && (
-            <Money icon={Package} label="Fikseeritud kulud" value={fin.fixedCostTotal} accent="#8B5CF6"
+            <StatTile money size="sm" icon={Package} label="Fikseeritud kulud" value={fin.fixedCostTotal} accent="#8B5CF6"
               sub={`${settings.fixedCostsPerJob.map(c => c.nimi).join(', ')}`} />
           )}
           {fin.overheadCost > 0 && (
-            <Money icon={Building2} label="Üldkulud" value={fin.overheadCost} accent="#64748B"
+            <StatTile money size="sm" icon={Building2} label="Üldkulud" value={fin.overheadCost} accent="#64748B"
               sub={`${settings.yldkulud.map(o => o.nimi).join(', ')} — perioodi osa`} />
           )}
-          <Money icon={Repeat} label="Muudatuste kahju" value={fin.revisionLossTotal} accent="#EC4899"
+          <StatTile money size="sm" icon={Repeat} label="Muudatuste kahju" value={fin.revisionLossTotal} accent="#EC4899"
             sub="tööjõud + materjal − tasutud" />
         </div>
       </section>
@@ -342,13 +335,15 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <th className="px-3 py-2 font-semibold text-right">Kesk. tulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. kulu</th>
                   <th className="px-3 py-2 font-semibold text-right">Kesk. kate</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/h tulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/h kulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/h kate</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/hammas tulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/hammas kulu</th>
+                  <th className="px-3 py-2 font-semibold text-right">€/hammas kate</th>
                 </tr>
               </thead>
               <tbody>
-                {fin.byWorkType
+                {/* A COPY. `fin.byWorkType` is memoised inside calculateFinance and
+                    sorting it in place mutated the aggregator's own result mid-render. */}
+                {[...fin.byWorkType]
                   .sort((a, b) => b.revenue - a.revenue)
                   .map(t => {
                     const img = workTypeImage(t.name)
@@ -583,6 +578,10 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
                   <th className="px-3 py-2 font-semibold">Töötaja</th>
+                  {/* The engagement cell existed in every row but had no header,
+                      so all five columns to its right were labelled with their
+                      left-hand neighbour's name. */}
+                  <th className="px-3 py-2 font-semibold">Töösuhe</th>
                   <th className="px-3 py-2 font-semibold text-right">Töid</th>
                   <th className="px-3 py-2 font-semibold text-right">Hambaid</th>
                   <th className="px-3 py-2 font-semibold text-right">Arvestatud</th>
@@ -607,43 +606,6 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           </div>
         )}
       </section>
-    </div>
-  )
-}
-
-// ─── Pieces ───────────────────────────────────────────────────────────────────
-
-function Money({ icon: Icon, label, value, sub, accent, coverage, coverageLabel }: {
-  icon: typeof Euro
-  label: string
-  value: number
-  sub?: string
-  accent?: string
-  coverage?: Coverage
-  coverageLabel?: string
-}) {
-  const missing = coverage?.missing ?? 0
-  return (
-    <div className="card p-4 flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${accent ?? '#0AB6C4'}18` }}
-        >
-          <Icon size={14} style={{ color: accent ?? '#0AB6C4' }} />
-        </div>
-        <span className="text-xs font-medium text-ink-muted">{label}</span>
-      </div>
-      <p className="text-xl font-bold text-ink leading-none tabular-nums">{value.toFixed(2)} €</p>
-      {sub && <p className="text-[11px] text-ink-faint">{sub}</p>}
-      {/* Says what the number could not see. A total that quietly omitted a
-          third of the jobs is worse than no total at all. */}
-      {coverage && missing > 0 && (
-        <p className="text-[11px] text-orange-500 flex items-start gap-1">
-          <AlertTriangle size={10} className="flex-shrink-0 mt-0.5" />
-          {coverage.covered}/{coverage.total} {coverageLabel} — {missing} tööd puudu
-        </p>
-      )}
     </div>
   )
 }

@@ -27,6 +27,7 @@ import { useSettings } from './stores/useSettings'
 import { AuthProvider } from './context/AuthContext'
 import { AuthGuard } from './components/Auth/AuthGuard'
 import { ClinicSettingsSync } from './components/ClinicSettingsSync'
+import { UiPrefsSync } from './components/UiPrefsSync'
 import { UpdateBanner } from './components/UpdateBanner'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
@@ -453,6 +454,7 @@ export default function App() {
             {/* Renders nothing; pulls the clinic-owned settings down and pushes
                 local edits back. Inside AuthGuard because it needs the clinic. */}
             <ClinicSettingsSync />
+            <UiPrefsSync />
             <AppContent />
             {/* Corner toast when a newer version is on disk. */}
             <UpdateBanner />

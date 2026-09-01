@@ -14,7 +14,16 @@ import { useWorkTypes } from '../../stores/useSettings'
 import { periodMetrics, rangeFor } from '../../lib/periodMetrics'
 import type { Payment } from '../../types/invoice'
 
-export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom'
+/**
+ * 'kuu' is ONE named calendar month, chosen with the month picker; 'month' is
+ * "the month we are in now". They resolve the same way — 'kuu' carries its
+ * month in the same DateRange a custom range uses — so every screen that
+ * already understood a range understands a chosen month for free.
+ */
+export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom' | 'kuu'
+
+/** Periods whose window is carried in `custom` rather than derived from today. */
+const RANGE_PERIODS: Period[] = ['custom', 'kuu']
 
 /** 'YYYY-MM-DD' both ends, inclusive. */
 export interface DateRange { start: string; end: string }
@@ -34,7 +43,7 @@ export function orderRange(r: DateRange): DateRange {
 
 function periodStart(p: Period, custom?: DateRange | null): Date | null {
   const now = new Date()
-  if (p === 'custom') return customIsUsable(custom) ? parseISO(orderRange(custom).start) : null
+  if (RANGE_PERIODS.includes(p)) return customIsUsable(custom) ? parseISO(orderRange(custom).start) : null
   if (p === 'week') return startOfWeek(now, WEEK)
   if (p === 'month') return startOfMonth(now)
   if (p === 'quarter') return startOfQuarter(now)
@@ -44,7 +53,7 @@ function periodStart(p: Period, custom?: DateRange | null): Date | null {
 
 function periodEnd(p: Period, custom?: DateRange | null): Date | null {
   const now = new Date()
-  if (p === 'custom') return customIsUsable(custom) ? parseISO(orderRange(custom).end) : null
+  if (RANGE_PERIODS.includes(p)) return customIsUsable(custom) ? parseISO(orderRange(custom).end) : null
   if (p === 'week') return endOfWeek(now, WEEK)
   if (p === 'month') return endOfMonth(now)
   if (p === 'quarter') return endOfQuarter(now)
@@ -170,20 +179,34 @@ export function useDashboardStats(
       .sort((a, b) => b.count - a.count)
       .slice(0, 8)
 
-    // Avg turnaround: days from kuupaev to valmis_aeg for completed jobs
+    // Avg turnaround: days from kuupaev to VALMIS_KUUPAEV for completed jobs.
+    //
+    // `valmis_aeg` is the DEADLINE and `valmis_kuupaev` is when the work was
+    // actually finished — the same distinction payroll is built on. Measuring
+    // to the deadline reported the PLAN: a lab that misses every deadline by a
+    // week showed the same "Ø läbiaeg" as one that hits them all, and the
+    // number moved only when someone rescheduled.
+    //
     // Both ends must PARSE, not merely be present. differenceInDays on an
     // Invalid Date returns NaN, and one NaN poisons the sum — the whole average
     // rendered as "NaN päeva" off a single unreadable row.
     const completedWithDates = completed.filter(j => {
-      if (!j.kuupaev || !j.valmis_aeg) return false
-      return isValid(parseISO(j.kuupaev)) && isValid(parseISO(j.valmis_aeg))
+      if (!j.kuupaev || !j.valmis_kuupaev) return false
+      return isValid(parseISO(j.kuupaev)) && isValid(parseISO(j.valmis_kuupaev))
     })
     const avgTurnaround = completedWithDates.length > 0
       ? completedWithDates.reduce((sum, j) => {
-          const days = differenceInDays(parseISO(j.valmis_aeg!), parseISO(j.kuupaev))
+          const days = differenceInDays(parseISO(j.valmis_kuupaev!), parseISO(j.kuupaev))
           return sum + Math.max(0, days)
         }, 0) / completedWithDates.length
       : 0
+    // What the average could not see: finished jobs with no completion date on
+    // record. Reported rather than quietly excluded.
+    const turnaroundCoverage = {
+      total: completed.length,
+      covered: completedWithDates.length,
+      missing: completed.length - completedWithDates.length,
+    }
 
     // Work by work type — counted PER JOB, not per tooth. A single Allon4 with
     // 14 teeth is one job's worth of work, not fourteen; counting teeth made the
@@ -213,8 +236,18 @@ export function useDashboardStats(
     // while Rahandus said 21 980 for the same month. A flag is not money.
     const paidRevenue = cash.money
     const unpaidRevenue = Math.round(Math.max(0, totalRevenue - paidRevenue) * 100) / 100
+    // Both ends of this division must count the same things. `totalRevenue` is
+    // KÄIVE — every in-period job plus every in-period revision charge — so the
+    // denominator is the aggregator's unit count, not "jobs that happen to
+    // carry a price". Dividing käive by the priced subset inflated the average
+    // by exactly the share of unpriced work.
     const jobsWithPrice = filtered.filter((j) => jobTotal(j) > 0)
-    const avgPrice = jobsWithPrice.length > 0 ? totalRevenue / jobsWithPrice.length : 0
+    const avgPrice = m.yksused > 0 ? totalRevenue / m.yksused : 0
+    const priceCoverage = {
+      total: filtered.length,
+      covered: jobsWithPrice.length,
+      missing: filtered.length - jobsWithPrice.length,
+    }
     const avgPricePerTooth = totalTeeth > 0 ? totalRevenue / totalTeeth : 0
 
     // Revenue by month (last 6 months) — include revision prices
@@ -259,9 +292,18 @@ export function useDashboardStats(
 
     // ─── Visits ───────────────────────────────────────────────────────────
     const start = periodStart(period, custom)
-    const visitsIn = start
-      ? visits.filter(v => v.algus && !isBefore(parseISO(v.algus), start))
-      : visits
+    // The UPPER bound matters as much as the lower one. Without it "See nädal"
+    // meant "from Monday onwards, forever" — every future booking counted as a
+    // visit that had happened this week. Jobs were fixed for exactly this in
+    // `filterByPeriod`; visits and patients were left behind.
+    const end = periodEnd(period, custom)
+    const inWindow = (iso: string | null | undefined): boolean => {
+      if (!iso) return false
+      const d = parseISO(iso)
+      if (!isValid(d) || (start && isBefore(d, start))) return false
+      return !end || !isAfter(d, end)
+    }
+    const visitsIn = start ? visits.filter(v => inWindow(v.algus)) : visits
     const byStatus = (st: string) => visitsIn.filter(v => v.staatus === st).length
     const visitStats = {
       total: visitsIn.length,
@@ -356,7 +398,7 @@ export function useDashboardStats(
 
     // ─── Patients ─────────────────────────────────────────────────────────
     const newPatients = start
-      ? patients.filter(p => p.created_at && !isBefore(parseISO(p.created_at), start)).length
+      ? patients.filter(p => inWindow(p.created_at)).length
       : patients.length
     const jobCountByPatient = new Map<string, number>()
     filtered.forEach(j => {
@@ -420,12 +462,14 @@ export function useDashboardStats(
       machineStats,
       topPatients,
       avgTurnaround,
+      turnaroundCoverage,
       workByType,
       totalRevenue,
       paidRevenue,
       unpaidRevenue,
       avgPrice,
       avgPricePerTooth,
+      priceCoverage,
       revenueByMonth,
       materialStats,
       throughput,

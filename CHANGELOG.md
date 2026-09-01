@@ -1,5 +1,328 @@
 # Changelog
 
+## [1.60.0] — 2026-09-01
+
+**23 uut paneeli, viis uut meetrikamoodulit — ja üks grupp, mis ei plaani midagi**
+
+Kataloogis on nüüd **56 paneeli**. Iga uus number elab `lib/`-is koos testidega,
+mitte paneeli sees — paneel jääb puhtaks renderdajaks.
+
+**Raha (`lib/invoiceMetrics.ts`)**
+- **Võlgnevuse vanus** — 1–30 / 31–60 / 61–90 / 90+ päeva, vanem võlg punasem
+- **Keskmine laekumisaeg** — päevi arvest rahani, ainult perioodil lõplikult
+  tasutud arvete pealt, nii et number liigub värske käitumisega. Kui midagi ei
+  ole tasutud, on vastus „—", mitte 0
+- **Käibemaks perioodis** — `vat_total` oli olemas ja seda ei liidetud kusagil
+- **Keskmine arve**
+
+**Ühikumajandus (`lib/unitEconomics.ts`)**
+- **Kasum töö kohta** ja **kate/kulu hamba kohta** — sinu „work per profit"
+- **Kulude osakaal tulust** — tööjõud, materjal, üldkulud protsendina
+- **Tulu tööpäeva kohta** — E–R, tänaseni, nagu üldkuludki
+- Iga jagatis annab nulli nimetaja korral **`null`**, mitte NaN ega enesekindla 0
+
+**Tootmine (`lib/throughput.ts`)**
+- **Tähtajaks valmis %** — tähtajata töö ei loe kummalegi poole, vaid katvusse
+- **Läbiaja jaotus** — mediaan, 90. protsentiil, kiireim, aeglaseim. Keskmine
+  üksi varjab saba
+- **Tarne seis ja tarneaeg** — `delivery_status` on olnud olemas migratsioonist
+  035 ja seda ei näidatud statistikas kordagi
+- **Koormus nädalapäeva järgi** — saabunud vs valminud, esmaspäev ees
+
+**Kliendid (`lib/customerStats.ts`)**
+- **Top kliendid**, **maksedistsipliin**, **aktiivsed ja uued**, **magavad
+  kliendid** (90 päeva). `customer_id` on olnud tööl ja arvel alates 1.28 ning
+  seda ei agregeeritud kunagi
+- Kliendita töö läheb **„Määramata"** alla, mitte prügikasti: labor, kes välja ei
+  täida, näeks muidu tühja paneeli ja järeldaks, et tal pole kliente
+
+**Lõbus teada (`lib/funFacts.ts`)** — uus grupp ja oma valmisvaade
+- **Hambaid kokku** kogu aeg, ümber arvutatud täissuudeks (32 hammast)
+- **Rekordid** — suurim töö, tihedaim päev, kiireim ja aeglaseim
+- **Pikim veatu seeria** — mitu valmis tööd järjest ilma muudatuseta
+- **Lemmikud** — sagedaseim värv, materjalide arv, hambakaardi katvus 32-st,
+  lojaalseim patsient, sagedaseim ümbertegemise põhjus
+- **Tempo** — nädalavahetusel valminud tööd, kiirtööde osakaal
+- **Kaua me juba teeme** — esimesest tööst tänaseni
+- Kõik kogu aja peale ja **iga paneel ütleb seda ise**, et ta ei loeks perioodi
+  numbrite seas perioodi numbrina
+
+**Muu**
+- Register nõuab **õigust igalt paneelilt, mis raha puudutab** — nüüd ka
+  arvete, ühikumajanduse ja kliendikäibe omadelt. Test loetleb erandid käsitsi,
+  nii et uus rahapaneel ei saa nende hulka kogemata sattuda
+- „Lõbus teada" ei tohi testi järgi sisaldada ühtegi õigust nõudvat paneeli —
+  uudishimu, mis vajab `payments.read`, on rahapaneel naeratusega
+- Uued arvutused käivad ainult siis, kui mõni **nähtav** paneel neid küsib
+- Valmisvaated said uued paneelid sisse; juurde tuli **„Lõbus"**
+
+## [1.59.1] — 2026-09-01
+
+**Joon on liigutatava paneeli mõõtu, ja kukutamine läheb sinna, kuhu joon lubas**
+
+- **Tihe pakkimine (`grid-auto-flow: dense`) välja.** See oli tegelik põhjus,
+  miks paneel maandus mujal, kui joon näitas: tihe pakkimine tõstab hilisema
+  kaardi ettepoole, et auk täita, nii et **nähtav asukoht ei vasta enam
+  järjekorrale** — ja järjekord on ainus asi, mida kukutamine muuta saab. Joon
+  lubas ühte kohta, brauser valis teise. Auk ruudustikus on vihje midagi ümber
+  tõsta või suuremaks teha; paigutus, mis end su selja taga ümber korraldab, ei
+  ole üldse paigutatav
+- **Reajoon on liigutatava paneeli laiune**, mitte üle terve ekraani. Üle
+  ruudustiku ulatuv riba lubas täislaiuses maandumist ja andis midagi muud —
+  marker peab olema selle mõõtu, mida ta paigutab
+- **Joon algab sealt, kust rida algab.** Mitte alati ruudustiku vasakust servast:
+  eelmisest reast ulatuv kõrge kaart võib esimest veergu kinni hoida
+
+## [1.59.0] — 2026-09-01
+
+**Paneeli saab nüüd panna ka teise alla, mitte ainult kõrvale**
+
+Paigutus on lineaarne järjekord, mis voolab ruudustikku — ja senised
+sisestuskohad olid ainult „enne" ja „pärast" ühte kaarti, mõlemad vertikaalse
+joonena kaardi küljel. „Selle alla" ei olnud lihtsalt olemas, ükskõik kui täpselt
+sihtida.
+
+- **Reapiiridest said päris sisestuskohad.** Iga rea kohal ja viimase rea all on
+  koht, mis tähendab „alusta siit uus rida". Voolavas ruudustikus ongi „selle
+  kaardi alla" sama mis „järgmise rea algusesse" — nüüd on see ka pakutav
+- **Kaks joont, kaks tähendust.** Vertikaalne riba kaartide vahel = „nende kahe
+  vahele". Üle ruudustiku ulatuv horisontaalne riba = „siia, uuele reale"
+- **Kaardi keskosa pakub külge, ülemine ja alumine kolmandik rida.** Reariba
+  ulatub üle terve ruudustiku, nii et ilma käsitsi seatud eelistuseta võidaks ta
+  igalt poolt — väikese kaardi küljevahe on 200 px kaugusel, tema reapiir 60
+- **Marker joonistatakse ruudustiku peale**, mitte kaardi sisse. Kaardi sees
+  saab riba olla ainult nii kõrge kui kaart ise — seepärast ei olnud reapiiri
+  üldse võimalik näidata
+- Sisestuskoht on nüüd **indeks järjekorras**, mitte „selle kaardi see külg".
+  Sama mõiste, mida salvestus niikuinii hoiab, ja üks teisendus vähem
+
+## [1.58.3] — 2026-09-01
+
+**Lohistamine töötab jälle — `popLayout` kirjutas mõõtmise üle**
+
+1.58.2 tegi näidisjoone koha sõltuvaks paneelide ristkülikutest, mis koguti
+React-i `ref`-idesse. Need jäid tühjaks, sest **`AnimatePresence mode="popLayout"`
+renderdab iga lapse läbi `cloneElement(children, { ref })` — ja asendab lapse
+enda `ref`-i omaga.** Ilma ristkülikuteta ei leidnud otsing ühtegi pesa: joont ei
+tekkinud ja kukutamisel ei liikunud midagi.
+
+- **Ristkülikud loetakse DOM-ist** `data-panel-id` järgi, mitte `ref`-idest.
+  Ükski teegi ümbris ega kloonimine ei saa seda enam vahelt ära võtta
+- **`popLayout` eemaldatud.** Ta andis lahkuvale paneelile pisut sujuvama
+  kadumise ja võttis vastu kogu ülejäänud lohistamise — vale vahetus
+- **Lohistamise olek elab `ref`-ides**, mitte ainult `useState`-is. `setDragId`
+  jõustub alles järgmisel renderdusel, aga `dragover` hakkab pihta kohe: käsitleja,
+  mis luges veel tühja olekut, ei kutsunud `preventDefault`-i ja brauser luges
+  kogu ruudustiku kohaks, kuhu kukutada ei tohi
+- **`preventDefault` käib nüüd iga `dragover` peale**, enne igasugust
+  vahelejätmist. Mõõtmist tohib vahele jätta, vastuvõtmist mitte
+- Natiivsed lohistamiskäsitlejad istuvad tavalisel `div`-il `motion.div` sees.
+  Framer edastab `onDrag*` ainult siis, kui `draggable` on tõene — see kehtis,
+  aga kaudne sõltuvus teegi erandist ei ole koht, kus lohistamine peaks seisma
+- `dataTransfer` saab `effectAllowed`, `dropEffect` ja nime, nii et lohistamine
+  on platvormi jaoks korrektne, mitte lihtsalt enamasti töötav
+
+## [1.58.2] — 2026-09-01
+
+**Näidisjoon järgib hiirt, mitte seda, kes sündmuse kätte sai**
+
+- **Koht arvutatakse kursori koordinaadist.** Varem küsis joone asukohta see
+  paneel, mis `dragover` sündmuse kätte sai — aga **kastide vaheline tühimik ei
+  kuulu ühelegi paneelile**, ja just sinna paneb kursori see, kes sihib „nende
+  kahe vahele". Sündmust ei tulnud kellelegi ja marker jäi rippuma sinna, kus ta
+  viimati oli. Nüüd kuulab sündmust ruudustik ise ja lähim pesa leitakse
+  koordinaadist
+- **Rida enne, siis külg.** Kursoriga samal real olev paneel võidab alati selle,
+  mis on linnulennult lähemal, aga rea võrra eemal — see oli põhjus, miks joon
+  hüppas kolm rida allapoole
+- **Vasak või parem pool paneeli keskkohast** otsustab, kummale servale joon
+  läheb. Kahe kaardi vahel annavad mõlemad naabrid sama pesa, nii et joon on
+  seal, kuhu kursor osutab, sõltumata sellest, kummast küljest lähened
+- **Enda peal hõljudes joont ei ole** — lohistatava paneeli enda kohal ei ole
+  liigutust, mida soovitada
+- Ümberarvutus jäetakse vahele, kui kursor on liikunud alla nelja piksli
+
+## [1.58.1] — 2026-09-01
+
+**Lohistamine: joon näitab kohta, plokid liiguvad sujuvalt**
+
+- **Joon näitab, kuhu paneel läheb.** Kursori poolel olev sinine joon selle
+  paneeli serval, mille kõrvale kukutad — „nende kahe vahele" on näha, mitte
+  arvata. Joon ise libiseb serva pealt servale, mitte ei hüppa
+- **Ruudustik ei paiguta end enam lohistamise ajal ümber.** Varem tõsteti
+  paneelid iga `dragover` sündmuse peale ringi, mitu korda sekundis — miski ei
+  seisnud paigal piisavalt kaua, et selle peale sihtida. Nüüd liigub paigutus
+  ühe korra, kukutamisel
+- **Kõik liigub kohale ~0.34 s jooksul**, tugevalt aeglustuva kõveraga: paneel
+  saabub settides, mitte ei jää järsku seisma. Sama animatsioon kehtib ka
+  suuruse muutmisel ja paneeli lisamisel või eemaldamisel
+- Lahkuv paneel võetakse enne teiste liikumist voost välja, nii et augu
+  sulgumine on liuglemine, mitte hüpe
+- `dragleave` ei kustuta enam joont, kui kursor liigub paneeli **enda lapse**
+  peale — diagrammi või tabelilahtri kohal vilkus joon täpselt seal, kuhu
+  kasutaja sihtis
+- Süsteemi „vähenda liikumist" seade lülitab animatsiooni välja
+
+## [1.58.0] — 2026-09-01
+
+**Paneelide suurus ja paigutus — ruutudes, mitte pikslites**
+
+„Minu vaade" sai juurde selle, milleta järjekord üksi oli odav: iga paneeli saab
+suuremaks ja väiksemaks teha ning ruudustikus ümber lohistada.
+
+- **Neljaveeruline ruudustik**, paneel on `[veergu, rida]`. Laius 1–4, kõrgus
+  1–6, kus 6 rida ≈ ekraanitäis. Kaheksa nimega suurust — Väike, Lai, Kõrge,
+  Ruut, Suur, Täislaius, Pikk, Täisekraan — ja kahe nupuga sammud selle jaoks,
+  mida nimekiri ei kata
+- **Ruudud, mitte pikslid.** Sama salvestatud paigutus on õige sülearvutis, 27"
+  ekraanil ja 125% tekstisuurusega. Vabalt venitatav paneel salvestaks arvu, mis
+  kehtib ainult selles masinas, kus seda lohistati
+- **„Paiguta" režiim.** Lohistamine ja suuruse muutmine on nupu taga, sest
+  alati lohistatav kaart võitleb iga diagrammi tooltipi, iga tabeli kerimise ja
+  iga tekstivalikuga. Väljas = puhas töölaud, sees = kaartidel käepide,
+  suurusemenüü ja eemaldusnupp
+- **Tihe pakkimine** (`grid-auto-flow: dense`): kitsas paneel laia järel täidab
+  augu, mitte ei jäta seda lahti
+- **Sisu venib kaasa** — diagramm kasvab paneeliga, pikk nimekiri kerib paneeli
+  sees, tabel kerib horisontaalselt. Suurus muudab seda, kui palju näed, mitte
+  ainult tühja ruumi ümber sama pildi
+- **Suurused elavad eraldi kaardis** (`sizes`), mitte paneeli kirje sees. Nii
+  jääb `panels` puhtaks id-de nimekirjaks ja vanem versioon, mis mõne id kohta
+  midagi ei tea, ei pea säilitama ka selle sisemist kuju. Suurus säilib, kui
+  paneel korraks eemaldada ja tagasi panna, ja klammerdub ruudustikku ka siis,
+  kui salvestuses on 99×99
+- Suuruse muutmine **ei tühista valmisvaate silti** — valmisvaade otsustab, mida
+  sa näed, mitte kui suur see on. Ümberpaigutamine ja eemaldamine tühistavad
+
+## [1.57.0] — 2026-09-01
+
+**Minu vaade: Statistika, mille iga inimene ise kokku paneb**
+
+Uus vahekaart „Minu vaade" Statistika lehel: vali kataloogist paneelid, lohista
+järjekorda, või võta valmisvaade. Valik käib **konto küljes** ja tuleb kaasa
+igasse masinasse. **Vajab migratsiooni `sql/055_profile_ui_prefs.sql`.**
+
+- **33 paneeli neljas grupis** — raha ja kasum, ühikumajandus, tootmine ja
+  tähtajad, kliendid ja inimesed. Kõik loevad juba olemasolevaid arvutusi
+- **Valmisvaated**: Juht · Finantsjuht · Tootmisjuht · Tehnik · Tootmine ·
+  Rahandus. Lähtepunkt, mitte lukk — esimene käsitsi muudatus teeb vaate sinu
+  omaks ja silt muutub „Kohandatud". „Tehnik" ei sisalda ühtegi rahapaneeli
+  **ehituse poolest**, mitte ainult õiguste tõttu
+- **Iga paneel kannab õigust.** Statistika leht ei küsinud seni `can()` mitte
+  kordagi — `stats.read` piisas, et näha iga inimese teenistust. Rahapaneelid
+  nõuavad nüüd `payments.read`, palgapaneelid `payroll.manage`, ja paneel,
+  milleks õigust ei ole, **ei ole kataloogis** ega renderdu ka siis, kui
+  salvestatud nimekiri teda nimetab
+- **Tundmatu paneel jääb alles.** Uuema versiooniga lisatud paneel, mida vanem
+  masin ei tunne, säilib salvestuses koos oma kohaga järjekorras — teda lihtsalt
+  ei joonistata. Vanem klient, mis kustutaks selle, mida ta ei tunne, kaotaks
+  teises arvutis tehtud valiku jäädavalt ja vaikselt
+- **Tühi nimekiri ei ole sama mis puuduv.** „Võtsin kõik ära" jääb kehtima;
+  „pole kunagi kohandanud" annab rolli vaikevaate, mida **ei kirjutata
+  andmebaasi** — kaks masinat ei võistle sama konto vaikeseade külvamisega
+- **Vahemälu võti kannab kasutaja id-d.** Ühe pingi taga kaht inimest teenindav
+  masin ei näita enne sünki teise inimese töölauda
+- **Paneelil on oma veapiire**: üks katkine kaart maksab ühe kaardi, mitte terve
+  lehe. Rakenduse üldine ErrorBoundary on täisekraani veateade ja siin vale
+- **Ainult nähtavad paneelid arvutatakse.** `calculateFinance` jooksutab
+  palgamootorit kolm korda töötaja kohta; tehnik, kes vaatab nelja tootmisnumbrit,
+  ei maksa selle eest
+- Vanad vahekaardid Tootmine ja Rahandus on **puutumata** — sama sisu, sama
+  koht. Uus vaade on nende kõrval, mitte nende asemel
+
+## [1.56.0] — 2026-09-01
+
+**Kaks numbrit, mis mõõtsid valet asja**
+
+⚠ **Muudab ajaloolisi numbreid.** Mõlemad allpool näitavad möödunud perioodide
+kohta nüüd teist arvu kui eile. Vana number oli vale, mitte teine vaade.
+
+- **„Ø läbiaeg" mõõtis tähtaega, mitte valmimist.** Arvutus käis
+  `kuupäev → valmis_aeg`, aga `valmis_aeg` on **tähtaeg**; tegelik valmimine on
+  `valmis_kuupaev` — sama eristus, mille peal palgaarvestus seisab. Labor, mis
+  jääb igast tähtajast nädala võrra hiljaks, näitas sama läbiaega kui see, mis
+  peab kõigist kinni, ja number liikus ainult siis, kui keegi tähtaega muutis
+- **„Ø hind / töö" jagas käibe hinnaga tööde arvuga.** Lugeja oli käive (kõik
+  perioodi tööd **ja** muudatused), nimetaja „tööd, millel juhtub hind olema" —
+  keskmine oli üleval täpselt hinnastamata töö osakaalu võrra. Nüüd jagatakse
+  sama ühikuarvuga, mida lugeja kokku loeb
+- **Visiitidel ja uutel patsientidel puudus ülempiir.** „See nädal" tähendas
+  „esmaspäevast alates, igavesti" — iga tulevane broneering luges selle nädala
+  toimunud visiidiks. Töödel sai see parandatud juba varem; visiidid ja
+  patsiendid jäid maha
+- Mõlemal parandatud numbril on nüüd **katvuse silt**: mitmel valmis tööl
+  puudub valmimiskuupäev, mitmel tööl puudub hind. Keskmine, mis vaikselt
+  poolt andmetest ei näe, on halvem kui puuduv keskmine
+- **`profitOf()`** kolis `lib/finance.ts`-i. „Kasum" on nimega number, mida
+  hakkab lugema mitu paneeli, ja vaates arvutatud nimega number on koht, kust
+  kaks ekraani hakkavad ühe asja kohta eri vastust andma
+
+## [1.55.0] — 2026-09-01
+
+**Statistika ettevalmistus: üks paan, üks diagrammiteema, kolm parandust**
+
+Ettevalmistus kohandatavale Statistika lehele. Kasutajale nähtav osa on kolm
+parandust; ülejäänu on kolimine, mis järgmise etapi võimalikuks teeb.
+
+- **„Töötajate kaupa" veerud olid ühe võrra nihkes.** Töösuhte lahter oli igas
+  reas olemas, aga päises mitte, nii et iga veerg kandis oma vasaku naabri
+  nime — „Arvestatud" luges „Hambaid" all. Palgatabelis on see see sort viga,
+  mille pealt tegutsetakse
+- **„€/h tulu / kulu / kate" on tegelikult €/hammas.** Veerud jagasid alati
+  hammastega, mitte tundidega. Päris €/tund vajaks tunde töötüübi kaupa, mida
+  andmetes ei ole — nimi parandatud, arvutus oli õige
+- **Kate töötüübi järgi sorteeris memoiseeritud massiivi paigal.** Renderdamise
+  ajal muudeti `calculateFinance`'i enda tulemust; nüüd sorteeritakse koopiat
+- **Üks jagatud paan** `ui/StatTile` kahe peaaegu identse asemel. Need olid
+  triivinud nii, et kumbki oskas poolt tööd: üks kahepoolset jaotust, teine
+  katvuse silti. Segavaates on pool oskust vaikselt kadunud aus
+- Diagrammide värvid, tooltip ja telje mõõdud `Dashboard/chartTheme.ts`-i —
+  igasse paneeli kopeeritud paletist saab hunnik diagramme, mis triivivad ühe
+  commiti kaupa lahku
+
+## [1.54.0] — 2026-09-01
+
+**Neto- või brutopalk, ja iga inimese oma maksuprofiil**
+
+Töötasud luges iga summa brutopalgaks. Kes lepib kokku kättesaadava summa —
+enamik väikesi tööandjaid — sai kliiniku kulu, millest oli puudu kogu töötaja
+poolt kinnipeetav maksuosa. **Vajab migratsiooni `sql/054_worker_net_pay.sql`.**
+
+- **Bruto/neto valik iga inimese juures.** 1600 € neto (Eesti 2026) on 1923.08 €
+  bruto ja **2573.08 € tööandja kulu**, mitte 2140.80 €, mille annab netosumma
+  brutona lugemine. Vahe oli 432.28 € kuus ühe inimese pealt ja läks otse
+  Statistika kasuminumbrisse
+- **Maksuprofiil inimese kaupa: II sammas ja maksuvaba tulu.** 2/4/6% on töötaja
+  enda valik ja muudab seda, kui suur bruto on sama neto jaoks vaja. Maksuvaba
+  tulu rakendub ainult seal, kus inimene on seda taotlenud — teise tööandja
+  juures töötaval inimesel siin mitte
+- **NULL ei ole 0.** Tühi väli tähendab „kliiniku vaikeväärtus", 0 tähendab „ei
+  ole II sambas" / „maksuvaba tulu ei rakendata". Nende kokkuliitmine paneks
+  inimese vaikselt tagasi sambasse, millest ta välja astus
+- **Palgaleht töötaja kaardil**: bruto → kogumispension → töötuskindlustus →
+  tulumaks → kätte → tööandja maksud → kulu kliinikule
+- **Maksumäärad on seaded, mitte konstandid** (Seaded → Hinnad): tulumaks,
+  maksuvaba tulu, töötaja töötuskindlustus, II samba vaikemäär. Maksuseadus
+  muutub igal aastal ja rakenduse enda välja mõeldud määr oleks kellegi jaoks
+  vaikselt vale. Vaikimisi 0 — ja kui keegi on netopalgal, ütleb Töötasud
+  eraldi välja, et määrad on seadmata
+- **Statistika kasutab sama arvutust.** Tööjõukulu, kate ja kasum on nüüd
+  tõelise brutopalga peal, mitte kättesaadava summa peal
+- Testid kontrollivad iga numbrit kalkulaator.ee 2026. aasta palgakalkulaatori
+  vastu — ise tuletatud palganumber on väärt ainult seda, kui see langeb kokku
+  sellega, mille raamatupidaja annab
+
+**Lisaks: kuuvalik Statistika lehel**
+
+- **„Kuu" asendab „See kuu"** — nooled ‹ › naaberkuudele, kuuväli kaugemale,
+  „Käesolev kuu" tagasi. Iga muu kuu peale praeguse tähendas seni kahe kuupäeva
+  tippimist vahemikuvalijasse
+- Valitud kuu liigub edasi tavalise vahemikuna, nii et Tootmine ja Rahandus
+  saavad selle ilma ühegi eritingimuseta
+- Eemaldatud Rahanduse oma `periodRange`, mis oli jäänud ühise `rangeFor` kõrvale
+  kasutuseta seisma — kaks perioodiarvutust ühel lehel on kaks vastust, mis
+  jõuavad varem või hiljem lahku
+
 ## [1.53.0] — 2026-09-01
 
 **Turunduskontaktide eksport — koos nõusolekuga**

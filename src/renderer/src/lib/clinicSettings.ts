@@ -48,6 +48,10 @@ export interface ClinicSettingsRow {
   }
   payroll: {
     tooandjaMaksudProtsent: number
+    tulumaksProtsent: number
+    maksuvabaTuluKuus: number
+    tootajaTootuskindlustusProtsent: number
+    kogumispensionProtsent: number
   }
   /**
    * Outgoing mail: where from, and WHAT IS ALLOWED. See sql/051.
@@ -125,6 +129,10 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
     },
     payroll: {
       tooandjaMaksudProtsent: s.tooandjaMaksudProtsent,
+      tulumaksProtsent: s.tulumaksProtsent,
+      maksuvabaTuluKuus: s.maksuvabaTuluKuus,
+      tootajaTootuskindlustusProtsent: s.tootajaTootuskindlustusProtsent,
+      kogumispensionProtsent: s.kogumispensionProtsent,
     },
     features: {
       clinical: s.kliinilineRezhiim,
@@ -160,6 +168,10 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   kmMaar: 'pricing',
   makseTahtaegPaevades: 'pricing',
   tooandjaMaksudProtsent: 'payroll',
+  tulumaksProtsent: 'payroll',
+  maksuvabaTuluKuus: 'payroll',
+  tootajaTootuskindlustusProtsent: 'payroll',
+  kogumispensionProtsent: 'payroll',
   visiidiTyybid: 'visit_types',
   avalikudTeenused: 'public_services',
   kliinilineRezhiim: 'features',

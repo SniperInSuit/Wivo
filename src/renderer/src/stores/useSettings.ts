@@ -169,9 +169,25 @@ export interface WivoSettings {
   // this never restates a document that has already gone out.
   kmMaar: number          // Käibemaksumäär %
   makseTahtaegPaevades: number  // Maksetähtaeg päevades
-  // Tööandja maksude määr brutopalgalt, %. Vaikimisi 0 — vale maksumäär, mille
-  // rakendus ise välja mõtles, on halvem kui ilmselgelt puuduv.
+  // ─── Palgamaksud ───────────────────────────────────────────────────────────
+  // Kõik määrad on vaikimisi 0 — vale maksumäär, mille rakendus ise välja
+  // mõtles, on halvem kui ilmselgelt puuduv. Eesti 2026: 33.8 / 22 / 700 /
+  // 1.6 / 2. Määrad muutuvad igal aastal, seepärast on need seaded, mitte
+  // konstandid, ja seepärast küsib rakendus need üle, mitte ei paku ette.
+  //
+  // Tööandja maksude määr brutopalgalt, % (sotsiaalmaks + tööandja
+  // töötuskindlustusmakse).
   tooandjaMaksudProtsent: number
+  // Alljärgnevad puudutavad TÖÖTAJA poolt kinnipeetavat. Neid on vaja ainult
+  // siis, kui mõne inimese tasu on sisestatud NETOsummana — siis tuleb bruto
+  // (ja seega tööandja kulu) nendest tagurpidi välja arvutada.
+  tulumaksProtsent: number
+  maksuvabaTuluKuus: number
+  tootajaTootuskindlustusProtsent: number
+  // Vaikimisi II samba määr. Iga inimese juures saab selle üle kirjutada —
+  // 2/4/6% on töötaja enda valik ja mõjutab seda, kui suur bruto on vaja sama
+  // netosumma väljamaksmiseks.
+  kogumispensionProtsent: number
   // ─── Kliiniline režiim ─────────────────────────────────────────────────────
   // Patsiendikaart (ravikaart, allergiad, hambakaardi seisund) ja visiitide
   // broneerimine. Vaikimisi VÄLJAS: WivoLab on laboritoode ja terviseandmed on
@@ -254,6 +270,10 @@ function defaultSettings(): WivoSettings {
     yldkulud: [],
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
+    tulumaksProtsent: 0,
+    maksuvabaTuluKuus: 0,
+    tootajaTootuskindlustusProtsent: 0,
+    kogumispensionProtsent: 0,
     fixedCostsPerJob: [],
     lisateenused: [],
   }
@@ -430,6 +450,10 @@ function loadSettings(): WivoSettings {
       kmMaar: stored.kmMaar ?? 0,
       makseTahtaegPaevades: stored.makseTahtaegPaevades ?? 14,
       tooandjaMaksudProtsent: stored.tooandjaMaksudProtsent ?? 0,
+      tulumaksProtsent: stored.tulumaksProtsent ?? 0,
+      maksuvabaTuluKuus: stored.maksuvabaTuluKuus ?? 0,
+      tootajaTootuskindlustusProtsent: stored.tootajaTootuskindlustusProtsent ?? 0,
+      kogumispensionProtsent: stored.kogumispensionProtsent ?? 0,
       fixedCostsPerJob: Array.isArray(stored.fixedCostsPerJob) ? stored.fixedCostsPerJob.map(c => ({ ...c })) : [],
       lisateenused: Array.isArray(stored.lisateenused) ? stored.lisateenused.map(s => ({ ...s })) : [],
       yldkulud: Array.isArray(stored.yldkulud) ? stored.yldkulud.map(o => ({ ...o })) : [],

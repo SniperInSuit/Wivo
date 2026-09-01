@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { format, parseISO, isValid, addMonths, startOfMonth, endOfMonth } from 'date-fns'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend
@@ -15,107 +16,62 @@ import { FinanceView } from './FinanceView'
 import { useWorkTypes } from '../../stores/useSettings'
 import { usePayments } from '../../hooks/useInvoices'
 import { unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
-
-const CHART_COLORS = ['#0AB6C4', '#6366F1', '#F59E0B', '#10B981', '#EC4899', '#3B82F6']
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent,
-  breakdown
-}: {
-  icon: React.ElementType
-  label: string
-  value: string | number
-  sub?: string
-  accent?: string
-  breakdown?: { left: { label: string; value: number; color?: string }; right: { label: string; value: number; color?: string } }
-}) {
-  return (
-    <div className="card p-5 flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${accent ?? '#0AB6C4'}18` }}
-        >
-          <Icon size={16} style={{ color: accent ?? '#0AB6C4' }} />
-        </div>
-        <span className="text-xs font-medium text-ink-muted">{label}</span>
-      </div>
-      <p className="text-2xl font-bold text-ink leading-none">{value}</p>
-      {(sub || breakdown) && (
-        <div className="flex items-center justify-between gap-2">
-          {sub && <p className="text-xs text-ink-muted">{sub}</p>}
-          {breakdown && (
-            <div className="flex items-center gap-2.5 ml-auto flex-shrink-0">
-              <span className="text-[11px] font-bold" style={{ color: breakdown.left.color ?? '#0AB6C4' }}>
-                {breakdown.left.value} <span className="text-ink-faint font-normal">{breakdown.left.label}</span>
-              </span>
-              <span className="text-ink-faint/30">·</span>
-              <span className="text-[11px] font-bold" style={{ color: breakdown.right.color ?? '#EC4899' }}>
-                {breakdown.right.value} <span className="text-ink-faint font-normal">{breakdown.right.label}</span>
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Shared Recharts tooltip chrome — matches the card surface in every theme
-const TOOLTIP_STYLE = {
-  background: 'rgb(var(--c-bg-card))',
-  border: '1px solid rgb(var(--c-ink-faint) / 0.25)',
-  borderRadius: 12,
-  fontSize: 12,
-  color: 'rgb(var(--c-ink))'
-} as const
-
-// ─── Horizontal bar chart sizing ──────────────────────────────────────────────
-// Recharts' default category-axis `interval` is "preserveEnd", which silently
-// DROPS labels that do not fit — at a fixed 180px with 8 rows that meant the
-// top bar (the biggest patient) rendered with no name at all. interval={0}
-// forces every label, so the height has to grow with the row count instead.
-const ROW_HEIGHT = 26
-const rowChartHeight = (rows: number) => Math.max(120, rows * ROW_HEIGHT)
-
-// The axis reserves this much for names; anything longer is clipped with an
-// ellipsis rather than being drawn over the bars. Kept in one place so the two
-// charts that use it cannot drift out of alignment with each other.
-const NAME_AXIS_WIDTH = 118
-const NAME_MAX_CHARS = 17
-const truncateName = (v: string): string =>
-  v.length > NAME_MAX_CHARS ? `${v.slice(0, NAME_MAX_CHARS - 1)}…` : v
+import { StatTile } from '../ui/StatTile'
+import {
+  CHART_COLORS, TOOLTIP_STYLE, rowChartHeight, NAME_AXIS_WIDTH, truncateName,
+} from './chartTheme'
+import { MyView } from './MyView'
+import { useAuth } from '../../context/AuthContext'
 
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'week', label: 'See nädal' },
-  { key: 'month', label: 'See kuu' },
+  // 'kuu', not 'month': a named month, defaulting to this one. The fixed "See
+  // kuu" it replaces answered a strictly smaller question — every month other
+  // than the current one meant typing two dates into the range picker.
+  { key: 'kuu', label: 'Kuu' },
   { key: 'quarter', label: 'See kvartal' },
   { key: 'year', label: 'See aasta' },
   { key: 'all', label: 'Kõik' },
   { key: 'custom', label: 'Vahemik' },
 ]
 
+/** 'yyyy-MM' → the whole calendar month, both ends inclusive. */
+function monthRange(month: string): DateRange {
+  const base = parseISO(`${month}-01`)
+  if (!isValid(base)) return { start: '', end: '' }
+  return {
+    start: format(startOfMonth(base), 'yyyy-MM-dd'),
+    end: format(endOfMonth(base), 'yyyy-MM-dd'),
+  }
+}
+
+const shiftMonth = (month: string, by: number): string =>
+  format(addMonths(parseISO(`${month}-01`), by), 'yyyy-MM')
+
 interface DashboardProps {
   jobs: Job[]
 }
 
 export function Dashboard({ jobs }: DashboardProps) {
-  const [period, setPeriod] = useState<Period>('month')
+  const [period, setPeriod] = useState<Period>('kuu')
+  // The month "Kuu" reports on. Starts at the current one, so the page opens on
+  // exactly the window it opened on before this picker existed.
+  const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   // Both ends empty until the user types them. An incomplete range is not a
   // filter, so the stats fall back to "all" rather than showing nothing.
   const [custom, setCustom] = useState<DateRange>({ start: '', end: '' })
-  const [tab, setTab] = useState<'tootmine' | 'rahandus'>('tootmine')
+  const [tab, setTab] = useState<'minu' | 'tootmine' | 'rahandus'>('minu')
+  const { role } = useAuth()
   // Visits and patients may not exist yet (migrations 001/007) — the hook takes
   // empty arrays and simply reports zeroes rather than breaking the page.
   const { data: visits = [] } = useVisits()
   const { data: patients = [] } = usePatients()
   // Cash received. "Makstud" is a payments question, never the legacy flag.
   const { data: payments = [] } = usePayments()
-  const stats = useDashboardStats(jobs, period, visits, patients, custom, payments)
+  // A picked month is a range like any other — resolved here, once, so neither
+  // the stats hook nor Rahandus has to know which control produced it.
+  const window: DateRange = period === 'kuu' ? monthRange(month) : custom
+  const stats = useDashboardStats(jobs, period, visits, patients, window, payments)
   const wt = useWorkTypes()
 
   const paidPct =
@@ -130,6 +86,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           with margins. */}
       <div className="flex items-center gap-1 bg-bg-sidebar rounded-xl p-1 w-fit">
         {([
+          { key: 'minu', label: 'Minu vaade' },
           { key: 'tootmine', label: 'Tootmine' },
           { key: 'rahandus', label: 'Rahandus' },
         ] as const).map(t => (
@@ -162,6 +119,42 @@ export function Dashboard({ jobs }: DashboardProps) {
           </button>
         ))}
 
+        {/* Arrows for the neighbouring months, a native month field for a
+            distant one. Two clicks to last month, never four. */}
+        {period === 'kuu' && (
+          <div className="flex items-center gap-1 ml-1">
+            <button
+              onClick={() => setMonth(m => shiftMonth(m, -1))}
+              aria-label="Eelmine kuu"
+              className="px-2 py-1.5 rounded-lg bg-bg-sidebar text-ink-muted hover:text-ink transition-colors"
+            >
+              ‹
+            </button>
+            <input
+              type="month"
+              value={month}
+              onChange={e => { if (e.target.value) setMonth(e.target.value) }}
+              aria-label="Kuu"
+              className="input py-1.5 text-sm w-auto"
+            />
+            <button
+              onClick={() => setMonth(m => shiftMonth(m, 1))}
+              aria-label="Järgmine kuu"
+              className="px-2 py-1.5 rounded-lg bg-bg-sidebar text-ink-muted hover:text-ink transition-colors"
+            >
+              ›
+            </button>
+            {month !== format(new Date(), 'yyyy-MM') && (
+              <button
+                onClick={() => setMonth(format(new Date(), 'yyyy-MM'))}
+                className="text-xs font-medium px-2 py-1.5 rounded-lg text-ink-muted hover:text-ink transition-colors"
+              >
+                Käesolev kuu
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Shown only once "Vahemik" is chosen — two date fields sitting there
             permanently would read as filters that are already applied. */}
         {period === 'custom' && (
@@ -190,7 +183,11 @@ export function Dashboard({ jobs }: DashboardProps) {
         )}
       </div>
 
-      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} custom={custom} />}
+      {tab === 'minu' && (
+        <MyView jobs={jobs} period={period} window={window} role={role} />
+      )}
+
+      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} custom={window} />}
 
       {tab === 'tootmine' && (<>
       {/* ─── Summary cards ─── */}
@@ -199,20 +196,20 @@ export function Dashboard({ jobs }: DashboardProps) {
           Kokkuvõte
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard
+          <StatTile
             icon={Users}
             label="Töid kokku"
             value={stats.totalWork}
             sub={unitSplitLabel(stats.metrics)}
           />
-          <StatCard
+          <StatTile
             icon={Layers}
             label="Tootmises"
             value={stats.inProduction.length}
             sub={`${stats.overdue.length} tähtajast üle`}
             accent="#F59E0B"
           />
-          <StatCard
+          <StatTile
             icon={TrendingUp}
             label="Hambaid toodetud"
             value={stats.totalTeeth}
@@ -223,7 +220,7 @@ export function Dashboard({ jobs }: DashboardProps) {
               right: { label: 'muudatused', value: stats.revisionTeeth, color: '#EC4899' }
             }}
           />
-          <StatCard
+          <StatTile
             icon={AlertCircle}
             label="Revisjonimäär"
             value={`${stats.revisionRate.toFixed(1)}%`}
@@ -239,31 +236,33 @@ export function Dashboard({ jobs }: DashboardProps) {
           <Euro size={13} /> Maksed
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <StatCard
+          <StatTile
             icon={Euro}
             label="Käive kokku"
             value={`${stats.totalRevenue.toFixed(2)} €`}
             sub={MONEY_HINT.kaive}
           />
-          <StatCard
+          <StatTile
             icon={CheckCircle}
             label="Laekunud"
             value={`${stats.paidRevenue.toFixed(2)} €`}
             sub={`${paidPct}% käibest · ${MONEY_HINT.laekunud.toLowerCase()}`}
             accent="#22C55E"
           />
-          <StatCard
+          <StatTile
             icon={Clock}
             label="Maksmata"
             value={`${stats.unpaidRevenue.toFixed(2)} €`}
             sub="Käive − laekunud"
             accent="#EF4444"
           />
-          <StatCard
+          <StatTile
             icon={TrendingUp}
             label="Ø hind / töö"
             value={`${stats.avgPrice.toFixed(2)} €`}
             sub={`Ø ${stats.avgPricePerTooth.toFixed(2)} € / hammas`}
+            coverage={stats.priceCoverage}
+            coverageLabel="tööl on hind"
           />
         </div>
 
@@ -459,22 +458,24 @@ export function Dashboard({ jobs }: DashboardProps) {
           <Zap size={13} /> Kiirtöö & Masinad
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard
+          <StatTile
             icon={Zap}
             label="Kiirtööd"
             value={stats.kiirtooJobs.length}
             sub={`${stats.kiirtooRevenue.toFixed(2)} € käive`}
             accent="#F97316"
           />
-          <StatCard
+          <StatTile
             icon={Timer}
             label="Ø läbiaeg"
             value={stats.avgTurnaround > 0 ? `${stats.avgTurnaround.toFixed(1)} p` : '—'}
-            sub="kuupäevast valmiseni"
+            sub="vastuvõtust valmimiseni"
             accent="#8B5CF6"
+            coverage={stats.turnaroundCoverage}
+            coverageLabel="tööl on valmimiskuupäev"
           />
           {stats.machineStats.slice(0, 2).map((m) => (
-            <StatCard
+            <StatTile
               key={m.name}
               icon={Cpu}
               label={m.name}
@@ -736,24 +737,24 @@ export function Dashboard({ jobs }: DashboardProps) {
           Visiidid
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard
+          <StatTile
             icon={CalendarClock}
             label="Visiite kokku"
             value={stats.visitStats.total}
             sub={`${stats.visitStats.planeeritud} planeeritud · ${stats.visitStats.toimunud} toimunud`}
           />
-          <StatCard
+          <StatTile
             icon={UserX}
             label="Ei tulnud"
             value={`${stats.visitStats.noShowRate.toFixed(0)}%`}
             sub={`${stats.visitStats.eiTulnud} visiiti · tühistamised välja arvatud`}
           />
-          <StatCard
+          <StatTile
             icon={Timer}
             label="Ø visiidi kestus"
             value={`${stats.visitStats.avgKestus.toFixed(0)} min`}
           />
-          <StatCard
+          <StatTile
             icon={AlertCircle}
             label="Tühistatud"
             value={stats.visitStats.tuhistatud}
@@ -868,16 +869,16 @@ export function Dashboard({ jobs }: DashboardProps) {
           Patsiendid
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard icon={Users} label="Patsiente kokku" value={stats.patientSummary.total} />
-          <StatCard
+          <StatTile icon={Users} label="Patsiente kokku" value={stats.patientSummary.total} />
+          <StatTile
             icon={UserPlus} label="Uusi patsiente" value={stats.patientSummary.newPatients}
             sub="valitud perioodil lisatud"
           />
-          <StatCard
+          <StatTile
             icon={Repeat} label="Korduvad patsiendid" value={stats.patientSummary.repeatPatients}
             sub={`${stats.patientSummary.repeatRate.toFixed(0)}% neist, kellel on töid`}
           />
-          <StatCard
+          <StatTile
             icon={Stethoscope} label="Suunavaid arste" value={stats.byDoctor.length}
             sub="käibe järgi top 8"
           />

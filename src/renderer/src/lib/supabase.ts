@@ -41,6 +41,9 @@ export type UserRole = 'owner' | 'worker' | 'patient'
 
 export type Engagement = 'tootaja' | 'ettevote'
 
+/** Kas kokkulepitud number on bruto- või netopalk. Vt sql/054. */
+export type PayBasis = 'bruto' | 'neto'
+
 export interface Profile {
   id: string
   full_name: string
@@ -58,6 +61,26 @@ export interface Profile {
    * quietly raised everyone's pay.
    */
   kiirtoo_kordaja?: number | null
+  /**
+   * Kas tasureeglite summad on bruto või neto. See on tööandja ja inimese
+   * vaheline kokkulepe, mitte rakenduse eeldus: kes lepib kokku kättesaadava
+   * summa, sisestab netot, ja bruto ning tööandja maksud arvutatakse sellest.
+   *
+   * Vaikimisi 'bruto' — see on see, mida senised numbrid juba eeldasid.
+   */
+  tasu_arvestus?: PayBasis
+  /** II samba määr %. NULL = kliiniku vaikeväärtus, 0 = ei ole II sambas. */
+  kogumispension_protsent?: number | null
+  /** Maksuvaba tulu € kuus. NULL = kliiniku vaikeväärtus, 0 = ei rakendata. */
+  maksuvaba_tulu?: number | null
+  /**
+   * Isiklikud vaateseaded — Statistika paneelid jm. Vt sql/055 ja lib/uiPrefs.
+   *
+   * `unknown` meelega: kuju kuulub `normaliseUiPrefs`-ile, mis peab lugema ka
+   * seda, mille kirjutas uuem versioon. Siin tüübi kinni naelutamine tähendaks,
+   * et vanem klient kustutab selle, mida ta ei tunne.
+   */
+  ui_prefs?: unknown
   /** Login name for accounts without a real mailbox. */
   username?: string | null
   clinic_id: string | null
@@ -144,7 +167,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfile(
   userId: string,
-  updates: Partial<Pick<Profile, 'full_name' | 'toosuhe' | 'kiirtoo_kordaja'>>
+  updates: Partial<Pick<Profile,
+    'full_name' | 'toosuhe' | 'kiirtoo_kordaja' |
+    'tasu_arvestus' | 'kogumispension_protsent' | 'maksuvaba_tulu'>>
 ) {
   const { data, error } = await supabase
     .from('profiles')
@@ -162,3 +187,16 @@ export function setActiveClinicId(id: string | null) { _clinicId = id }
 export function getActiveClinicId(): string | null { return _clinicId }
 
 export { type Session, type User }
+
+/**
+ * Write this user's interface preferences. Own row only — `profiles_update_own`
+ * is the whole authorisation story, and there is no path here for one person to
+ * write another's layout.
+ */
+export async function updateUiPrefs(userId: string, prefs: unknown): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ ui_prefs: prefs, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+  if (error) throw error
+}
