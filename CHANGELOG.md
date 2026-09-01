@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.45.0] — 2026-09-01
+
+**Maksegraafik: andmemudel ja loogika**
+
+Patsient maksab ravi osade kaupa — nt 5 × 1000 €. Esimene pool: tabel, tüübid
+ja loogika. UI tuleb järgmisena. **Vajab migratsiooni `sql/049_payment_plans.sql`.**
+
+- `payment_plans` tabel + `invoices.payment_plan_id` / `instalment_no`.
+  Arved genereeritakse **ette, päris dokumentidena** — töölauarakenduse taga ei
+  jookse midagi, kui ta kinni on, nii et reegel „käivitub järgmisel kuul" ei
+  käivituks kunagi. Viis arvet õigete kuupäevadega ei vaja ajastajat, et
+  eksisteerida; ajastajat vajab ainult **saatmine**
+- `arve_paev` on kuni **28**, nii koodis kui andmebaasis. Graafik „31. kuupäeval"
+  muutuks veebruaris vaikselt 28-ndaks ja märtsis jälle 31-ndaks
+- `planProgress()` loeb **arveid, mitte graafiku enda numbreid**: plaan ütleb,
+  mis kokku lepiti, arved ütlevad, mis juhtus, ja lahknemisel on dokument tõde
+- Tühistamine tühistab ainult need osamaksed, millele **ei ole midagi laekunud**.
+  `payments_amount_positive` (sql/020) tähendab, et laekumist ei saa miinusega
+  tagasi pöörata — tühistamine on peatamine, mitte tagasimakse
+- Iga osamakse kannab `job_id`-d, nii et „Laekumata" kahaneb iga makse järel
+
 ## [1.44.1] — 2026-09-01
 
 **Osamaksetega tasutud töö jäi 1/5 makstuks**

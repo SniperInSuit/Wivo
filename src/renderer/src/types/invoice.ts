@@ -93,6 +93,17 @@ export interface Invoice {
   vat_total: number
   gross_total: number
   note: string | null
+  /**
+   * The payment plan this invoice is one instalment of, and which one.
+   *
+   * Null on every ordinary invoice, which is every invoice written before
+   * sql/049. The instalments of a plan are real documents generated up front —
+   * nothing runs behind a closed desktop app — and these two columns are what
+   * lets them be read back as one agreement instead of five loose invoices.
+   */
+  payment_plan_id: string | null
+  /** 1-based. Null on an ordinary invoice. */
+  instalment_no: number | null
   created_by: string | null
   created_at: string
   updated_at: string
