@@ -12,7 +12,29 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ## 🔴 Sinu käes
 
-### 1. Edge-funktsiooni deploy — endiselt tegemata
+### ✅ LAHENDATUD 01.09.2026 — `@shared/` import töötab
+
+Edge-funktsioon on deploy'tud ja vastab. **Plaani suurim tundmatu on kadunud:**
+`supabase functions deploy` pakib kaasa impordi, mis väljub funktsiooni
+kaustast. Üleslaadimise nimekiri näitas otse:
+
+```
+Uploading asset (public-booking): shared/portal/publicQuote.ts
+Uploading asset (public-booking): shared/portal/publicService.ts
+```
+
+Ja funktsioon käivitub — `GET /public-booking/services` ilma `?clinic=`
+parameetrita annab `{"ok":false,"error":{"code":"UNKNOWN_CLINIC",…}}`, HTTP 400.
+Deno lahendab impordid mooduli laadimisel, seega katkine import oleks andnud
+boot-vea, mitte struktureeritud vastuse.
+
+**Tähendab:** `shared/billing/invoiceDoc.ts` ja `sendGuard.ts` saab saatja otse
+importida. Genereeritud koopia varuplaani (`_shared/generated/`) EI OLE VAJA.
+
+Tegemata on veel: `supabase secrets set` (origins + pepper + SMTP), ja
+`public_slug` Seadetes, ilma milleta `/services` päris kataloogi ei tagasta.
+
+### 1. (vana) Edge-funktsiooni deploy
 
 Kirjutatud ja commit'itud **18. augustil**, mitte kordagi deploy'tud. Käsud:
 `supabase/functions/README.md`. CLI on masinas (`2.78.1`, scoop), aga **sisse
