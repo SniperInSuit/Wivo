@@ -97,6 +97,7 @@ export function useCreatePaymentPlan() {
       // to the whole line to the cent and the last instalment absorbs the
       // remainder — never a rounding that invents money.
       const perLine = lines.map(l => splitAmount(l.qty * l.unit_price, plan.osamakseid))
+      let firstInvoiceId: string | null = null
 
       for (const part of schedule) {
         const k = part.no - 1
@@ -133,8 +134,11 @@ export function useCreatePaymentPlan() {
           }))
         )
         if (lineErr) throw lineErr
+        if (part.no === 1) firstInvoiceId = (inv as { id: string }).id
       }
-      return row
+      // The first instalment's id so the caller can open the document it just
+      // made, rather than the plan row nobody has a screen for yet.
+      return { plan: row, firstInvoiceId }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY })

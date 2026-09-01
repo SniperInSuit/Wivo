@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.45.1] — 2026-09-01
+
+**Maksegraafik arve vormil**
+
+Osamaksete valik on nüüd päris graafik. Arve vorm oskas juba patsiendi, tööd ja
+read valida — puudu oli graafiku kaks küsimust ja rida, mis need viis arvet kokku
+seob. **Vajab migratsiooni `sql/049`.**
+
+- **Arve päev** (1–28) ja **maksetähtaeg päevades** — mõlemad määratavad.
+  Ekraanil on kirjas, miks 28: kuupäev peab kehtima ka veebruaris
+- **Eelvaade** näitab iga osamakse väljastus- ja tähtaega ning summat, samade
+  funktsioonidega, millega dokumendid kirjutatakse — ekraan ei saa lubada
+  kuupäeva, mida arve ei kanna
+- Katkine graafik nimetab probleemid ega lase salvestada
+- Loomine käib ühe mutatsiooniga: `payment_plans` rida ja arved koos. Rida
+  kirjutatakse esimesena, nii et poolel teel katkedes kuuluvad juba loodud
+  arved päris graafikusse — vastupidine järjekord jätaks orvud
+- Nupp on nüüd blokeeritud ka graafiku loomise ajal. Graafik on **tsükkel**
+  insert'e, nii et teine klõps oleks kirjutanud teise graafiku ja teise
+  komplekti dokumente
+- Ülempiir tõusis 24-lt 60-le, sama mis andmebaasis
+
 ## [1.45.0] — 2026-09-01
 
 **Maksegraafik: andmemudel ja loogika**

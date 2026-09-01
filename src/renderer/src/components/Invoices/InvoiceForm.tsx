@@ -19,7 +19,8 @@ import { jobTotalValue } from '../../lib/jobPayments'
 import { useCustomers } from '../../hooks/useCustomers'
 import type { BillToKind } from '../../types/customer'
 import { toDate } from '../../lib/dates'
-import { instalmentSchedule, splitAmount } from '@shared/billing/instalments'
+import { instalmentSchedule, scheduleProblems } from '@shared/billing/instalments'
+import { useCreatePaymentPlan } from '../../hooks/usePaymentPlans'
 
 interface DraftLine {
   key: string
@@ -40,6 +41,7 @@ interface InvoiceFormProps {
 export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: InvoiceFormProps) {
   const { settings } = useSettings()
   const createInvoice = useCreateInvoice()
+  const createPlan = useCreatePaymentPlan()
   const { data: invoices = [] } = useInvoices()
   const { data: customers = [] } = useCustomers()
 
@@ -57,6 +59,9 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   // rather than as a recurring rule: a desktop app has nothing running when it
   // is closed, so a rule that "fires next month" would simply never fire.
   const [instalments, setInstalments] = useState(1)
+  // The plan's own two questions, asked only once the split is more than one.
+  const [planDay, setPlanDay] = useState(2)
+  const [planTerm, setPlanTerm] = useState(settings.makseTahtaegPaevades)
   const [error, setError] = useState<string | null>(null)
 
   // Clearing the issue date leaves '' here, and parseISO('') is an Invalid Date
@@ -144,6 +149,25 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   const vat = Math.round(net * vatRate) / 100
   const gross = Math.round((net + vat) * 100) / 100
 
+  // The plan, laid out exactly as the generator will write it. One source for
+  // the preview and the documents, so the screen cannot promise a date or an
+  // amount the invoices do not carry.
+  const planInput = useMemo(() => ({
+    total: gross,
+    count: instalments,
+    firstIssue: issueDate,
+    dayOfMonth: planDay,
+    termDays: planTerm,
+  }), [gross, instalments, issueDate, planDay, planTerm])
+  const planProblems = useMemo(
+    () => (instalments > 1 ? scheduleProblems(planInput) : []),
+    [instalments, planInput]
+  )
+  const planPreview = useMemo(
+    () => (instalments > 1 ? instalmentSchedule(planInput) : []),
+    [instalments, planInput]
+  )
+
   const addLine = (l: DraftLine) => setLines(prev => [...prev, l])
   const addBlank = () => setLines(prev => [...prev, {
     key: `manual-${prev.length}-${prev.reduce((n, x) => n + x.key.length, 0)}`,
@@ -158,7 +182,11 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
   // sequence. Blocked here rather than left to Postgres, because the instalment
   // path formats this date and would throw before the insert was even attempted.
   const canSave =
-    addresseeOk && lines.length > 0 && !!toDate(issueDate) && !createInvoice.isPending
+    addresseeOk && lines.length > 0 && !!toDate(issueDate)
+    // Both mutations, not just the single-invoice one: a plan is a LOOP of
+    // inserts, so a second click during it would write a second plan and a
+    // second run of documents.
+    && !createInvoice.isPending && !createPlan.isPending
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -194,52 +222,39 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
         return
       }
 
-      // Dates from instalmentSchedule, money from splitAmount — the same two
-      // functions the plan preview uses, so what was shown and what is written
-      // down cannot disagree. Both live in shared/billing because the scheduled
-      // sender will need them too.
-      const schedule = instalmentSchedule({
-        total: gross,
-        count: instalments,
-        firstIssue: input.issue_date,
-        termDays: settings.makseTahtaegPaevades,
-      })
-      if (schedule.length !== instalments) {
-        setError('Maksegraafikut ei õnnestu koostada — kontrolli kuupäeva ja summat.')
+      // One call, because a plan is one agreement: the row that says these
+      // documents belong together and the documents themselves are written by
+      // the same mutation. Creating the invoices here and the plan somewhere
+      // else is how five invoices end up belonging to nothing.
+      if (planProblems.length > 0) {
+        setError(planProblems.join(' '))
         return
       }
+      const { firstInvoiceId } = await createPlan.mutateAsync({
+        plan: {
+          patient_id: input.patient_id,
+          patsient: input.patsient,
+          kogusumma: gross,
+          osamakseid: instalments,
+          esimene_arve: input.issue_date,
+          arve_paev: planDay,
+          maksetahtaeg_paevi: planTerm,
+          staatus: 'aktiivne',
+          markus: null,
+          created_by: null,
+        },
+        invoice: {
+          patient_id: input.patient_id,
+          patsient: input.patsient,
+          customer_id: input.customer_id,
+          bill_to_kind: input.bill_to_kind,
+          vat_rate: input.vat_rate,
+          note: input.note,
+        },
+        lines: input.lines,
+      })
 
-      // EVERY instalment carries the job link, with its own share of the value.
-      // Instalment 1 used to carry it alone, which meant `paidForJob` — which
-      // credits a job from its invoice LINES, pro rata — saw nothing for
-      // instalments 2..n. A job paid off over five months stayed 1/5 paid on
-      // its own panel, on the patient page and in Laekumata, forever. Billing
-      // it twice is not a risk: `billedJobIds` is a Set.
-      const perLine = new Map(
-        input.lines.map(l => [l.sort_order, splitAmount(l.qty * l.unit_price, instalments)])
-      )
-      let first: Awaited<ReturnType<typeof createInvoice.mutateAsync>> | null = null
-
-      for (const part of schedule) {
-        const k = part.no - 1
-        const linesForK = input.lines.map(l => ({
-          ...l,
-          description: `${l.description} — osamakse ${part.no}/${instalments}`,
-          qty: 1,
-          unit_price: perLine.get(l.sort_order)?.[k] ?? 0,
-        }))
-
-        const inv = await createInvoice.mutateAsync({
-          ...input,
-          issue_date: part.issueDate,
-          due_date: part.dueDate,
-          note: [input.note, `Osamakse ${part.no}/${instalments}`].filter(Boolean).join(' · '),
-          lines: linesForK,
-        })
-        if (part.no === 1) first = inv
-      }
-
-      if (first) onCreated?.(first.id)
+      if (firstInvoiceId) onCreated?.(firstInvoiceId)
       onClose()
     } catch (err) {
       setError(describeError(err))
@@ -416,8 +431,8 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
             <label className="label">Jaga osamakseteks</label>
             <div className="flex items-center gap-2">
               <input
-                type="number" min="1" max="24" value={instalments}
-                onChange={e => setInstalments(Math.max(1, Math.min(24, parseInt(e.target.value) || 1)))}
+                type="number" min="1" max="60" value={instalments}
+                onChange={e => setInstalments(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
                 className="input py-1.5 text-sm w-20 text-right"
               />
               <span className="text-xs text-ink-muted">
@@ -426,12 +441,72 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                   : 'kuud (1 = üks arve)'}
               </span>
             </div>
+
             {instalments > 1 && (
-              <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
-                Kõik arved luuakse kohe mustanditena, kuupäevadega kuu kaupa edasi.
-                Esimene arve seob tööd, ülejäänud on samade ridade osamaksed — seega
-                tööd ei arveldata mitu korda. Viimane arve võtab ümardusjäägi.
-              </p>
+              <div className="mt-2 space-y-2 rounded-xl bg-bg-sidebar p-3">
+                <div className="flex items-end gap-3 flex-wrap">
+                  <div>
+                    <label className="label">Arve päev</label>
+                    <input
+                      type="number" min="1" max="28" value={planDay}
+                      onChange={e => setPlanDay(Math.max(1, Math.min(28, parseInt(e.target.value) || 1)))}
+                      className="input py-1.5 text-sm w-20 text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Maksetähtaeg</label>
+                    <div className="relative w-24">
+                      <input
+                        type="number" min="0" max="180" value={planTerm}
+                        onChange={e => setPlanTerm(Math.max(0, Math.min(180, parseInt(e.target.value) || 0)))}
+                        className="input py-1.5 pr-8 text-sm text-right"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint pointer-events-none">
+                        p
+                      </span>
+                    </div>
+                  </div>
+                  {/* 28 and not 31, said on screen rather than only enforced: a
+                      plan "on the 31st" would quietly become the 28th every
+                      February and the 31st again in March. */}
+                  <p className="text-[11px] text-ink-faint flex-1 min-w-[160px] leading-snug">
+                    Kuni 28, et kuupäev kehtiks ka veebruaris.
+                  </p>
+                </div>
+
+                {/* The schedule as it will actually be written down — same two
+                    functions the generator calls, so the preview cannot promise
+                    a date the documents do not carry. */}
+                {planProblems.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {planProblems.map((p, i) => (
+                      <li key={i} className="text-[11px] text-rose-600">· {p}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="space-y-0.5">
+                    {planPreview.map(part => (
+                      <div key={part.no} className="flex items-center gap-2 text-[11px]">
+                        <span className="w-8 text-ink-faint tabular-nums">{part.no}/{instalments}</span>
+                        <span className="text-ink-muted tabular-nums">{part.issueDate}</span>
+                        <span className="text-ink-faint">tähtaeg</span>
+                        <span className="text-ink-muted tabular-nums">{part.dueDate}</span>
+                        <span className="ml-auto tabular-nums font-medium text-ink">
+                          {part.amount.toFixed(2)} €
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-ink-faint leading-relaxed">
+                  Kõik arved luuakse kohe, kuupäevadega kuu kaupa edasi — töölaua
+                  taga ei jookse midagi, kui Wivo on kinni, nii et reegel „loo
+                  järgmisel kuul" ei käivituks kunagi. <strong>Iga osamakse seob
+                  tööd oma osaga</strong>, nii et „Laekumata" kahaneb iga makse
+                  järel. Viimane arve võtab ümardusjäägi.
+                </p>
+              </div>
             )}
           </div>
 
@@ -476,7 +551,9 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                 Loobu
               </button>
               <button type="submit" disabled={!canSave} className="btn-primary disabled:opacity-50">
-                {createInvoice.isPending ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                {createInvoice.isPending || createPlan.isPending
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <FileText size={13} />}
                 Loo arve
               </button>
             </div>
