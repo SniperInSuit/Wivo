@@ -39,7 +39,8 @@ interface PatientProfileProps {
 // dirty diff would compare references and leave the form permanently dirty.
 const FORM_FIELDS = [
   'nimi', 'synniaeg', 'telefon', 'email', 'arst', 'kliinik',
-  'ravikaart', 'allergiad', 'eelistused', 'varvi_eelistus', 'lougad', 'lougaliiges', 'markmed'
+  'ravikaart', 'allergiad', 'eelistused', 'varvi_eelistus', 'lougad', 'lougaliiges', 'markmed',
+  'turundusnousolek', 'nousoleku_aeg'
 ] as const
 
 type FormField = (typeof FORM_FIELDS)[number]
@@ -58,6 +59,10 @@ function formFromPatient(p: Patient): PatientInput {
     varvi_eelistus: p.varvi_eelistus,
     lougad: p.lougad,
     lougaliiges: p.lougaliiges,
+    // Defaulted for rows written before sql/053 — absent means nobody asked,
+    // which is exactly what 'kysimata' says.
+    turundusnousolek: p.turundusnousolek ?? 'kysimata',
+    nousoleku_aeg: p.nousoleku_aeg ?? null,
     markmed: p.markmed,
     markused: p.markused ?? []
   }

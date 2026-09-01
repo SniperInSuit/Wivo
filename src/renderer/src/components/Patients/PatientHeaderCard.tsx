@@ -2,6 +2,7 @@ import { Cake, Loader2, Mail, Pencil, Phone, Save, Stethoscope, Trash2, X } from
 import type { LucideIcon } from 'lucide-react'
 import { differenceInYears, format, isValid, parseISO } from 'date-fns'
 import type { Patient, PatientInput } from '../../types/patient'
+import { CONSENT_LABEL } from '../../types/patient'
 import { patientInitials } from './derive'
 
 interface PatientHeaderCardProps {
@@ -89,6 +90,26 @@ export function PatientHeaderCard({
                     onChange={e => onField('kliinik', e.target.value || null)}
                     className="input"
                   />
+                </Field>
+                {/* Beside the contact details, because that is what it governs.
+                    The address was given for treatment; using it for marketing
+                    is a separate purpose and needs its own answer. */}
+                <Field label="Turundusnõusolek" icon={Mail}>
+                  <select
+                    value={form.turundusnousolek ?? 'kysimata'}
+                    onChange={e => {
+                      const v = e.target.value as Patient['turundusnousolek']
+                      onField('turundusnousolek', v)
+                      // Stamped on every change, including a withdrawal:
+                      // "when did they say no" is asked as often as the other.
+                      onField('nousoleku_aeg', v === 'kysimata' ? null : new Date().toISOString())
+                    }}
+                    className="input"
+                  >
+                    {(['kysimata', 'jah', 'ei'] as const).map(k => (
+                      <option key={k} value={k}>{CONSENT_LABEL[k]}</option>
+                    ))}
+                  </select>
                 </Field>
               </div>
             </div>

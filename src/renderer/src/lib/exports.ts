@@ -11,6 +11,8 @@ import type { Job } from '../types/job'
 import { jobDesigners } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { Customer } from '../types/customer'
+import type { Patient } from '../types/patient'
+import { CONSENT_LABEL } from '../types/patient'
 import type { WorkerPayout } from '../hooks/useWorkerPay'
 import { DELIVERY_LABEL } from '../types/customer'
 import { INVOICE_STATUS_LABEL, outstanding, paidAmount } from '../types/invoice'
@@ -132,6 +134,31 @@ export function payoutLineColumns(workerName: (id: string) => string): CsvColumn
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
+
+/**
+ * The patient contact list, for a mailing tool. NOT the patient record.
+ *
+ * An ALLOWLIST, named column by column, exactly like the public `/services`
+ * query — and for the same reason. `ravikaart`, `allergiad`, `eelistused`,
+ * `lougad`, `lougaliiges` and the notes are GDPR Article 9 health data. A
+ * `select *` here, or a helpful addition later, would put a treatment record
+ * into a marketing spreadsheet that gets emailed around. A column that is never
+ * named cannot leak.
+ *
+ * Consent travels WITH the row. A mailing tool that receives the list without
+ * it has no way to honour a withdrawal, and the clinic has no way to prove the
+ * basis it sent on.
+ */
+export const PATIENT_MARKETING_COLUMNS: CsvColumn<Patient>[] = [
+  { header: 'Nimi',       value: p => p.nimi },
+  { header: 'E-post',     value: p => p.email },
+  { header: 'Telefon',    value: p => p.telefon },
+  { header: 'Nõusolek',   value: p => CONSENT_LABEL[p.turundusnousolek] },
+  { header: 'Nõusoleku aeg', value: p => p.nousoleku_aeg },
+  // The referring practice is a business relationship, not health data, and it
+  // is what a clinic segments a mailing by.
+  { header: 'Kliinik',    value: p => p.kliinik },
+]
 
 export const CUSTOMER_COLUMNS: CsvColumn<Customer>[] = [
   { header: 'Nimi',           value: c => c.name },

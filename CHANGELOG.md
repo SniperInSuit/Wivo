@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.53.0] — 2026-09-01
+
+**Turunduskontaktide eksport — koos nõusolekuga**
+
+Patsientide kontaktide eksport turunduse jaoks. **Vajab migratsiooni
+`sql/053_patient_marketing.sql`.**
+
+- **Nõusolek tehti enne nuppu, mitte pärast.** Patsient andis oma e-posti RAVI
+  jaoks; sama nimekirja kasutamine turunduseks on eraldi eesmärk ja vajab eraldi
+  alust. Ilma selle veeruta oleks „ekspordi kõik kontaktid" nimekiri, mida ei
+  tohi kasutada ja mille kasutamist ei saaks keegi tõestada
+- **Kolm olekut, mitte lipp.** `küsimata` ei ole sama mis `ei` — iga tänane
+  patsient on „küsimata", ja loobumine peab jääma eristatavaks „ei jõudnud
+  küsida" seisust, muidu kaob see esimese andmete puhastuse käigus. Vaikimisi
+  nõusolek ei ole nõusolek
+- Nõusoleku **aeg** salvestatakse ka tagasivõtmisel: „millal ta ütles ei" on sama
+  sage küsimus kui teine
+- **Eksport on lubatud veergude nimekiri**, mitte `select *` — täpselt nagu
+  avalik `/services` päring. `ravikaart`, `allergiad`, `eelistused`, `lõuad` ja
+  märkmed on GDPR art. 9 terviseandmed ja veerg, mida kunagi ei nimetata, ei saa
+  lekkida turundustabelisse
+- **Nõusolek reisib reaga kaasa.** Postitustööriist, mis nimekirja ilma selleta
+  saab, ei saa tagasivõtmist austada
+- Nupp ütleb, mitu kontakti tuleb ja **mitu jäetakse välja** — vaikselt kõigi
+  eksportimine annaks nimekirja, mida ei tohi kasutada, ilma et ekraan seda
+  ütleks
+
 ## [1.52.0] — 2026-09-01
 
 **PDF kaasa, `=20` välja, ja tunnine ajastus**

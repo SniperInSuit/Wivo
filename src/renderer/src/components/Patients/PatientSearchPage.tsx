@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import {
-  Search, UserPlus, Loader2, Wand2, ShieldAlert, X, SlidersHorizontal, ChevronRight
+  Search, UserPlus, Loader2, Wand2, ShieldAlert, X, SlidersHorizontal, ChevronRight, Download
 } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job } from '../../types/job'
 import type { Patient } from '../../types/patient'
 import { jobsForPatient, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
+import { exportCsv, PATIENT_MARKETING_COLUMNS } from '../../lib/exports'
+import { mayMarket } from '../../types/patient'
 
 export type SortKey = 'nimi' | 'tood' | 'viimane' | 'tasumata'
 
@@ -48,6 +50,10 @@ export function PatientSearchPage({
   // the full price owed and stayed in the unpaid filter.
   const { data: payments = [] } = usePayments()
   const { data: invoices = [] } = useInvoices()
+  // Who may lawfully be sent marketing: consent given AND an address to send to.
+  // One predicate (`mayMarket`), so the count on the button and the rows in the
+  // file can never be two different answers.
+  const marketable = useMemo(() => patients.filter(mayMarket), [patients])
   const [arstFilter, setArstFilter] = useState('')
   const [kliinikFilter, setKliinikFilter] = useState('')
   const [onlyUnpaid, setOnlyUnpaid] = useState(false)
@@ -138,6 +144,22 @@ export function PatientSearchPage({
             </button>
           )}
         </div>
+        {/* Only those who may be contacted, and it says how many it left out.
+            A button that quietly exported everyone would hand the clinic a list
+            it is not allowed to use, with nothing on screen saying so. */}
+        <button
+          onClick={() => exportCsv('turunduskontaktid', marketable, PATIENT_MARKETING_COLUMNS)}
+          disabled={marketable.length === 0}
+          title={
+            marketable.length === 0
+              ? 'Ükski patsient ei ole turundusnõusolekut andnud'
+              : `${marketable.length} kontakti · ${patients.length - marketable.length} jäetakse välja`
+          }
+          className="btn-ghost border border-ink-faint/25 flex-shrink-0 disabled:opacity-40"
+        >
+          <Download size={14} />
+          Turunduskontaktid ({marketable.length})
+        </button>
         <button onClick={onNew} disabled={creating} className="btn-primary flex-shrink-0">
           {creating ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
           Uus patsient
