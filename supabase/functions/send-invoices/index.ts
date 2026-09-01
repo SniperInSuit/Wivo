@@ -139,11 +139,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const doc = invoiceDoc(inv, clinic)
       try {
         if (!smtp) smtp = openSmtp(policy.saatjaAadress, (row.email?.saatjaNimi as string) ?? '')
+        // The clinic's own wording, from the same settings row. Blank fields
+        // fall back to the shipped letter rather than to nothing.
+        const tpl = (row.email ?? {}) as { pealkiri?: string; sissejuhatus?: string; lopp?: string }
         await smtp.send({
           to: verdict.to,
-          subject: invoiceSubject(doc),
-          html: invoiceHtml(doc),
-          text: invoiceText(doc),
+          subject: invoiceSubject(doc, tpl),
+          html: invoiceHtml(doc, tpl),
+          text: invoiceText(doc, tpl),
         })
         // Stamped IMMEDIATELY after the server accepts. A crash between the two
         // is the one case that could double-send, so the window is one await.

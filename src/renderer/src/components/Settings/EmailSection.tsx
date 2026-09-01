@@ -21,6 +21,23 @@ import { Mail, ShieldCheck, AlertTriangle, FlaskConical } from 'lucide-react'
 import { useSettings } from '../../stores/useSettings'
 import type { MailSettings } from '../../stores/useSettings'
 import { looksLikeEmail } from '@shared/billing/sendGuard'
+import {
+  renderTemplate, unknownTokens, TEMPLATE_TOKENS,
+} from '@shared/billing/mailTemplate'
+
+/**
+ * A made-up invoice for the preview. Recognisably fake on purpose: a preview
+ * using real numbers invites reading it as a real document.
+ */
+const PREVIEW_VARS: Record<string, string> = {
+  arve: '2026-0007',
+  saaja: 'Mari Maasikas',
+  summa: '1220.00 €',
+  tasumata: '1220.00 €',
+  tahtaeg: '15.09.2026',
+  kuupaev: '01.09.2026',
+  kliinik: 'Sinu Kliinik OÜ',
+}
 
 export function EmailSection() {
   const { settings, setEpost } = useSettings()
@@ -29,6 +46,11 @@ export function EmailSection() {
   const patch = (p: Partial<MailSettings>) => setEpost(p)
 
   const senderOk = looksLikeEmail(e.saatjaAadress)
+  const unknown = [
+    ...unknownTokens(e.pealkiri, PREVIEW_VARS),
+    ...unknownTokens(e.sissejuhatus, PREVIEW_VARS),
+    ...unknownTokens(e.lopp, PREVIEW_VARS),
+  ]
   const testOk = !e.testAadress || looksLikeEmail(e.testAadress)
   // What actually has to be true before a single message can leave. Stated as
   // one list because "why is nothing sending" is the question this screen will
@@ -178,6 +200,91 @@ export function EmailSection() {
             Kui täidetud, läheb <strong>iga</strong> kiri siia, mitte patsiendile.
             Sama kood, sama kiri, sama limiit — üks aadress. Soovitan esimene nädal
             nii hoida.
+          </p>
+        </div>
+      </div>
+
+      {/* ── The letter ── */}
+      <div className="pt-4 border-t border-ink-faint/20 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">Kirja tekst</h3>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Arve ise on kirja sees alati — päis, rekvisiidid, read, summad,
+            makseinfo. Siin on sõnad selle <strong>ümber</strong>: tervitus enne
+            ja allkiri järel.
+          </p>
+        </div>
+
+        <div>
+          <label className="label">Pealkiri</label>
+          <input
+            type="text" value={e.pealkiri}
+            onChange={ev => patch({ pealkiri: ev.target.value })}
+            className="input"
+          />
+        </div>
+
+        <div>
+          <label className="label">Sissejuhatus — arve kohal</label>
+          <textarea
+            value={e.sissejuhatus} rows={5}
+            onChange={ev => patch({ sissejuhatus: ev.target.value })}
+            className="input resize-none font-mono text-xs leading-relaxed"
+          />
+        </div>
+
+        <div>
+          <label className="label">Lõpp — arve all</label>
+          <textarea
+            value={e.lopp} rows={3}
+            onChange={ev => patch({ lopp: ev.target.value })}
+            className="input resize-none font-mono text-xs leading-relaxed"
+          />
+        </div>
+
+        <div>
+          <p className="text-[11px] font-medium text-ink-muted mb-1">
+            Kohatäited — klõpsa, et lisada sissejuhatusse
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {TEMPLATE_TOKENS.map(t => (
+              <button
+                key={t.token}
+                type="button"
+                title={t.selgitus}
+                onClick={() => patch({ sissejuhatus: `${e.sissejuhatus}${t.token}` })}
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-sidebar text-ink-muted hover:text-accent transition-colors"
+              >
+                {t.token}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Rendered with the SAME functions the sender uses, so the preview
+            cannot promise wording the patient does not get. */}
+        {unknown.length > 0 && (
+          <p className="text-[11px] text-orange-600">
+            Tundmatu kohatäide: {unknown.map(t => `{${t}}`).join(', ')} — jõuab
+            kirja sellisena, nagu on kirjutatud.
+          </p>
+        )}
+
+        <div className="rounded-xl border border-ink-faint/20 bg-white p-3">
+          <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider mb-2">
+            Eelvaade
+          </p>
+          <p className="text-xs font-semibold text-ink mb-2">
+            {renderTemplate(e.pealkiri, PREVIEW_VARS)}
+          </p>
+          <p className="text-[11px] text-ink-soft whitespace-pre-line leading-relaxed">
+            {renderTemplate(e.sissejuhatus, PREVIEW_VARS)}
+          </p>
+          <div className="my-2 border-t border-dashed border-ink-faint/30 py-2">
+            <p className="text-[10px] text-ink-faint italic">[ arve — päis, read, summad, makseinfo ]</p>
+          </div>
+          <p className="text-[11px] text-ink-soft whitespace-pre-line leading-relaxed">
+            {renderTemplate(e.lopp, PREVIEW_VARS)}
           </p>
         </div>
       </div>

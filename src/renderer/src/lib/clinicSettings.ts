@@ -69,6 +69,10 @@ export interface ClinicSettingsRow {
     paevaLimiit: number
     /** Redirects every message here instead of the real recipient. */
     testAadress: string | null
+    /** The clinic's own wording around the invoice. See shared/billing/mailTemplate. */
+    pealkiri: string
+    sissejuhatus: string
+    lopp: string
   }
   // Which halves of the product this lab uses. See sql/037.
   features: {

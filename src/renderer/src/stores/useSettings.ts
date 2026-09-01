@@ -25,6 +25,7 @@ export {
 import { workTypeImageFile } from '../lib/workTypeImages'
 import { workTypePriceFor } from '@shared/pricing/priceBook'
 import type { MailPolicy } from '@shared/billing/sendGuard'
+import { DEFAULT_MAIL_TEMPLATE, type MailTemplate } from '@shared/billing/mailTemplate'
 import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } from '@shared/pricing/priceBook'
 
 // Bump key when structure changes so old storage is discarded cleanly
@@ -96,7 +97,7 @@ export const TEXT_SCALE_MAX = 1.6
  * in the sender can never be two different ideas of "allowed". The rest is
  * transport detail — and never the password, see sql/051.
  */
-export interface MailSettings extends MailPolicy {
+export interface MailSettings extends MailPolicy, MailTemplate {
   /** The person's note that the SMTP secrets are set. Not proof; nothing here
    *  can see them. */
   connected: boolean
@@ -226,6 +227,9 @@ function defaultSettings(): WivoSettings {
       saatjaAadress: '', saatjaNimi: '',
       saatmineLubatud: false, lubaArved: false,
       paevaLimiit: 20, testAadress: null,
+      // A real letter rather than an empty box: "write your own or get nothing"
+      // ships exactly the blank-looking mail the template exists to fix.
+      ...DEFAULT_MAIL_TEMPLATE,
     },
     tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),

@@ -12,6 +12,9 @@
  * straight off the doc, that is a bug.
  */
 import type { InvoiceDoc } from '@shared/billing/invoiceDoc.ts'
+import {
+  renderTemplate, templateVars, DEFAULT_MAIL_TEMPLATE, type MailTemplate,
+} from '@shared/billing/mailTemplate.ts'
 
 /** HTML-escape. Every value below is user data — a clinic name with an
  *  ampersand must not become broken markup, and a note is free text. */
@@ -25,9 +28,23 @@ const esc = (v: string | null | undefined): string =>
 const CELL = 'padding:6px 0;font-size:14px;color:#111;'
 const MUTED = 'color:#666;'
 
-export function invoiceSubject(doc: InvoiceDoc): string {
-  return `Arve ${doc.number}${doc.hasDueDate ? ` — tähtaeg ${doc.dueDate}` : ''}`
+/** The clinic's template, with anything it left blank falling back to ours. */
+const tplOf = (t: Partial<MailTemplate> | null | undefined): MailTemplate => ({
+  pealkiri: t?.pealkiri?.trim() || DEFAULT_MAIL_TEMPLATE.pealkiri,
+  sissejuhatus: t?.sissejuhatus ?? DEFAULT_MAIL_TEMPLATE.sissejuhatus,
+  lopp: t?.lopp ?? DEFAULT_MAIL_TEMPLATE.lopp,
+})
+
+export function invoiceSubject(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): string {
+  return renderTemplate(tplOf(tpl).pealkiri, templateVars(doc))
 }
+
+/** Free text → HTML paragraphs. Escaped first: this is the clinic's own words,
+ *  but an ampersand in a clinic name must not become broken markup. */
+const paragraphs = (text: string): string =>
+  esc(text).split(/\n{2,}/).filter(p => p.trim())
+    .map(p => `<div style="${CELL}white-space:pre-line;">${p}</div>`)
+    .join('')
 
 /**
  * A plain-text alternative, sent alongside the HTML.
@@ -36,8 +53,14 @@ export function invoiceSubject(doc: InvoiceDoc): string {
  * and this is going out from the clinic's main mailbox — the one address that
  * must not end up classified as spam.
  */
-export function invoiceText(doc: InvoiceDoc): string {
+export function invoiceText(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): string {
+  const t = tplOf(tpl)
+  const v = templateVars(doc)
   const lines = [
+    renderTemplate(t.sissejuhatus, v),
+    '',
+    '───────────────',
+    '',
     `ARVE ${doc.number}`,
     `Kuupäev: ${doc.issueDate}`,
     doc.hasDueDate ? `Maksetähtaeg: ${doc.dueDate}` : '',
@@ -57,13 +80,21 @@ export function invoiceText(doc: InvoiceDoc): string {
     '',
     doc.note ?? '',
     '',
+    '───────────────',
+    '',
+    renderTemplate(t.lopp, v),
+    '',
     doc.seller.name,
     ...doc.seller.lines,
   ]
-  return lines.filter(l => l !== '').join('\n')
+  // Blank lines are paragraphs and are kept; only the placeholders that
+  // produced nothing at all are dropped.
+  return lines.filter(l => l !== undefined && l !== null).join('\n')
 }
 
-export function invoiceHtml(doc: InvoiceDoc): string {
+export function invoiceHtml(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): string {
+  const t = tplOf(tpl)
+  const v = templateVars(doc)
   const rows = doc.lines.map(l => `
     <tr>
       <td style="${CELL}border-bottom:1px solid #ddd;">${esc(l.description)}</td>
@@ -88,6 +119,13 @@ export function invoiceHtml(doc: InvoiceDoc): string {
 <body style="margin:0;padding:24px;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#fff;padding:32px;">
   <tr><td>
+
+    ${/* The letter. Above the document, because that is where a person starts
+          reading and because an invoice with no words around it reads as
+          machine output — the thing most likely to be ignored or reported. */''}
+    ${paragraphs(renderTemplate(t.sissejuhatus, v))}
+
+    <div style="height:1px;background:#e5e7eb;margin:24px 0;"></div>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
@@ -148,6 +186,9 @@ export function invoiceHtml(doc: InvoiceDoc): string {
     ${doc.note ? `
     <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ddd;${CELL}white-space:pre-wrap;">${esc(doc.note)}</div>`
       : ''}
+
+    <div style="height:1px;background:#e5e7eb;margin:28px 0 20px;"></div>
+    ${paragraphs(renderTemplate(t.lopp, v))}
 
   </td></tr>
 </table>

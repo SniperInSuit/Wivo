@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.50.0] — 2026-09-01
+
+**Kirja tekst on nüüd seadistatav**
+
+Kirjas oli terve arve — päis, rekvisiidid, read, summad, makseinfo — aga ümber
+ei olnud ühtegi sõna. Ei tervitust, ei selgitust, ei allkirja. Õige dokument
+ilma kirjata loeb nagu masina väljund, ja see on täpselt see, mida patsient
+kõige tõenäolisemalt ignoreerib või rämpsuks märgib.
+
+- Uus `shared/billing/mailTemplate.ts` — pealkiri, sissejuhatus arve kohale,
+  lõpp arve alla. Kohatäited `{arve}`, `{saaja}`, `{summa}`, `{tasumata}`,
+  `{tahtaeg}`, `{kuupaev}`, `{kliinik}`
+- **Tundmatu kohatäide jäetakse alles**, mitte ei tühjendata. Nähtav
+  `{tahtaef}` saab teatatud ja parandatud; vaikselt tühjaks muutunud jätab
+  lausesse augu, mida keegi ei märka
+- **Vaikimisi on päris kiri**, mitte tühi kast. „Kirjuta ise või ei saa midagi"
+  saadaks välja täpselt selle tühja kirja, mille pärast see funktsioon üldse
+  olemas on
+- Seaded → E-post → **Kirja tekst**, elava eelvaatega. Eelvaade renderdatakse
+  **samade funktsioonidega**, mida saatja kasutab — ekraan ei saa lubada
+  sõnastust, mida patsient ei saa
+- Ka plain-text osa saab sama teksti. Kiri ilma tekstiosata skoorib rämpsufiltris
+  halvemini, ja see läheb välja kliiniku ainsalt aadressilt
+
 ## [1.49.0] — 2026-09-01
 
 **Arvete saatja — deploy'tud ja proovitud**
