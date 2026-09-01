@@ -201,6 +201,15 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                   {info.mode === 'hammas'
                     ? `${teeth} × ${info.unit.toFixed(2)} € / hammas`
                     : `1 × ${form.too?.trim() || 'töö'} (hind töö kohta)`}
+                  {/* Says WHY the unit price is what it is. Without this the
+                      number quietly moves when a sixth tooth is clicked and
+                      nobody can explain it to the dentist who was quoted the
+                      other one. */}
+                  {info.tier && (
+                    <span className="ml-1.5 text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                      kogusehind alates {info.tier.alates}
+                    </span>
+                  )}
                 </span>
                 <span className="font-medium text-ink">{typePrice.toFixed(2)} €</span>
               </div>

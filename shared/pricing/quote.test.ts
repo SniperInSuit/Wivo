@@ -272,3 +272,114 @@ describe('mudel', () => {
     expect(q.production).toBe(25)
   })
 })
+
+describe('hinnaastmed — mahupõhine ühikuhind', () => {
+  // "Kui tuleb mitu krooni, siis on hambahind teine." Flat, not progressive:
+  // six crowns at the 6+ rate means ALL six at that rate. A progressive split
+  // would make the form's number impossible to check against what the dentist
+  // was told on the phone.
+  const TIERED: WorkType[] = [{
+    nimi: 'Kroon', hex: '#000', hind: 400, hinnaTyyp: 'hammas',
+    astmed: [
+      { alates: 3, hind: 370 },
+      { alates: 6, hind: 340 },
+    ],
+  }]
+
+  it('uses the base price below the first tier', () => {
+    const q = quoteJob({ items: [{ too: 'Kroon', hambad: '11,12' }] }, book({ workTypes: TIERED }))
+    expect(q.production).toBe(800)   // 2 × 400
+  })
+
+  it('switches the WHOLE job onto the tier, not just the teeth above it', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13' }] },
+      book({ workTypes: TIERED })
+    )
+    expect(q.production).toBe(1110)  // 3 × 370, not 2×400 + 1×370
+  })
+
+  it('takes the highest tier at or below the count', () => {
+    const six = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13,14,15,16' }] },
+      book({ workTypes: TIERED })
+    )
+    expect(six.production).toBe(2040)  // 6 × 340
+
+    const five = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13,14,15' }] },
+      book({ workTypes: TIERED })
+    )
+    expect(five.production).toBe(1850) // 5 × 370
+  })
+
+  it('does not care what order the tiers were written in', () => {
+    const scrambled: WorkType[] = [{
+      ...TIERED[0],
+      astmed: [{ alates: 6, hind: 340 }, { alates: 3, hind: 370 }],
+    }]
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13,14,15,16' }] },
+      book({ workTypes: scrambled })
+    )
+    expect(q.production).toBe(2040)
+  })
+
+  it('prices each work item on ITS OWN count', () => {
+    // Two separate items of the same type are two pieces of work. Pooling their
+    // teeth would hand a volume discount to a case that never had the volume.
+    const q = quoteJob({
+      items: [
+        { too: 'Kroon', hambad: '11,12' },       // 2 → base
+        { too: 'Kroon', hambad: '21,22,23,24' }, // 4 → tier
+      ],
+    }, book({ workTypes: TIERED }))
+    expect(q.production).toBe(800 + 1480)
+  })
+
+  it('falls back to the type discount when a tier has none', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13' }], useDiscount: true },
+      book({ workTypes: [{ ...TIERED[0], soodushind: 300 }] })
+    )
+    expect(q.production).toBe(900)   // 3 × 300, the discount is not lost at volume
+  })
+
+  it('prefers a tier’s own discount over the type’s', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13' }], useDiscount: true },
+      book({ workTypes: [{
+        ...TIERED[0], soodushind: 300,
+        astmed: [{ alates: 3, hind: 370, soodushind: 280 }],
+      }] })
+    )
+    expect(q.production).toBe(840)   // 3 × 280
+  })
+
+  it('ignores a broken tier instead of pricing from it', () => {
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13' }] },
+      book({ workTypes: [{ ...TIERED[0], astmed: [{ alates: 3, hind: 0 }] }] })
+    )
+    expect(q.production).toBe(1200)  // back to 3 × 400
+  })
+
+  it('leaves a type with no tiers exactly as it was', () => {
+    const untiered: WorkType[] = [{ ...TIERED[0], astmed: undefined }]
+    const q = quoteJob(
+      { items: [{ too: 'Kroon', hambad: '11,12,13,14,15,16' }] },
+      book({ workTypes: untiered })
+    )
+    expect(q.production).toBe(2400)  // 6 × the base 400, no volume anything
+  })
+
+  it('tiers a per-JOB price too, by the tooth count', () => {
+    const q = quoteJob({ items: [{ too: 'Proteez', hambad: '11,12,13' }] }, book({
+      workTypes: [{
+        nimi: 'Proteez', hex: '#000', hind: 900, hinnaTyyp: 'too',
+        astmed: [{ alates: 3, hind: 1200 }],
+      }],
+    }))
+    expect(q.production).toBe(1200)  // one flat price, chosen by size
+  })
+})

@@ -11,7 +11,8 @@
  * always produce the same number, whoever is asking.
  */
 import type { PriceMode, WorkType } from './workTypes'
-import { resolveWorkType } from './workTypes'
+import { resolveWorkType, tierFor } from './workTypes'
+import type { PriceTier } from './workTypes'
 import { countLargeTeeth, countSmallTeeth } from './teeth'
 
 /** €/tooth for a material, split by FDI position class. */
@@ -75,6 +76,14 @@ export interface WorkTypePriceResult {
   discounted: boolean
   /** Whether a discount price exists at all, so the UI can offer the choice. */
   hasDiscount: boolean
+  /**
+   * The volume tier that set `unit`, or null when the type's base price did.
+   *
+   * Carried out so the form can say WHY the price changed — "6+ hammast:
+   * 340 €/hammas" — instead of the number quietly moving when a seventh tooth
+   * is clicked and nobody being able to explain it to the dentist.
+   */
+  tier: PriceTier | null
 }
 
 /**
@@ -94,8 +103,20 @@ export function workTypePriceFor(
   useDiscount = false
 ): WorkTypePriceResult | null {
   const t = resolveWorkType(too, types)
-  const full = typeof t.hind === 'number' && t.hind > 0 ? t.hind : null
-  const discount = typeof t.soodushind === 'number' && t.soodushind > 0 ? t.soodushind : null
+  // A volume tier REPLACES the base price at this quantity — flat, not
+  // progressive: six crowns at the "6+" rate means all six at that rate. See
+  // PriceTier for why. `hind` stays the price from quantity 1, so the tier list
+  // only ever holds the exceptions to it.
+  const tier = tierFor(t, teeth)
+  const base = typeof t.hind === 'number' && t.hind > 0 ? t.hind : null
+  const full = tier ? tier.hind : base
+  // A tier without its own discount falls back to the type's, rather than
+  // silently losing the discount at higher volumes.
+  const tierDiscount = tier && typeof tier.soodushind === 'number' && tier.soodushind > 0
+    ? tier.soodushind
+    : null
+  const typeDiscount = typeof t.soodushind === 'number' && t.soodushind > 0 ? t.soodushind : null
+  const discount = tierDiscount ?? typeDiscount
   const unit = useDiscount && discount != null ? discount : full
   if (unit == null) return null
 
@@ -110,6 +131,8 @@ export function workTypePriceFor(
     mode,
     discounted: useDiscount && discount != null,
     hasDiscount: discount != null,
+    /** The tier that set this unit price, so the form can say WHY. Null = base. */
+    tier,
   }
 }
 

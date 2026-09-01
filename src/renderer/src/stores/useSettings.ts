@@ -277,6 +277,20 @@ function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean):
                 tyyp: k.tyyp === 'hammas' ? 'hammas' as const : 'too' as const,
               }))
           : undefined,
+        // Normalised for the same reason `kulud` is: this jsonb can be edited
+        // by hand in the Supabase table editor, and one NaN in a tier would
+        // poison every price it touched. `tierFor()` ignores junk at read time
+        // too — this just keeps it from being stored.
+        astmed: Array.isArray(t.astmed)
+          ? t.astmed
+              .filter(a => a && typeof a === 'object')
+              .map(a => ({
+                alates: numOrUndef(a.alates) ?? 0,
+                hind: numOrUndef(a.hind) ?? 0,
+                soodushind: numOrUndef(a.soodushind),
+              }))
+              .filter(a => a.alates > 0 && a.hind > 0)
+          : undefined,
         ...(Array.isArray(t.match) ? { match: t.match } : {}),
       }]
     }

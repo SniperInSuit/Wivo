@@ -6,7 +6,7 @@ import { usePipeline } from '../context/PipelineContext'
 import { useAuth, type Clinic } from '../context/AuthContext'
 import { usePermissions } from '../hooks/usePermissions'
 import { useClinicSyncState } from './ClinicSettingsSync'
-import { WORK_TYPE_PALETTE, type WorkType, type PriceMode, type WorkTypeCost } from '../config/workTypes'
+import { WORK_TYPE_PALETTE, sortedTiers, type WorkType, type PriceMode, type WorkTypeCost } from '../config/workTypes'
 import { workTypeImage, slugifyWorkType } from '../lib/workTypeImages'
 import { RepriceJobsSection } from './Settings/RepriceJobsSection'
 import { supabase, updateProfile, displayIdentity } from '../lib/supabase'
@@ -838,6 +838,75 @@ function WorkTypePriceCard({ type, onPatch }: {
           </div>
         </div>
         <p className="text-[10px] text-ink-faint">{suffix}</p>
+
+        {/* Volume tiers. The base price above is the price from one unit, so a
+            tier only ever states an EXCEPTION to it — nothing here has to
+            restate "1+". Flat, not progressive: six crowns at the 6+ rate means
+            all six at that rate, which is how the price gets quoted on the
+            phone and therefore the only way the form can be checked. */}
+        <div className="pt-1.5 border-t border-ink-faint/15">
+          <p className="text-[10px] font-semibold text-ink-soft">Kogusehind</p>
+          <p className="text-[10px] text-ink-faint mb-1">
+            Alates sellest {mode === 'hammas' ? 'hammaste' : 'hammaste'} arvust kehtib teine
+            ühikuhind — <strong className="text-ink-muted">kogu tööle</strong>, mitte ainult
+            ületavatele.
+          </p>
+
+          {sortedTiers(type).map((tier, i) => (
+            <div key={`${tier.alates}-${i}`} className="flex items-center gap-1 mb-1">
+              <span className="text-[10px] text-ink-faint w-8 flex-shrink-0">alates</span>
+              <input
+                type="number" min="2" step="1"
+                value={tier.alates}
+                onChange={e => onPatch({
+                  astmed: sortedTiers(type).map((x, j) =>
+                    j === i ? { ...x, alates: Math.max(1, parseInt(e.target.value) || 1) } : x
+                  ),
+                })}
+                className="input py-1 text-sm w-12 text-right"
+              />
+              <div className="relative flex-1 min-w-0">
+                <input
+                  type="number" min="0" step="0.5"
+                  value={tier.hind}
+                  onChange={e => onPatch({
+                    astmed: sortedTiers(type).map((x, j) =>
+                      j === i ? { ...x, hind: parseFloat(e.target.value) || 0 } : x
+                    ),
+                  })}
+                  className="input py-1 pr-5 text-sm text-right"
+                />
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint pointer-events-none">€</span>
+              </div>
+              <button
+                type="button"
+                title="Eemalda aste"
+                onClick={() => onPatch({
+                  astmed: sortedTiers(type).filter((_, j) => j !== i),
+                })}
+                className="p-1 rounded text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => {
+              const rows = sortedTiers(type)
+              // Seeded above the last one so a second click never lands on a
+              // quantity that already has a tier — two rows at the same
+              // `alates` would make which one wins a matter of luck.
+              const nextFrom = rows.length > 0 ? rows[rows.length - 1].alates + 1 : 3
+              const from = rows.length > 0 ? rows[rows.length - 1].hind : (type.hind ?? 0)
+              onPatch({ astmed: [...rows, { alates: nextFrom, hind: from }] })
+            }}
+            className="text-[10px] font-medium text-accent hover:underline"
+          >
+            + Lisa kogusehind
+          </button>
+        </div>
 
         {/* Consumables — a cost, not a price. Never reaches an invoice. */}
         <div className="pt-1.5 border-t border-ink-faint/15">

@@ -33,6 +33,23 @@ export interface WorkTypeCost {
   tyyp: PriceMode    // per job, or per tooth
 }
 
+/**
+ * A volume tier: from this quantity on, the unit price is this.
+ *
+ * FLAT, NOT PROGRESSIVE. Six crowns at the "6+" rate means all six are at that
+ * rate — not two at the first rate, three at the second and one at the third.
+ * That is how a lab actually quotes ("kui tuleb kuus krooni, siis on hambahind
+ * teine"), and a progressive split would make the number on the form impossible
+ * to check against the number the dentist was told on the phone.
+ */
+export interface PriceTier {
+  /** Quantity this tier starts at, inclusive. Teeth, or units of a bridge. */
+  alates: number
+  hind: number
+  /** Optional discount price for this tier. Falls back to the type's own. */
+  soodushind?: number
+}
+
 export interface WorkType {
   nimi: string      // label shown in the legend and the suggestion list
   hex: string
@@ -45,6 +62,16 @@ export interface WorkType {
   // Second price the person filling the form can pick instead of the full one.
   soodushind?: number
   hinnaTyyp?: PriceMode   // default 'too'
+  /**
+   * Volume pricing. Empty or absent means the single `hind` applies at every
+   * quantity, which is what every type written before this meant.
+   *
+   * `hind` remains the price from quantity 1, so a tier list never has to
+   * restate the base — the tiers are the EXCEPTIONS to it. Read through
+   * `tierFor()`, never directly, so the "highest tier at or below the quantity
+   * wins" rule is applied in one place.
+   */
+  astmed?: PriceTier[]
   pilt?: string           // file name in assets/worktypes, defaults to the slug
   /**
    * Consumables this type always needs — the implant screw, the abutment, the
@@ -108,6 +135,39 @@ export function workTypeConsumables(
     total: Math.round(items.reduce((s, k) => s + k.summa, 0) * 100) / 100,
     items,
   }
+}
+
+/**
+ * The tier that applies at this quantity, or null when the base price does.
+ *
+ * The HIGHEST `alates` at or below the quantity wins, so the list can be
+ * written in any order and a tier added later cannot be shadowed by one written
+ * above it. A tier at `alates <= 1` is legal and simply replaces the base.
+ *
+ * Quantity 0 never matches: "no teeth picked yet" is not a quantity, and
+ * letting it select a tier would price an empty job.
+ */
+export function tierFor(t: Pick<WorkType, 'astmed'>, quantity: number): PriceTier | null {
+  if (!Array.isArray(t.astmed) || t.astmed.length === 0) return null
+  if (!Number.isFinite(quantity) || quantity <= 0) return null
+  let best: PriceTier | null = null
+  for (const tier of t.astmed) {
+    if (!tier || !Number.isFinite(tier.alates) || !(tier.hind > 0)) continue
+    if (tier.alates > quantity) continue
+    if (!best || tier.alates > best.alates) best = tier
+  }
+  return best
+}
+
+/**
+ * The tiers worth showing, cleaned: junk dropped, sorted by quantity.
+ * For the settings preview and for anything that lists them.
+ */
+export function sortedTiers(t: Pick<WorkType, 'astmed'>): PriceTier[] {
+  return (t.astmed ?? [])
+    .filter(x => x && Number.isFinite(x.alates) && x.alates > 0 && x.hind > 0)
+    .slice()
+    .sort((a, b) => a.alates - b.alates)
 }
 
 export function resolveWorkType(too: string | null | undefined, types: WorkType[]): WorkType {

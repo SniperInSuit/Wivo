@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.46.0] — 2026-09-01
+
+**Kogusehinnad: mitu krooni, teine hambahind**
+
+Töötüübil oli üks fikseeritud hind. Nüüd saab öelda „alates 3 hambast 370,
+alates 6-st 340". **Migratsiooni ei ole vaja** — `work_types` on jsonb ja
+astmed elavad tüübi sees.
+
+- **Lame, mitte astmeline.** Kuus krooni 6+ hinnaga tähendab, et **kõik kuus**
+  on selle hinnaga, mitte kaks esimest vana ja ülejäänud uuega. Nii käib
+  pakkumine telefonis, ja seega on see ainus variant, mida vormil kontrollida
+  saab
+- Põhihind jääb hinnaks alates ühest, nii et astmete nimekiri sisaldab ainult
+  **erandeid** — „1+" rida ei pea kunagi kirjutama
+- Võidab **kõrgeim aste, mis on koguse peal või all**, seega kirjutamise
+  järjekord ei loe ja hiljem lisatud aste ei jää varju
+- Iga tööosa hinnastatakse **oma koguse järgi**. Kahe eraldi krooni-tööosa
+  hambaid kokku ei liideta — see annaks kogusesoodustuse juhtumile, millel
+  kogust ei olnud
+- Astmel võib olla oma soodushind; kui ei ole, kehtib tüübi oma, nii et
+  soodustus ei kao suurema koguse juures ära
+- Töö vormil ütleb märgis **„kogusehind alates 6"**, miks ühikuhind muutus.
+  Ilma selleta liigub number kuuenda hamba klõpsamisel vaikselt ja keegi ei
+  oska seda arstile seletada
+- Katkine aste (hind 0, kogus 0) jäetakse vahele, mitte ei hinnastata sellest
+- Kõik käib läbi `workTypePriceFor`, seega kehtib korraga töö vormil,
+  nõustajas, hinnapakkumises ja ümberhindajas
+
 ## [1.45.2] — 2026-09-01
 
 **Maksegraafikud on nüüd nähtavad**
