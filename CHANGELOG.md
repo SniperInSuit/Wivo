@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.44.1] — 2026-09-01
+
+**Osamaksetega tasutud töö jäi 1/5 makstuks**
+
+Arve osamakseteks jagamine pani `job_id` **ainult esimesele osamaksele**.
+`paidForJob` krediteerib tööd arve RIDADE järgi, nii et osamaksete 2–5
+laekumine ei jõudnud tööni. Viie kuuga ära makstud töö näitas igavesti
+1/5 makstud — oma paneelil, patsiendi lehel ja Laekumata summas.
+
+- Iga osamakse kannab nüüd `job_id`-d oma osasummaga. Topeltarveldust see ei
+  tekita: `billedJobIds` on `Set`
+- Uus `shared/billing/instalments.ts` — graafiku kuupäevad ja rahajaotus ühes
+  kohas, **null sõltuvusega** (ka mitte date-fns), et sama funktsioon jookseks
+  hiljem Deno edge-funktsioonis, kui saatmine automatiseeritakse
+- Kuupäevamatemaatika käib UTC-s ja **klammerdub** lühemasse kuusse: 31. jaanuar
+  + 1 kuu on 28. veebruar, mitte 3. märts. Ja klammerdumine ei triivi — märts on
+  jälle 30., mitte 28.
+- `splitAmount` annab ümardusjäägi **viimasele** osale: 1000/3 on
+  333.33 + 333.33 + 333.34. Iga osa eraldi ümardamine annaks kokku 1000.02 —
+  sent, mida keegi ei tellinud ja mida ükski rida ei seleta
+- Graafik, mille summad või kuupäevad ei klapi, **ei genereerita** — sama
+  ausus mis `publishProblems()` ja `quoteJob`-i `unpriced`
+
 ## [1.44.0] — 2026-08-20
 
 **Abutmendi kood nõustajas, ja hammaste kaupa**

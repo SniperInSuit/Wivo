@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Plus, Trash2, Loader2, FileText } from 'lucide-react'
-import { format, addDays, addMonths, parseISO } from 'date-fns'
+import { format, addDays, parseISO } from 'date-fns'
 import type { Job } from '../../types/job'
 import { revisionReasonLabel, jobWorkItems } from '../../types/job'
 import { useSettings } from '../../stores/useSettings'
@@ -19,12 +19,7 @@ import { jobTotalValue } from '../../lib/jobPayments'
 import { useCustomers } from '../../hooks/useCustomers'
 import type { BillToKind } from '../../types/customer'
 import { toDate } from '../../lib/dates'
-
-/** Same date k months on, or null when the input cannot be read. */
-function shiftMonths(value: string | null, k: number): string | null {
-  const d = toDate(value)
-  return d ? format(addMonths(d, k), 'yyyy-MM-dd') : null
-}
+import { instalmentSchedule, splitAmount } from '@shared/billing/instalments'
 
 interface DraftLine {
   key: string
@@ -199,42 +194,49 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
         return
       }
 
-      // Instalment 1 carries the job links, so the work counts as billed exactly
-      // once and cannot be picked again. The later ones are plain lines — they
-      // bill the same work, not more of it.
-      const share = (v: number) => Math.floor((v / instalments) * 100) / 100
+      // Dates from instalmentSchedule, money from splitAmount — the same two
+      // functions the plan preview uses, so what was shown and what is written
+      // down cannot disagree. Both live in shared/billing because the scheduled
+      // sender will need them too.
+      const schedule = instalmentSchedule({
+        total: gross,
+        count: instalments,
+        firstIssue: input.issue_date,
+        termDays: settings.makseTahtaegPaevades,
+      })
+      if (schedule.length !== instalments) {
+        setError('Maksegraafikut ei õnnestu koostada — kontrolli kuupäeva ja summat.')
+        return
+      }
+
+      // EVERY instalment carries the job link, with its own share of the value.
+      // Instalment 1 used to carry it alone, which meant `paidForJob` — which
+      // credits a job from its invoice LINES, pro rata — saw nothing for
+      // instalments 2..n. A job paid off over five months stayed 1/5 paid on
+      // its own panel, on the patient page and in Laekumata, forever. Billing
+      // it twice is not a risk: `billedJobIds` is a Set.
+      const perLine = new Map(
+        input.lines.map(l => [l.sort_order, splitAmount(l.qty * l.unit_price, instalments)])
+      )
       let first: Awaited<ReturnType<typeof createInvoice.mutateAsync>> | null = null
 
-      for (let k = 0; k < instalments; k++) {
-        const last = k === instalments - 1
-        const linesForK = input.lines.map(l => {
-          const per = share(l.qty * l.unit_price)
-          // The last instalment absorbs the rounding, so the parts add up to the
-          // whole to the cent.
-          const amount = last
-            ? Math.round((l.qty * l.unit_price - per * (instalments - 1)) * 100) / 100
-            : per
-          return {
-            ...l,
-            job_id: k === 0 ? l.job_id : null,
-            revision_id: k === 0 ? l.revision_id : null,
-            description: `${l.description} — osamakse ${k + 1}/${instalments}`,
-            qty: 1,
-            unit_price: amount,
-          }
-        })
+      for (const part of schedule) {
+        const k = part.no - 1
+        const linesForK = input.lines.map(l => ({
+          ...l,
+          description: `${l.description} — osamakse ${part.no}/${instalments}`,
+          qty: 1,
+          unit_price: perLine.get(l.sort_order)?.[k] ?? 0,
+        }))
 
         const inv = await createInvoice.mutateAsync({
           ...input,
-          // Shifted only when the source date parses. An instalment run is a
-          // loop of real inserts, so one throw here leaves half the documents
-          // created and half not — worse than a plain unshifted date.
-          issue_date: shiftMonths(input.issue_date, k) ?? input.issue_date,
-          due_date: shiftMonths(input.due_date, k),
-          note: [input.note, `Osamakse ${k + 1}/${instalments}`].filter(Boolean).join(' · '),
+          issue_date: part.issueDate,
+          due_date: part.dueDate,
+          note: [input.note, `Osamakse ${part.no}/${instalments}`].filter(Boolean).join(' · '),
           lines: linesForK,
         })
-        if (k === 0) first = inv
+        if (part.no === 1) first = inv
       }
 
       if (first) onCreated?.(first.id)

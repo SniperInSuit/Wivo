@@ -300,3 +300,50 @@ describe('paidForJob, through an invoice', () => {
     expect(t.unpaidCount).toBe(1)
   })
 })
+
+describe('a job billed as a payment plan', () => {
+  // Five monthly instalments over one 5000 € job. `InvoiceForm` used to put the
+  // `job_id` on instalment 1 ONLY, so `paidForJob` — which credits a job from
+  // its invoice LINES — saw nothing for instalments 2..5. A job paid off over
+  // five months stayed 1/5 paid on its own panel, on the patient page and in
+  // the Ülevaade total, permanently.
+  const instalmentInvoice = (jobId: string, no: number, amount: number): InvoiceFull =>
+    invoice({
+      gross_total: amount,
+      lines: [{ ...line(jobId, amount), invoice_id: `inv-${no}` }],
+      payments: [],
+    })
+
+  it('credits the job for EVERY instalment paid, not just the first', () => {
+    const j = job({ hind: 5000 })
+    const invoices = [1, 2, 3, 4, 5].map(no => instalmentInvoice(j.id, no, 1000))
+    // Only the third one has been settled.
+    invoices[2] = { ...invoices[2], payments: [payment(null, 1000)] }
+
+    expect(paidForJob(j.id, [], invoices)).toBe(1000)
+    expect(jobPaymentState(j, [], invoices).outstanding).toBe(4000)
+  })
+
+  it('settles the job once the last instalment lands', () => {
+    const j = job({ hind: 5000 })
+    const invoices = [1, 2, 3, 4, 5].map(no => ({
+      ...instalmentInvoice(j.id, no, 1000),
+      payments: [payment(null, 1000)],
+    }))
+    const state = jobPaymentState(j, [], invoices)
+    expect(state.paid).toBe(5000)
+    expect(state.settled).toBe(true)
+  })
+
+  it('reports a half-run plan as partial, not as unpaid', () => {
+    const j = job({ hind: 5000 })
+    const invoices = [1, 2, 3, 4, 5].map(no => instalmentInvoice(j.id, no, 1000))
+    invoices[0] = { ...invoices[0], payments: [payment(null, 1000)] }
+    invoices[1] = { ...invoices[1], payments: [payment(null, 1000)] }
+
+    const state = jobPaymentState(j, [], invoices)
+    expect(state.paid).toBe(2000)
+    expect(state.partial).toBe(true)
+    expect(state.settled).toBe(false)
+  })
+})
