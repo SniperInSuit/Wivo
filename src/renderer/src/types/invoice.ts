@@ -104,6 +104,22 @@ export interface Invoice {
   payment_plan_id: string | null
   /** 1-based. Null on an ordinary invoice. */
   instalment_no: number | null
+  /**
+   * When THIS SYSTEM emailed the invoice. Null = it has not.
+   *
+   * Deliberately not `status === 'saadetud'`: that is a person's mark, ticked
+   * just as truthfully after printing a PDF and posting it. This says only that
+   * the sender ran. Two different facts, two different columns — and without
+   * this one a scheduled sender is unsafe, because it would run again, find the
+   * same invoices and post the patient a second copy.
+   *
+   * "The server accepted it", not "the person received it": shared-hosting SMTP
+   * has no bounce webhook, so a rejection lands in the sender's mailbox and
+   * never here. Do not let the UI blur that.
+   */
+  sent_at: string | null
+  /** What the mail server said when sending last failed. Cleared on success. */
+  send_error: string | null
   created_by: string | null
   created_at: string
   updated_at: string

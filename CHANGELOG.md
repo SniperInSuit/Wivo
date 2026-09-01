@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.47.0] — 2026-09-01
+
+**Arve sisu ühte kohta — e-posti ettevalmistus**
+
+Arve hakkab peagi olemas olema kaks korda: väljatrükk ja e-kiri. Need **ei saa
+jagada markupi** — e-kliendid söövad CSS-i ära ja nõuavad tabeleid ning
+inline-stiile. Jagada saab aga selle, mis päriselt lahku triivib: numbrid.
+
+- Uus `shared/billing/invoiceDoc.ts` — iga tuletatud number ja iga string
+  **juba vormindatuna**. See on ainus koht, kus number tekstiks saab. Kui üks
+  renderdaja kirjutab oma `toFixed(2)` ja teine oma, siis eraldaja muutmise
+  päeval muutub ainult üks ja raamatupidaja mapis olev arve lakkab kattumast
+  sellega, mis patsiendi postkastis on
+- `InvoicePrintView` on nüüd **ainult küljendus** — sama väljanägemine, aga
+  ükski number ei sünni seal enam
+- Null sõltuvusega, ka mitte date-fns: `dd.MM.yyyy` on käsitsi, ja pooleli
+  kuupäev annab „—" mitte oletuse
+- Tühistatud arve ei võlgne midagi, olenemata arveldatust — sama reegel mis
+  `outstanding()`-il, kirjas ka siin, sest `shared/` ei saa seda importida
+- **`sql/050_invoice_sending.sql`**: `invoices.sent_at` + `send_error`.
+  `sent_at` on eraldi `status = 'saadetud'` väärtusest, sest see on inimese
+  märge — ilma selleta ei saa ükski ajastatud saatja olla ohutu, ta jookseks
+  uuesti ja saadaks teise koopia. Osaline indeks ainult saatmata arvetele
+
 ## [1.46.1] — 2026-09-01
 
 **Kogusehinna rea kustutas hinna ümberkirjutamine**

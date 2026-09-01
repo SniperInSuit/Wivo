@@ -14,11 +14,9 @@
  */
 import { useEffect } from 'react'
 import { X, Printer, AlertTriangle } from 'lucide-react'
-import { format, parseISO, isValid } from 'date-fns'
 import type { Clinic } from '../../context/AuthContext'
-import {
-  INVOICE_STATUS_LABEL, lineTotal, paidAmount, outstanding, type InvoiceFull
-} from '../../types/invoice'
+import { INVOICE_STATUS_LABEL, type InvoiceFull } from '../../types/invoice'
+import { invoiceDoc } from '@shared/billing/invoiceDoc'
 
 interface InvoicePrintViewProps {
   invoice: InvoiceFull
@@ -35,14 +33,11 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const missing: string[] = []
-  if (!clinic?.name) missing.push('nimi')
-  if (!clinic?.reg_code) missing.push('registrikood')
-  if (!clinic?.bank_account) missing.push('IBAN')
-  if (!clinic?.address) missing.push('aadress')
-
-  const due = outstanding(invoice)
-  const paid = paidAmount(invoice)
+  // Every number and every formatted string comes from the shared document, so
+  // this page and the emailed copy cannot say different things. What is left
+  // here is layout and nothing else.
+  const doc = invoiceDoc(invoice, clinic)
+  const { missing, totals } = doc
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 overflow-y-auto print:bg-white print:static print:overflow-visible">
@@ -80,19 +75,19 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
             <h1 className="text-2xl font-bold tracking-tight mb-1">ARVE</h1>
             <p className="text-sm">
               <span className="text-[#666]">Number </span>
-              <strong className="tabular-nums">{invoice.number}</strong>
+              <strong className="tabular-nums">{doc.number}</strong>
             </p>
             <p className="text-sm">
               <span className="text-[#666]">Kuupäev </span>
-              <span className="tabular-nums">{fmt(invoice.issue_date)}</span>
+              <span className="tabular-nums">{doc.issueDate}</span>
             </p>
-            {invoice.due_date && (
+            {doc.hasDueDate && (
               <p className="text-sm">
                 <span className="text-[#666]">Maksetähtaeg </span>
-                <strong className="tabular-nums">{fmt(invoice.due_date)}</strong>
+                <strong className="tabular-nums">{doc.dueDate}</strong>
               </p>
             )}
-            {invoice.status === 'tuhistatud' && (
+            {doc.cancelled && (
               <p className="mt-1 inline-block text-xs font-bold uppercase tracking-wider text-red-600 border border-red-400 rounded px-1.5 py-0.5">
                 {INVOICE_STATUS_LABEL.tuhistatud}
               </p>
@@ -100,21 +95,18 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
           </div>
 
           <div className="text-right text-sm leading-relaxed">
-            <p className="font-bold text-base">{clinic?.name ?? '—'}</p>
-            {clinic?.address && <p>{clinic.address}</p>}
-            {(clinic?.postal_code || clinic?.city) && (
-              <p>{[clinic.postal_code, clinic.city].filter(Boolean).join(' ')}</p>
-            )}
-            {clinic?.reg_code && <p className="text-[#666]">Reg nr {clinic.reg_code}</p>}
-            {clinic?.vat_number && <p className="text-[#666]">KMKR {clinic.vat_number}</p>}
-            {clinic?.phone && <p className="text-[#666]">{clinic.phone}</p>}
-            {clinic?.email && <p className="text-[#666]">{clinic.email}</p>}
+            <p className="font-bold text-base">{doc.seller.name}</p>
+            {doc.seller.lines.map((line, i) => (
+              // The street address reads as part of the name block; everything
+              // after it is registry detail and sits back.
+              <p key={i} className={i === 0 ? undefined : 'text-[#666]'}>{line}</p>
+            ))}
           </div>
         </div>
 
         <div className="mb-8">
           <p className="text-[11px] uppercase tracking-wider text-[#666] mb-1">Maksja</p>
-          <p className="text-base font-semibold">{invoice.patsient}</p>
+          <p className="text-base font-semibold">{doc.buyer.name}</p>
         </div>
 
         <table className="w-full text-sm mb-6">
@@ -127,12 +119,12 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
             </tr>
           </thead>
           <tbody>
-            {invoice.lines.map(l => (
-              <tr key={l.id} className="border-b border-[#ddd]">
+            {doc.lines.map((l, i) => (
+              <tr key={i} className="border-b border-[#ddd]">
                 <td className="py-1.5 pr-2">{l.description}</td>
-                <td className="py-1.5 text-right tabular-nums">{Number(l.qty)}</td>
-                <td className="py-1.5 text-right tabular-nums">{Number(l.unit_price).toFixed(2)} €</td>
-                <td className="py-1.5 text-right tabular-nums">{lineTotal(l).toFixed(2)} €</td>
+                <td className="py-1.5 text-right tabular-nums">{l.qtyText}</td>
+                <td className="py-1.5 text-right tabular-nums">{l.unitPriceText}</td>
+                <td className="py-1.5 text-right tabular-nums">{l.totalText}</td>
               </tr>
             ))}
           </tbody>
@@ -143,29 +135,27 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
             <tbody>
               <tr>
                 <td className="py-1 pr-6 text-[#666]">Summa</td>
-                <td className="py-1 text-right tabular-nums">{Number(invoice.net_total).toFixed(2)} €</td>
+                <td className="py-1 text-right tabular-nums">{totals.netText}</td>
               </tr>
               <tr>
-                <td className="py-1 pr-6 text-[#666]">
-                  Käibemaks {Number(invoice.vat_rate)}%
-                </td>
-                <td className="py-1 text-right tabular-nums">{Number(invoice.vat_total).toFixed(2)} €</td>
+                <td className="py-1 pr-6 text-[#666]">{totals.vatLabel}</td>
+                <td className="py-1 text-right tabular-nums">{totals.vatText}</td>
               </tr>
               <tr className="border-t-2 border-[#111]">
                 <td className="py-1.5 pr-6 font-bold">Kokku tasuda</td>
                 <td className="py-1.5 text-right tabular-nums font-bold text-base">
-                  {Number(invoice.gross_total).toFixed(2)} €
+                  {totals.grossText}
                 </td>
               </tr>
-              {paid > 0 && (
+              {totals.showPaid && (
                 <>
                   <tr>
                     <td className="py-1 pr-6 text-[#666]">Laekunud</td>
-                    <td className="py-1 text-right tabular-nums">{paid.toFixed(2)} €</td>
+                    <td className="py-1 text-right tabular-nums">{totals.paidText}</td>
                   </tr>
                   <tr>
                     <td className="py-1 pr-6 font-semibold">Tasumata</td>
-                    <td className="py-1 text-right tabular-nums font-semibold">{due.toFixed(2)} €</td>
+                    <td className="py-1 text-right tabular-nums font-semibold">{totals.dueText}</td>
                   </tr>
                 </>
               )}
@@ -173,29 +163,21 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
           </table>
         </div>
 
-        {(clinic?.bank_name || clinic?.bank_account) && (
+        {doc.payment && (
           <div className="text-sm mb-6">
             <p className="text-[11px] uppercase tracking-wider text-[#666] mb-1">Makse</p>
-            {clinic?.bank_name && <p>{clinic.bank_name}</p>}
-            {clinic?.bank_account && <p className="tabular-nums">IBAN {clinic.bank_account}</p>}
-            <p className="text-[#666]">
-              Selgitus: arve {invoice.number}
-            </p>
+            {doc.payment.bankName && <p>{doc.payment.bankName}</p>}
+            {doc.payment.iban && <p className="tabular-nums">IBAN {doc.payment.iban}</p>}
+            <p className="text-[#666]">Selgitus: {doc.payment.reference}</p>
           </div>
         )}
 
-        {invoice.note && (
+        {doc.note && (
           <div className="text-sm border-t border-[#ddd] pt-3">
-            <p className="whitespace-pre-wrap">{invoice.note}</p>
+            <p className="whitespace-pre-wrap">{doc.note}</p>
           </div>
         )}
       </div>
     </div>
   )
-}
-
-function fmt(d: string | null): string {
-  if (!d) return '—'
-  const parsed = parseISO(d)
-  return isValid(parsed) ? format(parsed, 'dd.MM.yyyy') : '—'
 }
