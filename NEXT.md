@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.48.0 · 01.09.2026 · haru `main`, commit `a073e95`**
+**Seis: v1.52.0 · 01.09.2026 · haru `main`, commit `fc318b5`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -32,65 +32,55 @@ importida. Genereeritud koopia varuplaani (`_shared/generated/`) **ei ole vaja**
 
 ## 🔴 Sinu käes
 
-### 1. Jooksuta `sql/051_email_settings.sql`
+### 1. E-post TÖÖTAB — aga testaadressi peal
 
-Lisab `clinic_settings.email` — saatmise seaded ja õigused. Ilma selleta ei
-salvestu E-posti vahekaart.
+Arved lähevad välja `treialbusiness@gmail.com` peale, **mitte patsientidele**.
+Kaks päris kirja on saadetud ja kohale jõudnud (2026-0005, 2026-0006), PDF-iga.
 
-*(049 maksegraafik ja 050 saatmise seis on juba jooksutatud.)*
+**Kui eemaldad Seadetes testaadressi, hakkavad kirjad minema päris patsientidele
+juba järgmisel täistunnil.** Enne seda tasub veenduda, et:
 
-### 2. Täida Seaded → Kliinik → E-post
+- patsientidel on e-posti aadress täidetud (`patients.email`)
+- kirja tekst Seadetes on sinu sõnadega, mitte vaikimisi oma
+- kiri ei lähe rämpsu (kontrolli oma domeeni SPF/DKIM)
 
-Veebimajutus, kinnitatud pildilt:
+### 2. Ajastus on sees
 
-| | |
-|---|---|
-| SMTP server | `mail.elkdata.ee` |
-| Port | **465** (SSL/TLS — 25 ja 587 on Supabase'is blokeeritud) |
-| Saatja | `info@fullgevitydental.ee` |
+`sql/052` jooksutatud, `pg_cron` töö `wivo-send-invoices` iga tunni 7. minutil.
+Kontroll:
 
-**Jäta lülitid esialgu välja ja pane testaadressiks oma isiklik e-post.**
-Testaadress võidab päris saaja üle alati — esimest nädalat saab vaadata ilma
-et ükski patsient kirja saaks.
-
-### 3. Saladused Supabase'i
-
-```bash
-supabase secrets set \
-  SMTP_HOST="mail.elkdata.ee" SMTP_PORT="465" \
-  SMTP_USER="info@fullgevitydental.ee" SMTP_PASS="..." \
-  PUBLIC_BOOKING_ORIGINS="https://sinu-leht.ee" \
-  IP_HASH_PEPPER="$(openssl rand -hex 32)"
+```sql
+select status, return_message, start_time from cron.job_run_details
+ where jobid = (select jobid from cron.job where jobname = 'wivo-send-invoices')
+ order by start_time desc limit 5;
 ```
 
-**Parool ainult siia, mitte kunagi seadetesse** — `clinic_settings` on loetav
-igale kliiniku liikmele.
+Väljalülitamine on kahes kohas: Seadetes „Automaatne saatmine" välja, või
+`update cron.job set active = false where jobname = 'wivo-send-invoices'`.
 
-### 4. Seadetes täitmata (avaliku poole jaoks)
+### 3. Seadetes täitmata (avaliku poole jaoks)
 
 - **Seaded → Kliinik → „Veebilehe tunnus"** — ilma selleta `/services` päris
   kataloogi ei tagasta
 - **Seaded → Patsiendi hinnakiri** — vähemalt üks avalikuks märgitud teenus
 
----
-
 ## ✅ Valmis ja commit'itud
 
 | Versioon | Mis |
 |---|---|
-| 1.48.0 | E-posti õigused ja kaitsed: `sendGuard`, Seaded → E-post, `sql/051` |
-| 1.47.0 | Arve sisu ühte kohta (`invoiceDoc`), `sql/050` saatmise seis |
+| 1.52.0 | PDF manus, `=20` parandus, `sql/052` tunnine ajastus |
+| 1.51.x | Allon4 hammaste kitsendamine; saatja diagnostika |
+| 1.50.0 | Kirja tekst seadistatav (`mailTemplate`) |
+| 1.49.0 | **Arvete saatja** `send-invoices`, deploy'tud ja tööle saadud |
+| 1.48.0 | E-posti õigused ja kaitsed (`sendGuard`), `sql/051` |
+| 1.47.0 | `invoiceDoc` — arve sisu ühte kohta, `sql/050` |
 | 1.46.x | Kogusehinnad — mitu krooni, teine hambahind |
 | 1.45.x | Maksegraafik: `sql/049`, arve vormil, vaade Arvete lehel |
-| 1.44.1 | Osamaksed jätsid töö 1/5 makstuks; `shared/billing/instalments.ts` |
-| 1.44.0 | Abutmendi kood nõustajas ja hammaste kaupa |
-| 1.43.x | Palgarida nimetas tööd, mille eest ei makstud; ühtlased sildid tahvlil |
-| 1.42.x | **Arvega tasutud töö jäi igaveseks „maksmata"** |
-| 1.41.x | **Muudatuste kulu läks patsiendi arvele** kuues kohas |
-| 1.40.x | Mudel on lipp, mitte töötüüp |
-| 1.39.0 | Kiirtöö kordaja töötaja kohta + mudeli tasureegel, `sql/048` |
+| 1.44.x | Osamaksed jätsid töö 1/5 makstuks; abutmendi kood nõustajas |
+| 1.41–1.43 | Rahapoole lepitamine: muudatuste kulu, arvemaksed, palgaread |
 
-**Migratsioonid `sql/`** — jooksutatud kuni **050**. **051 ootab.**
+
+**Migratsioonid `sql/`** — jooksutatud kuni **052**. Kõik tehtud.
 
 ---
 
