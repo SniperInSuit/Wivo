@@ -21,6 +21,7 @@ import { maySendInvoice, remainingToday, SAFE_MAIL_POLICY } from '@shared/billin
 import type { MailPolicy } from '@shared/billing/sendGuard.ts'
 import { invoiceHtml, invoiceText, invoiceSubject } from '../_shared/invoiceHtml.ts'
 import { openSmtp, smtpProblems, safeError } from '../_shared/mail.ts'
+import { invoicePdf, invoicePdfName } from '../_shared/invoicePdf.ts'
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -81,11 +82,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // The cap counts what THIS system sent today, from the invoices themselves.
     // A counter the sender kept for itself would reset on every cold start,
     // which on an edge runtime is often.
+    // A ROLLING 24 hours, not a calendar day. `day` is the date in Tallinn and
+    // `sent_at` is an instant, so `${day}T00:00:00Z` would start the window
+    // three hours late in summer — messages sent between Tallinn midnight and
+    // UTC midnight would not count against the cap. Once this runs hourly that
+    // stops being theoretical. A rolling window is also the honest reading of
+    // "N kirja päevas" for a limit whose job is to stop a burst.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { count: sentToday } = await db
       .from('invoices')
       .select('id', { count: 'exact', head: true })
       .eq('clinic_id', row.clinic_id)
-      .gte('sent_at', `${day}T00:00:00Z`)
+      .gte('sent_at', since)
 
     let used = sentToday ?? 0
     if (remainingToday(policy, used) <= 0) {
@@ -159,11 +167,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // The clinic's own wording, from the same settings row. Blank fields
         // fall back to the shipped letter rather than to nothing.
         const tpl = (row.email ?? {}) as { pealkiri?: string; sissejuhatus?: string; lopp?: string }
+        // The body is what they read; the attachment is what they save, print
+        // or forward to their accountant. Both off the same InvoiceDoc, so the
+        // file cannot say something the email does not.
+        const pdf = await invoicePdf(doc)
         await smtp.send({
           to: verdict.to,
           subject: invoiceSubject(doc, tpl),
           html: invoiceHtml(doc, tpl),
           text: invoiceText(doc, tpl),
+          attachments: [{
+            filename: invoicePdfName(doc),
+            content: pdf,
+            contentType: 'application/pdf',
+          }],
         })
         // Stamped IMMEDIATELY after the server accepts. A crash between the two
         // is the one case that could double-send, so the window is one await.

@@ -20,16 +20,38 @@
  */
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
+export interface MailAttachment {
+  filename: string
+  content: Uint8Array
+  contentType: string
+}
+
 export interface MailMessage {
   to: string
   subject: string
   html: string
   text: string
+  attachments?: MailAttachment[]
 }
 
 export interface MailSender {
   send(msg: MailMessage): Promise<void>
   close(): Promise<void>
+}
+
+/**
+ * Bytes → base64, in chunks.
+ *
+ * `String.fromCharCode(...bytes)` on a whole PDF blows the argument limit and
+ * throws — a several-hundred-kilobyte spread is not a call anyone gets to make.
+ */
+function base64(bytes: Uint8Array): string {
+  let s = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    s += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(s)
 }
 
 /** What is missing from the environment, in plain words. Empty = ready. */
@@ -74,6 +96,16 @@ export function openSmtp(fromAddress: string, fromName: string): MailSender {
         subject: msg.subject,
         content: msg.text,
         html: msg.html,
+        // base64 rather than raw bytes: denomailer will encode it for the MIME
+        // part anyway, and handing it a string keeps the binary out of the
+        // library's own line-wrapping, which is where a mangled attachment
+        // comes from.
+        attachments: (msg.attachments ?? []).map(a => ({
+          filename: a.filename,
+          contentType: a.contentType,
+          encoding: 'base64' as const,
+          content: base64(a.content),
+        })),
       })
     },
     async close(): Promise<void> {

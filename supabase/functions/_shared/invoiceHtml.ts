@@ -16,6 +16,21 @@ import {
   renderTemplate, templateVars, DEFAULT_MAIL_TEMPLATE, type MailTemplate,
 } from '@shared/billing/mailTemplate.ts'
 
+/**
+ * Trailing whitespace off every line, and blank-only lines dropped.
+ *
+ * NOT cosmetic. The body is sent quoted-printable, where a space at the end of
+ * a line MUST be encoded — so `    ` before a newline arrives in the mailbox as
+ * a literal `=20`. A template built from `${cond ? x : ''}` on its own indented
+ * line produces exactly that, which is why the first real invoice had `=20`
+ * scattered through it and in the Gmail preview line.
+ *
+ * Fixing it at the source rather than post-processing the encoder: there is no
+ * reason for generated markup to carry trailing spaces at all.
+ */
+const tidy = (html: string): string =>
+  html.split('\n').map(l => l.replace(/[ \t]+$/, '')).filter(l => l !== '').join('\n')
+
 /** HTML-escape. Every value below is user data — a clinic name with an
  *  ampersand must not become broken markup, and a note is free text. */
 const esc = (v: string | null | undefined): string =>
@@ -88,8 +103,12 @@ export function invoiceText(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): strin
     ...doc.seller.lines,
   ]
   // Blank lines are paragraphs and are kept; only the placeholders that
-  // produced nothing at all are dropped.
-  return lines.filter(l => l !== undefined && l !== null).join('\n')
+  // produced nothing at all are dropped. Trailing spaces are trimmed for the
+  // same reason as in the HTML: quoted-printable turns them into `=20`.
+  return lines
+    .filter(l => l !== undefined && l !== null)
+    .map(l => l.replace(/[ \t]+$/, ''))
+    .join('\n')
 }
 
 export function invoiceHtml(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): string {
@@ -113,7 +132,7 @@ export function invoiceHtml(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): strin
       <td style="${CELL}text-align:right;font-weight:600;">${esc(doc.totals.dueText)}</td>
     </tr>` : ''
 
-  return `<!doctype html>
+  return tidy(`<!doctype html>
 <html lang="et">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;padding:24px;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;">
@@ -193,5 +212,5 @@ export function invoiceHtml(doc: InvoiceDoc, tpl?: Partial<MailTemplate>): strin
   </td></tr>
 </table>
 </body>
-</html>`
+</html>`)
 }

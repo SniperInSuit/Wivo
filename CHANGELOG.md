@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.52.0] — 2026-09-01
+
+**PDF kaasa, `=20` välja, ja tunnine ajastus**
+
+- **PDF manus.** Kiri on see, mida loetakse; manus on see, mille patsient
+  salvestab, prindib või raamatupidajale edasi saadab. Mõlemad samast
+  `InvoiceDoc`-ist, nii et fail ei saa öelda midagi, mida kiri ei ütle
+- **Fonti ei pakita sisse.** pdf-lib'i Helvetica kasutab WinAnsi kodeeringut,
+  kus on olemas iga eesti täht — ä ö ü õ š ž ja € kaasa arvatud. Kontrollitud,
+  mitte eeldatud. TTF-i pakkimine lisaks iga külmkäivituse juurde ~megabaidi
+- Pikk kirjeldus **murtakse ridadeks**, mitte ei lõigata: neli töötüüpi koos
+  hammastega jookseb veerust kergesti välja
+- **`=20` parandatud.** Esimeses päris arves oli neid laiali, ka Gmaili
+  eelvaates. Põhjus: quoted-printable **peab** rea lõpus oleva tühiku
+  kodeerima, ja `${tingimus ? x : ''}` omal taandega real jätab täpselt sellise
+  tühiku. Nüüd lõigatakse iga rea lõpp puhtaks — genereeritud märgendil ei ole
+  põhjust tühikuid lohiseda
+- **Päevalimiit on nüüd libisev 24 tundi**, mitte kalendripäev. `day` on
+  Tallinna kuupäev ja `sent_at` on ajahetk, nii et `T00:00:00Z` alustas akent
+  suvel kolm tundi hiljem — tunnise ajastusega poleks see enam teoreetiline
+- **`sql/052_invoice_cron.sql`** — `pg_cron` iga tunni 7. minutil. Õhtul tehtud
+  arve läheb sama õhtu jooksul välja, mitte hommikul. Teenusevõti Vaulti,
+  mitte `cron.job` tabelisse
+
 ## [1.51.1] — 2026-09-01
 
 **Saatja ütles „saatmata arveid ei ole", kui neid oli kaks**
