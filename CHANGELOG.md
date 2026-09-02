@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.67.0] — 2026-09-02
+
+**Visiiditasu Montonioga (C4)**
+
+Patsient saadab taotluse, maksab visiiditasu pangalingiga, ja Wivos on rea peal
+silt „Tasutud 20.00 €". Vaikimisi tasu ei küsita — kliinik, kes seda ei taha,
+ei pea midagi tegema.
+
+**`sql/061` — jooksutamata.** `visit_requests` += makse veerud;
+`clinic_settings.broneering` = summa, valuuta, tagasi-URL.
+
+**Neli asja, mis makseloogikas peavad õiged olema**
+
+- **Summa ei tule kunagi brauserist.** Loetakse serveris kliiniku seadetest.
+  Avalik vorm, mis saaks ise hinna nimetada, on vorm, kus kõik maksavad ühe sendi
+- **Allkirja kontroll on ainult pool.** Korrektselt allkirjastatud token tõestab,
+  et Montonio saatis — mitte et ta käib SELLE broneeringu kohta. Kontrollitakse
+  ka `accessKey` (kas meie konto), `uuid` (kas see tellimus) ja summa. Ilma
+  nendeta märgib teise tellimuse token selle broneeringu tasutuks
+- **Brauseri tagasitulek ei ole tõend.** Aadressirea saab keegi ise kirjutada.
+  `/return` teeb sama allkirjakontrolli mis webhook
+- **Kaks korda maksmine on tegevusetus.** Webhook võib korduda; juba `makstud`
+  rida jäetakse rahule
+
+**Kus mis elab**
+
+- `shared/portal/montonioClaims.ts` — mida allkirjastatud token ÕIGUSTAB. Puhas,
+  krüptota, 14 testi. See on pool, mida on lihtne märkamatult valesti teha
+- `supabase/functions/_shared/montonio.ts` — allkirjad ja HTTP. Ainus fail, mis
+  salajast võtit puudutab. `alg: none` lükatakse tagasi; `MONTONIO_ENV` on
+  sandbox kõike muud kui täpselt `live`, sest kirjaviga ei tohi hakata päris
+  raha liigutama
+
+**Kui makse jääb pooleli, taotlus EI kao.** Inimene küsis aega — see on kirjas
+ja registratuur näeb, et tasu on maksmata. Kaotada taotlus sellepärast, et
+pangaleht katkes, oleks halvem tehing.
+
+**Mida see ei tee:** ei tagasta raha (tagasimakse Montonio partnerisüsteemis
+käsitsi — automaatne tagasimakse on koht, kus vale rida maksab päris raha) ja
+ei broneeri aega (see tuleb siis, kui kalender on Wivos).
+
 ## [1.66.0] — 2026-09-02
 
 **Hinnakalkulaator — arvutuse pool (C1, esimene osa)**

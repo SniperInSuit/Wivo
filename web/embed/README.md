@@ -173,3 +173,64 @@ juurde kuulub päris visiit.
 
 Lisa kliiniku privaatsusteatesse rida selle vormi kohta. Wivo ei tee seda sinu
 eest ja see on kliiniku kui vastutava töötleja kohustus.
+---
+
+## Visiiditasu (Montonio)
+
+Vabatahtlik. Vaikimisi tasu ei küsita ja kliinik, kes seda ei taha, ei pea
+midagi tegema.
+
+**Miks tasu:** omaniku sõnastuses „et mitte raisata kellegi aega ja ainult
+kindlad inimesed tulevad". Läheb ravi hinna sisse, kui töö läheb suuremaks.
+
+### 1. Montonio võtmed
+
+`partner.montonio.com` → Sandbox võtmed esimeseks. Siis:
+
+```bash
+supabase secrets set   MONTONIO_ACCESS_KEY="..."   MONTONIO_SECRET_KEY="..."   MONTONIO_ENV="sandbox"
+```
+
+`MONTONIO_ENV` on **sandbox kõike muud kui täpselt `live`**. See on tahtlik:
+kirjaviga selles reas ei tohi hakata päris raha liigutama.
+
+### 2. Summa andmebaasi
+
+```sql
+update public.clinic_settings
+   set broneering = coalesce(broneering,'{}'::jsonb)
+       || jsonb_build_object('visiiditasu', 20, 'valuuta', 'EUR',
+                             'tagasiUrl', 'https://www.fullgevitydental.ee/')
+ where clinic_id = my_clinic_id();
+```
+
+**Summa loetakse SIIT, mitte brauserist.** Avalik vorm, mis saaks ise hinna
+nimetada, on vorm, kus kõik maksavad ühe sendi.
+
+### 3. Mis siis juhtub
+
+1. Patsient saadab vormi → taotlus on **kohe salvestatud**
+2. Server loob Montonio tellimuse ja vorm suunab panka
+3. Pangast tuleb patsient tagasi `/return` peale, Montonio ise saadab `/webhook`
+4. Mõlemad kontrollivad **allkirjastatud tokenit** ja märgivad rea tasutuks
+5. Wivos „Taotlused" all on rea peal silt **Tasutud 20.00 €**
+
+**Kui makse jääb pooleli, taotlus EI kao.** Inimene küsis aega — see on kirjas,
+ja registratuur näeb, et tasu on maksmata. Kaotada taotlus sellepärast, et
+pangaleht katkes, oleks halvem tehing.
+
+### Mida kontrollida enne `live`
+
+- Sandbox'is läbi üks makse ja vaata, et Wivos tekib **Tasutud**
+- Vajuta vormi saatmist kaks korda → **üks** taotlus ja **üks** makselink
+- Ava `/return?order-token=jama` käsitsi → peab ütlema „ei õnnestunud
+  kinnitada", mitte märkima tasutuks
+- Alles siis `MONTONIO_ENV="live"` ja päris võtmed
+
+### Mida see EI tee
+
+- **Ei tagasta raha.** Tagasimakse tehakse Montonio partnerisüsteemis käsitsi.
+  Automaatne tagasimakse on koht, kus vale rida maksab päris raha, ja seda ei
+  ehita enne, kui see on läbi räägitud
+- **Ei broneeri aega.** Tasu kinnitab tõsist kavatsust; aja lepib kokku
+  registratuur. Päris ajavalik tuleb siis, kui kalender on Wivos

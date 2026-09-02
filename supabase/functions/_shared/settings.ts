@@ -71,20 +71,26 @@ export async function publicServicesOf(clinicId: string): Promise<PublicService[
 }
 
 /**
- * Store a visit request. Returns whether a NEW row was written.
+ * Store a visit request. Returns the NEW row's id, or null when this exact
+ * submission was already stored.
  *
  * `on conflict do nothing` on (clinic_id, idempotency_key): the same submission
  * twice is one request. The patient sees success either way — telling somebody
  * "you already sent this" when they pressed the button twice is a worse answer
  * than simply agreeing, and it leaks that the first one landed.
+ *
+ * Null therefore also means "do not create a second payment order": the first
+ * submission already got one, and charging twice for one double-click is the
+ * exact failure the idempotency key exists to prevent.
  */
-export async function insertVisitRequest(row: Record<string, unknown>): Promise<boolean> {
+export async function insertVisitRequest(row: Record<string, unknown>): Promise<string | null> {
   const { data, error } = await admin()
     .from('visit_requests')
     .upsert(row, { onConflict: 'clinic_id,idempotency_key', ignoreDuplicates: true })
     .select('id')
   if (error) throw error
-  return (data?.length ?? 0) > 0
+  const id = (data?.[0] as { id?: string } | undefined)?.id
+  return id ?? null
 }
 
 /**
@@ -122,3 +128,78 @@ export async function recentRequestCount(clinicId: string, ipHash: string): Prom
  *      a page the owner has not listed.
  * Both are deliberate acts by the owner. That is the opt-in.
  */
+
+export interface BookingSettings {
+  /** 0 = no fee is asked for. The default, deliberately. */
+  visiiditasu: number
+  valuuta: string
+  /** Where the patient is sent after paying. The clinic's own page. */
+  tagasiUrl: string | null
+}
+
+/**
+ * The booking settings — its OWN named column, so `clinic_settings`' narrow
+ * select discipline survives. See the guarantee at the top of this file: no
+ * function here may widen a select to `*`, and adding a second named column is
+ * how a new setting arrives without weakening that.
+ */
+export async function bookingSettingsOf(clinicId: string): Promise<BookingSettings> {
+  const { data, error } = await admin()
+    .from('clinic_settings')
+    .select('broneering')
+    .eq('clinic_id', clinicId)
+    .maybeSingle()
+  const b = (!error && data?.broneering) ? data.broneering as Record<string, unknown> : {}
+  const fee = Number(b.visiiditasu)
+  return {
+    // Anything unparseable means no fee. Failing towards "do not charge" is the
+    // only safe direction: the opposite would invent a price.
+    visiiditasu: Number.isFinite(fee) && fee > 0 ? Math.round(fee * 100) / 100 : 0,
+    valuuta: typeof b.valuuta === 'string' && b.valuuta.trim() ? b.valuuta.trim().toUpperCase() : 'EUR',
+    tagasiUrl: typeof b.tagasiUrl === 'string' && b.tagasiUrl.trim() ? b.tagasiUrl.trim() : null,
+  }
+}
+
+/** Attach a created Montonio order to the request row. */
+export async function attachPayment(
+  requestId: string, uuid: string, summa: number,
+): Promise<void> {
+  const { error } = await admin()
+    .from('visit_requests')
+    .update({ montonio_uuid: uuid, makse_summa: summa, makse_staatus: 'ootel' })
+    .eq('id', requestId)
+  if (error) throw error
+}
+
+/** The row a payment token is about, found by Montonio's own order id. */
+export async function requestByOrderUuid(uuid: string): Promise<
+  { id: string; makse_summa: number | null; makse_staatus: string } | null
+> {
+  const { data, error } = await admin()
+    .from('visit_requests')
+    .select('id, makse_summa, makse_staatus')
+    .eq('montonio_uuid', uuid)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as { id: string; makse_summa: number | null; makse_staatus: string }
+}
+
+/**
+ * Record what the token said.
+ *
+ * Idempotent by design: a row already `makstud` is left alone. Montonio may
+ * call the webhook more than once, and the browser return hits the same code
+ * path — settling twice must be a no-op, not a second event.
+ */
+export async function settlePayment(
+  requestId: string, staatus: 'makstud' | 'ootel' | 'ebaonnestus' | 'tuhistatud',
+): Promise<void> {
+  const patch: Record<string, unknown> = { makse_staatus: staatus }
+  if (staatus === 'makstud') patch.makstud_at = new Date().toISOString()
+  const { error } = await admin()
+    .from('visit_requests')
+    .update(patch)
+    .eq('id', requestId)
+    .neq('makse_staatus', 'makstud')
+  if (error) throw error
+}

@@ -29,7 +29,9 @@ import { ok, fail, failWith, ERRORS } from '../_shared/respond.ts'
 import { ipKey, take } from '../_shared/ratelimit.ts'
 import {
   clinicBySlug, publicServicesOf, insertVisitRequest, recentRequestCount,
+  bookingSettingsOf, attachPayment, requestByOrderUuid, settlePayment,
 } from '../_shared/settings.ts'
+import { createOrder, verifyOrderToken, montonioConfigured } from '../_shared/montonio.ts'
 import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
 import {
   visitRequestProblems, looksLikeSpam, toVisitRequestRow,
@@ -46,6 +48,66 @@ import type { VisitRequestInput } from '@shared/portal/visitRequest.ts'
  * in front of it to keep obvious floods off the database entirely.
  */
 const REQUESTS_PER_HOUR = 6
+
+/**
+ * One place where a token becomes a settled payment — used by both the browser
+ * return and the webhook. True when this call, or an earlier one, left the
+ * request paid.
+ *
+ * The expected AMOUNT comes from the row we wrote when the order was created,
+ * so a token claiming a different figure is refused rather than believed.
+ */
+async function settleFromToken(token: string): Promise<boolean> {
+  if (!token) return false
+
+  // Which row is this about? Read the claimed uuid WITHOUT trusting it — it
+  // only chooses the row; nothing is written on its strength.
+  const uuid = claimedUuid(token)
+  if (!uuid) return false
+
+  const row = await requestByOrderUuid(uuid)
+  if (!row) return false
+  if (row.makse_staatus === 'makstud') return true    // already settled: no-op
+
+  const { verdict, staatus } = await verifyOrderToken(token, {
+    uuid,
+    summa: Number(row.makse_summa ?? 0),
+    valuuta: 'EUR',
+  })
+  if (!verdict.ok) console.error('makse tagasi lükatud:', verdict.reason, verdict.selgitus)
+  await settlePayment(row.id, staatus)
+  return verdict.ok
+}
+
+/** The uuid a token CLAIMS. Used only to look up the row to verify against. */
+function claimedUuid(token: string): string | null {
+  try {
+    const body = token.split('.')[1]
+    if (!body) return null
+    const pad = body.replace(/-/g, '+').replace(/_/g, '/')
+    const json = atob(pad + '='.repeat((4 - (pad.length % 4)) % 4))
+    return (JSON.parse(json) as { uuid?: string }).uuid ?? null
+  } catch { return null }
+}
+
+/** Estonian, plain, and it never claims more than it knows. */
+function returnPage(paid: boolean, back: string | null): string {
+  const style = 'body{font:16px/1.6 system-ui,sans-serif;margin:3rem auto;max-width:34rem;padding:0 1rem}'
+  const link = back
+    ? `<p><a href="${back.replace(/"/g, '&quot;')}">Tagasi kodulehele</a></p>`
+    : ''
+  const inner = paid
+    ? `<h1>Aitäh, makse on laekunud.</h1>
+       <p>Sinu taotlus on meil kirjas ja võtame peagi ühendust, et aeg kokku leppida.</p>`
+    // Says the useful thing rather than only the bad thing: the request is
+    // stored either way, so nobody needs to fill the form in again.
+    : `<h1>Makset ei õnnestunud kinnitada.</h1>
+       <p><strong>Sinu taotlus on siiski meil kirjas</strong> — võtame ühendust ka
+       siis, kui makse jäi pooleli. Kui raha läks kontolt välja, anna palun teada.</p>`
+  return `<!doctype html><html lang="et"><meta charset="utf-8">`
+    + `<meta name="viewport" content="width=device-width,initial-scale=1">`
+    + `<title>Wivo</title><style>${style}</style>${inner}${link}`
+}
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const pre = preflight(req)
@@ -169,16 +231,82 @@ Deno.serve(async (req: Request): Promise<Response> => {
         return fail(429, ERRORS.RATE_LIMITED, cors)
       }
 
-      await insertVisitRequest({
+      const created = await insertVisitRequest({
         ...toVisitRequestRow(body),
         clinic_id: clinic.id,
         ip_hash: ip,
       })
 
+      // A visit fee, when the clinic asks for one. The amount is read HERE from
+      // the clinic's own settings and NEVER from `body`: a public form that can
+      // name its own price is a form where everybody pays one cent.
+      const booking = await bookingSettingsOf(clinic.id)
+      if (created && booking.visiiditasu > 0 && montonioConfigured()) {
+        try {
+          const order = await createOrder({
+            merchantReference: created,
+            summa: booking.visiiditasu,
+            valuuta: booking.valuuta,
+            returnUrl: `${url.origin}/public-booking/return?clinic=${encodeURIComponent(slug)}`,
+            notificationUrl: `${url.origin}/public-booking/webhook`,
+            kirjeldus: `Visiiditasu — ${clinic.nimi}`,
+          })
+          await attachPayment(created, order.uuid, booking.visiiditasu)
+          // The request is ALREADY stored. The payment URL is an invitation, not
+          // a condition: if the patient never pays, the clinic still has their
+          // name and number. Losing the request because a bank page failed would
+          // be the worse trade.
+          return ok({ saadetud: true, maksmiseks: order.paymentUrl }, cors)
+        } catch (err) {
+          console.error('montonio order failed', err)
+          // Fall through: they asked for an appointment and we have it.
+        }
+      }
+
       // Deliberately says nothing more than "received". No id, no status, no
       // link to follow: a patient-facing view of their own care is the MDR line
       // this product does not cross (project_no_patient_portal).
       return ok({ saadetud: true }, cors)
+    }
+
+    /**
+     * Where Montonio sends the patient's BROWSER. Not proof of anything — a
+     * person can type this URL — so it runs the same signed-token check the
+     * webhook does, and only then shows a page.
+     *
+     * It exists alongside the webhook because the webhook can be late, and a
+     * patient reading "aitäh" while the clinic still sees "ootel" is a support
+     * call. Both paths settle; settling twice is a no-op.
+     */
+    if (req.method === 'GET' && (route === '/return' || route === '/return/')) {
+      const slug = (url.searchParams.get('clinic') ?? '').trim()
+      const clinic = slug ? await clinicBySlug(slug) : null
+      const paid = await settleFromToken(url.searchParams.get('order-token') ?? '')
+      const back = clinic ? (await bookingSettingsOf(clinic.id)).tagasiUrl : null
+      return new Response(returnPage(paid, back), {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+      })
+    }
+
+    /**
+     * Montonio → us. The authoritative path.
+     *
+     * Always answers 200, even for a token it refuses: a non-200 makes Montonio
+     * retry, and retrying cannot fix a token that belongs to another merchant.
+     * What went wrong goes on the row and into the log, where a person can see
+     * it.
+     */
+    if (req.method === 'POST' && (route === '/webhook' || route === '/webhook/')) {
+      let token = url.searchParams.get('order-token') ?? ''
+      try {
+        const body = await req.json() as Record<string, string>
+        token = body.orderToken ?? body['order-token'] ?? token
+      } catch { /* keep whatever the query string had */ }
+      await settleFromToken(token)
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200, headers: { 'content-type': 'application/json' },
+      })
     }
 
     return fail(404, ERRORS.NOT_FOUND, cors)

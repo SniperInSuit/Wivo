@@ -246,6 +246,11 @@
         .then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b } }) })
         .then(function (res) {
           if (res.body && res.body.ok) {
+            // A visit fee, when the clinic asks for one. Straight to the bank —
+            // an intermediate "click here to pay" screen is a step where people
+            // stop, and the request is stored either way.
+            var pay = res.body.data && res.body.data.maksmiseks
+            if (pay) { window.location.href = pay; return }
             wrap.innerHTML = ''
             var ok = el('div', { class: 'wv-ok' })
             ok.appendChild(el('strong', { text: 'Taotlus on saadetud.' }))

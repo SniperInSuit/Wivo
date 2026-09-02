@@ -38,6 +38,13 @@ export interface VisitRequest {
   kasitles: string | null
   kasitletud_at: string | null
   created_at: string
+  /**
+   * The visit fee (sql/061). 'vaba' = none was asked for, which is every
+   * request made before the fee existed and every one the staff typed in.
+   */
+  makse_staatus: 'vaba' | 'ootel' | 'makstud' | 'ebaonnestus' | 'tuhistatud'
+  makse_summa: number | null
+  makstud_at: string | null
 }
 
 const KEY = ['visit_requests']
@@ -48,7 +55,8 @@ const KEY = ['visit_requests']
  */
 const COLUMNS =
   'id, clinic_id, service_id, nimi, telefon, email, eelistatud_aeg, sonum, '
-  + 'staatus, visit_id, kasitles, kasitletud_at, created_at'
+  + 'staatus, visit_id, kasitles, kasitletud_at, created_at, '
+  + 'makse_staatus, makse_summa, makstud_at'
 
 export function useVisitRequests() {
   const qc = useQueryClient()

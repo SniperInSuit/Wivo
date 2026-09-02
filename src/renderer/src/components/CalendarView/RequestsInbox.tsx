@@ -34,6 +34,19 @@ const STATUS_STYLE: Record<VisitRequestStatus, string> = {
   ramps:      'bg-red-100 text-red-700',
 }
 
+/**
+ * The visit fee, said plainly. Its entire purpose is to tell the clinic whether
+ * this person put money behind the request — a paid one is worth ringing first,
+ * and an unpaid one is not yet a commitment.
+ */
+const MAKSE_SILT: Record<string, { text: string; cls: string } | null> = {
+  vaba:        null,   // no fee was asked for: nothing to say
+  ootel:       { text: 'Tasumata',   cls: 'bg-amber-100 text-amber-700' },
+  makstud:     { text: 'Tasutud',    cls: 'bg-emerald-100 text-emerald-700' },
+  ebaonnestus: { text: 'Makse tõrge', cls: 'bg-red-100 text-red-700' },
+  tuhistatud:  { text: 'Makse katkes', cls: 'bg-ink-faint/15 text-ink-muted' },
+}
+
 const FILTERS: { key: VisitRequestStatus | 'all'; label: string }[] = [
   { key: 'uus',        label: 'Uued' },
   { key: 'kinnitatud', label: 'Kinnitatud' },
@@ -127,6 +140,12 @@ export function RequestsInbox() {
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STATUS_STYLE[r.staatus]}`}>
                       {REQUEST_STATUS_LABEL[r.staatus]}
                     </span>
+                    {MAKSE_SILT[r.makse_staatus] && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${MAKSE_SILT[r.makse_staatus]!.cls}`}>
+                        {MAKSE_SILT[r.makse_staatus]!.text}
+                        {r.makse_summa != null && ` ${Number(r.makse_summa).toFixed(2)} €`}
+                      </span>
+                    )}
                   </p>
                   <div className="flex items-center gap-3 flex-wrap mt-1 text-xs text-ink-muted">
                     {/* Clickable: the whole point of the inbox is that somebody
