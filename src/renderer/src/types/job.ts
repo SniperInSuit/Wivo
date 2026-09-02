@@ -299,6 +299,18 @@ export interface Job {
   // --- Extra services added to this job (from settings.lisateenused) ---
   extras: JobExtra[]           // e.g. [{id, nimi, hind}]
   extra_costs: { nimi: string; summa: number }[] // Ad-hoc costs (e.g. root canal, outsourced work)
+  /**
+   * Hand-typed cost per category — what THIS job actually cost (migration 057).
+   * Keys: 'tehnik' | 'disainija' | 'materjal' | 'tarvikud' (see lib/jobCosts).
+   *
+   * A missing key means "compute it from the rate rules"; `0` means somebody
+   * decided this job cost nothing there. The two must stay distinguishable or
+   * an override could never be taken back.
+   *
+   * It does NOT touch pay: the payroll engine reads `worker_rates` and nothing
+   * else, so correcting a job's cost here never rewrites a wage line.
+   */
+  kulu_yle?: Record<string, number> | null
   // --- Pricing / payment ---
   hind: number | null          // Hind — total price in EUR
   disain_hind: number | null   // Disain hind — design fee (own or third-party)

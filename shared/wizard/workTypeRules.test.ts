@@ -134,17 +134,18 @@ describe('jobRules — the whole job', () => {
 })
 
 describe('workTypeRules — identity is the asked-for name, not the resolved one', () => {
-  // resolveWorkType() is a first-match SUBSTRING matcher over a user-edited
-  // list, so a lab type listed after a broader one resolves to the broader one.
-  // The classification that comes back is right; the NAME is not. Everything
-  // that keys state — selectedTeeth, colorMap, WorkItem.too — must therefore
-  // travel on `too`, or step 2 writes to one key while validation reads another
-  // and the wizard can never be completed.
-  const LAB: WorkType[] = [
-    ...DEFAULT_WORK_TYPES,
-    { nimi: 'Zirkoonkroon', hex: '#111111' },
-    { nimi: 'Kroonisild', hex: '#222222' },
-  ]
+  // resolveWorkType() falls back to a SUBSTRING match, so a name the lab has
+  // not configured resolves to whichever configured type it contains. The
+  // classification that comes back is right; the NAME is not. Everything that
+  // keys state — selectedTeeth, colorMap, WorkItem.too — must therefore travel
+  // on `too`, or step 2 writes to one key while validation reads another and
+  // the wizard can never be completed.
+  //
+  // The names below are deliberately NOT in the list: that is the only case
+  // where the two diverge now that an exact match wins outright (that fix is
+  // what makes 'Implantkroon' stop resolving to 'Kroon'). A configured type
+  // resolves to itself, and there is nothing to disagree about.
+  const LAB: WorkType[] = DEFAULT_WORK_TYPES
 
   it('keeps the asked-for string as the state key', () => {
     const r = workTypeRules('Zirkoonkroon', LAB)

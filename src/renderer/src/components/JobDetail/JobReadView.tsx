@@ -9,7 +9,13 @@ import { usePatients } from '../../hooks/usePatients'
 import { usePayments, useDeletePayment, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { PAYMENT_METHOD_LABEL } from '../../types/invoice'
-import { useWorkTypes } from '../../stores/useSettings'
+import { useWorkTypes, useSettings } from '../../stores/useSettings'
+import { useWorkerRates } from '../../hooks/useWorkerPay'
+import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { usePermissions } from '../../hooks/usePermissions'
+import { useUpdateJob } from '../../hooks/useJobs'
+import { jobCosts } from '../../lib/jobCosts'
+import { CostBreakdown } from './CostBreakdown'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
@@ -62,6 +68,26 @@ export function JobReadView({
   const jobPayments = allPayments.filter(p => p.job_id === job.id)
   const { data: allInvoices = [] } = useInvoices()
   const pay = jobPaymentState(job, allPayments, allInvoices)
+
+  // What the job costs the lab. Shown here so the margin can be read without
+  // opening the edit form — it used to exist only inside it.
+  //
+  // Gated on payroll.manage because these lines are people's rates: a worker
+  // who may read jobs must not learn what the bench next to them is paid.
+  const { can } = usePermissions()
+  const { settings } = useSettings()
+  const { data: rates = [] } = useWorkerRates()
+  const { data: staff = [] } = useClinicProfiles()
+  const updateJob = useUpdateJob()
+  const showCosts = can('payroll.manage')
+  const costs = jobCosts({
+    job,
+    rates,
+    workTypes: settings.tooTuubid,
+    materialCosts: settings.materialCosts,
+    materialPrices: settings.materialPrices,
+    workers: staff,
+  })
   const rev: Revision | null = activeRevisionId
     ? revisions.find(r => r.id === activeRevisionId) ?? null
     : null
@@ -386,6 +412,23 @@ export function JobReadView({
               </button>
             )}
           </Card>
+
+          {/* The cost table, the same one the edit form shows — one component,
+              one computation. A revision is deliberately excluded: this is what
+              the JOB cost, and a revision has its own separate figure above. */}
+          {showCosts && !rev && (
+            <CostBreakdown
+              costs={costs}
+              editable
+              dense
+              onOverride={(key, value) => {
+                const next = { ...(job.kulu_yle ?? {}) }
+                if (value == null) delete next[key]
+                else next[key] = value
+                updateJob.mutate({ id: job.id, kulu_yle: next })
+              }}
+            />
+          )}
 
           <Card title="TÖÖ AJALUGU" icon={History}>
             {/* Derived from the timestamps the job already carries — there is no

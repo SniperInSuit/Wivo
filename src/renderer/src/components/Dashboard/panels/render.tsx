@@ -14,11 +14,12 @@ import {
 import {
   Euro, Wallet, Clock, FileWarning, Users, TrendingUp, Timer,
   Repeat, Layers, AlertCircle, Cpu, CheckCircle, Stethoscope, UserPlus, Zap, Percent,
-  Package, CalendarDays, Truck, Smile, Award,
+  Package, CalendarDays, Truck, Smile, Award, HandCoins,
 } from 'lucide-react'
 import { StatTile } from '../../ui/StatTile'
 import { CHART_COLORS, TOOLTIP_STYLE, NAME_AXIS_WIDTH, truncateName } from '../chartTheme'
 import { unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../../lib/periodMetrics'
+import { debtBuckets } from '../../../lib/debtors'
 import type { PanelCtx } from '../useStatsContext'
 import type { PanelId } from './catalogue'
 
@@ -210,6 +211,58 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
       }))} />
     </Block>
   ),
+
+
+  // ── Võlglased ──────────────────────────────────────────────────────────────
+  // All-time, and every one of these says so on screen. A debt does not expire
+  // because the date filter moved.
+  'raha.volglased_kokku': ctx => (
+    <StatTile
+      icon={HandCoins} label="Võlgu kokku" value={eur(ctx.debt.outstanding)}
+      accent={ctx.debt.overdue > 0 ? '#EF4444' : '#F59E0B'}
+      sub={ctx.debt.count === 0
+        ? 'Keegi ei võlgne · kogu aeg'
+        : `${ctx.debt.count} võlglast · üle tähtaja ${eur(ctx.debt.overdue)} · kogu aeg`}
+    />
+  ),
+
+  'raha.volglased': ctx => {
+    const rows = ctx.debt.rows.slice(0, 10)
+    const worst = rows[0]?.outstanding ?? 0
+    return (
+      <Block
+        title="Kes on võlgu"
+        sub={`Kogu aeg · arveldamata ${eur(ctx.debt.uninvoiced)} ei ole üle tähtaja — arvet ei ole saadetud`}
+      >
+        {rows.length === 0
+          ? <Empty>Ükski töö ei ole tasumata.</Empty>
+          : <ShareBars rows={rows.map(r => ({
+              label: `${r.nimi}${r.daysLate > 0 ? ` · ${r.daysLate} p üle` : r.partial ? ' · osaliselt makstud' : ''}`,
+              value: eur(r.outstanding),
+              share: share(r.outstanding, worst),
+              // Red is a claim: it means a bill was sent and its date passed.
+              color: r.overdue > 0 ? '#EF4444' : r.uninvoiced > 0 ? '#94A3B8' : '#F59E0B',
+            }))} />}
+      </Block>
+    )
+  },
+
+  'raha.volg_vanus': ctx => {
+    const buckets = debtBuckets(ctx.debt)
+    const worst = Math.max(...buckets.map(b => b.amount), 1)
+    return (
+      <Block title="Võla vanus" sub="Arve maksetähtajast, mitte töö kuupäevast">
+        {ctx.debt.overdue === 0
+          ? <Empty>Ükski saadetud arve ei ole üle tähtaja.</Empty>
+          : <ShareBars rows={buckets.filter(b => b.amount > 0).map(b => ({
+              label: `${b.label} · ${b.count}`,
+              value: eur(b.amount),
+              share: share(b.amount, worst),
+              color: b.label === '90+ p' ? '#B91C1C' : b.label === '61–90 p' ? '#EF4444' : '#F59E0B',
+            }))} />}
+      </Block>
+    )
+  },
 
   // ── Ühikumajandus ──────────────────────────────────────────────────────────
   'yhik.hind_hamba_kohta': ctx => (

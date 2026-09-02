@@ -28,10 +28,9 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
-import { pickRateFor } from '../../lib/earnings'
-import { jobMaterialCost } from '../../lib/finance'
 import { jobPaymentState } from '../../lib/jobPayments'
-import { workTypeConsumables } from '../../config/workTypes'
+import { jobCosts } from '../../lib/jobCosts'
+import { CostBreakdown } from './CostBreakdown'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
@@ -71,6 +70,7 @@ const EMPTY_FORM: JobInput = {
   work_items: [],
   extras: [],
   extra_costs: [],
+  kulu_yle: {},
   valmis_aeg: '',
   valmis_kuupaev: null,
   kiirtoo: false,
@@ -307,222 +307,63 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 
       {/* ── Cost breakdown — what this job costs the lab ── */}
       {(() => {
-        const allHambad = form.work_items.length > 0
-          ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
-          : (form.hambad ?? '')
-        const effectiveMaterjal = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
-        const costMat = jobMaterialCost(
-          { materjal: effectiveMaterjal, hambad: allHambad, masina: form.masina },
-          settings.materialCosts, settings.materialPrices
-        ) ?? 0
-        const costTeeth = toothCountOf(allHambad)
-        const today = new Date().toISOString().slice(0, 10)
-
-        // Build work items for rate matching. `designed_by` rides along because
-        // the design side of the cost is per item now — see below.
-        const workItems = form.work_items.length > 0
-          ? form.work_items.map(i => ({ too: i.too, hambad: i.hambad, designed_by: i.designed_by }))
-          : [{ too: form.too ?? '', hambad: allHambad, designed_by: undefined }]
-
-        const tId = form.assigned_to
-        const tRates = tId ? allRates.filter(r => r.profile_id === tId) : []
-
-        // What a rush costs the lab, per person — the same number the payslip
-        // uses. Fixed rates only: a percentage rule rides on the job's price,
-        // which already carries the clinic's rush multiplier.
-        const rushOf = (id: string | null | undefined): number =>
-          form.kiirtoo && id ? (costWorkers.find(w => w.id === id)?.kiirtoo_kordaja ?? 1) : 1
-        const rushTag = (m: number) => (m !== 1 ? ` ×${m} kiirtöö` : '')
-        const tRush = rushOf(tId)
-
-        // Sum production rates across all work items
-        type CostLine = { label: string; amount: number }
-        const techLines: CostLine[] = []
-        for (const item of workItems) {
-          const tc = toothCountOf(item.hambad)
-          const rate = tId ? pickRateFor(tRates, item.too, today, settings.tooTuubid, 'too') : null
-          if (rate) {
-            const amt = (rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0) * tRush
-            if (amt > 0) techLines.push({ label: `${item.too}: ${tc} × ${rate.amount} €${rushTag(tRush)}`, amount: amt })
-          }
-        }
-        // The model. Its own scope, so it adds to the production rate rather
-        // than competing with it — printing one is work the technician did.
-        if (form.mudel && tId) {
-          const mRate = pickRateFor(tRates, workItems[0]?.too, today, settings.tooTuubid, 'mudel')
-          if (mRate) {
-            const tc = toothCountOf(allHambad)
-            const amt = (mRate.kind === 'hammas' ? tc * mRate.amount : mRate.kind === 'too' ? mRate.amount : 0) * tRush
-            if (amt > 0) techLines.push({ label: `Mudel: 1 × ${mRate.amount} €${rushTag(tRush)}`, amount: amt })
-          }
-        }
-        // Additive rules (e.g. "igeme disain" per tooth on Allon types)
-        for (const r of tRates) {
-          if (!r.additive || (r.applies_to ?? 'too') !== 'too') continue
-          const covered = workItems.filter(i => {
-            const rt = (r.work_type ?? '').toLowerCase()
-            if (!rt) return true
-            return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
-          })
-          if (covered.length === 0) continue
-          const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
-          const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * tRush
-          if (amt > 0) techLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €${rushTag(tRush)}`, amount: amt })
-        }
-        const tCost = Math.round(techLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
-
-        // Design cost, per work item, because the designers can differ within one
-        // job. Each item's own designer, else the job's — the same fallback the
-        // pay engine uses, so this figure and the payslip agree.
-        const designerOf = (i: { designed_by?: string | null }): string | null =>
-          workItemDesigner(i, form.designed_by)
-        const designerIds = [...new Set(
-          workItems.map(designerOf).filter((id): id is string => !!id)
-        )]
-        // Whose name to put on a line. Only worth saying when the job is split.
-        const designerTag = (id: string): string =>
-          designerIds.length > 1 ? ` (${workerNameOf(id).split(' ')[0] || '?'})` : ''
-        const designLines: CostLine[] = []
-        for (const item of workItems) {
-          const dId = designerOf(item)
-          if (!dId) continue
-          const dRates = allRates.filter(r => r.profile_id === dId)
-          const dRush = rushOf(dId)
-          const tc = toothCountOf(item.hambad)
-          const rate = pickRateFor(dRates, item.too, today, settings.tooTuubid, 'disain')
-          if (rate) {
-            const amt = (rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0) * dRush
-            if (amt > 0) designLines.push({ label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €${rushTag(dRush)}`, amount: amt })
-          }
-        }
-        // Additive design rules — each designer's, over only the items they
-        // designed. A gum-design bonus on the laminates belongs to whoever
-        // designed the laminates.
-        for (const dId of designerIds) {
-          const theirs = workItems.filter(i => designerOf(i) === dId)
-          const dRush = rushOf(dId)
-          for (const r of allRates.filter(r => r.profile_id === dId)) {
-            if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
-            const covered = theirs.filter(i => {
-              const rt = (r.work_type ?? '').toLowerCase()
-              if (!rt) return true
-              return rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim()))
-            })
-            if (covered.length === 0) continue
-            const tc = covered.reduce((s, i) => s + toothCountOf(i.hambad), 0)
-            const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * dRush
-            if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €${rushTag(dRush)}`, amount: amt })
-          }
-        }
-        const dCost = Math.round(designLines.reduce((s, l) => s + l.amount, 0) * 100) / 100
-
-        // Hourly cost from tund/kuu rate (for info)
-        const tHourRate = tId ? tRates.find(r => r.kind === 'tund') : null
-        const tMonthRate = tId ? tRates.find(r => r.kind === 'kuu') : null
-        let tHourlyCost: number | null = null
-        if (tHourRate) {
-          tHourlyCost = tHourRate.amount
-        } else if (tMonthRate && tMonthRate.hours_per_day && tMonthRate.work_days) {
-          const daysPerWeek = tMonthRate.work_days.length
-          const monthlyHours = daysPerWeek * 4.33 * tMonthRate.hours_per_day
-          tHourlyCost = monthlyHours > 0 ? Math.round(tMonthRate.amount / monthlyHours * 100) / 100 : null
-        }
-
-        // Consumables (screws, abutments etc) from work type settings
-        const items = form.work_items.length > 0 ? form.work_items : [{ too: form.too ?? '', hambad: allHambad }]
-        const consumables = items.flatMap(i => {
-          const tc = toothCountOf(i.hambad)
-          return workTypeConsumables(i.too, settings.tooTuubid, tc).items
+        // The maths lives in lib/jobCosts so the read view can show the same
+        // table without opening the form. Do not inline it back here.
+        const costs = jobCosts({
+          job: form,
+          rates: allRates,
+          workTypes: settings.tooTuubid,
+          materialCosts: settings.materialCosts,
+          materialPrices: settings.materialPrices,
+          workers: costWorkers,
         })
-        const consCost = consumables.reduce((s, c) => s + c.summa, 0)
-
-        const adHocCost = (form.extra_costs ?? []).reduce((s, c) => s + (c.summa || 0), 0)
-        const totalCost = Math.round((tCost + dCost + costMat + consCost + adHocCost) * 100) / 100
-        if (totalCost === 0 && !tId && designerIds.length === 0) return null
         return (
-          <div className="bg-bg-sidebar rounded-xl p-3 space-y-1">
-            <p className="text-xs font-semibold text-ink-muted mb-1.5">Omahind (labori kulu)</p>
-            {techLines.map((l, i) => (
-              <div key={`t${i}`} className="flex justify-between text-xs text-ink-muted">
-                <span className="truncate">{techLines.length === 1 ? 'Tehnik' : `Tehnik: ${l.label.split(':')[0]}`}</span>
-                <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} € <span className="text-ink-faint text-[10px]">{l.label.split(':').slice(1).join(':').trim()}</span></span>
-              </div>
-            ))}
-            {tHourlyCost != null && (
-              <div className="flex justify-between text-[10px] text-ink-faint">
-                <span>Tehnik tunnihind</span>
-                <span className="tabular-nums">{tHourlyCost.toFixed(2)} €/h</span>
-              </div>
-            )}
-            {tId && tCost === 0 && !tHourlyCost && (
-              <div className="text-[10px] text-ink-faint">Tehnikul puudub tasureegel</div>
-            )}
-            {designerIds.length > 0 && dCost === 0 && (
-              <div className="text-[10px] text-ink-faint">Disainijal puudub tasureegel</div>
-            )}
-            {designLines.map((l, i) => (
-              <div key={`d${i}`} className="flex justify-between text-xs text-ink-muted">
-                <span className="truncate">{designLines.length === 1 ? 'Disainija' : `Disain: ${l.label.split(':')[0]}`}</span>
-                <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} € <span className="text-ink-faint text-[10px]">{l.label.split(':').slice(1).join(':').trim()}</span></span>
-              </div>
-            ))}
-            {costMat > 0 && (
-              <div className="flex justify-between text-xs text-ink-muted">
-                <span>Materjal</span>
-                <span className="tabular-nums text-ink">{costMat.toFixed(2)} €</span>
-              </div>
-            )}
-            {consumables.map((c, i) => (
-              <div key={i} className="flex justify-between text-xs text-ink-muted">
-                <span>{c.nimi}</span>
-                <span className="tabular-nums text-ink">{c.summa.toFixed(2)} €</span>
-              </div>
-            ))}
-            {/* Ad-hoc extra costs */}
-            {(form.extra_costs ?? []).map((c, i) => (
-              <div key={i} className="flex items-center gap-1 text-xs text-ink-muted">
-                <input type="text" value={c.nimi}
-                  onChange={e => {
-                    const next = [...(form.extra_costs ?? [])]
-                    next[i] = { ...next[i], nimi: e.target.value }
-                    set('extra_costs', next)
-                  }}
-                  placeholder="Kulu nimi"
-                  className="input py-0.5 px-1.5 text-xs flex-1 min-w-0"
-                />
-                <div className="relative w-20">
-                  <input type="number" min="0" step="0.01" value={c.summa || ''}
-                    onChange={e => {
-                      const next = [...(form.extra_costs ?? [])]
-                      next[i] = { ...next[i], summa: parseFloat(e.target.value) || 0 }
-                      set('extra_costs', next)
-                    }}
-                    className="input py-0.5 px-1.5 pr-5 text-xs text-right"
-                  />
-                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
-                </div>
-                <button type="button" onClick={() => set('extra_costs', (form.extra_costs ?? []).filter((_, j) => j !== i))}
-                  className="text-red-400 hover:text-red-500 text-xs px-0.5">×</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => set('extra_costs', [...(form.extra_costs ?? []), { nimi: '', summa: 0 }])}
-              className="text-[10px] text-accent hover:text-accent/80 font-medium">
-              + Lisa kulu
-            </button>
-
-            <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
-              <span className="font-semibold text-ink">Kokku kulu</span>
-              <span className="font-bold text-red-500 tabular-nums">{totalCost.toFixed(2)} €</span>
-            </div>
-            {(form.hind ?? 0) > 0 && (
-              <div className="flex justify-between text-xs">
-                <span className="text-ink-muted">Kate</span>
-                <span className={`font-semibold tabular-nums ${(form.hind ?? 0) - totalCost >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {((form.hind ?? 0) - totalCost).toFixed(2)} € ({totalCost > 0 && (form.hind ?? 0) > 0 ? `${(((form.hind ?? 0) - totalCost) / (form.hind ?? 1) * 100).toFixed(0)}%` : '—'})
-                </span>
-              </div>
-            )}
-          </div>
+          <CostBreakdown
+            costs={costs}
+            editable
+            onOverride={(key, value) => {
+              const next = { ...(form.kulu_yle ?? {}) }
+              // Deleting the key is what "back to the rules" means. Writing 0
+              // instead would be a deliberate zero, which is a different claim.
+              if (value == null) delete next[key]
+              else next[key] = value
+              set('kulu_yle', next)
+            }}
+            extraCostsSlot={
+              <>
+                {(form.extra_costs ?? []).map((c, i) => (
+                  <div key={i} className="flex items-center gap-1 text-xs text-ink-muted">
+                    <input type="text" value={c.nimi}
+                      onChange={e => {
+                        const next = [...(form.extra_costs ?? [])]
+                        next[i] = { ...next[i], nimi: e.target.value }
+                        set('extra_costs', next)
+                      }}
+                      placeholder="Kulu nimi"
+                      className="input py-0.5 px-1.5 text-xs flex-1 min-w-0"
+                    />
+                    <div className="relative w-20">
+                      <input type="number" min="0" step="0.01" value={c.summa || ''}
+                        onChange={e => {
+                          const next = [...(form.extra_costs ?? [])]
+                          next[i] = { ...next[i], summa: parseFloat(e.target.value) || 0 }
+                          set('extra_costs', next)
+                        }}
+                        className="input py-0.5 px-1.5 pr-5 text-xs text-right"
+                      />
+                      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
+                    </div>
+                    <button type="button" onClick={() => set('extra_costs', (form.extra_costs ?? []).filter((_, j) => j !== i))}
+                      className="text-red-400 hover:text-red-500 text-xs px-0.5">×</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set('extra_costs', [...(form.extra_costs ?? []), { nimi: '', summa: 0 }])}
+                  className="text-[10px] text-accent hover:text-accent/80 font-medium">
+                  + Lisa kulu
+                </button>
+              </>
+            }
+          />
         )
       })()}
 
@@ -685,6 +526,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         // in the form. They survived in the DB only until the next edit added
         // one — then the save wrote a one-item list over the lot.
         extra_costs: Array.isArray(job.extra_costs) ? job.extra_costs.map(c => ({ ...c })) : [],
+        // Copied, never shared: editing the form must not mutate the cached row.
+        kulu_yle: { ...(job.kulu_yle ?? {}) },
         valmis_aeg: toLocalInput(job.valmis_aeg),
         valmis_kuupaev: job.valmis_kuupaev ?? null,
         kiirtoo: job.kiirtoo ?? false,

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes, Download } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes, Download, HandCoins, Wallet } from 'lucide-react'
 import {
   format, isPast, parseISO,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isWithinInterval
@@ -19,10 +19,30 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { exportCsv, jobColumns } from '../../lib/exports'
 import { toDate, fmtDate } from '../../lib/dates'
 import { jobTotalValue } from '../../lib/jobPayments'
+import { debtors, type DebtorRow } from '../../lib/debtors'
 
 type SortKey = keyof Job | null
 type SortDir = 'asc' | 'desc'
 type PeriodFilter = 'all' | 'week' | 'month' | 'last_month'
+
+/**
+ * The money filter. Four states, and each answers a question somebody actually
+ * asks: what is still owed, who has half-paid, what is LATE, what is done.
+ *
+ * "Üle tähtaja" is deliberately narrower than "tasumata": it means a bill was
+ * sent and its date has passed. Uninvoiced work is unpaid, but nobody was ever
+ * asked for the money, so calling it late would be a false accusation — the
+ * same line `lib/debtors.ts` draws.
+ */
+type PayFilter = 'all' | 'unpaid' | 'partial' | 'overdue' | 'settled'
+
+const PAY_OPTIONS: { key: PayFilter; label: string }[] = [
+  { key: 'all',      label: 'Kõik maksed' },
+  { key: 'unpaid',   label: 'Tasumata' },
+  { key: 'partial',  label: 'Osaliselt makstud' },
+  { key: 'overdue',  label: 'Üle tähtaja' },
+  { key: 'settled',  label: 'Makstud' },
+]
 
 const PERIOD_OPTIONS: { key: PeriodFilter; label: string }[] = [
   { key: 'all',        label: 'Kõik kuupäevad' },
@@ -75,6 +95,10 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   // and "allonx ülemine" as four unrelated filters and picking one silently hid
   // the other three. Empty set means no filter.
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set())
+  const [payFilter, setPayFilter] = useState<PayFilter>('all')
+  // A debtor KEY from lib/debtors — 'klient:<id>' or 'patsient:<name>' — not a
+  // name. Two patients can share a name; a key cannot collide with the other.
+  const [debtorFilter, setDebtorFilter] = useState<Set<string>>(new Set())
   const [sortKey, setSortKey] = useState<SortKey>('valmis_aeg')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -87,6 +111,27 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     else { setSortKey(key); setSortDir('asc') }
   }
 
+  /**
+   * Who owes what, over EVERY job rather than the filtered set. The list in the
+   * menu must not shrink as you use it: filtering to one debtor and then seeing
+   * only that debtor offered is a menu you cannot get back out of.
+   */
+  const debt = useMemo(
+    () => debtors({
+      jobs, payments: allPayments, invoices: allInvoices,
+      today: format(new Date(), 'yyyy-MM-dd'),
+      customers,
+    }),
+    [jobs, allPayments, allInvoices, customers],
+  )
+
+  /** Job id → its debtor row, so a row can be filtered without recomputing. */
+  const debtorOfJob = useMemo(() => {
+    const m = new Map<string, DebtorRow>()
+    for (const r of debt.rows) for (const id of r.jobIds) m.set(id, r)
+    return m
+  }, [debt])
+
   const filtered = useMemo(() => {
     let result = [...jobs]
     if (search.trim()) {
@@ -98,6 +143,21 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       )
     }
     if (stageFilter !== 'all') result = result.filter(j => j.status === stageFilter)
+    if (payFilter !== 'all') {
+      result = result.filter(j => {
+        const pay = jobPaymentState(j, allPayments, allInvoices)
+        if (payFilter === 'settled') return pay.settled
+        if (payFilter === 'partial') return pay.partial
+        if (payFilter === 'unpaid')  return !pay.settled
+        // 'overdue': unpaid AND on a bill whose date has passed. `debtorOfJob`
+        // only holds jobs with money against them, so absence answers it.
+        return (debtorOfJob.get(j.id)?.overdue ?? 0) > 0
+      })
+    }
+    if (debtorFilter.size) result = result.filter(j => {
+      const d = debtorOfJob.get(j.id)
+      return !!d && debtorFilter.has(d.key)
+    })
     if (workTypeFilter.size) result = result.filter(j => workTypeFilter.has(wt.resolve(j.too).nimi))
     if (periodFilter !== 'all') {
       const now = new Date()
@@ -131,7 +191,8 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       })
     }
     return result
-  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, sortKey, sortDir, stages, wt])
+  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, payFilter, debtorFilter,
+      debtorOfJob, allPayments, allInvoices, sortKey, sortDir, stages, wt])
 
   // The work types actually on screen, grouped the way Seaded defines them, with
   // the row count and colour each one carries elsewhere in the app.
@@ -151,12 +212,43 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     }
   }, [jobs, wt])
 
-  const hasFilters = stageFilter !== 'all' || periodFilter !== 'all' || workTypeFilter.size > 0 || !!search.trim()
+  /**
+   * The menu takes plain strings, and the debt rollup is keyed. This maps
+   * between them, and the label carries the number so the menu itself is the
+   * report: "Hambakliinik OÜ — 420 € · 12 p üle".
+   */
+  const debtorLabels = useMemo(() => {
+    const names: string[] = []
+    const keyOf: Record<string, string> = {}
+    const counts: Record<string, number> = {}
+    const swatches: Record<string, string> = {}
+    for (const r of debt.rows) {
+      const late = r.daysLate > 0 ? ` · ${r.daysLate} p üle` : r.partial ? ' · osaliselt' : ''
+      const label = `${r.nimi} — ${r.outstanding.toFixed(2)} €${late}`
+      names.push(label)
+      keyOf[label] = r.key
+      counts[label] = r.jobs
+      // Red only when a bill was sent and its date passed; grey when we never
+      // invoiced it at all. The colour is a claim, so it has to be earned.
+      swatches[label] = r.overdue > 0 ? '#EF4444' : r.uninvoiced > 0 ? '#94A3B8' : '#F59E0B'
+    }
+    return { names, keyOf, counts, swatches }
+  }, [debt])
+
+  const debtorLabelSelection = useMemo(
+    () => new Set(debtorLabels.names.filter(n => debtorFilter.has(debtorLabels.keyOf[n]))),
+    [debtorLabels, debtorFilter],
+  )
+
+  const hasFilters = stageFilter !== 'all' || periodFilter !== 'all' || workTypeFilter.size > 0
+    || payFilter !== 'all' || debtorFilter.size > 0 || !!search.trim()
 
   function clearFilters() {
     setStageFilter('all')
     setPeriodFilter('all')
     setWorkTypeFilter(new Set())
+    setPayFilter('all')
+    setDebtorFilter(new Set())
     onSearchChange('')
   }
 
@@ -321,6 +413,30 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             counts={workTypeOptions.counts}
             selected={workTypeFilter}
             onChange={setWorkTypeFilter}
+          />
+        )}
+
+        <SelectMenu
+          icon={Wallet}
+          value={payFilter}
+          options={PAY_OPTIONS}
+          onChange={setPayFilter}
+        />
+
+        {/* The debtor list. Only appears when somebody owes something — an empty
+            menu is a button that does nothing. The amount is IN the option
+            label, so "kes kui palju võlgu on" is answered without picking one. */}
+        {debt.rows.length > 0 && (
+          <MultiFilterMenu
+            label={`Võlglane${debt.outstanding > 0 ? ` · ${debt.outstanding.toFixed(0)} €` : ''}`}
+            icon={HandCoins}
+            options={debtorLabels.names}
+            counts={debtorLabels.counts}
+            swatches={debtorLabels.swatches}
+            selected={debtorLabelSelection}
+            onChange={next => setDebtorFilter(new Set(
+              [...next].map(label => debtorLabels.keyOf[label]).filter(Boolean),
+            ))}
           />
         )}
 
@@ -639,22 +755,31 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                     {job.hind != null ? `${job.hind.toFixed(2)} €` : <span className="text-ink-faint">—</span>}
                   </td>
 
-                  {/* Makstud */}
+                  {/* Makstud — with the AMOUNT, because "osaliselt" on its own
+                      does not answer "kui palju ta maksnud on". */}
                   <td className="px-4 py-3">
                     {(() => {
                       const pay = jobPaymentState(job, allPayments, allInvoices)
+                      const late = (debtorOfJob.get(job.id)?.overdue ?? 0) > 0
                       if (pay.settled) return (
                         <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
                           <Check size={10} /> Jah
                         </span>
                       )
                       if (pay.partial) return (
-                        <span className="inline-flex items-center gap-1 text-xs text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full font-medium">
-                          Osaliselt
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1 text-xs text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full font-medium w-fit">
+                            {pay.paid.toFixed(2)} € / {pay.total.toFixed(2)} €
+                          </span>
+                          <span className="text-[10px] text-orange-600 tabular-nums">
+                            jääk {pay.outstanding.toFixed(2)} €
+                          </span>
+                        </div>
                       )
                       return job.hind ? (
-                        <span className="text-xs text-red-500 font-medium">Ei</span>
+                        <span className={`text-xs font-medium ${late ? 'text-red-600' : 'text-red-500'}`}>
+                          Ei{late ? ` · ${debtorOfJob.get(job.id)?.daysLate} p üle` : ''}
+                        </span>
                       ) : (
                         <span className="text-ink-faint text-xs">—</span>
                       )
@@ -719,10 +844,27 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
         {/* Footer count */}
         {filtered.length > 0 && (
-          <div className="px-5 py-3 text-xs text-ink-faint border-t border-ink-faint/10">
-            {filtered.length} töö{filtered.length !== 1 ? 'd' : ''}
-            {hasFilters ? ` (filtreeritud ${jobs.length}-st)` : ''}
-            {selected.size > 0 && ` · ${selected.size} valitud`}
+          <div className="px-5 py-3 text-xs text-ink-faint border-t border-ink-faint/10 flex items-center gap-3 flex-wrap">
+            <span>
+              {filtered.length} töö{filtered.length !== 1 ? 'd' : ''}
+              {hasFilters ? ` (filtreeritud ${jobs.length}-st)` : ''}
+              {selected.size > 0 && ` · ${selected.size} valitud`}
+            </span>
+            {/* What is ON SCREEN is owed. Sums the same rows the CSV exports,
+                so the footer and the export can never disagree. */}
+            {(() => {
+              const rows = filtered.map(j => jobPaymentState(j, allPayments, allInvoices))
+              const owed = rows.reduce((s, p) => s + p.outstanding, 0)
+              const paid = rows.reduce((s, p) => s + Math.min(p.paid, p.total), 0)
+              if (owed <= 0.005 && paid <= 0.005) return null
+              return (
+                <span className="ml-auto tabular-nums">
+                  Laekunud <span className="text-emerald-600 font-semibold">{paid.toFixed(2)} €</span>
+                  {' · '}
+                  Tasumata <span className={owed > 0 ? 'text-red-500 font-semibold' : ''}>{owed.toFixed(2)} €</span>
+                </span>
+              )
+            })()}
           </div>
         )}
       </div>

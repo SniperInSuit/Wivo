@@ -40,6 +40,7 @@ import {
   type TurnaroundStats, type OnTimeStats, type DeliveryStats, type WeekdayLoad,
 } from '../../lib/throughput'
 import { customerStats, type CustomerStats } from '../../lib/customerStats'
+import { debtors, EMPTY_DEBTORS, type DebtorStats } from '../../lib/debtors'
 import { funFacts, type FunFacts } from '../../lib/funFacts'
 import type { PermissionKey } from '../../hooks/usePermissions'
 
@@ -51,7 +52,7 @@ import type { PermissionKey } from '../../hooks/usePermissions'
  * should not pay for it. Each slice is computed the same way whether one panel
  * or ten asked for it — this decides only WHETHER, never HOW.
  */
-export type PanelNeed = 'finance' | 'invoices' | 'unit' | 'flow' | 'customers' | 'fun'
+export type PanelNeed = 'finance' | 'invoices' | 'unit' | 'flow' | 'customers' | 'fun' | 'debtors'
 
 export interface PanelCtx {
   // ── Scope. Every panel that shows a total should be able to name its window.
@@ -74,6 +75,13 @@ export interface PanelCtx {
   delivery: DeliveryStats
   weekdays: WeekdayLoad[]
   customers: CustomerStats
+  /**
+   * Who owes what, ALL-TIME rather than for the selected period. A debt does
+   * not stop existing because the date filter moved: a bill from March is
+   * still owed in September, and a "võlglased" panel that emptied itself when
+   * you looked at this week would be worse than no panel.
+   */
+  debt: DebtorStats
   /** All-time curiosities. Every one prints its own scope. */
   fun: FunFacts
 
@@ -238,6 +246,13 @@ export function useStatsContext(
     [needs, jobsInPeriod, jobs, invoices, customers, range, today],
   )
 
+  const debt = useMemo(
+    () => (needs.has('debtors')
+      ? debtors({ jobs, payments, invoices, today, customers })
+      : EMPTY_DEBTORS),
+    [needs, jobs, payments, invoices, today, customers],
+  )
+
   // All-time by design: "how many teeth have we made" is a career total. Every
   // panel that shows one prints "kogu aeg" beside it.
   const fun = useMemo(
@@ -261,6 +276,7 @@ export function useStatsContext(
     delivery: flow.delivery,
     weekdays: flow.weekdays,
     customers: customerRollup,
+    debt,
     fun,
     settings,
     wt,

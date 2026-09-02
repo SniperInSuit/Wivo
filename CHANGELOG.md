@@ -1,5 +1,68 @@
 # Changelog
 
+## [1.61.0] — 2026-09-02
+
+**Omahind ilma vormi avamata, käsitsi parandatav — ja võlglaste nimekiri**
+
+**Kulude tabel (`lib/jobCosts.ts`, `JobDetail/CostBreakdown.tsx`)**
+- Omahinna arvutus kolis vormist välja omaenda faili. Ta oli `JobDetailPanel`
+  sees, mis tähendas, et **numbrit sai näha ainult „Muuda" all** — kate oli
+  olemas ainult siis, kui sa vormi lahti tegid ja loodetavasti salvestamata
+  sulgesid
+- Sama komponent renderdab nüüd nii vormis kui lugemisvaates. Üks arvutus, üks
+  tulemus: kaks ekraani ei saa sama töö kohta erinevat kulu näidata
+- Lugemisvaates on tabel `payroll.manage` taga. Read on inimeste tasumäärad, ja
+  töö vaatamise õigus ei tohi tähendada kõrvallaua palga nägemist
+- 12 testi kaetud: mudeli rida, kiirtöö kordaja inimese kaupa, kahe disainija
+  jagatud töö
+
+**Kulu saab käsitsi üle kirjutada (`sql/057`, `jobs.kulu_yle`)**
+- Pliiats iga kulukategooria taga. „See töö oli teistsugune, tehniku osa oli 25,
+  mitte 15" — nüüd saab seda öelda tagantjärele
+- **Ülekirjutus elab töö peal, mitte tasureeglis.** Reegli muutmine kirjutaks
+  ümber kõigi tööde omahinna ja tagantjärele ka juba välja makstud palgaread;
+  üks erand parandaks terve ajaloo valeks
+- **Palgaarvestust see ei puuduta.** Palk loeb `worker_rates` reegleid ja ei
+  midagi muud. Siia kirjutatud 25 ei liigu kellegi töötasule
+- Võtme puudumine = arvuta reeglitest. `0` = teadlik null. Neid ei aeta segamini,
+  muidu ei saaks ülekirjutust kunagi tagasi võtta — „reegel" nupp võtab
+- Reegli arvutatud summa jääb ekraanile läbikriipsutatult nähtavale, koos
+  „käsitsi" sildiga. Number, mille keegi käsitsi pani, peab ka niimoodi välja
+  nägema
+
+**Võlglaste aruanne (`lib/debtors.ts`)**
+- **Kolm võlaliiki, tahtlikult eraldi:** üle tähtaja (arve on saadetud ja
+  kuupäev möödas), tähtaeg ees, ja **arveldamata** (arvet ei olegi)
+- Arveldamata töö **ei ole üle tähtaja**. See on meie tegemata jätmine, mitte
+  kliendi hilinemine, ja punase sildi panemine oleks vale süüdistus
+- Tühistatud arve saadab töö tagasi „arveldamata" hulka: tühistatud arve ei ole
+  arve, aga töö eest ollakse ikka võlgu
+- Ehitatud `jobPaymentState` peale, mitte arvete summade peale. Labor on võlgu
+  **töö eest** — osa sellest on arvel, osa üle antud ja arveta, ja mõnel arvel
+  on mitu tööd ainult osaliselt makstud
+- Kolm uut paneeli Statistikasse: „Võlgu kokku", „Kes on võlgu", „Võla vanus".
+  Kõik **kogu aja peale** ja ütlevad seda ekraanil: märtsi arve on septembris
+  ikka võlgu, ja nimekiri, mis kuupäevafiltriga tühjaks läheb, ei ole nimekiri,
+  mida saab usaldada
+- 13 testi
+
+**Tabeli leht**
+- **„Maksed"** filter: tasumata / osaliselt / üle tähtaja / makstud
+- **„Võlglane"** filter, kus summa on juba valikus kirjas — „Hambakliinik OÜ —
+  420 € · 12 p üle". Menüü ise on aruanne, valimata jätmisega ka
+- Makstud-veerg näitab **summat**: „40.00 € / 100.00 €" ja jääk. „Osaliselt" ei
+  vastanud küsimusele „kui palju ta maksnud on"
+- Jalus liidab, mis ekraanil on: laekunud ja tasumata. Samad read, mis CSV
+  ekspordib, nii et need kaks ei saa lahku minna
+
+**Muud**
+- `sql/056_fix_cron_key.sql` — cron'i teenusevõtme parandus. **Jooksutamata.**
+  Sellest sõltub tunnine automaatne saatmine
+- Kolm ammust punast testi `workTypeRules.test.ts`-is parandatud. Katki ei olnud
+  kood vaid ootus: `21b7834` tegi täpse nimevaste ülimuslikuks (see on see, mis
+  hoiab „Implantkroon" „Kroon"-ist eraldi), ja fikstuur ootas endist käitumist.
+  Repo on nüüd üleni roheline (514 testi)
+
 ## [1.60.1] — 2026-09-02
 
 **Cron ütles „succeeded" ja ükski arve ei liikunud**

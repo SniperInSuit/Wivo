@@ -40,14 +40,26 @@ create extension if not exists pg_cron  with schema extensions;
 create extension if not exists pg_net   with schema extensions;
 
 -- Võti Vaulti. Korduval jooksutamisel uuendab olemasolevat, ei tekita teist.
+--
+-- KEELDUB VALJULT, kui kohatäide on asendamata. Esimesel korral ei keeldunud, ja
+-- tulemus oli vaikne 401 igal tunnil läbi öö — halvem kui vigane SQL, mille
+-- redaktor kohe punaseks värvib. Iga teenusevõti algab 'eyJ'. Vt sql/056.
 do $$
-declare v_id uuid;
+declare
+  v_key text := '<SERVICE_ROLE_KEY>';
+  v_id  uuid;
 begin
+  if v_key !~ '^eyJ' then
+    raise exception
+      'Võti on asendamata või vale kujuga. Iga teenusevõti algab "eyJ". '
+      'Praegune algus: %', left(v_key, 12);
+  end if;
+
   select id into v_id from vault.secrets where name = 'wivo_service_role_key';
   if v_id is null then
-    perform vault.create_secret('<SERVICE_ROLE_KEY>', 'wivo_service_role_key');
+    perform vault.create_secret(v_key, 'wivo_service_role_key');
   else
-    perform vault.update_secret(v_id, '<SERVICE_ROLE_KEY>');
+    perform vault.update_secret(v_id, v_key);
   end if;
 end $$;
 

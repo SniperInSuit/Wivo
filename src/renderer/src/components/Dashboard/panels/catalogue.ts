@@ -115,6 +115,26 @@ export const PANEL_CATALOGUE = [
     hint: 'Ümbertegemise netokahju põhjuse kaupa', perm: 'payments.read', needs: ['finance'],
   },
 
+  // ── Võlglased ──────────────────────────────────────────────────────────────
+  // All-time, not period-scoped, and each panel says so. A March bill is still
+  // owed in September; a debt list that emptied itself with the date filter
+  // would be a chasing list you cannot trust.
+  {
+    id: 'raha.volglased_kokku', title: 'Võlglased kokku', group: 'raha', defaultSize: [1, 1],
+    hint: 'Tasumata tööde väärtus kogu aja peale, ja kui palju sellest on üle tähtaja',
+    perm: 'payments.read', needs: ['debtors'],
+  },
+  {
+    id: 'raha.volglased', title: 'Kes on võlgu', group: 'raha', defaultSize: [2, 2],
+    hint: 'Klient või patsient, tasumata summa ja mitu päeva üle tähtaja',
+    perm: 'payments.read', needs: ['debtors'],
+  },
+  {
+    id: 'raha.volg_vanus', title: 'Võla vanus', group: 'raha', defaultSize: [2, 2],
+    hint: 'Üle tähtaja summad vanuse kaupa — arve maksetähtajast, mitte tänasest',
+    perm: 'payments.read', needs: ['debtors'],
+  },
+
   // ── Ühikumajandus ──────────────────────────────────────────────────────────
   {
     id: 'yhik.hind_hamba_kohta', title: 'Hind hamba kohta', group: 'yhik', defaultSize: [1, 1],
