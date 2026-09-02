@@ -27,8 +27,7 @@ import { preflight, corsHeaders } from '../_shared/cors.ts'
 import { ok, fail, failWith, ERRORS } from '../_shared/respond.ts'
 import { ipKey, take } from '../_shared/ratelimit.ts'
 import {
-  clinicBySlug, publicServicesOf,
-  insertVisitRequest, recentRequestCount, acceptsRequests,
+  clinicBySlug, publicServicesOf, insertVisitRequest, recentRequestCount,
 } from '../_shared/settings.ts'
 import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
 import {
@@ -96,10 +95,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const slug = (url.searchParams.get('clinic') ?? '').trim()
       const clinic = slug ? await clinicBySlug(slug) : null
       if (!clinic) return fail(404, ERRORS.UNKNOWN_CLINIC, cors)
-
-      if (!(await acceptsRequests(clinic.id))) {
-        return fail(403, ERRORS.REQUESTS_CLOSED, cors)
-      }
 
       let body: VisitRequestInput
       try {

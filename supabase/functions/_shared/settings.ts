@@ -108,15 +108,17 @@ export async function recentRequestCount(clinicId: string, ipHash: string): Prom
   return count ?? 0
 }
 
-/** Does this clinic accept requests from its website at all? */
-export async function acceptsRequests(clinicId: string): Promise<boolean> {
-  const { data, error } = await admin()
-    .from('clinic_settings')
-    .select('public_services')
-    .eq('clinic_id', clinicId)
-    .maybeSingle()
-  if (error || !data) return false
-  // A clinic with nothing published has not set the public side up, and a form
-  // that posts into a mailbox nobody has opened is worse than no form.
-  return Array.isArray(data.public_services) && data.public_services.length > 0
-}
+/**
+ * (removed) `acceptsRequests` used to require a PUBLISHED PRICE LIST before a
+ * request could be sent. That conflated two unrelated decisions: publishing
+ * prices, and being willing to take an appointment request. A clinic that wants
+ * the form without a public price list would have met a 403 it could not
+ * explain, on a form that looked completely fine.
+ *
+ * What actually gates this surface, and is enough:
+ *   1. `clinics.public_slug` — set by hand in Seaded. No slug, no address, and
+ *      `clinicBySlug` answers 404.
+ *   2. `PUBLIC_BOOKING_ORIGINS` — the browser cannot even reach the route from
+ *      a page the owner has not listed.
+ * Both are deliberate acts by the owner. That is the opt-in.
+ */

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="et">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wivo broneerimisvorm — proovileht</title>
+  <!--
+    KOHALIK PROOVILEHT. Ei kuulu kellegi kodulehele.
+
+    Kasutamine:
+      cd web/embed
+      npx serve .            (või mis tahes staatiline server)
+      ava http://localhost:3000/test.html
+
+    Ava see PÄRIS pordilt, mitte file:// pealt — file:// saadab Origin: null,
+    mille CORS allowlist õigustatult tagasi lükkab, ja siis paistab katki asi,
+    mis tegelikult töötab.
+
+    Lisa see aadress ka allowlisti:
+      supabase secrets set PUBLIC_BOOKING_ORIGINS="http://localhost:3000,https://<pärisleht>"
+  -->
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+           margin: 0; padding: 2rem; background: #f6f8fa; color: #1b2733; }
+    .page { max-width: 720px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 16px; padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 1.5rem; }
+    code { background: #eef2f6; padding: .1rem .3rem; border-radius: 4px; font-size: .85em; }
+    h1 { font-size: 1.3rem; }
+    .note { font-size: .85rem; color: #64748b; line-height: 1.5; }
+    /* Teeming: the widget reads these, so a clinic can match its own site
+       without editing wivo-booking.js. */
+    .teemitud .wv { --wv-accent: #7c3aed; --wv-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Wivo broneerimisvorm — proovileht</h1>
+
+    <div class="card">
+      <div id="wivo-broneering"></div>
+    </div>
+
+    <div class="card note">
+      <p><strong>Mida siin kontrollida:</strong></p>
+      <ol>
+        <li>Teenuste valik ilmub — kui ei ilmu, töötab vorm ikka (see on tahtlik).</li>
+        <li>Tühja nimega saatmine annab vea, ilma serverisse minemata.</li>
+        <li>Saada üks taotlus → Wivos „Taotlused" all peab tekkima rida.</li>
+        <li>Vajuta saatmist kaks korda järjest → Wivos peab olema <strong>üks</strong> rida.
+            See on idempotentsusvõti, mis tekib lehe avamisel.</li>
+        <li>Kirjuta sõnumisse üle 300 tähemärgi → väli ise ei lase.</li>
+        <li>Kuues taotlus tunni jooksul → <code>RATE_LIMITED</code>.</li>
+      </ol>
+      <p>Kujundus käib CSS-muutujatega — allpool sama vorm lilla ja teravate nurkadega,
+         faili ennast puutumata.</p>
+    </div>
+
+    <div class="card teemitud">
+      <div id="wivo-teemitud"></div>
+    </div>
+  </div>
+
+  <!-- ⚠ ASENDA <ref> ja <slug> omadega. -->
+  <script
+    src="./wivo-booking.js"
+    data-wivo-base="https://wrtucsfmpbwekugzzzxw.functions.supabase.co/public-booking"
+    data-wivo-clinic="<slug>"
+    data-wivo-target="#wivo-broneering"></script>
+
+  <script
+    src="./wivo-booking.js"
+    data-wivo-base="https://wrtucsfmpbwekugzzzxw.functions.supabase.co/public-booking"
+    data-wivo-clinic="<slug>"
+    data-wivo-target="#wivo-teemitud"
+    data-wivo-title="Broneeri aeg"></script>
+</body>
+</html>

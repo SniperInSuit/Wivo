@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.65.0] — 2026-09-02
+
+**Broneerimisvorm kliiniku kodulehele — B4**
+
+`web/embed/wivo-booking.js`. Üks `<script>`, mille saab panna Framerisse,
+WordPressi, Wixi või käsitsi tehtud HTML-i. Ehitusetappi ei ole, sõltuvusi ei
+ole — fail, mille sisse tuleb `npm install`, ei jõua kunagi kellegi kodulehele.
+
+- **Vorm ei arvuta mitte midagi.** Hinnad tulevad serverist juba vormindatud
+  tekstina (`hind.tekst`); vormindamine kahes kohas tähendab kaht hinda
+- **Ega ei valideeri.** Kontrollib ainult, kas väli on tühi (see on
+  kasutajamugavus) — kõik muu on serveri vastus, kuvatuna sõna-sõnalt. Siin ei
+  ole reeglit, mis saaks serveri omast lahku minna
+- **Kolm varuastet:** hinnakiri ei laadi → vorm ilmub ilma valikuta, vaikselt;
+  saatmine aegub → **ei korda automaatselt**; inimene vajutab uuesti → sama
+  idempotentsusvõti, mis tekkis lehe **avamisel**, nii et server hoiab ühe rea
+- Honeypot on ekraanilt väljas, mitte `display:none` — mõni bot jätab
+  peidetu vahele
+- Sõnumiväli 300 tähemärki, loendur, ja tekst „palun ära kirjuta terviseandmeid"
+- Kujundus CSS-muutujatega, faili puutumata. Kirjatüüp päritakse lehelt
+- `test.html` — kohalik proovileht koos kontrollnimekirjaga
+- `README.md` — neli sammu deploy'ni, ja mis iga veateade tähendab
+
+**Eemaldatud: hinnakirja nõue taotluse saatmiseks**
+
+`acceptsRequests` nõudis avaldatud hinnakirja, enne kui taotlust sai saata. See
+ajas kokku kaks eri otsust — hindade avaldamine ja valmisolek taotlust vastu
+võtta. Kliinik, kes tahab vormi ilma avaliku hinnakirjata, oleks saanud 403,
+mida ta ei oskaks seletada, vormil mis näeb täiesti korras välja.
+
+Pinda piirab endiselt kaks asja, ja need on mõlemad omaniku teadlik tegu:
+`clinics.public_slug` (ilma selleta 404) ja `PUBLIC_BOOKING_ORIGINS` (ilma
+selleta ei jõua brauser kohale).
+
 ## [1.64.1] — 2026-09-02
 
 **Mudeli tasureeglit ei saanud üldse salvestada**

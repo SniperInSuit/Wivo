@@ -62,11 +62,6 @@ export const ERRORS = {
     et: 'Sellist teenust ei ole.',
     en: 'No such service.',
   },
-  REQUESTS_CLOSED: {
-    code: 'REQUESTS_CLOSED',
-    et: 'Veebivormiga broneerimine ei ole praegu avatud. Helista meile.',
-    en: 'Online requests are closed. Please call us.',
-  },
 } as const satisfies Record<string, ErrorBody>
 
 /**
