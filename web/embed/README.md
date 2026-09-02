@@ -35,11 +35,26 @@ vastab 404-ga. Wivo teeb slugi kirjutamisel ise korrektseks (`slugify`).
 kirjutab päris kliiniku postkasti, ja brauseri päritolukontroll on üks väheseid
 asju, mis seisab selle ja iga interneti lehe vahel.
 
+**macOS / Linux / Git Bash:**
+
 ```bash
 supabase secrets set \
   PUBLIC_BOOKING_ORIGINS="https://minukliinik.ee,https://www.minukliinik.ee,http://localhost:3000" \
   IP_HASH_PEPPER="$(openssl rand -hex 32)"
 ```
+
+**Windows PowerShell** — seal ei tööta `&&`, reamurdmine `\` ega `openssl`:
+
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$pepper = ($bytes | ForEach-Object { $_.ToString('x2') }) -join ''
+
+supabase secrets set PUBLIC_BOOKING_ORIGINS="https://minukliinik.ee,https://www.minukliinik.ee,http://localhost:3000" IP_HASH_PEPPER="$pepper"
+```
+
+`Get-Random` siin ei kõlba — pepper peab olema krüptograafiliselt juhuslik,
+sest tema ülesanne on takistada IP räsi tagasi arvutamist.
 
 `www` ja ilma on brauseri jaoks **kaks eri päritolu** — kui leht töötab mõlemat
 pidi, peavad mõlemad nimekirjas olema. `localhost:3000` on proovilehe jaoks;
@@ -164,6 +179,12 @@ välist fonti ega teeki.
 cd web/embed
 npx serve .
 # ava http://localhost:3000/test.html
+```
+
+PowerShellis on `&&` asemel `;`:
+
+```powershell
+cd web/embed; npx serve .
 ```
 
 Ava **päris pordilt, mitte `file://` pealt**. `file://` saadab `Origin: null`,
@@ -327,7 +348,10 @@ taotlus tuleb ikka kohale — nii saab kogu voo läbi mängida enne, kui raha
 
 4. **Proovi kohalikult:**
    ```bash
-   cd web/embed && npx serve .
+   cd web/embed && npx serve .     # bash
+   ```
+   ```powershell
+   cd web/embed; npx serve .       # PowerShell
    ```
    Ava `http://localhost:3000/test.html`, pane sinna oma slug.
 
