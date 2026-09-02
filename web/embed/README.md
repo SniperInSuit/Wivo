@@ -79,6 +79,26 @@ Ootus: `{"ok":true,"data":{"clinic":{...},"services":[...]}}`.
 
 ## Lehele panemine
 
+**Lihtsaim viis — lase kood genereerida.** Nii ei jää ühtki kohatäidet
+asendamata ja tunnuse kirjaviga avastatakse kohe, mitte katkise vormina lehel:
+
+```bash
+node web/embed/build-embed.mjs --clinic fullgevity --title "Broneeri aeg" > paste-me.html
+```
+
+Ava `paste-me.html`, vali kõik, kopeeri, ja kleebi kodulehe **HTML-plokki**
+(Framer: Embed; WordPress: Custom HTML; Wix: Embed HTML code). Sees on nii vorm
+kui seadistus — midagi muuta ei ole vaja.
+
+Kui saad faili üles laadida, on parem `--src`, sest siis ei pea vidina
+uuenedes uuesti kleepima:
+
+```bash
+node web/embed/build-embed.mjs --clinic fullgevity   --src "https://minukliinik.ee/wivo-booking.js" > paste-me.html
+```
+
+Käsitsi kirjutades näeb see välja nii:
+
 ```html
 <div id="wivo-broneering"></div>
 <script

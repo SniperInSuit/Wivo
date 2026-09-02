@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.74.0] — 2026-09-02
+
+**`build-embed.mjs` — valmis kleebitav plokk, ilma kohatäideteta**
+
+```bash
+node web/embed/build-embed.mjs --clinic fullgevity --title "Broneeri aeg" > paste-me.html
+```
+
+Vidin ja seadistus ühes failis, kliiniku oma väärtused juba sees. Ava, vali kõik,
+kleebi kodulehe HTML-plokki.
+
+- **Miks mitte „kopeeri fail ja muuda kaks rida":** need kaks rida on
+  `data-wivo-base` ja `data-wivo-clinic`, ja kumbki valesti annab vormi, mis
+  renderdub ja siis vaikselt ei tööta — see näeb välja nagu katkine vidin, mitte
+  nagu vale seade
+- **Tunnuse kirjaviga püütakse kinni enne**, mitte kodulehel: ainult väiketähed,
+  numbrid ja sidekriipsud
+- `--src` variant neile, kes saavad faili üles laadida — siis ei pea vidina
+  uuenedes uuesti kleepima
+
 ## [1.73.1] — 2026-09-02
 
 **`bookingDuration` kolis `publicQuote.ts`-i**
