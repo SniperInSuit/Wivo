@@ -1032,6 +1032,28 @@ function ClinicSyncBanner({ canEdit }: { canEdit: boolean }) {
     )
   }
 
+  /**
+   * WHICH migration adds the column PostgREST is complaining about.
+   *
+   * This used to always say `sql/019_clinic_settings.sql`, whatever was
+   * missing. `public_services` comes from 047 and `broneering` from 061, so the
+   * banner sent people to run a file that would not have fixed anything — and
+   * running it and seeing no change is worse than no advice at all.
+   */
+  function migrationFor(reason: string): string {
+    const byColumn: [string, string][] = [
+      ['public_services', 'sql/047_public_services.sql'],
+      ['broneering',      'sql/061_visit_request_payment.sql'],
+      ['email',           'sql/051_email_settings.sql'],
+      ['ui_prefs',        'sql/055_profile_ui_prefs.sql'],
+    ]
+    for (const [column, file] of byColumn) {
+      if (reason.includes(`'${column}'`) || reason.includes(` ${column} `)) return file
+    }
+    // The table itself is missing, not one column — that IS 019.
+    return 'sql/019_clinic_settings.sql'
+  }
+
   const [tone, text] = ((): [string, string] => {
     if (sync.status === 'loading') {
       return ['text-ink-muted bg-bg-sidebar border-ink-faint/20', 'Laen kliiniku seadeid…']
@@ -1039,7 +1061,8 @@ function ClinicSyncBanner({ canEdit }: { canEdit: boolean }) {
     if (sync.status === 'local') {
       return [
         'text-orange-700 bg-orange-50 border-orange-200',
-        `Muudatused jäävad ainult sellesse arvutisse — ${sync.reason}. Käivita sql/019_clinic_settings.sql, kui seda veel tehtud ei ole.`
+        `Muudatused jäävad ainult sellesse arvutisse — ${sync.reason}. `
+        + `Käivita ${migrationFor(sync.reason)}.`,
       ]
     }
     if (sync.status === 'synced') {

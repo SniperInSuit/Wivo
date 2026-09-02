@@ -338,6 +338,23 @@ function PlanEditor({ sammud, broneeritavSamm, onChange, onBookable }: {
   return (
     <div>
       <label className="label">Raviplaan — üldine, kõigile patsientidele ühesugune</label>
+      {/* The empty state is where people got stuck: the booking DURATION lives
+          on a plan visit, so with no visits there is no duration field, and the
+          readiness panel's "no service has a duration" had nowhere to point. */}
+      {sammud.length === 0 ? (
+        <p className="text-[11px] text-ink-muted mb-1.5 leading-relaxed">
+          Lisa vähemalt üks visiit. <strong>Visiidi kestus määrab, kui pikk aeg
+          kalendrist broneeritakse</strong> — ilma selleta ei paku veeb aegu.
+        </p>
+      ) : (
+        <div className="flex items-center gap-2 mb-1 text-[10px] text-ink-faint">
+          <span className="w-[22px] shrink-0" />
+          <span className="flex-1">Visiidi nimi</span>
+          <span className="w-[70px] text-center">kestus</span>
+          <span className="w-[90px] text-center">ootaeg</span>
+          <span className="w-[22px] shrink-0" />
+        </div>
+      )}
       <div className="space-y-1.5">
         {sammud.map((s, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -389,8 +406,10 @@ function PlanEditor({ sammud, broneeritavSamm, onChange, onBookable }: {
       >
         <Plus size={12} /> Lisa visiit
       </button>
-      <p className="text-[11px] text-ink-faint mt-1">
-        Sinine number märgib visiiti, mille patsient veebist broneerib.
+      <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
+        Sinine number märgib visiiti, mille patsient veebist broneerib —
+        <strong> selle kestus on see, mis kalendrist kinni pannakse</strong>.
+        Ootaeg on päevi eelmisest visiidist ja puudutab ainult plaani kuvamist.
       </p>
     </div>
   )

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.71.1] — 2026-09-02
+
+**Kestuse väli oli olemas, aga peidus — ja veateade saatis vale faili juurde**
+
+- **Visiidi kestus elab raviplaani visiidi peal**, nii et tühja plaaniga teenusel
+  ei olnud ühtegi kestuse välja näha. Valmiduse paneel ütles „kestusega teenuseid: 0"
+  ja sellel ei olnud kuskile osutada. Nüüd ütleb tühi raviplaan otse, et lisa
+  visiit ja **selle kestus määrab, kui pikk aeg kalendrist broneeritakse**
+- Ridadele tulid pealkirjad (nimi / kestus / ootaeg) — paljas „min" kast oli
+  äraarvamine
+- **Seadete hoiatus saatis vale migratsiooni juurde.** Ta ütles alati
+  „Käivita sql/019_clinic_settings.sql", ka siis kui puudu oli `public_services`
+  (047) või `broneering` (061). Faili jooksutamine, mis midagi ei paranda, on
+  halvem kui nõuandeta. Nüüd nimetab ta veerule vastava faili
+
 ## [1.71.0] — 2026-09-02
 
 **Demo ilma Montoniota — ja üks vaikiv viga selle teel**
