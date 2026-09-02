@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.62.1 · 02.09.2026 · haru `main`**
+**Seis: v1.63.0 · 02.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 534 rohelist, 0 punast
+npm test        # 542 rohelist, 0 punast
 npm run build
 ```
 
@@ -27,48 +27,21 @@ juba lingitud selle repo kaudu; saladused elavad Supabase'is, mitte failides.
 
 ---
 
-## 🔴 Jooksutamata migratsioonid — kolm
+## ✅ Migratsioonid 049–058 on kõik jooksutatud
 
-Supabase SQL editoris, **Wivo kinni**:
+Jooksutatud 02.09.2026. Mida need andsid:
 
-### 1. `sql/056_fix_cron_key.sql` — sellest sõltub kogu automaatne saatmine
+- **`056`** — cron'i teenusevõti Vaulti. Enne seda oli seal kohatäide, mitte
+  võti, ja iga tunnine käivitus sai 401. Automaatne arvete saatmine käib nüüd
+  iga tunni 7. minutil. ⚠ `cron.job_run_details` ütleb „succeeded" ka 401 puhul
+  — päris vastus on `net._http_response` tabelis
+- **`057`** — `jobs.kulu_yle`, omahinna käsitsi ülekirjutus kategooria kaupa
+- **`058`** — `worker_payout_lines.line_key`. Enne seda ei katnud kinnitatud
+  väljamakse oma disaini-, mudeli- ega lisatasuridu; need tulid tagasi ja
+  oleksid teist korda välja makstud
 
-**Cron on katki ja on olnud katki algusest peale.** Sinu enda SQL näitas seda:
-iga tunni 7. minutil `401 UNAUTHORIZED_INVALID_JWT_FORMAT`, tund tunni järel läbi
-öö. pg_cron ja pg_net töötavad täiuslikult; **Vaultis ei ole võtit, seal on
-sõna `<SERVICE_ROLE_KEY>`** — `sql/052` kohatäide jäi asendamata ja miski ei
-öelnud seda välja.
-
-Sellepärast tuli 02.09 kiri alles siis, kui **mina käivitasin funktsiooni
-käsitsi**. Sinu sisselogimine ei olnud põhjus.
-
-**Mida teha:** ava `sql/056`, asenda real 28 `<SERVICE_ROLE_KEY>` päris võtmega
-(Dashboard → Project Settings → API Keys → service_role → Reveal), jooksuta.
-Fail **keeldub valjult**, kui võti on asendamata — iga võti algab `eyJ`.
-Verify-plokis on käsk, millega saad cron'i kohe käsitsi käivitada, ilma tundi
-ootamata, ja päring `net._http_response` pihta, mis on **ainus koht, kus on
-kirjas, mida funktsioon päriselt vastas**.
-
-⚠ `cron.job_run_details` ütleb „succeeded" ka 401 puhul. Ära vaata sealt.
-
-### 2. `sql/058_payout_line_key.sql` — **topelt maksmine**
-
-Kinnitatud väljamakse ei katnud kõiki oma ridu: disain, mudel ja iga lisatasu
-rida ilmusid kohe uuesti „arvestamata" nimekirja ja järgmine kinnitamine oleks
-nad TEIST KORDA välja maksnud. Sinu ekraanil oli see 7 rida, 135 €.
-
-Kood parandab selle ka ilma migratsioonita (vanad read loetakse kirjelduse
-järgi), aga **uued read vajavad veergu** — ilma selleta jääb tuletus igaveseks
-ainsaks kaitseks. Jooksuta.
-
-Verify-plokis on päring, mis näitab, kas mõni rida on juba kaks korda makstud.
-
-### 3. `sql/057_job_cost_override.sql` — kulude käsitsi muutmine
-
-`jobs.kulu_yle jsonb`. Ilma selleta töötab uus kulude tabel edasi, aga pliiatsi
-vajutamine annab konsooli vea ja muudatus ei salvestu.
-
-*(049–055 on jooksutatud.)*
+**Kontrolli üks kord üle**, kas vana viga jõudis midagi topelt maksta —
+`sql/058` verify-plokis on selle päring.
 
 ---
 
@@ -118,6 +91,7 @@ ainus koht, kust näeb, kas kutsuja üldse jõuab kohale.
 
 | Versioon | Mis |
 |---|---|
+| 1.63.0 | Valmimiskuupaev lugemisvaates; mudeli reegel vaikis vale ulatusega |
 | 1.62.1 | „40 tööd arvestamata" ei olnud; hoiatus, kui tasu läks kuusse vale kuupäeva järgi |
 | 1.62.0 | **Kinnitatud väljamakse ei katnud oma ridu** (`sql/058`); hoiatused, millega saab midagi teha |
 | 1.61.1 | Kaks paneeli kirjutasid ekraanile `[object Object]` |
