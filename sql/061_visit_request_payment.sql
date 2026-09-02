@@ -55,6 +55,19 @@ comment on column public.visit_requests.hinnang is
   'Summa, mida patsiendile veebis NÄIDATI. Ei ole siduv pakkumine; salvestatud, '
   'et hilisem hinnamuutus ei muudaks seda, mida inimene nägi.';
 
+-- Millist aega patsient veebist valis.
+--
+-- Eraldi `visits` reast, sest see EI OLE veel visiit: kalendrisse jõuab ta siis,
+-- kui keegi kinnitab. Aga vaba aja arvutus peab teda arvestama, muidu pakuvad
+-- kaks järjestikust külastajat sama kella ja registratuur avastab selle hiljem.
+alter table public.visit_requests
+  add column if not exists soovitud_algus  timestamptz,
+  add column if not exists soovitud_kestus smallint;
+
+comment on column public.visit_requests.soovitud_algus is
+  'Veebist valitud aeg. Hoiab kohta kinni kuni kinnitamise või tagasilükkamiseni '
+  '— aga ei ole visiit enne, kui keegi selle üle vaatab.';
+
 alter table public.visit_requests
   drop constraint if exists visit_requests_makse_valid;
 alter table public.visit_requests

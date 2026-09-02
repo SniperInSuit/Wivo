@@ -31,6 +31,7 @@
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import type { PublicService } from '@shared/portal/publicService.ts'
+import type { BookingRules } from '@shared/portal/slots.ts'
 
 const admin = () => createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -129,7 +130,12 @@ export async function recentRequestCount(clinicId: string, ipHash: string): Prom
  * Both are deliberate acts by the owner. That is the opt-in.
  */
 
-export interface BookingSettings {
+/**
+ * Everything the public surface needs about booking: the fee AND the diary
+ * rules. One column, one read — the slot route and the payment step ask the
+ * same question and must not get two different answers.
+ */
+export interface BookingSettings extends BookingRules {
   /** 0 = no fee is asked for. The default, deliberately. */
   visiiditasu: number
   valuuta: string
@@ -157,6 +163,17 @@ export async function bookingSettingsOf(clinicId: string): Promise<BookingSettin
     visiiditasu: Number.isFinite(fee) && fee > 0 ? Math.round(fee * 100) / 100 : 0,
     valuuta: typeof b.valuuta === 'string' && b.valuuta.trim() ? b.valuuta.trim().toUpperCase() : 'EUR',
     tagasiUrl: typeof b.tagasiUrl === 'string' && b.tagasiUrl.trim() ? b.tagasiUrl.trim() : null,
+    // The diary rules, straight through. `freeSlots` treats a missing weekday
+    // as CLOSED, so an unconfigured clinic offers no times rather than all of
+    // them — the safe direction for a setting nobody has filled in yet.
+    tooajad: (b.tooajad as BookingRules['tooajad']) ?? {},
+    pausid: b.pausid as BookingRules['pausid'],
+    puhkused: b.puhkused as string[] | undefined,
+    samm: Number(b.samm) > 0 ? Number(b.samm) : undefined,
+    ette: Number.isFinite(Number(b.ette)) ? Number(b.ette) : undefined,
+    kuni: Number(b.kuni) > 0 ? Number(b.kuni) : undefined,
+    kohti: Number(b.kohti) > 0 ? Number(b.kohti) : undefined,
+    koormus: b.koormus as BookingRules['koormus'],
   }
 }
 

@@ -12,6 +12,7 @@
  *
  * ROUTES
  *   GET  /public-booking/services?clinic=<slug>
+ *   GET  /public-booking/slots?clinic=<slug>&service=<id>
  *   POST /public-booking/quote?clinic=<slug>
  *   POST /public-booking/request?clinic=<slug>
  *
@@ -20,9 +21,15 @@
  * their own care is the MDR line this product does not cross, and a status link
  * is exactly that view wearing a convenience's clothes.
  *
- * Real slots and confirmed bookings would need the practice calendar, which
- * lives in Dentas. The inbox in Wivo is what closes that loop by hand, and it
- * needs no Dentas at all.
+ * `/slots` DOES offer real times, from Wivo's own diary and the clinic's own
+ * rules (opening hours, breaks, closed days, how much big work a day may take).
+ * A chosen time is HELD on the request and checked again at write time — a list
+ * is a snapshot, a booking is a decision, and between the two somebody else may
+ * have taken it.
+ *
+ * What it still does not do is put anything in the calendar. A request becomes a
+ * visit when a person confirms it in the Wivo inbox. That step is deliberate:
+ * the calendar is what the practice runs on, and it must not fill itself.
  */
 import { preflight, corsHeaders } from '../_shared/cors.ts'
 import { ok, fail, failWith, ERRORS } from '../_shared/respond.ts'
@@ -32,6 +39,10 @@ import {
   bookingSettingsOf, attachPayment, requestByOrderUuid, settlePayment,
 } from '../_shared/settings.ts'
 import { createOrder, verifyOrderToken, montonioConfigured } from '../_shared/montonio.ts'
+import {
+  localDate, isoWeekday, dayDiff, dateRange, loadOf, pendingHolds, toInstant,
+} from '../_shared/slotData.ts'
+import { freeSlots, slotsByDay, slotStillFree } from '@shared/portal/slots.ts'
 import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
 import {
   visitRequestProblems, looksLikeSpam, toVisitRequestRow,
@@ -153,6 +164,63 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     /**
+     * Free times for one service.
+     *
+     * The rules, the diary and the load limit all live on the server. The widget
+     * renders the list it is given and never works out for itself whether an
+     * hour is free — two answers to that question is a double booking.
+     */
+    if (req.method === 'GET' && (route === '/slots' || route === '/slots/')) {
+      if (!take(`s:${await ipKey(req)}`, 60)) return fail(429, ERRORS.RATE_LIMITED, cors)
+
+      const slug = (url.searchParams.get('clinic') ?? '').trim()
+      const clinic = slug ? await clinicBySlug(slug) : null
+      if (!clinic) return fail(404, ERRORS.UNKNOWN_CLINIC, cors)
+
+      const wanted = (url.searchParams.get('service') ?? '').trim()
+      const services = await publicServicesOf(clinic.id)
+      const service = services.find(s => s.id === wanted && s.avalik)
+      if (!service) return fail(400, ERRORS.UNKNOWN_SERVICE, cors)
+
+      // How long the BOOKABLE visit of this service takes. Not the whole
+      // treatment plan: the website books one appointment, and the plan's later
+      // visits are arranged when that one happens.
+      const step = service.samm?.[service.broneeritavSamm]
+      const kestus = Number(step?.kestusMin) || 0
+      if (!(kestus > 0)) {
+        // A service with no stated duration cannot be offered a time. Saying so
+        // beats offering a guess and booking the wrong length of chair.
+        return ok({ paevad: [], pohjus: 'Teenusel ei ole kestust määratud.' }, cors)
+      }
+
+      const rules = await bookingSettingsOf(clinic.id)
+      const today = localDate(new Date())
+      const horizon = Math.min(rules.kuni ?? 60, 120)
+      const dates = dateRange(today, horizon + 1)
+
+      const load = await loadOf(clinic.id, dates, rules.koormus?.suurMin ?? 0)
+      // Requests that already hold a time count as busy. Without this, two
+      // visitors an hour apart are offered the same slot and the clinic finds
+      // out afterwards.
+      for (const hold of await pendingHolds(clinic.id, dates)) {
+        const day = load.find(d => d.kuupaev === hold.kuupaev)
+        if (day) day.hoivatud.push({ algus: hold.algus, lopp: hold.algus + hold.kestus })
+      }
+
+      const slots = freeSlots({
+        rules, kestus, paevad: load,
+        nadalapaev: isoWeekday,
+        tana: today,
+        paevaVahe: d => dayDiff(today, d),
+      })
+
+      return ok({
+        kestus,
+        paevad: slotsByDay(slots).slice(0, 30),
+      }, { ...cors, 'Cache-Control': 'no-store' })
+    }
+
+    /**
      * What the patient's selection costs. A READ that happens to be a POST,
      * because the selection is a list and a query string is the wrong place
      * for one.
@@ -241,6 +309,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
         ? calculatePublic(await publicServicesOf(clinic.id), valik)
         : null
 
+      // The chosen time, CHECKED AGAIN. The list the patient saw is a snapshot;
+      // this is the decision. Between the two, somebody else may have taken it.
+      const wish = (body as { aeg?: { kuupaev: string; kell: string; serviceId: string } }).aeg
+      let hold: { soovitud_algus: string; soovitud_kestus: number } | null = null
+      if (wish?.kuupaev && wish.kell) {
+        const services = await publicServicesOf(clinic.id)
+        const svc = services.find(s => s.id === wish.serviceId && s.avalik)
+        const kestus = Number(svc?.samm?.[svc.broneeritavSamm]?.kestusMin) || 0
+        const rules = await bookingSettingsOf(clinic.id)
+        const today = localDate(new Date())
+        const dates = dateRange(today, (rules.kuni ?? 60) + 1)
+        const load = await loadOf(clinic.id, dates, rules.koormus?.suurMin ?? 0)
+        for (const h of await pendingHolds(clinic.id, dates)) {
+          const day = load.find(d => d.kuupaev === h.kuupaev)
+          if (day) day.hoivatud.push({ algus: h.algus, lopp: h.algus + h.kestus })
+        }
+        const stillFree = kestus > 0 && slotStillFree({
+          rules, kestus, paevad: load,
+          nadalapaev: isoWeekday, tana: today, paevaVahe: d => dayDiff(today, d),
+        }, wish.kuupaev, wish.kell)
+
+        if (!stillFree) {
+          // Refuse rather than store a time the clinic cannot honour. The
+          // patient can pick another; a double booking they only find out about
+          // on the day is far worse than being asked to choose again.
+          return failWith(409, ERRORS.INVALID,
+            ['See aeg läks vahepeal kinni. Palun vali teine.'], cors)
+        }
+        hold = {
+          soovitud_algus: toInstant(wish.kuupaev, wish.kell).toISOString(),
+          soovitud_kestus: kestus,
+        }
+      }
+
       const created = await insertVisitRequest({
         ...toVisitRequestRow(body),
         clinic_id: clinic.id,
@@ -248,6 +350,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // Stored the way an invoice line stores its price: what the person was
         // SHOWN must not change later because the price list did.
         ...(quote ? { valik, hinnang: quote.kokku } : {}),
+        ...(hold ?? {}),
       })
 
       // A visit fee, when the clinic asks for one. The amount is read HERE from

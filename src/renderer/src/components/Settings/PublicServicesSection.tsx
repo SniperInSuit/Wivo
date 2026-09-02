@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Globe, Plus, Trash2,
 } from 'lucide-react'
@@ -6,6 +6,8 @@ import type { PublicService, PublicPlanStep } from '@shared/portal/publicService
 import { publicPriceRange, publicPlanSummary, publishProblems } from '@shared/portal/publicQuote'
 import { useSettings } from '../../stores/useSettings'
 import { CalculatorEditor } from './CalculatorEditor'
+import { BookingHoursSection, type BookingConfig } from './BookingHoursSection'
+import { supabase, getActiveClinicId } from '../../lib/supabase'
 
 /**
  * Seaded → Patsiendi hinnakiri.
@@ -24,6 +26,17 @@ export function PublicServicesSection() {
   } = useSettings()
   const [uus, setUus] = useState('')
   const [avatud, setAvatud] = useState<string | null>(null)
+  // Hours live in their own column (sql/061) rather than in the settings store:
+  // they are read by the public edge function and by nothing else in the app.
+  const [broneering, setBroneering] = useState<BookingConfig | null>(null)
+
+  useEffect(() => {
+    const clinicId = getActiveClinicId()
+    if (!clinicId) return
+    supabase.from('clinic_settings').select('broneering').eq('clinic_id', clinicId)
+      .maybeSingle()
+      .then(({ data }) => setBroneering(((data?.broneering as BookingConfig) ?? {})))
+  }, [])
 
   const teenused = [...settings.avalikudTeenused].sort((a, b) => a.jarjekord - b.jarjekord)
   const avaldatud = teenused.filter(t => t.avalik && publishProblems(t).length === 0).length
@@ -95,6 +108,14 @@ export function PublicServicesSection() {
           <Plus size={13} /> Lisa
         </button>
       </div>
+
+      {/* When the website may offer those services. Below the list because the
+          question only arises once there is something to book. */}
+      {broneering && (
+        <div className="mt-6 pt-5 border-t border-ink-faint/15 max-w-2xl">
+          <BookingHoursSection value={broneering} onSaved={setBroneering} />
+        </div>
+      )}
     </section>
   )
 }

@@ -276,6 +276,138 @@
     return { selection: selection }
   }
 
+
+  var SLOT_CSS = [
+    '.wv-slots{margin:.5rem 0}',
+    '.wv-days{display:flex;gap:.35rem;overflow-x:auto;padding-bottom:.25rem}',
+    '.wv-day{flex:0 0 auto;border:1px solid var(--wv-line);border-radius:var(--wv-radius);',
+    'background:var(--wv-bg);color:var(--wv-ink);font:inherit;font-size:.75rem;',
+    'padding:.4rem .6rem;cursor:pointer;text-align:center;line-height:1.25}',
+    '.wv-day[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);color:#fff}',
+    '.wv-day small{display:block;font-size:.65rem;opacity:.75}',
+    '.wv-times{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}',
+    '.wv-time{border:1px solid var(--wv-line);border-radius:var(--wv-radius);background:var(--wv-bg);',
+    'color:var(--wv-ink);font:inherit;font-size:.8rem;padding:.35rem .6rem;cursor:pointer}',
+    '.wv-time[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
+    'color:#fff;font-weight:600}',
+    '.wv-none{font-size:.8rem;color:var(--wv-muted);padding:.5rem 0}',
+  ].join('')
+
+  var WEEKDAYS = ['P', 'E', 'T', 'K', 'N', 'R', 'L']
+  var MONTHS = ['jaan', 'veebr', 'märts', 'apr', 'mai', 'juuni',
+                'juuli', 'aug', 'sept', 'okt', 'nov', 'dets']
+
+  /** '2026-09-07' → 'E 7. sept'. Parsed as UTC so no zone can shift the day. */
+  function dayLabel(iso) {
+    var p = iso.split('-')
+    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))
+    return WEEKDAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + '. ' + MONTHS[d.getUTCMonth()]
+  }
+
+  /**
+   * The time picker.
+   *
+   * It asks the server which times are free and renders the answer. It never
+   * decides that itself: the opening hours, the diary and the load rules all
+   * live on the server, and two answers to "is this hour free" is a double
+   * booking.
+   */
+  function mountSlots(host, onPick) {
+    var box = el('div', { class: 'wv-slots' })
+    host.appendChild(box)
+
+    var label = el('label', { text: 'Vali aeg' })
+    var days = el('div', { class: 'wv-days' })
+    var times = el('div', { class: 'wv-times' })
+    var note = el('div', { class: 'wv-none' })
+    box.appendChild(label); box.appendChild(days)
+    box.appendChild(times); box.appendChild(note)
+
+    var data = []
+    var chosenDay = null
+    var chosen = null
+    var serviceId = null
+
+    function clear() {
+      days.innerHTML = ''; times.innerHTML = ''; note.textContent = ''
+      chosenDay = null; chosen = null
+      onPick(null)
+    }
+
+    function paintTimes() {
+      times.innerHTML = ''
+      var day = data.filter(function (d) { return d.kuupaev === chosenDay })[0]
+      if (!day) return
+      day.kellad.forEach(function (kell) {
+        var b = el('button', {
+          type: 'button', class: 'wv-time', 'aria-pressed': 'false', text: kell,
+        })
+        b.addEventListener('click', function () {
+          chosen = { kuupaev: chosenDay, kell: kell, serviceId: serviceId }
+          Array.prototype.forEach.call(times.children, function (c) {
+            c.setAttribute('aria-pressed', c === b ? 'true' : 'false')
+          })
+          onPick(chosen)
+        })
+        times.appendChild(b)
+      })
+    }
+
+    function paintDays() {
+      days.innerHTML = ''
+      data.forEach(function (d) {
+        var b = el('button', { type: 'button', class: 'wv-day', 'aria-pressed': 'false' })
+        b.appendChild(document.createTextNode(dayLabel(d.kuupaev)))
+        b.appendChild(el('small', { text: d.kellad.length + ' aega' }))
+        b.addEventListener('click', function () {
+          chosenDay = d.kuupaev
+          chosen = null
+          onPick(null)
+          Array.prototype.forEach.call(days.children, function (c) {
+            c.setAttribute('aria-pressed', c === b ? 'true' : 'false')
+          })
+          paintTimes()
+        })
+        days.appendChild(b)
+      })
+    }
+
+    function load(id) {
+      serviceId = id
+      clear()
+      if (!id) {
+        // Times depend on the service, so there is nothing honest to show yet.
+        // Saying why beats an empty space the visitor has to interpret.
+        note.textContent = 'Vali kõigepealt teenus, siis näitame vabu aegu.'
+        return
+      }
+      note.textContent = 'Otsin vabu aegu…'
+      fetch(cfg.base + '/slots?clinic=' + encodeURIComponent(cfg.clinic)
+        + '&service=' + encodeURIComponent(id))
+        .then(function (r) { return r.json() })
+        .then(function (body) {
+          if (!body || !body.ok) throw new Error('slots failed')
+          data = body.data.paevad || []
+          note.textContent = ''
+          if (data.length === 0) {
+            // Says what to do next rather than only that there is nothing.
+            note.textContent = body.data.pohjus
+              || 'Vabu aegu hetkel ei ole. Saada taotlus — pakume aja ise.'
+            return
+          }
+          paintDays()
+        })
+        .catch(function () {
+          // The form still works without it. Losing the request because the
+          // diary was unreachable would be the worse trade.
+          data = []
+          note.textContent = 'Aegu ei õnnestunud laadida. Saada taotlus — pakume aja ise.'
+        })
+    }
+
+    return { load: load, chosen: function () { return chosen } }
+  }
+
   function mount(root) {
     var idempotencyKey = newKey()
 
@@ -285,7 +417,7 @@
       return
     }
 
-    var style = el('style', { text: CSS + CALC_CSS })
+    var style = el('style', { text: CSS + CALC_CSS + SLOT_CSS })
     var wrap = el('div', { class: 'wv' })
     root.appendChild(style)
     root.appendChild(wrap)
@@ -304,7 +436,11 @@
     form.appendChild(serviceWrap)
     var calcWrap = el('div')
     form.appendChild(calcWrap)
+    var slotWrap = el('div')
+    form.appendChild(slotWrap)
     var calc = null
+    var slots = null
+    var chosenSlot = null
 
     function field(name, label, type, hint) {
       form.appendChild(el('label', { for: 'wv-' + name, text: label }))
@@ -384,12 +520,20 @@
           var label = s.hind && s.hind.tekst ? s.nimi + ' — ' + s.hind.tekst : s.nimi
           select.appendChild(el('option', { value: s.id, text: label }))
         })
-        select.addEventListener('change', function () { chosenService = select.value || null })
+        select.addEventListener('change', function () {
+          chosenService = select.value || null
+          // Times depend on the service: a 30-minute check-up and a two-hour
+          // case do not fit the same gaps.
+          if (slots) slots.load(chosenService)
+        })
         serviceWrap.appendChild(select)
 
         // The chart, when at least one service is priced per tooth. Services
         // without per-tooth pricing keep the range they already had.
         calc = mountCalculator(calcWrap, services)
+
+        slots = mountSlots(slotWrap, function (picked) { chosenSlot = picked })
+        slots.load(chosenService)
       })
       .catch(function () {
         // Fallback 1: no catalogue, no picker, form still works. Silent on
@@ -429,6 +573,9 @@
           // carries the selection rather than only the total — a number with no
           // teeth behind it cannot be checked by anybody.
           valik: calc ? calc.selection() : [],
+          // The chosen time. The server checks it is STILL free before storing
+          // it — this list was a snapshot.
+          aeg: chosenSlot,
           veebileht: hpInput.value,
           // The SAME key for every attempt from this page load. Pressing send
           // again after a timeout is safe: the server keeps one row.

@@ -158,11 +158,18 @@ export function RequestsInbox() {
                         <Mail size={11} /> {r.email}
                       </a>
                     )}
-                    {r.eelistatud_aeg && (
+                    {/* A time chosen from the real diary beats free text, so it
+                        leads — and it says it is not yet in the calendar. */}
+                    {r.soovitud_algus ? (
+                      <span className="flex items-center gap-1 text-accent font-medium">
+                        <Clock size={11} /> {fmt(r.soovitud_algus)}
+                        {r.soovitud_kestus ? ` · ${r.soovitud_kestus} min` : ''}
+                      </span>
+                    ) : r.eelistatud_aeg ? (
                       <span className="flex items-center gap-1">
                         <Clock size={11} /> {r.eelistatud_aeg}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   {r.sonum && (
                     <p className="text-xs text-ink-soft mt-1.5 flex items-start gap-1.5">
@@ -251,11 +258,15 @@ export function RequestsInbox() {
       {confirming && (
         <VisitForm
           visit={null}
+          initialDate={confirming.soovitud_algus ? parseISO(confirming.soovitud_algus) : undefined}
+          initialDuration={confirming.soovitud_kestus ?? undefined}
           prefillRequest={{
             nimi: confirming.nimi,
             markus: [
               `Veebitaotlus · ${confirming.telefon}`,
-              confirming.eelistatud_aeg && `Soovitud aeg: ${confirming.eelistatud_aeg}`,
+              confirming.soovitud_algus
+                ? `Veebist valitud aeg: ${fmt(confirming.soovitud_algus)}`
+                : confirming.eelistatud_aeg && `Soovitud aeg: ${confirming.eelistatud_aeg}`,
               confirming.sonum,
             ].filter(Boolean).join('\n'),
           }}

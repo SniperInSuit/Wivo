@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.69.0] — 2026-09-02
+
+**Päris ajavalik veebis (C2)**
+
+Patsient valib teenuse, näeb **päris vabu aegu** Wivo enda päevikust, valib
+kellaaja. Aeg hoitakse taotluse küljes ja jõuab kalendrisse siis, kui keegi
+kinnitab — kalender on see, mille järgi praksis töötab, ja ta ei täida ennast ise.
+
+**`shared/portal/slots.ts` — 20 testi**
+- **Ajavööndit selles failis ei ole.** Kõik on kohalik seinakell: kuupäev
+  'YYYY-MM-DD' ja aeg minutites keskööst. Eesti liigub UTC+2 ja UTC+3 vahel, ja
+  klassikaline viga on aegade nimekiri, mis on juulis õige ja novembris tunni
+  võrra vale — avastab patsient, kes tuleb valel ajal. Teisendus elab ÜHES
+  failis (`_shared/slotData.ts`) ja kasutab nimega ajavööndit, mitte fikseeritud
+  nihet
+- **Puuduv seade sulgeb päeviku, ei ava kunagi.** Nädalapäev ilma kellaaegadeta
+  on KINNI. Unustatud laupäev, mis midagi ei paku, on tüütus; üks, mis pakub
+  terve päeva, on inimene lukus ukse taga
+- **Koormusreegel** — sinu enda oma: „suur töö" on vähemalt N minutit ja päev
+  võtab neid kuni M. Päev, mille veeb saab täita nelja suure tööga, on päev,
+  mida ei jõua ära teha
+- Pausid lõigatakse aknast välja; nelja tunni töö ei jookse vaikselt lõunast läbi
+- Juba broneeritud ajad ja **veel kinnitamata taotlused** loevad mõlemad
+  hõivatuks — muidu pakutakse kahele järjestikusele külastajale sama kella
+
+**Seaded → Patsiendi hinnakiri → Veebibroneeringu ajad**
+Tööajad päevade kaupa, pausid, suletud kuupäevad, samm, kohti korraga,
+etteteatamine, horisont ja koormus. Kõrval seisab, mis neist reaalselt välja
+tuleb — pausid maha arvatud.
+
+**Nimekiri on hetkeseis, broneering on otsus.** Valitud aeg kontrollitakse
+kirjutamise hetkel uuesti; kui ta vahepeal kinni läks, keeldub server ja palub
+uue valida. Topeltbroneering, mille avastab alles kohaletulija, on palju halvem
+kui palve uuesti valida.
+
+**Parandatud teel:** `VisitForm` viskas `initialDate` KELLAAJA ära ja pani 09:00.
+Kalendris 14:00 pilu peale klikkides avanes vorm üheksal — see oli olemas ka
+enne seda tööd.
+
 ## [1.68.0] — 2026-09-02
 
 **Hinnakalkulaator lõpuni — hambakaart vormis, hinnakiri Seadetes (C1)**

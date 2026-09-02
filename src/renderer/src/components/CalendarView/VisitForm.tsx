@@ -65,7 +65,16 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           patsient: prefillPatient?.nimi ?? prefillRequest?.nimi ?? '',
           arst: prefillPatient?.arst ?? null,
           markus: prefillRequest?.markus ?? null,
-          algus: format(initialDate ?? new Date(), "yyyy-MM-dd'T'09:00")
+          // The TIME is kept when there is one. It used to be thrown away and
+          // replaced with 09:00, so clicking a 14:00 slot in the calendar
+          // opened the form at nine — and a time chosen on the website would
+          // have arrived at the wrong hour.
+          //
+          // Midnight means "a day was picked, not a time": the month view hands
+          // over a bare date, and 09:00 is a better opening guess than 00:00.
+          algus: initialDate && (initialDate.getHours() || initialDate.getMinutes())
+            ? format(initialDate, "yyyy-MM-dd'T'HH:mm")
+            : format(initialDate ?? new Date(), "yyyy-MM-dd'T'09:00")
         }
   )
   const [error, setError] = useState<string | null>(null)
