@@ -17,7 +17,7 @@
  * member of the clinic; the credential lives in `supabase secrets`, reachable
  * only by the edge function while it runs. See sql/051.
  */
-import { Mail, ShieldCheck, AlertTriangle, FlaskConical } from 'lucide-react'
+import { Mail, ShieldCheck, AlertTriangle, FlaskConical, Clock } from 'lucide-react'
 import { useSettings } from '../../stores/useSettings'
 import type { MailSettings } from '../../stores/useSettings'
 import { looksLikeEmail } from '@shared/billing/sendGuard'
@@ -44,6 +44,23 @@ export function EmailSection() {
   const e = settings.epost
 
   const patch = (p: Partial<MailSettings>) => setEpost(p)
+
+  /**
+   * How long ago the sender ran. Stale after three hours: it is scheduled
+   * hourly, so one missed run is a blip and three is a fault.
+   */
+  const heartbeat = (() => {
+    const at = e.viimane_kaivitus ? new Date(e.viimane_kaivitus) : null
+    if (!at || Number.isNaN(at.getTime())) {
+      return { text: 'mitte kordagi', stale: true }
+    }
+    const mins = Math.floor((Date.now() - at.getTime()) / 60000)
+    const text = mins < 2 ? 'just praegu'
+      : mins < 60 ? `${mins} min tagasi`
+      : mins < 60 * 48 ? `${Math.floor(mins / 60)} t tagasi`
+      : `${Math.floor(mins / 1440)} päeva tagasi`
+    return { text, stale: mins > 180 }
+  })()
 
   const senderOk = looksLikeEmail(e.saatjaAadress)
   const unknown = [
@@ -288,6 +305,41 @@ export function EmailSection() {
           </p>
         </div>
       </div>
+
+      {/* ── Is the automation alive? ──
+          Separate from "is it allowed", because the two fail differently. Every
+          switch can be green and nothing move: `pg_cron` calls the function
+          through `net.http_post`, which is ASYNC — cron records "succeeded" the
+          moment the request is queued, so a 401 from a wrong key looks exactly
+          like a working night. The sender stamps this itself, so a stale time
+          is the only visible symptom. It happened on 02.09.2026. */}
+      {e.saatmineLubatud && (
+        <div className={`rounded-xl border p-3 ${
+          heartbeat.stale ? 'border-orange-200 bg-orange-50/60' : 'border-ink-faint/20'
+        }`}>
+          <div className="flex items-start gap-2">
+            <Clock size={13} className={`flex-shrink-0 mt-0.5 ${
+              heartbeat.stale ? 'text-orange-600' : 'text-ink-faint'
+            }`} />
+            <div className="min-w-0">
+              <p className="text-xs text-ink">
+                <strong>Ajastatud saatja käis viimati:</strong> {heartbeat.text}
+              </p>
+              {heartbeat.stale && (
+                <p className="text-[11px] text-orange-800 leading-relaxed mt-0.5">
+                  Peaks käima igal tunnil. Kontrolli Supabase SQL-redaktoris,
+                  mida funktsioon päriselt vastas — <code>cron.job_run_details</code>{' '}
+                  ütleb „succeeded" ka siis, kui vastus oli 401:
+                  <br />
+                  <code className="text-[10px]">
+                    select status_code, left(content,200), created from net._http_response order by created desc limit 5;
+                  </code>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Where it stands ── */}
       <div className={`rounded-xl border p-3 ${

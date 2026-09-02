@@ -104,6 +104,16 @@ export interface MailSettings extends MailPolicy, MailTemplate {
   host: string
   port: number
   saatjaNimi: string
+  /**
+   * When the scheduled sender last RAN — stamped by the edge function itself,
+   * whether or not it had anything to send.
+   *
+   * The one fact that tells a clinic the automation is alive. `pg_cron` cannot:
+   * `net.http_post` is async, so cron reports "succeeded" even when the
+   * function answered 401 and nothing moved. A stale timestamp here is the
+   * only visible symptom of that.
+   */
+  viimane_kaivitus?: string | null
 }
 
 export interface WivoSettings {

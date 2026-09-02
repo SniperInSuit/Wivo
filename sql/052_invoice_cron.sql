@@ -75,14 +75,36 @@ select cron.schedule(
 );
 
 -- ─── Verify ─────────────────────────────────────────────────────────────────
+--
+-- ⚠ `cron.job_run_details.status = 'succeeded'` EI TÄHENDA, et kiri läks välja.
+--   `net.http_post` on ASÜNKROONNE: ta paneb päringu järjekorda ja tagastab
+--   kohe id. Cron näeb, et SQL-lause õnnestus, ja ütleb „succeeded" ka siis,
+--   kui funktsioon vastas 401-ga. Päris vastus on `net._http_response` tabelis.
+--
+--   See eksitas 02.09.2026: cron näitas rohelist ja ükski arve ei liikunud.
+--
+-- 1. Kas töö on olemas ja aktiivne:
 -- select jobname, schedule, active from cron.job where jobname = 'wivo-send-invoices';
 --   -> 1 rida, '7 * * * *', active = true
 --
--- Pärast järgmist täistundi:
+-- 2. Kas cron jooksis:
 -- select status, return_message, start_time from cron.job_run_details
 --  where jobid = (select jobid from cron.job where jobname = 'wivo-send-invoices')
 --  order by start_time desc limit 5;
---   -> status = 'succeeded'
+--
+-- 3. ⭐ MIDA FUNKTSIOON PÄRISELT VASTAS — see on see, mis loeb:
+-- select id, status_code, left(content, 300) as vastus, error_msg, created
+--   from net._http_response order by created desc limit 10;
+--
+--   200 + {"ok":true,...}  -> töötab
+--   401                    -> võti on vale. Kõige tõenäolisem põhjus:
+--                             <SERVICE_ROLE_KEY> jäi allpool asendamata ja
+--                             Vaulti läks see string ise. Kontrolli:
+--     select name, left(decrypted_secret, 12) || '…' from vault.decrypted_secrets
+--      where name = 'wivo_service_role_key';
+--       -> peab algama 'eyJ' (JWT), mitte '<SERVICE'
+--   404                    -> funktsioon ei ole deploy'tud
+--   NULL rida üldse puudub -> pg_net ei jooksnud; kontrolli, kas laiendus on sees
 --
 -- VÄLJA LÜLITAMINE, kui midagi on valesti:
 -- update cron.job set active = false where jobname = 'wivo-send-invoices';

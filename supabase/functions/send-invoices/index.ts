@@ -69,6 +69,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (error) return json(500, { ok: false, error: error.message })
 
   for (const row of rows ?? []) {
+    // Heartbeat, before any policy check: "the sender ran" is a different fact
+    // from "the sender sent something", and it is the one that tells a clinic
+    // the automation is alive. A cron that returns 401 leaves this stale, and
+    // Seaded → E-post says how long ago — which is what turns a silent failure
+    // into a visible one. `cron.job_run_details` cannot do this: net.http_post
+    // is async, so cron reports success whatever the function answered.
+    if (!dry) {
+      await db.from('clinic_settings')
+        .update({ email: { ...(row.email ?? {}), viimane_kaivitus: new Date().toISOString() } })
+        .eq('clinic_id', row.clinic_id)
+    }
+
     const policy: MailPolicy = { ...SAFE_MAIL_POLICY, ...(row.email ?? {}) }
     if (!policy.saatmineLubatud) {
       clinics.push({ clinic: row.clinic_id, status: 'automaatne saatmine on väljas' })

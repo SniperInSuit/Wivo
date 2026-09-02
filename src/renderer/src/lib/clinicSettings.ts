@@ -77,6 +77,8 @@ export interface ClinicSettingsRow {
     pealkiri: string
     sissejuhatus: string
     lopp: string
+    /** Stamped by the sender on every run. See MailSettings. */
+    viimane_kaivitus?: string | null
   }
   // Which halves of the product this lab uses. See sql/037.
   features: {

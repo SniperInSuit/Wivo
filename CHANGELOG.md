@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.60.1] — 2026-09-02
+
+**Cron ütles „succeeded" ja ükski arve ei liikunud**
+
+02.09 hommikul jäi maksegraafiku esimene osamakse saatmata. Saatja ise oli
+korras — proovikäivitus leidis arve ja oleks selle õigesse kohta saatnud. Kutsuja
+oli katki, ja **see nägi välja nagu töötaks**.
+
+- `net.http_post` on **asünkroonne**: ta paneb päringu järjekorda ja tagastab
+  kohe. `cron.job_run_details` näeb, et SQL-lause õnnestus, ja kirjutab
+  „succeeded" ka siis, kui funktsioon vastas 401-ga. Minu `sql/052` kontrollplokk
+  käskis vaadata täpselt seda välja, mis mõlemal juhul roheline on
+- Kontrollplokk parandatud: õige koht on `net._http_response`, ja seal on ka
+  kirjas, mida iga staatuskood tähendab. Kõige tõenäolisem põhjus on
+  `<SERVICE_ROLE_KEY>` asendamata jäämine — siis läks Vaulti see string ise
+- **Saatja stampib nüüd südamelöögi** (`email.viimane_kaivitus`) igal käivitusel,
+  ka siis kui saata ei olnud midagi. Seaded → E-post näitab „viimati käis X
+  tagasi" ja muutub oranžiks kolme tunni järel
+- See on ainus nähtav sümptom: kõik lülitid võivad olla rohelised ja mitte midagi
+  liikuda, sest tõrge on kutsuja pool. Nüüd ütleb ekraan seda ise
+
 ## [1.60.0] — 2026-09-01
 
 **23 uut paneeli, viis uut meetrikamoodulit — ja üks grupp, mis ei plaani midagi**
