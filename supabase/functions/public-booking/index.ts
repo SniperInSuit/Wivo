@@ -201,6 +201,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       const rules = await bookingSettingsOf(clinic.id)
       const today = localDate(new Date())
+      // 120 days is a ceiling on the WORK, not a second opinion about the
+      // setting: a horizon beyond that would have the function build a slot
+      // list nobody scrolls to. Inside it, `kuni` decides and nothing else.
       const horizon = Math.min(rules.kuni ?? 60, 120)
       const dates = dateRange(today, horizon + 1)
 
@@ -220,9 +223,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
         paevaVahe: d => dayDiff(today, d),
       })
 
+      // No `.slice()` here. There used to be one capping the answer at 30 days
+      // WITH SLOTS, which for a clinic open four days a week meant the calendar
+      // stopped after about seven weeks — while the setting said sixty days.
+      // A setting the server quietly overrules is worse than no setting.
+      //
+      // The payload is dates and "HH:mm" strings; even a clinic open every day
+      // for the full 120 is tens of kilobytes, and `kuni` is normally far less.
       return ok({
         kestus,
-        paevad: slotsByDay(slots).slice(0, 30),
+        paevad: slotsByDay(slots),
       }, { ...cors, 'Cache-Control': 'no-store' })
     }
 

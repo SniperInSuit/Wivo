@@ -20,6 +20,13 @@ import { describeError } from '../Patients/errors'
 import type { BookingRules, OpenPeriod } from '@shared/portal/slots'
 import { openWindows, toClock } from '@shared/portal/slots'
 
+/** "60 päeva" as a date somebody can recognise. Capped where the server caps. */
+function horizonDate(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + Math.min(Math.max(1, days), 120))
+  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 const DAYS: { key: string; label: string }[] = [
   { key: '1', label: 'Esmaspäev' },
   { key: '2', label: 'Teisipäev' },
@@ -221,13 +228,22 @@ export function BookingHoursSection({ value, onSaved }: {
           <input type="number" min={0} value={cfg.ette ?? 1}
             onChange={e => patch({ ette: parseInt(e.target.value, 10) || 0 })}
             className="input text-sm" />
-          <p className="text-[10px] text-ink-faint mt-1">0 = ka täna.</p>
+          <p className="text-[10px] text-ink-faint mt-1">
+            0 = ka täna · alates {horizonDate(cfg.ette ?? 1)}
+          </p>
         </div>
         <div>
           <label className="label">Kuni (päeva)</label>
-          <input type="number" min={1} value={cfg.kuni ?? 60}
+          <input type="number" min={1} max={120} value={cfg.kuni ?? 60}
             onChange={e => patch({ kuni: parseInt(e.target.value, 10) || 60 })}
             className="input text-sm" />
+          {/* The number turned into a date, because "60 days" is not something
+              anyone can check by looking. A cap that silently disagreed with
+              this field is exactly the bug this line makes visible. */}
+          <p className="text-[10px] text-ink-faint mt-1">
+            Kuni {horizonDate(cfg.kuni ?? 60)}
+            {(cfg.kuni ?? 60) > 120 && ' · ülempiir on 120'}
+          </p>
         </div>
       </div>
 

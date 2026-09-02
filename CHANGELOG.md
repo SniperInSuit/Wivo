@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.77.1] — 2026-09-02
+
+**„Kuni 60 päeva" andis 50 — server tegi seadele oma paranduse**
+
+Vastuses oli `.slice(0, 30)`, mis lõikas nimekirja **30 lahtioleku päeva** peal.
+Kliinikule, kes on avatud neli päeva nädalas, tähendas see umbes seitset ja poolt
+nädalat — 2. september kuni 22. oktoober — sellal kui seade ütles kuuskümmend
+päeva. **Seade, mille server vaikselt üle kirjutab, on halvem kui seade puudu.**
+
+- Piirang eemaldatud. `kuni` otsustab, ja ainus ülempiir on 120 päeva — see on
+  lagi tööle, mitte teine arvamus seadest, ja ta on nüüd ka väljal endal kirjas
+- **Seade näitab kuupäeva**: „Kuni 1. november 2026". „60 päeva" ei ole miski,
+  mida keegi saaks vaadates kontrollida — just seepärast jäi see viga
+  märkamata. Sama „Ette (päeva)" väljal
+
 ## [1.77.0] — 2026-09-02
 
 **Kalender nägi välja nagu türkiisi sein — üks CSS-i rida oli süüdi**
