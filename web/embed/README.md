@@ -1,10 +1,22 @@
 # Broneerimisvorm kliiniku kodulehele
 
-Üks `<script>`, mis paneb kliiniku lehele visiiditaotluse vormi. Taotlus maandub
-Wivos **Taotlused** lehel; registratuur helistab ja teeb päris visiidi.
+Üks `<script>`, mis paneb kliiniku lehele broneerimisvormi.
 
-Vorm **ei broneeri aega**. Ta küsib aega. Kalender jääb Wivo (või Dentase) sisse
-ja midagi ei jõua sinna ilma, et keegi selle üle vaataks — vt `sql/059`.
+**Neli sammu, üks küsimus korraga** — nagu töö lisamine Wivos:
+
+1. **Mida on vaja?** — teenuse valik
+2. **Vali hambad** — hambakaart ja hind kohe *(ainult hamba kaupa hinnastatud teenustel)*
+3. **Vali aeg** — päris vabad ajad Wivo päevikust *(kui tööajad on seatud)*
+4. **Sinu kontakt** — nimi, telefon, ja siis makse
+
+Samm, millel ei ole midagi näidata, **jäetakse vahele**, mitte ei näidata tühjana.
+
+Üks pikk vorm küsib võõralt inimeselt telefoninumbrit enne, kui on talle midagi
+öelnud. Sammudena teenib leht kontakti välja: mida vaja, mis maksab, millal saab
+— ja alles siis, kes sa oled.
+
+**Aeg jõuab kalendrisse siis, kui keegi selle Wivos kinnitab.** Kalender on see,
+mille järgi praksis töötab, ja ta ei täida ennast ise.
 
 ---
 

@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.70.0] — 2026-09-02
+
+**Vorm sammudena — nagu töö lisamine Wivos**
+
+1. Mida on vaja? → 2. Vali hambad → 3. Vali aeg → 4. Sinu kontakt
+
+- Samm, millel ei ole midagi näidata, **jäetakse vahele**, mitte ei näidata
+  tühjana. Hügieenivisiidil ei ole hambakaarti; kliinikul ilma tööaegadeta ei ole
+  ajasammu. Sammude arv muutub teenuse valikuga koos
+- Üks pikk vorm küsib võõralt inimeselt telefoninumbrit enne, kui on talle midagi
+  öelnud. Sammudena **teenib leht kontakti välja**: mida vaja, mis maksab, millal
+  saab — ja alles siis, kes sa oled
+- Edasiliikumine ei nõua midagi. Inimene, kellele ükski aeg ei sobinud, peab
+  ikka saama vormini ja küsida
+
+**Parandatud: maksmata broneering hoidis aega igavesti**
+
+Eelmine samm tõi selle sisse. Kes avas pangalehe ja sulges selle, hoidis seda
+kellaaega **lõpmatult** — keegi teine ei saanud seda broneerida ega näinud, miks.
+
+- Maksmata hoid aegub **30 minutiga**. Piisavalt, et jõuaks maksta; piisavalt vähe,
+  et populaarne aeg tuleks samal päeval tagasi
+- **Ebaõnnestunud või katkestatud makse vabastab aja kohe** — see ei ole
+  kohustus ja järgmine külastaja ei pea akent välja ootama
+- Tasuta taotlus ja juba tasutud taotlus hoiavad aega kuni inimene nendega
+  tegeleb: need on päris soovid selle tunni kohta
+
 ## [1.69.0] — 2026-09-02
 
 **Päris ajavalik veebis (C2)**

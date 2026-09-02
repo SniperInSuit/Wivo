@@ -291,6 +291,14 @@
     '.wv-time[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
     'color:#fff;font-weight:600}',
     '.wv-none{font-size:.8rem;color:var(--wv-muted);padding:.5rem 0}',
+    // ── Steps ───────────────────────────────────────────────────────────────
+    '.wv-step[hidden]{display:none}',
+    '.wv-dots{display:flex;gap:.3rem;margin:.25rem 0 1rem}',
+    '.wv-dot{height:3px;flex:1;border-radius:2px;background:var(--wv-line)}',
+    '.wv-dot.on{background:var(--wv-accent)}',
+    '.wv-nav{display:flex;gap:.5rem;margin-top:1rem}',
+    '.wv-nav button{margin-top:0}',
+    '.wv-back{background:transparent;color:var(--wv-muted);border:1px solid var(--wv-line)}',
   ].join('')
 
   var WEEKDAYS = ['P', 'E', 'T', 'K', 'N', 'R', 'L']
@@ -430,35 +438,59 @@
     var form = el('form', { novalidate: 'novalidate' })
     wrap.appendChild(form)
 
-    // Service picker and calculator. Both appear only once the catalogue
-    // actually arrives — see fallback 1 in the header comment.
-    var serviceWrap = el('div')
-    form.appendChild(serviceWrap)
-    var calcWrap = el('div')
-    form.appendChild(calcWrap)
-    var slotWrap = el('div')
-    form.appendChild(slotWrap)
+    /**
+     * One question at a time, the way adding a job works in Wivo.
+     *
+     * A single long form asks a stranger for their phone number before it has
+     * told them anything. In steps, the page earns the contact details: what do
+     * you need, what does it cost, when can you come — and only then, who are
+     * you.
+     *
+     * A step with nothing to show is SKIPPED, never shown empty. A service
+     * without per-tooth pricing has no calculator step; a clinic with no diary
+     * has no time step.
+     */
+    var dots = el('div', { class: 'wv-dots' })
+    wrap.appendChild(dots)
+
+    var steps = []
+    function step(title) {
+      var box = el('div', { class: 'wv-step' })
+      box.hidden = true
+      if (title) box.appendChild(el('h3', { text: title }))
+      form.appendChild(box)
+      steps.push(box)
+      return box
+    }
+
+    var serviceWrap = step('Mida on vaja?')
+    var calcWrap = step('Vali hambad')
+    var slotWrap = step('Vali aeg')
+    var contactWrap = step('Sinu kontakt')
+
     var calc = null
     var slots = null
     var chosenSlot = null
 
-    function field(name, label, type, hint) {
-      form.appendChild(el('label', { for: 'wv-' + name, text: label }))
+    function field(target, name, label, type, hint) {
+      target.appendChild(el('label', { for: 'wv-' + name, text: label }))
       var input = type === 'textarea'
         ? el('textarea', { id: 'wv-' + name, name: name, maxlength: String(SONUM_MAX) })
         : el('input', { id: 'wv-' + name, name: name, type: type })
-      form.appendChild(input)
-      if (hint) form.appendChild(el('div', { class: 'wv-hint', html: hint }))
+      target.appendChild(input)
+      if (hint) target.appendChild(el('div', { class: 'wv-hint', html: hint }))
       return input
     }
 
-    var nimi = field('nimi', 'Nimi *', 'text')
-    var telefon = field('telefon', 'Telefon *', 'tel', 'Sellel numbril me helistame.')
-    var email = field('email', 'E-post', 'email')
-    var aeg = field('eelistatudAeg', 'Sobiv aeg', 'text',
-      'Vabas vormis, näiteks „kolmapäeva hommikul" või „nii pea kui võimalik".')
+    var nimi = field(contactWrap, 'nimi', 'Nimi *', 'text')
+    var telefon = field(contactWrap, 'telefon', 'Telefon *', 'tel', 'Sellel numbril me helistame.')
+    var email = field(contactWrap, 'email', 'E-post', 'email')
+    // Kept as a fallback for whoever finds no suitable slot, or arrives before
+    // the clinic has filled in its hours.
+    var aeg = field(contactWrap, 'eelistatudAeg', 'Kui slotti ei sobinud, siis millal?', 'text',
+      'Vabas vormis, näiteks „kolmapäeva hommikul".')
 
-    var sonum = field('sonum', 'Lisainfo', 'textarea', null)
+    var sonum = field(contactWrap, 'sonum', 'Lisainfo', 'textarea', null)
     // Said out loud, and the field is short enough to make it awkward to ignore.
     // Free text on a public form is the biggest art. 9 risk there is: what a
     // person volunteers about their health, we have then collected.
@@ -467,7 +499,7 @@
     sonumHint.appendChild(document.createTextNode(
       'Palun ära kirjuta siia terviseandmeid — neid räägime vastuvõtul. '))
     sonumHint.appendChild(counter)
-    form.appendChild(sonumHint)
+    contactWrap.appendChild(sonumHint)
     sonum.addEventListener('input', function () {
       counter.textContent = sonum.value.length + '/' + SONUM_MAX
     })
@@ -480,17 +512,68 @@
     })
     hp.appendChild(el('label', { for: 'wv-veebileht', text: 'Veebileht' }))
     hp.appendChild(hpInput)
-    form.appendChild(hp)
+    contactWrap.appendChild(hp)
 
+    contactWrap.appendChild(el('div', { class: 'wv-hint', text:
+      'Saates nõustud, et võtame sinuga ühendust. Andmeid kasutame ainult '
+      + 'vastuvõtu kokkuleppimiseks.' }))
+
+    // ── Navigation ──────────────────────────────────────────────────────────
+    var nav = el('div', { class: 'wv-nav' })
+    var back = el('button', { type: 'button', class: 'wv-back', text: 'Tagasi' })
+    var next = el('button', { type: 'button', text: 'Edasi' })
     var button = el('button', { type: 'submit', text: 'Saada taotlus' })
-    form.appendChild(button)
+    nav.appendChild(back); nav.appendChild(next); nav.appendChild(button)
+    form.appendChild(nav)
 
     var errBox = el('div')
     form.appendChild(errBox)
 
-    form.appendChild(el('div', { class: 'wv-hint', text:
-      'Saates nõustud, et võtame sinuga ühendust. Andmeid kasutame ainult '
-      + 'vastuvõtu kokkuleppimiseks.' }))
+    /**
+     * Which steps have anything to show. Recomputed on every move, because the
+     * answer changes with the service: picking a crown adds a tooth chart that
+     * a hygiene visit does not have.
+     */
+    function visibleSteps() {
+      return steps.filter(function (b) {
+        if (b === calcWrap) return !!calc && calcHasService()
+        if (b === slotWrap) return !!slots
+        return b.children.length > 1   // a heading alone is not a step
+      })
+    }
+
+    function calcHasService() {
+      // The chart only helps when the CHOSEN service is priced per tooth.
+      return !!chosenService && calcServices.indexOf(chosenService) !== -1
+    }
+
+    var at = 0
+    function show() {
+      var list = visibleSteps()
+      if (at >= list.length) at = Math.max(0, list.length - 1)
+      steps.forEach(function (b) { b.hidden = true })
+      if (list[at]) list[at].hidden = false
+
+      dots.innerHTML = ''
+      list.forEach(function (_, i) {
+        dots.appendChild(el('div', { class: 'wv-dot' + (i <= at ? ' on' : '') }))
+      })
+
+      var last = at === list.length - 1
+      back.hidden = at === 0
+      next.hidden = last
+      button.hidden = !last
+      errBox.innerHTML = ''
+    }
+
+    back.addEventListener('click', function () { at = Math.max(0, at - 1); show() })
+    next.addEventListener('click', function () {
+      // Nothing is required to move on except the contact step's own check at
+      // submit: a person who cannot find a suitable time should still be able
+      // to reach the form and ask.
+      at = Math.min(visibleSteps().length - 1, at + 1)
+      show()
+    })
 
     function showError(message, details) {
       errBox.innerHTML = ''
@@ -506,6 +589,7 @@
 
     // ── The catalogue. Optional by design. ──────────────────────────────────
     var chosenService = null
+    var calcServices = []
     fetch(cfg.base + '/services?clinic=' + encodeURIComponent(cfg.clinic))
       .then(function (r) { return r.json() })
       .then(function (body) {
@@ -525,21 +609,32 @@
           // Times depend on the service: a 30-minute check-up and a two-hour
           // case do not fit the same gaps.
           if (slots) slots.load(chosenService)
+          // The tooth chart appears or disappears with the choice, so the step
+          // count changes with it.
+          show()
         })
         serviceWrap.appendChild(select)
 
         // The chart, when at least one service is priced per tooth. Services
         // without per-tooth pricing keep the range they already had.
+        calcServices = services
+          .filter(function (x) { return !!x.kalkulaator })
+          .map(function (x) { return x.id })
         calc = mountCalculator(calcWrap, services)
 
         slots = mountSlots(slotWrap, function (picked) { chosenSlot = picked })
         slots.load(chosenService)
+        show()
       })
       .catch(function () {
         // Fallback 1: no catalogue, no picker, form still works. Silent on
         // purpose — a price list that failed to load is our problem, not the
         // visitor's, and an error about it would only stop them asking.
+        show()
       })
+
+    // Paint immediately so the form is usable before the catalogue answers.
+    show()
 
     // ── Sending ─────────────────────────────────────────────────────────────
     var sending = false

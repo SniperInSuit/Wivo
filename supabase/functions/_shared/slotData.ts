@@ -132,20 +132,43 @@ export async function loadOf(
 }
 
 /** Requests already holding a slot but not yet turned into a visit. */
+/**
+ * How long an UNPAID hold survives. Somebody who opens the bank page and closes
+ * it must not block that time for ever.
+ *
+ * Long enough to pay without hurrying, short enough that a popular slot comes
+ * back the same afternoon. Only unpaid holds expire — a request with no fee
+ * asked, or one already paid, holds its time until a person deals with it,
+ * because that is a real request for that hour.
+ */
+export const HOLD_MINUTES = 30
+
 export async function pendingHolds(
   clinicId: string, dates: string[],
 ): Promise<{ kuupaev: string; algus: number; kestus: number }[]> {
   if (dates.length === 0) return []
   const { data, error } = await admin()
     .from('visit_requests')
-    .select('soovitud_algus, soovitud_kestus')
+    .select('soovitud_algus, soovitud_kestus, makse_staatus, created_at')
     .eq('clinic_id', clinicId)
-    .in('staatus', ['uus'])
+    .eq('staatus', 'uus')
     .not('soovitud_algus', 'is', null)
   if (error) return []
+
   const wanted = new Set(dates)
+  const cutoff = Date.now() - HOLD_MINUTES * 60_000
   const out: { kuupaev: string; algus: number; kestus: number }[] = []
-  for (const r of (data ?? []) as { soovitud_algus: string; soovitud_kestus: number }[]) {
+
+  for (const r of (data ?? []) as {
+    soovitud_algus: string; soovitud_kestus: number
+    makse_staatus: string; created_at: string
+  }[]) {
+    // A payment that failed or was abandoned is not a commitment: release the
+    // time immediately rather than making the next visitor wait out the window.
+    if (r.makse_staatus === 'ebaonnestus' || r.makse_staatus === 'tuhistatud') continue
+    // Started paying and never finished — hold it, but only for a while.
+    if (r.makse_staatus === 'ootel' && Date.parse(r.created_at) < cutoff) continue
+
     const d = new Date(r.soovitud_algus)
     const key = localDate(d)
     if (!wanted.has(key)) continue
