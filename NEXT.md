@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.61.1 · 02.09.2026 · haru `main`**
+**Seis: v1.62.0 · 02.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 515 rohelist, 0 punast
+npm test        # 525 rohelist, 0 punast
 npm run build
 ```
 
@@ -27,7 +27,7 @@ juba lingitud selle repo kaudu; saladused elavad Supabase'is, mitte failides.
 
 ---
 
-## 🔴 Jooksutamata migratsioonid — kaks
+## 🔴 Jooksutamata migratsioonid — kolm
 
 Supabase SQL editoris, **Wivo kinni**:
 
@@ -51,7 +51,19 @@ kirjas, mida funktsioon päriselt vastas**.
 
 ⚠ `cron.job_run_details` ütleb „succeeded" ka 401 puhul. Ära vaata sealt.
 
-### 2. `sql/057_job_cost_override.sql` — kulude käsitsi muutmine
+### 2. `sql/058_payout_line_key.sql` — **topelt maksmine**
+
+Kinnitatud väljamakse ei katnud kõiki oma ridu: disain, mudel ja iga lisatasu
+rida ilmusid kohe uuesti „arvestamata" nimekirja ja järgmine kinnitamine oleks
+nad TEIST KORDA välja maksnud. Sinu ekraanil oli see 7 rida, 135 €.
+
+Kood parandab selle ka ilma migratsioonita (vanad read loetakse kirjelduse
+järgi), aga **uued read vajavad veergu** — ilma selleta jääb tuletus igaveseks
+ainsaks kaitseks. Jooksuta.
+
+Verify-plokis on päring, mis näitab, kas mõni rida on juba kaks korda makstud.
+
+### 3. `sql/057_job_cost_override.sql` — kulude käsitsi muutmine
 
 `jobs.kulu_yle jsonb`. Ilma selleta töötab uus kulude tabel edasi, aga pliiatsi
 vajutamine annab konsooli vea ja muudatus ei salvestu.
@@ -106,6 +118,7 @@ ainus koht, kust näeb, kas kutsuja üldse jõuab kohale.
 
 | Versioon | Mis |
 |---|---|
+| 1.62.0 | **Kinnitatud väljamakse ei katnud oma ridu** (`sql/058`); hoiatused, millega saab midagi teha |
 | 1.61.1 | Kaks paneeli kirjutasid ekraanile `[object Object]` |
 | 1.61.0 | Omahind lugemisvaates + käsitsi ülekirjutus (`sql/057`); võlglaste aruanne |
 | 1.60.1 | Cron ütles „succeeded" ja ükski arve ei liikunud; saatja südamelöök |

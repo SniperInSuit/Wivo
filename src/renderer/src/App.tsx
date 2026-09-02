@@ -389,7 +389,7 @@ function AppContent() {
           )}
           {view === 'kliendid' && <CustomersView />}
           {view === 'arved' && <InvoicesView jobs={jobs} />}
-          {view === 'tootasud' && <PayrollView jobs={jobs} />}
+          {view === 'tootasud' && <PayrollView jobs={jobs} onOpenJob={openEdit} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
           {view === 'settings' && <SettingsPage />}
           {view === 'workers' && <WorkersPage />}

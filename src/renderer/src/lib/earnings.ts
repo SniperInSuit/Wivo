@@ -823,8 +823,22 @@ export interface EarningsIssue {
   code: 'periood' | 'pooleli' | 'reegel' | 'hambad' | 'hind' | 'makstud'
   label: string
   count: number
-  examples: string[]
+  /** Up to three, with their job id so the screen can OPEN them. */
+  examples: { id: string; label: string }[]
+  /**
+   * Which months the work actually belongs to, 'yyyy-MM', newest first. Only
+   * filled for `periood`, and it is what makes that row actionable: the answer
+   * is "look at August", and without this the screen cannot offer it.
+   */
+  months: string[]
 }
+
+/**
+ * Not a fault, and the wording says so. Work finished in August is not missing
+ * from September's payout — it is in August's, and the only thing to do about
+ * it is look at August.
+ */
+const PERIOD_LABEL = 'Valmis, aga teisel perioodil — tasu arvestatakse seal'
 
 export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   const {
@@ -841,15 +855,16 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   // total under a heading that did not describe them, which is worse than not
   // reporting them: the screen looked like it had answered.
   const buckets = new Map<string, EarningsIssue>()
-  const add = (code: EarningsIssue['code'], label: string, job: Job) => {
+  const add = (code: EarningsIssue['code'], label: string, job: Job, month?: string) => {
     const key = `${code}|${label}`
-    const b = buckets.get(key) ?? { code, label, count: 0, examples: [] }
+    const b = buckets.get(key) ?? { code, label, count: 0, examples: [], months: [] }
     b.count++
     if (b.examples.length < 3) {
       // Every work type on the job, not just the first — the whole reason a
       // mixed job earned nothing is usually the type that was not named here.
-      b.examples.push(`${itemsLabel(payItemsOf(job))} · ${job.patsient}`)
+      b.examples.push({ id: job.id, label: `${itemsLabel(payItemsOf(job))} · ${job.patsient}` })
     }
+    if (month && !b.months.includes(month)) b.months.push(month)
     buckets.set(key, b)
   }
 
@@ -865,7 +880,12 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     }
     const earnedOn = jobEarnedOn(job)
     if (!inPeriod(earnedOn)) {
-      add('periood', `Töö valmimiskuupäev (${earnedOn || 'puudub'}) jääb sellest perioodist välja`, job)
+      // ONE row for the lot, with the months carried alongside. The label used
+      // to embed the date, and since buckets are keyed by label, every distinct
+      // completion date became its own card — thirteen warnings that between
+      // them said only "August is not September". The date is not the finding;
+      // the finding is that the work belongs to another payout.
+      add('periood', PERIOD_LABEL, job, (earnedOn || '').slice(0, 7) || '?')
       continue
     }
     if (alreadyPaid.has(`job:${job.id}`) || alreadyPaid.has(`design:${job.id}`)) {
@@ -929,7 +949,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         }
         const revDate = revisionEarnedOn(rev)
         if (!inPeriod(revDate)) {
-          add('periood', `Muudatuse kuupäev (${revDate || 'puudub'}) jääb sellest perioodist välja`, revJob)
+          add('periood', PERIOD_LABEL, revJob, (revDate || '').slice(0, 7) || '?')
           continue
         }
         if (alreadyPaid.has(`rev:${job.id}:${rev.id}`)) continue
@@ -967,7 +987,14 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     }
   }
 
-  return [...buckets.values()].sort((a, b) => b.count - a.count)
+  // Actionable first. `periood` is the one bucket nobody can DO anything about
+  // except look elsewhere, and it is usually the biggest — sorting by count
+  // alone put the row that needs no action at the top of a list of ones that do.
+  // `makstud` is likewise settled business, not an open item.
+  const rank = (i: EarningsIssue) => (i.code === 'periood' ? 2 : i.code === 'makstud' ? 1 : 0)
+  return [...buckets.values()]
+    .map(b => ({ ...b, months: [...b.months].sort().reverse() }))
+    .sort((a, b) => rank(a) - rank(b) || b.count - a.count)
 }
 
 export const earningsTotal = (lines: EarningLine[]): number =>

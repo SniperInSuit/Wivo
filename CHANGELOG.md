@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.62.0] — 2026-09-02
+
+**Kinnitatud väljamakse ei katnud kõiki oma ridu — need tulid tagasi**
+
+Sa küsisid, miks mõned tööd välja jäeti. Vastus on halvem kui „välja jäeti":
+mõned tulid tagasi ja oleks teist korda välja makstud.
+
+- Üks töö annab kuni **kümme eri palgarida**: tootmine, disain, mudel, iga
+  lisatasu reegel eraldi, ja muudatuse pealt needsamad uuesti. Igal on oma võti
+- `paidKeysFrom` **arvutas võtme tagasi** veergudest `job_id`, `revision_id` ja
+  `kind`. Kümnest võtmekujust taastus neli. Disain, mudel ja iga lisatasu rida
+  said võtme `job:<töö>`, mida neil kunagi ei olnud
+- Tagajärg: kinnitatud väljamakse **ei katnud neid ridu**. Nad ilmusid kohe
+  uuesti „arvestamata" nimekirja ja järgmine kinnitamine oleks nad uuesti
+  välja maksnud. Sinu ekraanil: 42-realine kinnitatud väljamakse, ja kohe
+  pärast seda 7 „Hamba Disain" rida, 135 €, kõik juba selle 42 sees
+- **`sql/058`** — `worker_payout_lines.line_key`. Rida ütleb nüüd ise, kes ta
+  on. Võtit ei saa tuletada, sest lisatasu rea silt on kasutaja enda tekst
+- Vanad read (enne 058) loetakse kirjelduse ja tasureegli sildi järgi. Tuletus
+  on **ettevaatlik ühtepidi**: tundmatu rida jääb `job:` kujule. Üks vana
+  topeltrida võib veel korra läbi lipsata, aga ükski makstud rida ei kao — see
+  oleks vastupidine viga ja keegi jääks palgast ilma
+- 10 testi
+
+**„Miks mõni töö siin ei ole" — hoiatused, millega saab midagi teha**
+
+- 13 oranži kaarti, igaüks „töö valmimiskuupäev jääb sellest perioodist välja",
+  ja mitte ühelgi nuppu. Kõik olid tõsi, ükski ei olnud viga, ja teha ei olnud
+  midagi. Kuupäev oli sildi sees ja sildi järgi käib grupeerimine, nii et iga
+  kuupäev tegi oma kaardi
+- Nüüd **üks rida**, hall mitte oranž, ja kuud on nupud: vajuta „august 2026" ja
+  periood läheb sinna. See on ainus, mida seal teha saab, ja nüüd saab
+- Ülejäänud hoiatused on endiselt oranžid ja **iga nimetatud töö on klikitav** —
+  avab töö. „Ei ole valmis-etapis" on asi, mille saab ära teha
+- Hoiatused kolisid pealkirja „Arvestamata read (3)" alt välja. See luges ühte
+  asja ja näitas all teist
+
 ## [1.61.1] — 2026-09-02
 
 **Kaks paneeli kirjutasid ekraanile `[object Object]`**

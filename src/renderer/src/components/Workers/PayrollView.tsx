@@ -29,7 +29,7 @@ import {
   grossOf, payslipFromGross,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
-  type PayrollTaxRates, type WorkerTaxProfile,
+  type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue,
 } from '../../lib/earnings'
 import { useQueryClient } from '@tanstack/react-query'
 import { updateProfile, type Engagement, type PayBasis } from '../../lib/supabase'
@@ -60,9 +60,11 @@ const SCOPED_KINDS: RateKind[] = ['hammas', 'too', 'protsent']
 
 interface PayrollViewProps {
   jobs: Job[]
+  /** Opens a job. Without it the diagnostics can name a job but not reach it. */
+  onOpenJob?: (job: Job) => void
 }
 
-export function PayrollView({ jobs }: PayrollViewProps) {
+export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
   const auth = useAuth()
   const { can } = usePermissions()
   // Payroll is delegable: an owner with a bookkeeper should not have to run
@@ -142,7 +144,7 @@ export function PayrollView({ jobs }: PayrollViewProps) {
   ])
 
   const perWorker = useMemo(() => visible.map(w => {
-    const alreadyPaid = paidKeysFrom(payouts, w.id)
+    const alreadyPaid = paidKeysFrom(payouts, w.id, rates)
     const lines = calculateEarnings({
       profileId: w.id,
       rates, jobs, hours,
@@ -536,32 +538,24 @@ export function PayrollView({ jobs }: PayrollViewProps) {
 
                 <HoursPanel profileId={worker.id} canEdit={isOwner || worker.id === auth.user?.id} />
 
+                {/* Why some work is not on the list. Its own section, because it
+                    is not the list: it used to sit under "Arvestamata read (3)"
+                    and then show thirteen cards, so the heading counted one
+                    thing and the cards below it another. */}
+                {issues.length > 0 && (
+                  <IssuesPanel
+                    issues={issues}
+                    jobs={jobs}
+                    onOpenJob={onOpenJob}
+                    onGoToMonth={m => setMonthOffset(monthsBetween(period.start, m))}
+                  />
+                )}
+
                 {/* Earnings preview */}
                 <section>
                   <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                     Arvestamata read ({lines.length})
                   </h4>
-                  {/* Reasons come first and are shown whether or not anything
-                      was counted — a job that quietly produced no line is the
-                      case most worth surfacing. */}
-                  {issues.length > 0 && (
-                    <div className="space-y-1.5 mb-2">
-                      {issues.map(iss => (
-                        <div
-                          key={`${iss.code}|${iss.label}`}
-                          className="flex items-start gap-2 text-[11px] rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5"
-                        >
-                          <AlertTriangle size={11} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <p className="text-orange-800">
-                              <strong>{iss.count}</strong> tööd arvestamata: {iss.label}
-                            </p>
-                            <p className="text-orange-700/70 truncate">{iss.examples.join(' · ')}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                   {lines.length === 0 ? (
                     <p className="text-xs text-ink-faint">
@@ -655,6 +649,149 @@ export function PayrollView({ jobs }: PayrollViewProps) {
       })}
     </div>
   )
+}
+
+/**
+ * Why some work is not on the payout list — and what to DO about each answer.
+ *
+ * The old version was thirteen identical orange cards saying "the completion
+ * date falls outside this period", one per distinct date, with no button on any
+ * of them. Every one of them was true, none of them was a fault, and there was
+ * nothing on screen to press. A warning nobody can act on is not a warning; it
+ * is furniture.
+ *
+ * So the rows are now split by what they ask of you:
+ *   `periood`  — nothing is wrong. Look at the other month; there is a button.
+ *   `makstud`  — already settled. Stated once, quietly.
+ *   the rest   — something to fix on the job or in the rate rules. Orange, and
+ *                every named job opens with a click.
+ */
+function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
+  issues: EarningsIssue[]
+  jobs: Job[]
+  onOpenJob?: (job: Job) => void
+  onGoToMonth: (month: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const actionable = issues.filter(i => i.code !== 'periood' && i.code !== 'makstud')
+  const quiet = issues.filter(i => i.code === 'periood' || i.code === 'makstud')
+
+  const openJob = (id: string) => {
+    const job = jobs.find(j => j.id === id)
+    if (job && onOpenJob) onOpenJob(job)
+  }
+
+  /** "august 2026" from '2026-08'. Unparseable months keep their raw form. */
+  const monthLabel = (m: string): string => {
+    const d = parseISO(`${m}-01`)
+    return isValid(d) ? format(d, 'LLLL yyyy', { locale: et }) : m
+  }
+
+  return (
+    <section className="space-y-1.5">
+      <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
+        Miks mõni töö siin ei ole
+      </h4>
+
+      {actionable.map(iss => (
+        <div
+          key={`${iss.code}|${iss.label}`}
+          className="flex items-start gap-2 text-[11px] rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5"
+        >
+          <AlertTriangle size={11} className="text-orange-500 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-orange-800">
+              <strong>{iss.count}</strong> tööd: {iss.label}
+            </p>
+            <p className="text-orange-700/70 truncate">
+              {iss.examples.map((ex, i) => (
+                <span key={ex.id}>
+                  {i > 0 && ' · '}
+                  {onOpenJob ? (
+                    <button
+                      type="button"
+                      onClick={() => openJob(ex.id)}
+                      className="underline decoration-dotted underline-offset-2 hover:text-orange-900"
+                      title="Ava töö"
+                    >
+                      {ex.label}
+                    </button>
+                  ) : ex.label}
+                </span>
+              ))}
+              {iss.count > iss.examples.length && ` · +${iss.count - iss.examples.length}`}
+            </p>
+          </div>
+        </div>
+      ))}
+
+      {/* Not a fault, so not orange. One line, folded away, with the only thing
+          there is to do about it: go and look at that month. */}
+      {quiet.map(iss => (
+        <div
+          key={`${iss.code}|${iss.label}`}
+          className="text-[11px] rounded-lg border border-ink-faint/20 bg-bg-sidebar px-2.5 py-1.5"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-ink-muted">
+              <strong className="text-ink">{iss.count}</strong> tööd — {iss.label}
+            </span>
+            {iss.months.slice(0, 4).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onGoToMonth(m)}
+                className="text-accent hover:text-accent-dark font-medium underline decoration-dotted underline-offset-2"
+                title={`Ava ${monthLabel(m)} periood`}
+              >
+                {monthLabel(m)}
+              </button>
+            ))}
+            {iss.examples.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="text-ink-faint hover:text-ink ml-auto"
+              >
+                {open ? 'peida' : 'näita'}
+              </button>
+            )}
+          </div>
+          {open && (
+            <p className="text-ink-faint mt-1 truncate">
+              {iss.examples.map((ex, i) => (
+                <span key={ex.id}>
+                  {i > 0 && ' · '}
+                  {onOpenJob ? (
+                    <button
+                      type="button"
+                      onClick={() => openJob(ex.id)}
+                      className="underline decoration-dotted underline-offset-2 hover:text-ink"
+                      title="Ava töö"
+                    >
+                      {ex.label}
+                    </button>
+                  ) : ex.label}
+                </span>
+              ))}
+              {iss.count > iss.examples.length && ` · +${iss.count - iss.examples.length}`}
+            </p>
+          )}
+        </div>
+      ))}
+    </section>
+  )
+}
+
+/**
+ * Whole months from the period currently on screen to `month` ('yyyy-MM'),
+ * as an offset from TODAY — which is what `monthOffset` counts.
+ */
+function monthsBetween(_periodStart: string, month: string): number {
+  const target = parseISO(`${month}-01`)
+  if (!isValid(target)) return 0
+  const now = new Date()
+  return (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth())
 }
 
 // ─── Engagement ───────────────────────────────────────────────────────────────
