@@ -79,6 +79,26 @@ Ootus: `{"ok":true,"data":{"clinic":{...},"services":[...]}}`.
 `wivo-booking.js` tuleb panna kliiniku enda serverisse (Framer: Assets;
 WordPress: teema kaust; või ükskõik milline staatiline hosting).
 
+### Kui faili üles laadida ei saa
+
+Paljud lehetegijad lubavad ainult HTML-plokki kleepida, mitte `.js` faili lisada.
+Siis pane kogu faili sisu otse `<script>` sisse — muudatusi ei ole vaja, sest
+seadistus loetakse `document.currentScript` pealt ja see töötab ka reasisese
+skriptiga:
+
+```html
+<div id="wivo-broneering"></div>
+<script
+  data-wivo-base="https://<ref>.functions.supabase.co/public-booking"
+  data-wivo-clinic="minu-kliinik"
+  data-wivo-target="#wivo-broneering">
+/* siia kogu wivo-booking.js sisu */
+</script>
+```
+
+Miinus: uuendamiseks tuleb tekst uuesti kleepida. Kui `src` on võimalik,
+kasuta seda.
+
 | Atribuut | Kohustuslik | Mis |
 |---|---|---|
 | `data-wivo-base` | jah | Funktsiooni aadress, ilma lõpukaldkriipsuta |
