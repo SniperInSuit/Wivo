@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.64.1] — 2026-09-02
+
+**Mudeli tasureeglit ei saanud üldse salvestada**
+
+    new row for relation "worker_rates" violates check constraint
+    "worker_rates_applies_valid"
+
+„Mille eest: Mudel" reegel ei jõudnud kunagi andmebaasi. Rakendus oskab mudelit
+arvestada alates 1.48-st, palgamootor maksab selle välja ja omahinna tabel näitab
+seda — aga reeglit ei saanud luua.
+
+**Minu viga `sql/048`-s: vale nimi.** Piirang loodi `sql/024`-s nimega
+`worker_rates_applies_valid`. `sql/039` lisas TEISE nime all
+(`worker_rates_scope_valid`) ja drop selle kohal nimetas samuti uut nime, nii et
+vana jäi alles. Sellest hetkest oli tabelil **kaks piirangut samal veerul** ja
+rida peab rahuldama mõlemad. Midagi ei katkenud seni, kuni mõlemad lubasid sama.
+`sql/048` laiendas ühte 'mudel' võrra ja teine ikka ei lubanud — lõpp.
+
+`drop constraint IF EXISTS` on see, mis selle vaikseks tegi: ta on õige tööriist
+korduvalt jooksutatava migratsiooni jaoks ja ta tähendab ka, et vale nimi ei
+kustuta midagi ega ütle midagi. Kirjaviga ja turvavõrk kustutavad teineteist.
+
+- **`sql/060_fix_rate_scope_constraint.sql`** — üks piirang, üks nimi. Jooksuta
+- `sql/048` parandatud, et ta enam sama auku ei kaevaks
+- **`sql/constraints.test.ts`** — mängib kõik migratsioonid järjekorras läbi ja
+  nõuab, et lõppseisus oleks igal veerul täpselt üks liikmelisuse piirang.
+  Kontrollitud, et test **kukub** vea juures ja läheb läbi paranduse järel —
+  esimesed kaks versiooni seda testi ei kukkunud ja olid seetõttu väärtusetud
+
 ## [1.64.0] — 2026-09-02
 
 **Visiiditaotluste postkast — broneerimissüsteemi B1–B3**

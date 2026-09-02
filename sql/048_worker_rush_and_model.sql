@@ -41,8 +41,15 @@ comment on column public.profiles.kiirtoo_kordaja is
   'ei maksta. Eraldi kliiniku hinnakordajast (settings.kiirtooKordaja), mis '
   'puudutab kliendi hinda, mitte palka.';
 
+-- ⚠ SIIN OLI VIGA, PARANDATUD sql/060-s.
+--   Siin seisis `drop constraint if exists worker_rates_scope_valid`, aga
+--   piirangu päris nimi on `worker_rates_applies_valid` (sql/024, sql/026).
+--   Vale nimi + `if exists` = drop ei teinud midagi ega kurtnud, ja tabelile
+--   jäi kaks piirangut: vana lubas kolme väärtust, uus nelja. Rida peab
+--   rahuldama mõlemad, nii et 'mudel' ei salvestunud kunagi.
+alter table public.worker_rates drop constraint if exists worker_rates_applies_valid;
 alter table public.worker_rates drop constraint if exists worker_rates_scope_valid;
-alter table public.worker_rates add constraint worker_rates_scope_valid
+alter table public.worker_rates add constraint worker_rates_applies_valid
   check (applies_to in ('too', 'disain', 'muudatus', 'mudel'));
 
 comment on column public.worker_rates.applies_to is
