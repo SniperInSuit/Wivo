@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.77.0] — 2026-09-02
+
+**Kalender nägi välja nagu türkiisi sein — üks CSS-i rida oli süüdi**
+
+Vidinas oli reegel `.wv button { background: accent; width: 100% }`, kirjutatud
+siis, kui ainus nupp oli „Saada". Ta võitis vaikselt iga hiljem lisatud
+komponendi stiili — `.wv button` (0,1,1) on spetsiifilisem kui `.wv-cell`
+(0,1,0) — nii et **kogu kuuruudustik, iga kellaaeg ja iga hammas** renderdus
+täislaiuses türkiisi plokina. Üks element-selektor, neli katkist komponenti.
+
+- Primaarnupu välimus on nüüd **`.wv-btn`** klassil. Ühtegi nuppu ei stiliseerita
+  enam elemendi järgi
+- **Vaba päev** on pehme türkiisi taustaga ja tumeda numbriga; kinni ja
+  möödunud päevad taanduvad. Silm läheb sinna, kuhu saab vajutada, mitte ei
+  skanni türkiisi seina. Täpp lahtri sees kadus — pehme taust ütleb sama
+  paremini
+- Kuunooled on omaette väiksed nupud, mitte täislaiuses plokid
+- Kellaajad on kitsam veerg oma kerimisega; päeva silt selle kohal
+- Hover-olekud, pehmemad jooned, `capitalize` kuu nimel
+
+Kontrollitud: kolm CSS-plokki on süntaktiliselt terved (sulud balansis), ühtegi
+paljast element-selektorit aktsentvärviga ei ole järele jäänud, ja iga komponent
+toob nüüd oma tausta kaasa.
+
 ## [1.76.1] — 2026-09-02
 
 **Taotluste loendur on punane**

@@ -48,22 +48,38 @@
 
   var SONUM_MAX = 300
 
+  /**
+   * ── Every button is styled by CLASS, never by element ─────────────────────
+   * There used to be a `.wv button { background: accent; width: 100% }` rule,
+   * written when the only button was "send". It then quietly won against every
+   * component style added afterwards — `.wv button` (0,1,1) beats `.wv-cell`
+   * (0,1,0) — so the whole month grid, every time and every tooth rendered as a
+   * full-width teal block. One element selector, four broken components.
+   *
+   * `.wv-btn` is now the only thing that looks like a primary button.
+   */
   var CSS = [
-    '.wv{--wv-accent:#0AB6C4;--wv-ink:#1b2733;--wv-muted:#64748b;--wv-line:#dfe5ec;',
-    '--wv-bg:#fff;--wv-radius:12px;font-family:inherit;color:var(--wv-ink);max-width:520px}',
+    '.wv{--wv-accent:#0AB6C4;--wv-accent-soft:#e6f8fa;--wv-ink:#1b2733;',
+    '--wv-muted:#64748b;--wv-line:#e3e8ef;--wv-bg:#fff;--wv-radius:12px;',
+    'font-family:inherit;color:var(--wv-ink);max-width:560px}',
     '.wv *{box-sizing:border-box}',
     '.wv h2{font-size:1.15rem;margin:0 0 .25rem}',
-    '.wv p.wv-sub{color:var(--wv-muted);font-size:.85rem;margin:0 0 1rem}',
+    '.wv h3{font-size:.95rem;margin:0 0 .75rem}',
+    '.wv p.wv-sub{color:var(--wv-muted);font-size:.85rem;margin:0 0 1rem;line-height:1.5}',
     '.wv label{display:block;font-size:.8rem;font-weight:600;margin:.75rem 0 .25rem}',
-    '.wv input,.wv select,.wv textarea{width:100%;padding:.6rem .7rem;border:1px solid var(--wv-line);',
-    'border-radius:var(--wv-radius);font:inherit;font-size:.9rem;background:var(--wv-bg);color:inherit}',
+    '.wv input,.wv select,.wv textarea{width:100%;padding:.6rem .7rem;',
+    'border:1px solid var(--wv-line);border-radius:var(--wv-radius);font:inherit;',
+    'font-size:.9rem;background:var(--wv-bg);color:inherit}',
     '.wv textarea{min-height:80px;resize:vertical}',
-    '.wv input:focus,.wv select:focus,.wv textarea:focus{outline:2px solid var(--wv-accent);outline-offset:1px;border-color:transparent}',
-    '.wv .wv-hint{font-size:.72rem;color:var(--wv-muted);margin-top:.25rem}',
+    '.wv input:focus,.wv select:focus,.wv textarea:focus,.wv button:focus-visible{',
+    'outline:2px solid var(--wv-accent);outline-offset:1px}',
+    '.wv input:focus,.wv select:focus,.wv textarea:focus{border-color:transparent}',
+    '.wv .wv-hint{font-size:.72rem;color:var(--wv-muted);margin-top:.25rem;line-height:1.45}',
     '.wv .wv-count{float:right}',
-    '.wv button{margin-top:1rem;width:100%;padding:.7rem 1rem;border:0;border-radius:var(--wv-radius);',
+    // The one primary-button look. Everything else brings its own.
+    '.wv .wv-btn{width:100%;padding:.7rem 1rem;border:0;border-radius:var(--wv-radius);',
     'background:var(--wv-accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}',
-    '.wv button[disabled]{opacity:.55;cursor:progress}',
+    '.wv .wv-btn[disabled]{opacity:.55;cursor:progress}',
     '.wv .wv-err{margin-top:.75rem;padding:.6rem .7rem;border-radius:var(--wv-radius);',
     'background:#fdeaea;color:#a12525;font-size:.85rem}',
     '.wv .wv-err ul{margin:.35rem 0 0;padding-left:1.1rem}',
@@ -278,49 +294,57 @@
 
 
   var SLOT_CSS = [
-    '.wv-slots{margin:.5rem 0}',
-    // Month grid on the left, times on the right — the shape a diary has, and
-    // the shape the clinic already reads inside Wivo. A vertical list of every
-    // half-hour was technically the same information and looked like a queue.
-    '.wv-cal{display:grid;grid-template-columns:1fr;gap:1rem}',
-    '@media (min-width:520px){.wv-cal{grid-template-columns:minmax(0,1fr) minmax(0,11rem)}}',
-    '.wv-month{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}',
-    '.wv-month strong{font-size:.85rem}',
-    '.wv-month button{width:1.9rem;height:1.9rem;padding:0;margin:0;border-radius:var(--wv-radius);',
-    'background:var(--wv-bg);border:1px solid var(--wv-line);color:var(--wv-ink);cursor:pointer;',
-    'font:inherit;line-height:1}',
-    '.wv-month button[disabled]{opacity:.3;cursor:default}',
-    '.wv-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}',
-    '.wv-wd{font-size:.62rem;color:var(--wv-muted);text-align:center;padding:.2rem 0}',
-    '.wv-cell{aspect-ratio:1;border:1px solid transparent;border-radius:var(--wv-radius);',
-    'background:transparent;color:var(--wv-ink);font:inherit;font-size:.78rem;cursor:pointer;',
-    'padding:0;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;',
-    'line-height:1.1;position:relative}',
-    // Free: it has a dot. Closed: greyed and not clickable. Chosen: filled.
-    '.wv-cell.free{border-color:var(--wv-line)}',
-    '.wv-cell.free i{width:4px;height:4px;border-radius:50%;background:var(--wv-accent);',
-    'display:block;margin-top:2px}',
-    '.wv-cell.shut{color:var(--wv-muted);opacity:.45;cursor:default}',
-    '.wv-cell.past{color:var(--wv-muted);opacity:.3;cursor:default}',
-    '.wv-cell[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);color:#fff}',
-    '.wv-cell[aria-pressed="true"] i{background:#fff}',
-    '.wv-times{display:flex;flex-direction:column;gap:.3rem;max-height:15rem;overflow-y:auto}',
-    '.wv-time{border:1px solid var(--wv-line);border-radius:var(--wv-radius);background:var(--wv-bg);',
-    'color:var(--wv-ink);font:inherit;font-size:.85rem;padding:.4rem .5rem;cursor:pointer;margin:0}',
+    '.wv-slots{margin:.25rem 0}',
+    // Month on the left, that day's times on the right — the shape a diary
+    // has. Stacks on a narrow screen, where side-by-side would make both
+    // columns unusable.
+    '.wv-cal{display:grid;grid-template-columns:1fr;gap:1rem;align-items:start}',
+    '@media (min-width:520px){.wv-cal{grid-template-columns:1fr 9.5rem}}',
+
+    '.wv-month{display:flex;align-items:center;justify-content:space-between;',
+    'margin-bottom:.6rem;gap:.5rem}',
+    '.wv-month strong{font-size:.85rem;font-weight:600;text-transform:capitalize}',
+    '.wv-nav-btn{width:1.75rem;height:1.75rem;flex:0 0 auto;padding:0;margin:0;',
+    'border-radius:9px;background:transparent;border:1px solid var(--wv-line);',
+    'color:var(--wv-muted);cursor:pointer;font:inherit;font-size:1rem;line-height:1;',
+    'display:flex;align-items:center;justify-content:center}',
+    '.wv-nav-btn:hover:not([disabled]){border-color:var(--wv-accent);color:var(--wv-accent)}',
+    '.wv-nav-btn[disabled]{opacity:.25;cursor:default}',
+
+    '.wv-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}',
+    '.wv-wd{font-size:.62rem;color:var(--wv-muted);text-align:center;padding:.15rem 0 .3rem;',
+    'font-weight:600;letter-spacing:.02em}',
+
+    // A day is a quiet square. Only a FREE day gets ink; the rest recede, so
+    // the eye lands on what can be clicked instead of scanning a wall of teal.
+    '.wv-cell{aspect-ratio:1;border:1px solid transparent;border-radius:9px;',
+    'background:transparent;color:var(--wv-muted);font:inherit;font-size:.8rem;',
+    'cursor:default;padding:0;margin:0;display:flex;align-items:center;',
+    'justify-content:center;line-height:1;transition:background .12s,border-color .12s}',
+    '.wv-cell.free{color:var(--wv-ink);font-weight:600;background:var(--wv-accent-soft);',
+    'cursor:pointer}',
+    '.wv-cell.free:hover{border-color:var(--wv-accent)}',
+    '.wv-cell.shut,.wv-cell.past{opacity:.35}',
+    '.wv-cell[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
+    'color:#fff}',
+
+    // Times: a plain column that scrolls, with the day it belongs to above it.
+    '.wv-daylabel{font-size:.72rem;color:var(--wv-muted);font-weight:600;',
+    'margin-bottom:.35rem;text-transform:capitalize}',
+    '.wv-times{display:flex;flex-direction:column;gap:.3rem;max-height:16.5rem;',
+    'overflow-y:auto;padding-right:2px}',
+    '.wv-time{border:1px solid var(--wv-line);border-radius:9px;background:var(--wv-bg);',
+    'color:var(--wv-ink);font:inherit;font-size:.85rem;padding:.45rem .5rem;margin:0;',
+    'cursor:pointer;text-align:center;transition:background .12s,border-color .12s}',
+    '.wv-time:hover{border-color:var(--wv-accent);background:var(--wv-accent-soft)}',
     '.wv-time[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
     'color:#fff;font-weight:600}',
-    '.wv-legend{display:flex;gap:.8rem;font-size:.68rem;color:var(--wv-muted);margin-top:.5rem;flex-wrap:wrap}',
-    '.wv-legend span{display:inline-flex;align-items:center;gap:.25rem}',
-    '.wv-legend i{width:6px;height:6px;border-radius:50%;display:inline-block}',
-    '.wv-none{font-size:.8rem;color:var(--wv-muted);padding:.5rem 0}',
-    // ── Steps ───────────────────────────────────────────────────────────────
-    '.wv-step[hidden]{display:none}',
-    '.wv-dots{display:flex;gap:.3rem;margin:.25rem 0 1rem}',
-    '.wv-dot{height:3px;flex:1;border-radius:2px;background:var(--wv-line)}',
-    '.wv-dot.on{background:var(--wv-accent)}',
-    '.wv-nav{display:flex;gap:.5rem;margin-top:1rem}',
-    '.wv-nav button{margin-top:0}',
-    '.wv-back{background:transparent;color:var(--wv-muted);border:1px solid var(--wv-line)}',
+
+    '.wv-legend{display:flex;gap:.9rem;font-size:.68rem;color:var(--wv-muted);',
+    'margin-top:.7rem;flex-wrap:wrap}',
+    '.wv-legend span{display:inline-flex;align-items:center;gap:.3rem}',
+    '.wv-swatch{width:10px;height:10px;border-radius:3px;display:inline-block}',
+    '.wv-none{font-size:.8rem;color:var(--wv-muted);padding:.4rem 0;line-height:1.5}',
   ].join('')
 
   var WEEKDAYS = ['P', 'E', 'T', 'K', 'N', 'R', 'L']
@@ -387,9 +411,7 @@
         right.appendChild(el('div', { class: 'wv-none', text: 'Vali kalendrist päev.' }))
         return
       }
-      right.appendChild(el('div', {
-        class: 'wv-jaw', text: dayLabel(chosenDay),
-      }))
+      right.appendChild(el('div', { class: 'wv-daylabel', text: dayLabel(chosenDay) }))
       var times = el('div', { class: 'wv-times' })
       right.appendChild(times)
       ;(byDay[chosenDay] || []).forEach(function (kell) {
@@ -412,8 +434,8 @@
       if (!view) return
 
       var head = el('div', { class: 'wv-month' })
-      var prev = el('button', { type: 'button', text: '‹', 'aria-label': 'Eelmine kuu' })
-      var next = el('button', { type: 'button', text: '›', 'aria-label': 'Järgmine kuu' })
+      var prev = el('button', { type: 'button', class: 'wv-nav-btn', text: '‹', 'aria-label': 'Eelmine kuu' })
+      var next = el('button', { type: 'button', class: 'wv-nav-btn', text: '›', 'aria-label': 'Järgmine kuu' })
       head.appendChild(prev)
       head.appendChild(el('strong', { text: MONTHS[view.m] + ' ' + view.y }))
       head.appendChild(next)
@@ -463,7 +485,6 @@
             : ' — vabu aegu ei ole'),
         })
         cell.appendChild(document.createTextNode(String(d)))
-        if (times.length > 0) cell.appendChild(el('i'))
         if (times.length > 0) {
           ;(function (k) {
             cell.addEventListener('click', function () {
@@ -483,10 +504,10 @@
     function paintLegend() {
       legend.innerHTML = ''
       var free = el('span')
-      free.appendChild(el('i', { style: 'background:var(--wv-accent)' }))
-      free.appendChild(document.createTextNode('vabad ajad'))
+      free.appendChild(el('span', { class: 'wv-swatch', style: 'background:var(--wv-accent-soft)' }))
+      free.appendChild(document.createTextNode('vabu aegu'))
       var shut = el('span')
-      shut.appendChild(el('i', { style: 'background:#cbd5e1' }))
+      shut.appendChild(el('span', { class: 'wv-swatch', style: 'background:#eef2f6' }))
       shut.appendChild(document.createTextNode('kinni või täis'))
       legend.appendChild(free)
       legend.appendChild(shut)
@@ -639,9 +660,9 @@
 
     // ── Navigation ──────────────────────────────────────────────────────────
     var nav = el('div', { class: 'wv-nav' })
-    var back = el('button', { type: 'button', class: 'wv-back', text: 'Tagasi' })
-    var next = el('button', { type: 'button', text: 'Edasi' })
-    var button = el('button', { type: 'submit', text: 'Saada taotlus' })
+    var back = el('button', { type: 'button', class: 'wv-btn wv-back', text: 'Tagasi' })
+    var next = el('button', { type: 'button', class: 'wv-btn', text: 'Edasi' })
+    var button = el('button', { type: 'submit', class: 'wv-btn', text: 'Saada taotlus' })
     nav.appendChild(back); nav.appendChild(next); nav.appendChild(button)
     form.appendChild(nav)
 
