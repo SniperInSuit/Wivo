@@ -592,13 +592,60 @@
       errBox.appendChild(box)
     }
 
+    /** Why the catalogue came back unusable, in words somebody can act on. */
+    function diagnose(res) {
+      var code = res.body && res.body.error && res.body.error.code
+      if (res.status === 404 || code === 'UNKNOWN_CLINIC') {
+        return 'Kliinikut „' + cfg.clinic + '" ei leitud. Kontrolli, et Wivos '
+          + 'Seaded → Kliinik → Veebilehe tunnus on TÄPSELT sama sõna.'
+      }
+      if (res.status === 429) return 'Liiga palju päringuid — oota hetk.'
+      if (res.status >= 500) return 'Server vastas veaga ' + res.status + '.'
+      // 200 with an empty list: the clinic has published nothing.
+      return 'Ükski teenus ei ole avaldatud, nii et teenuse-, hinna- ja ajavalikut '
+        + 'ei ole. Wivos: Seaded → Patsiendi hinnakiri → märgi teenus avalikuks ja '
+        + 'anna talle kestus. Valmiduse paneel seal ütleb, mis veel puudu on.'
+    }
+
+    /**
+     * Visitors never see this; installers always do.
+     *
+     * `localhost` is where the test page runs, so that is where the note is
+     * worth showing on screen. On a real site it stays in the console.
+     */
+    function setupNote(text) {
+      if (window.console && console.warn) console.warn('[wivo] ' + text)
+      var host = (window.location && window.location.hostname) || ''
+      if (host !== 'localhost' && host !== '127.0.0.1') return
+      var box = el('div', { class: 'wv-err' })
+      box.appendChild(el('div', { text: 'Seadistus pooleli (näed seda ainult localhostis):' }))
+      box.appendChild(el('div', { text: text }))
+      wrap.insertBefore
+        ? wrap.insertBefore(box, form)
+        : wrap.appendChild(box)
+    }
+
     // ── The catalogue. Optional by design. ──────────────────────────────────
     var chosenService = null
     var calcServices = []
     fetch(cfg.base + '/services?clinic=' + encodeURIComponent(cfg.clinic))
-      .then(function (r) { return r.json() })
-      .then(function (body) {
-        if (!body || !body.ok || !body.data || !body.data.services.length) return
+      .then(function (r) {
+        return r.json().then(function (b) { return { status: r.status, body: b } })
+      })
+      .then(function (res) {
+        var body = res.body
+        if (!body || !body.ok || !body.data || !body.data.services.length) {
+          // Silence is right for a VISITOR — a price list that failed to load is
+          // our problem, not theirs, and an error would only stop them asking.
+          // It is useless for whoever is INSTALLING this, who then sees a form
+          // that begins at "your contact" and concludes the feature is missing.
+          //
+          // So: always say it in the console, and on localhost say it on the
+          // page too, because localhost IS the install context.
+          setupNote(diagnose(res))
+          show()
+          return
+        }
         var services = body.data.services
         serviceWrap.appendChild(el('label', { for: 'wv-service', text: 'Teenus' }))
         var select = el('select', { id: 'wv-service' })
@@ -641,10 +688,11 @@
         slots.load(chosenService)
         show()
       })
-      .catch(function () {
-        // Fallback 1: no catalogue, no picker, form still works. Silent on
-        // purpose — a price list that failed to load is our problem, not the
-        // visitor's, and an error about it would only stop them asking.
+      .catch(function (err) {
+        // Fallback 1: no catalogue, no picker, the form still works.
+        setupNote('Teenuste nimekirja ei saanud laadida (' + (err && err.message) + '). '
+          + 'Kõige tavalisem põhjus: funktsioon on deploy-mata, või selle lehe '
+          + 'aadress ei ole PUBLIC_BOOKING_ORIGINS nimekirjas.')
         show()
       })
 

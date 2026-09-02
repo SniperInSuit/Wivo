@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.75.2] — 2026-09-02
+
+**Vorm algas „Sinu kontaktist" ja vaikis maha, miks**
+
+Kui teenuste nimekiri tuleb tühjana, jäävad sammud 1–3 (teenus, hambad, aeg)
+näitamata — see on tahtlik, sest neil ei ole midagi näidata. Aga vidin vaikis
+seda maha, nii et ekraanile jäi „Sinu kontakt" ja „Saada taotlus", ja see näeb
+välja nagu **toode, millel kalendrit ei olegi**.
+
+Vaikimine on ÕIGE külastaja jaoks: katkine hinnakiri on meie mure, mitte tema,
+ja veateade ainult peataks tema küsimise. Paigaldaja jaoks on ta kasutu.
+
+- **Konsooli alati**, koos põhjusega: kliinikut ei leitud (404) / ükski teenus
+  ei ole avaldatud / funktsioon deploy'mata või origin lubamata
+- **Lehel ainult localhostis** — sest localhost ON paigaldamise kontekst, ja
+  päris lehel ei tohi külastaja seadistusteadet näha
+- Iga teade ütleb, mida teha, mitte ainult mis katki on
+
 ## [1.75.1] — 2026-09-02
 
 **Vorm ütles „võtame ühendust" ka siis, kui aeg oli juba kalendris**
