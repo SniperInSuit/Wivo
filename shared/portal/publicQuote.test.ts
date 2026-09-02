@@ -7,6 +7,7 @@ import { emptyPublicService, slugify } from './publicService'
 import {
   publicPriceRange, publicPlanSummary, publishProblems, toPublicCatalogue,
 } from './publicQuote'
+import { bookingDuration } from './publicService'
 
 const CLINIC = { nimi: 'Fullgevity Dental', telefon: '+372 5000 0000', email: 'info@example.ee' }
 
@@ -188,5 +189,59 @@ describe('shared/portal imports nothing from shared/pricing', () => {
   // import here has to delete a test that says why they should not.
   it('is enforced by review, and the reason is the point', () => {
     expect(true).toBe(true)
+  })
+})
+
+describe('bookingDuration — kui pikk aeg kalendrist kinni pannakse', () => {
+  // The single most load-bearing number on the public side: it is what gets
+  // blocked out of the diary, so ONE function answers it for the slot list, the
+  // booking that follows, and the readiness check.
+  it('eelistab teenuse enda kestust', () => {
+    expect(bookingDuration(service({ kestusMin: 45 }))).toBe(45)
+  })
+
+  it('langeb broneeritava sammu peale, kui teenusel oma kestust ei ole', () => {
+    // Services set up before the field existed keep working.
+    const s = service({
+      kestusMin: undefined,
+      samm: [{ pealkiri: 'Konsultatsioon', kestusMin: 20 },
+             { pealkiri: 'Paigaldus', kestusMin: 90 }],
+      broneeritavSamm: 1,
+    })
+    expect(bookingDuration(s)).toBe(90)
+  })
+
+  it('teenuse oma kestus võidab ka siis, kui plaan on olemas', () => {
+    const s = service({
+      kestusMin: 30,
+      samm: [{ pealkiri: 'Paigaldus', kestusMin: 90 }],
+      broneeritavSamm: 0,
+    })
+    expect(bookingDuration(s)).toBe(30)
+  })
+
+  it('annab 0, kui kumbagi ei ole — ja 0 tähendab „ära paku aega"', () => {
+    // Refusing beats guessing a chair length.
+    expect(bookingDuration(service({ kestusMin: undefined, samm: [] }))).toBe(0)
+    expect(bookingDuration(service({ kestusMin: 0, samm: [] }))).toBe(0)
+    expect(bookingDuration(service({ kestusMin: -30, samm: [] }))).toBe(0)
+  })
+})
+
+describe('publishProblems — raviplaan ei ole kohustuslik', () => {
+  it('avaldab ühe visiidi teenuse ilma raviplaanita', () => {
+    // "Visiit, 30 min, 200 €" is a complete offer. Demanding a plan for it
+    // meant inventing a step and naming it to say nothing extra.
+    expect(publishProblems(service({ kestusMin: 30, samm: [] }))).toEqual([])
+  })
+
+  it('aga nõuab kestust, sest just seda broneeritakse', () => {
+    const p = publishProblems(service({ kestusMin: undefined, samm: [] }))
+    expect(p[0]).toContain('kestus on määramata')
+  })
+
+  it('katkine broneeritav samm on endiselt viga, kui plaan on olemas', () => {
+    const p = publishProblems(service({ samm: [{ pealkiri: 'Üks' }], broneeritavSamm: 7 }))
+    expect(p[0]).toContain('olematule visiidile')
   })
 })

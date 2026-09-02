@@ -44,6 +44,7 @@ import {
 } from '../_shared/slotData.ts'
 import { freeSlots, slotsByDay, slotStillFree } from '@shared/portal/slots.ts'
 import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
+import { bookingDuration } from '@shared/portal/publicService.ts'
 import {
   visitRequestProblems, looksLikeSpam, toVisitRequestRow,
 } from '@shared/portal/visitRequest.ts'
@@ -182,11 +183,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const service = services.find(s => s.id === wanted && s.avalik)
       if (!service) return fail(400, ERRORS.UNKNOWN_SERVICE, cors)
 
-      // How long the BOOKABLE visit of this service takes. Not the whole
-      // treatment plan: the website books one appointment, and the plan's later
-      // visits are arranged when that one happens.
-      const step = service.samm?.[service.broneeritavSamm]
-      const kestus = Number(step?.kestusMin) || 0
+      // How long to block out. The service's own duration, falling back to the
+      // bookable plan step — ONE helper, so the slot list and the booking that
+      // follows it cannot disagree about the length of the appointment.
+      const kestus = bookingDuration(service)
       if (!(kestus > 0)) {
         // A service with no stated duration cannot be offered a time. Saying so
         // beats offering a guess and booking the wrong length of chair.
@@ -316,7 +316,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (wish?.kuupaev && wish.kell) {
         const services = await publicServicesOf(clinic.id)
         const svc = services.find(s => s.id === wish.serviceId && s.avalik)
-        const kestus = Number(svc?.samm?.[svc.broneeritavSamm]?.kestusMin) || 0
+        const kestus = svc ? bookingDuration(svc) : 0
         const rules = await bookingSettingsOf(clinic.id)
         const today = localDate(new Date())
         const dates = dateRange(today, (rules.kuni ?? 60) + 1)

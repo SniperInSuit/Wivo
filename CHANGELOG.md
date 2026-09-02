@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.73.0] — 2026-09-02
+
+**Kestus on teenuse enda väli — raviplaan ei ole enam kohustuslik**
+
+Minu disainiviga. „Visiit, 30 min, 200 €" on täielik pakkumine, aga selleks, et
+öelda „30", tuli **välja mõelda raviplaan**, lisada visiit, anda talle nimi ja
+märkida see broneeritavaks. Tavajuht maksis harva juhu eest.
+
+- **`Visiidi kestus (min)`** on nüüd hindade kõrval, seal kus teda otsitakse.
+  Uus teenus saab vaikimisi 30 — number, mida parandatakse, mitte mille
+  puudumist tuleb avastada
+- **`bookingDuration()`** on ainus koht, mis vastab „kui pikk aeg kalendrist
+  kinni pannakse". Teenuse oma kestus võidab; broneeritav samm on varuvariant,
+  nii et enne seda välja seadistatud teenused töötavad edasi. Aegade nimekiri ja
+  talle järgnev broneering ei saa visiidi pikkuse osas lahku minna
+- **`publishProblems` ei nõua enam raviplaani.** Nõuab kestust, sest just seda
+  broneeritakse. Raviplaan jääb mitmest visiidist koosneva ravi jaoks —
+  patsiendile näitamiseks, mitte kestuse hoidmiseks
+- 9 uut testi
+
 ## [1.72.0] — 2026-09-02
 
 **Seaded → Andmebaas: mis migratsioonid on päriselt jooksutatud**

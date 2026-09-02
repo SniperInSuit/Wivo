@@ -128,6 +128,20 @@ export interface PublicService {
    * writes what actually goes on the site.
    */
   kestusKokkuTekst?: string
+  /**
+   * How long the booked appointment takes, minutes. THE booking duration.
+   *
+   * On the service itself because most services are one visit: "Visiit — 30
+   * min" should not require inventing a treatment plan, naming a step and
+   * marking it bookable just to say thirty. That was the original design and it
+   * was wrong — the common case paid for the rare one.
+   *
+   * A multi-visit treatment can still take its duration from the bookable plan
+   * step; `bookingDuration()` prefers this field and falls back to that, so
+   * both ways keep working and only one of them has to be filled in.
+   */
+  kestusMin?: number
+
   /** 0-based index into `samm` — which visit the website actually books. */
   broneeritavSamm: number
   dentasServiceId?: string
@@ -159,6 +173,21 @@ export interface PublicService {
   }
 }
 
+/**
+ * How long to book for. One answer, asked in one place.
+ *
+ * The service's own duration wins; the bookable plan step is the fallback for
+ * treatments that were set up before the field existed, and for genuine
+ * multi-visit plans where the length lives with the visit. 0 means the website
+ * cannot offer a time at all — and refusing beats guessing a chair length.
+ */
+export function bookingDuration(s: Pick<PublicService, 'kestusMin' | 'samm' | 'broneeritavSamm'>): number {
+  const own = Number(s.kestusMin)
+  if (Number.isFinite(own) && own > 0) return Math.round(own)
+  const step = Number(s.samm?.[s.broneeritavSamm]?.kestusMin)
+  return Number.isFinite(step) && step > 0 ? Math.round(step) : 0
+}
+
 /** A brand-new service, ready for the settings editor to fill in. */
 export function emptyPublicService(id: string, jarjekord: number): PublicService {
   return {
@@ -170,6 +199,9 @@ export function emptyPublicService(id: string, jarjekord: number): PublicService
     hinnaKuni: 0,
     kmSisaldub: true,
     samm: [],
+    // 30 minutes: the length of an ordinary appointment, and a number the owner
+    // will correct rather than one they must discover they need to supply.
+    kestusMin: 30,
     broneeritavSamm: 0,
     kinnitus: 'puudub',
   }

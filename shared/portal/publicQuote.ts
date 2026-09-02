@@ -28,6 +28,7 @@
  *   Vite and `moduleResolution: "bundler"` accept the extension happily, so
  *   both worlds are satisfied by writing it.
  */
+import { bookingDuration } from './publicService.ts'
 import type { PublicService } from './publicService.ts'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -111,8 +112,15 @@ export function publishProblems(s: PublicService): string[] {
   if (s.hinnaKuni < s.hinnaAlates) {
     out.push(`${s.nimi || 'Teenus'}: ülemine hind on alumisest väiksem.`)
   }
-  if ((s.samm ?? []).length === 0) out.push(`${s.nimi || 'Teenus'}: raviplaani samme ei ole.`)
-  else if (s.broneeritavSamm < 0 || s.broneeritavSamm >= s.samm.length) {
+  // A treatment plan is NOT required. Most services are one visit — "Visiit,
+  // 30 min, 200 €" is a complete offer, and demanding a plan for it meant
+  // inventing a step, naming it and marking it bookable to say nothing extra.
+  // What IS required is a duration, because that is what gets booked.
+  if (bookingDuration(s) <= 0) {
+    out.push(`${s.nimi || 'Teenus'}: visiidi kestus on määramata.`)
+  }
+  if ((s.samm ?? []).length > 0
+    && (s.broneeritavSamm < 0 || s.broneeritavSamm >= s.samm.length)) {
     out.push(`${s.nimi || 'Teenus'}: broneeritav samm osutab olematule visiidile.`)
   }
   return out

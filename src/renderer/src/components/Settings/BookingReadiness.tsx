@@ -13,6 +13,7 @@
 import { Check, X, AlertTriangle } from 'lucide-react'
 import type { PublicService } from '@shared/portal/publicService'
 import { publishProblems } from '@shared/portal/publicQuote'
+import { bookingDuration } from '@shared/portal/publicService'
 import { openWindows } from '@shared/portal/slots'
 import type { BookingConfig } from './BookingHoursSection'
 
@@ -33,11 +34,9 @@ export function BookingReadiness({ slug, teenused, broneering }: {
   const openDays = broneering
     ? [1, 2, 3, 4, 5, 6, 7].filter(d => openWindows(broneering, d).length > 0)
     : []
-  // A service can only be offered a time if its bookable visit says how long it
-  // takes. Without that the slot picker refuses rather than guessing a length.
-  const withDuration = published.filter(
-    t => Number(t.samm?.[t.broneeritavSamm]?.kestusMin) > 0,
-  )
+  // A service can only be offered a time if it says how long it takes. Without
+  // that the slot picker refuses rather than guessing a chair length.
+  const withDuration = published.filter(t => bookingDuration(t) > 0)
 
   const checks: Check[] = [
     {
@@ -53,8 +52,8 @@ export function BookingReadiness({ slug, teenused, broneering }: {
     {
       ok: withDuration.length > 0,
       label: `Kestusega teenuseid: ${withDuration.length}`,
-      fix: 'Teenuse raviplaanis peab broneeritaval visiidil olema kestus minutites. '
-        + 'Ilma selleta ei paku vorm aegu — vale pikkusega tooli broneerimine oleks halvem.',
+      fix: 'Teenusel peab olema „Visiidi kestus (min)". Ilma selleta ei paku vorm '
+        + 'aegu — vale pikkusega tooli broneerimine oleks halvem.',
     },
     {
       ok: openDays.length > 0,

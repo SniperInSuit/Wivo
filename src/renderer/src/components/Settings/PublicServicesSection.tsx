@@ -264,6 +264,24 @@ function ServiceRow({
           </div>
 
           <div>
+            <label className="label">Visiidi kestus (min)</label>
+            <input
+              type="number" min={5} step={5}
+              value={teenus.kestusMin ?? ''}
+              onChange={e => onPatch({ kestusMin: parseInt(e.target.value, 10) || undefined })}
+              placeholder="30"
+              className="input text-sm w-32"
+            />
+            {/* The single most load-bearing number on this screen: it is what
+                gets blocked out of the diary. Said plainly rather than left to
+                be inferred from a treatment plan. */}
+            <p className="text-[11px] text-ink-faint mt-1">
+              Nii pikk aeg pannakse kalendrist kinni. Ilma selleta ei paku veeb
+              sellele teenusele aegu.
+            </p>
+          </div>
+
+          <div>
             <label className="label">Hinna märkus</label>
             <input
               value={teenus.hinnaMarkus ?? ''}
@@ -342,9 +360,10 @@ function PlanEditor({ sammud, broneeritavSamm, onChange, onBookable }: {
           on a plan visit, so with no visits there is no duration field, and the
           readiness panel's "no service has a duration" had nowhere to point. */}
       {sammud.length === 0 ? (
-        <p className="text-[11px] text-ink-muted mb-1.5 leading-relaxed">
-          Lisa vähemalt üks visiit. <strong>Visiidi kestus määrab, kui pikk aeg
-          kalendrist broneeritakse</strong> — ilma selleta ei paku veeb aegu.
+        <p className="text-[11px] text-ink-faint mb-1.5 leading-relaxed">
+          Vabatahtlik. Mitmest visiidist koosneva ravi puhul näitab see
+          patsiendile, mis teda ees ootab. Ühe visiidi teenusel ei ole vaja —
+          kestus on juba ülal.
         </p>
       ) : (
         <div className="flex items-center gap-2 mb-1 text-[10px] text-ink-faint">
