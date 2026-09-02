@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.62.1] — 2026-09-02
+
+**„40 tööd arvestamata" — ei olnud**
+
+- Päis liitis kokku KÕIK hoiatused, ka need 37, mis ütlesid ainult „see töö
+  kuulub teise kuusse". Sama rida luges seega korraga „0 arvestamata rida" ja
+  „40 tööd arvestamata". Nüüd loetakse ainult neid, millega saab midagi teha,
+  ja tekst ütleb „vajab tähelepanu"
+- **Pooleliolev töö ei kuulu ühtegi perioodi.** Tal ei ole valmimiskuupäeva —
+  tasu käib valmimispäeva järgi, mitte lisamise päeva järgi. Hoiatust näidati
+  siiani igas perioodis, mille sa lahti tegid, sealhulgas ammu suletud kuudes.
+  Nüüd ainult jooksvas kuus: augustis vaadates ei ole see leid, vaid müra
+
+**Uus hoiatus: tasu läks kuusse pakkumise, mitte valmimise järgi**
+
+Sinu enda tähelepanek. `jobPeriodDate` proovib järjest `valmis_kuupaev`,
+seejärel **tähtaega**, seejärel **saabumise kuupäeva**. Tahvli filtri jaoks
+mõistlik, palga jaoks vale: ilma valmimiskuupäevata läheb septembris tehtud töö
+augusti väljamaksesse, sest ta lisati augustis.
+
+- Valmis-etappi liigutamine paneb kuupäeva külge, nii et see puudutab ainult
+  imporditud ridu ja neid, mis said valmis enne selle olemasolu
+- Uus oranž rida nimetab need tööd ja ütleb, kumba kuupäeva järgi tasu läks.
+  Töö avaneb klikiga, et kuupäev ära märkida
+- **Arvutust ei muudetud** — see liigutaks raha kuude vahel juba kinnitatud
+  väljamaksetes. Ekraan ütleb, mis juhtus, ja otsuse teed sina
+- 9 testi
+
 ## [1.62.0] — 2026-09-02
 
 **Kinnitatud väljamakse ei katnud kõiki oma ridu — need tulid tagasi**

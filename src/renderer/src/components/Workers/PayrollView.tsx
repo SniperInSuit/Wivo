@@ -441,6 +441,12 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
         </div>
       ) : perWorker.map(({ worker, lines, total, gross, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
+        // `periood` is work belonging to another month and `makstud` is settled
+        // business. Neither is an open item, and neither belongs in a count
+        // that is coloured orange to mean "look at this".
+        const openIssues = issues
+          .filter(i => i.code !== 'periood' && i.code !== 'makstud')
+          .reduce((n, i) => n + i.count, 0)
         const onPayroll = (worker.toosuhe ?? 'tootaja') === 'tootaja'
         const netBasis = onPayroll && worker.tasu_arvestus === 'neto'
         return (
@@ -464,9 +470,14 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                   {workerRates.length === 0
                     ? 'Tasureegleid ei ole määratud'
                     : `${workerRates.length} reeglit · ${lines.length} arvestamata rida · ${assignedDone} määratud valmis tööd`}
-                  {issues.length > 0 && (
+                  {/* Only what somebody can DO something about. It used to add
+                      up every issue, so a row reading "0 arvestamata rida"
+                      ended with "40 tööd arvestamata" — and 37 of those forty
+                      were work belonging to another month, which is not a
+                      fault and not this period's business. */}
+                  {openIssues > 0 && (
                     <span className="text-orange-500 font-medium">
-                      {' '}· {issues.reduce((n, i) => n + i.count, 0)} tööd arvestamata
+                      {' '}· {openIssues} tööd vajab tähelepanu
                     </span>
                   )}
                 </p>

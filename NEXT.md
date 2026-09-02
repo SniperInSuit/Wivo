@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.62.0 · 02.09.2026 · haru `main`**
+**Seis: v1.62.1 · 02.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 525 rohelist, 0 punast
+npm test        # 534 rohelist, 0 punast
 npm run build
 ```
 
@@ -118,6 +118,7 @@ ainus koht, kust näeb, kas kutsuja üldse jõuab kohale.
 
 | Versioon | Mis |
 |---|---|
+| 1.62.1 | „40 tööd arvestamata" ei olnud; hoiatus, kui tasu läks kuusse vale kuupäeva järgi |
 | 1.62.0 | **Kinnitatud väljamakse ei katnud oma ridu** (`sql/058`); hoiatused, millega saab midagi teha |
 | 1.61.1 | Kaks paneeli kirjutasid ekraanile `[object Object]` |
 | 1.61.0 | Omahind lugemisvaates + käsitsi ülekirjutus (`sql/057`); võlglaste aruanne |
@@ -145,6 +146,11 @@ vaja.
 - **Põrkeid ei näe.** Jagatud majutuse SMTP-l ei ole webhooke: `sent_at`
   tähendab „server võttis vastu", mitte „inimene sai kätte".
 - **`sql/044` 1. samm on jooksutamata.**
+- **`jobPeriodDate` langeb ilma valmimiskuupäevata tähtajale ja siis saabumise
+  kuupäevale.** Palga jaoks on see vale — septembris tehtud töö läheb augusti
+  väljamaksesse, sest ta lisati augustis. Ekraan hoiatab nüüd (v1.62.1), aga
+  arvutust ei muudetud: see liigutaks raha juba kinnitatud väljamaksetes.
+  Otsus on tegemata.
 - **Nõustajas on Kiirtöö ja Mudel teineteist välistavad**, töö lehel mitte.
 - **Omahinna ülekirjutus ei kajastu Statistika kuluridades.** `calculateFinance`
   arvutab kulud oma teed; `kulu_yle` mõjutab praegu ainult töö enda tabelit.

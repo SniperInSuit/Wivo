@@ -490,6 +490,13 @@ export interface EarningsContext {
    * raising the customer's rush price quietly raised everybody's pay.
    */
   rushMultiplier?: number
+  /**
+   * Today, 'yyyy-MM-dd'. Only the diagnostics read it, and only to answer one
+   * question: is the period on screen the one we are living in? Unfinished work
+   * belongs to no period at all, so it is worth mentioning in THIS month and is
+   * noise in a month that is already closed.
+   */
+  today?: string
 }
 
 /**
@@ -820,7 +827,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
  * clinic owner should have to do.
  */
 export interface EarningsIssue {
-  code: 'periood' | 'pooleli' | 'reegel' | 'hambad' | 'hind' | 'makstud'
+  code: 'periood' | 'pooleli' | 'reegel' | 'hambad' | 'hind' | 'makstud' | 'kuupaev'
   label: string
   count: number
   /** Up to three, with their job id so the screen can OPEN them. */
@@ -844,9 +851,17 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   const {
     profileId, rates, jobs, types, periodStart, periodEnd, doneStageKey,
     alreadyPaid = new Set(),
+    today = new Date().toISOString().slice(0, 10),
   } = ctx
   const mine = rates.filter(r => r.profile_id === profileId)
   const inPeriod = (d: string) => !!d && d >= periodStart && d <= periodEnd
+
+  // Is this the month we are in? Work still on the bench has no completion date
+  // and therefore belongs to NO period — pay follows the day the work was
+  // finished, never the day the job was created. Reporting it against August
+  // because it was booked in August is the one thing this must not do, and the
+  // old code reported it against every period anybody happened to open.
+  const livePeriod = inPeriod(today)
 
   // Keyed by code AND label, not by code alone. Several different reasons share
   // the code 'reegel' — no rule matches the work, part of the work is
@@ -875,7 +890,11 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     if (!isTech && !isDesigner) continue
 
     if (job.status !== doneStageKey) {
-      add('pooleli', 'Töö ei ole veel valmis-etapis — tasu arvestatakse alles siis', job)
+      // Only in the live period. In a closed month it is not a finding: the
+      // work was not finished then and will be paid whenever it is.
+      if (livePeriod) {
+        add('pooleli', 'Töö ei ole veel valmis-etapis — tasu arvestatakse alles siis', job)
+      }
       continue
     }
     const earnedOn = jobEarnedOn(job)
@@ -891,6 +910,18 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     if (alreadyPaid.has(`job:${job.id}`) || alreadyPaid.has(`design:${job.id}`)) {
       add('makstud', 'Juba varasema väljamaksega kaetud', job)
       continue
+    }
+    // Which month this pays into was decided by a FALLBACK, not by a recorded
+    // completion date. `jobPeriodDate` tries valmis_kuupaev, then the DEADLINE,
+    // then the day the job arrived — sensible for a board filter, wrong for
+    // wages: a job finished in September lands in August's payout because it
+    // was booked in August. Moving a job to the done stage stamps the date, so
+    // this only reaches imported rows and ones finished before that existed.
+    if (!job.valmis_kuupaev) {
+      add('kuupaev',
+        `Valmimiskuupäev puudub — tasu läks ${job.valmis_aeg ? 'tähtaja' : 'saabumise'} `
+        + 'kuupäeva järgi sellesse kuusse. Ava töö ja märgi, millal see valmis sai',
+        job)
     }
     if (isTech) {
       const items = payItemsOf(job)
@@ -944,7 +975,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         const label = `Muudatus #${i + 1}: ${job.too?.trim() || 'Töö'} · ${job.patsient}`
         const revJob = { ...job, too: label } as Job
         if ((rev.status ?? '') !== doneStageKey) {
-          add('pooleli', 'Muudatus ei ole valmis-etapis', revJob)
+          if (livePeriod) add('pooleli', 'Muudatus ei ole valmis-etapis', revJob)
           continue
         }
         const revDate = revisionEarnedOn(rev)

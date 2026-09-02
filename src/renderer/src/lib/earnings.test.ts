@@ -1015,3 +1015,133 @@ describe('palgamaksud', () => {
     expect(payslipFromGross(1600, none).employerCost).toBe(1600)
   })
 })
+
+describe('diagnoseEarnings — what belongs to THIS period', () => {
+  // Pay follows the day the work was FINISHED. A job booked in August and still
+  // on the bench has no completion date, so it belongs to no period at all —
+  // and it used to be reported against every period anybody opened.
+  const unfinished = () => job({
+    status: 'disain', assigned_to: TECH, valmis_kuupaev: null,
+    work_items: [item('Kroon', '11')],
+  })
+
+  const diagnose = (over: Partial<Parameters<typeof diagnoseEarnings>[0]> = {}) =>
+    diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 })],
+      jobs: [unfinished()], hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+      ...over,
+    })
+
+  it('mentions unfinished work while the month is still running', () => {
+    const issues = diagnose({ today: '2026-08-15' })
+    expect(issues.find(i => i.code === 'pooleli')?.count).toBe(1)
+  })
+
+  it('says nothing about unfinished work in a month already closed', () => {
+    // Looking back at August in September: the job was not finished in August
+    // and will be paid in whichever month it IS finished. Flagging it against
+    // August because it was booked then is the error being fixed.
+    expect(diagnose({ today: '2026-09-02' }).find(i => i.code === 'pooleli')).toBeUndefined()
+  })
+
+  it('collapses out-of-period work into ONE row, with its months', () => {
+    // The label used to carry the date, and buckets are keyed by label — so
+    // thirteen completion dates made thirteen identical warnings.
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 })],
+      jobs: [
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-04', work_items: [item('Kroon', '11')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-19', work_items: [item('Kroon', '12')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-09-01', work_items: [item('Kroon', '13')] }),
+      ],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+      today: '2026-08-15',
+    })
+    const period = issues.filter(i => i.code === 'periood')
+    expect(period).toHaveLength(1)
+    expect(period[0].count).toBe(3)
+    // Newest first, so the nearest month is the first button offered.
+    expect(period[0].months).toEqual(['2026-09', '2026-07'])
+  })
+
+  it('sorts the rows nobody can act on to the bottom', () => {
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15, work_type: 'Kroon' })],
+      jobs: [
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-04', work_items: [item('Kroon', '11')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-05', work_items: [item('Kroon', '21')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-08-10', work_items: [item('Sild', '14,15')] }),
+      ],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+      today: '2026-08-15',
+    })
+    // The bridge has no rule — that is the one to act on, even though the two
+    // out-of-period jobs outnumber it.
+    expect(issues[0].code).toBe('reegel')
+    expect(issues[issues.length - 1].code).toBe('periood')
+  })
+
+  it('carries the job id on every example, so the screen can open it', () => {
+    const issues = diagnose({ today: '2026-08-15' })
+    const ex = issues.find(i => i.code === 'pooleli')!.examples[0]
+    expect(ex.id).toMatch(/^job-/)
+    expect(ex.label).toContain('Mari Maasikas')
+  })
+})
+
+describe('diagnoseEarnings — a pay month decided by a fallback', () => {
+  // `jobPeriodDate` tries valmis_kuupaev, then the DEADLINE, then the arrival
+  // date. Right for a board filter, wrong for wages: without a completion date
+  // a job pays into the month it was BOOKED in, not the month it was finished.
+  const run = (over: Partial<Job>) => diagnoseEarnings({
+    profileId: TECH,
+    rates: [rate({ kind: 'hammas', amount: 15 })],
+    jobs: [job({
+      assigned_to: TECH, status: DONE, work_items: [item('Kroon', '11')],
+      kuupaev: '2026-08-01', ...over,
+    })],
+    hours: [], types: TYPES,
+    periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    today: '2026-08-15',
+  })
+
+  it('says nothing when the completion date is recorded', () => {
+    expect(run({ valmis_kuupaev: '2026-08-10' }).find(i => i.code === 'kuupaev')).toBeUndefined()
+  })
+
+  it('names a job paid on its arrival date', () => {
+    const iss = run({ valmis_kuupaev: null, valmis_aeg: null }).find(i => i.code === 'kuupaev')
+    expect(iss?.count).toBe(1)
+    expect(iss?.label).toContain('saabumise')
+  })
+
+  it('names a job paid on its deadline', () => {
+    const iss = run({ valmis_kuupaev: null, valmis_aeg: '2026-08-20T10:00' })
+      .find(i => i.code === 'kuupaev')
+    expect(iss?.label).toContain('tähtaja')
+  })
+
+  it('is an OPEN item, so it sorts above the rows nobody can act on', () => {
+    const issues = diagnoseEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 })],
+      jobs: [
+        job({ assigned_to: TECH, valmis_kuupaev: null, valmis_aeg: null,
+              kuupaev: '2026-08-01', work_items: [item('Kroon', '11')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-04', work_items: [item('Kroon', '21')] }),
+        job({ assigned_to: TECH, valmis_kuupaev: '2026-07-05', work_items: [item('Kroon', '22')] }),
+      ],
+      hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+      today: '2026-08-15',
+    })
+    expect(issues[0].code).toBe('kuupaev')
+    expect(issues[issues.length - 1].code).toBe('periood')
+  })
+})
