@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.75.0] — 2026-09-02
+
+**Automaatne kinnitamine — valikuna. Ja üks vaikne topeltbroneeringu allikas.**
+
+**`visits.clinic_id` võib olla NULL.** Ta lisati `sql/015`-s NULL-ina ja
+täidetakse tagantjärele. Selline visiit oli aegade arvutuse jaoks **nähtamatu**
+ja tema tund oleks veebis vabana pakutud — päris patsient topelt broneeritud.
+Nüüd loetakse ka `clinic_id is null` read hõivatuks. Halvimal juhul jääb üks
+tund pakkumata; vastupidine viga maksab kellegi vastuvõtuaja.
+
+**„Kinnita broneeringud automaatselt"** — uus lüliti, **vaikimisi väljas**.
+- Sees: veebist valitud aeg läheb **kohe kalendrisse**
+- Väljas: taotlus ootab „Taotlused" lehel, keegi vajutab „Broneeri"
+- Tasuga: kinnitatakse alles **pärast laekumist**. Hoitud aeg maksmata tasuga ei
+  ole broneering
+- Lüliti kõrval seisab, kumb olukord sul parasjagu on: tasuta vormiga saab iga
+  täitja aja otse kalendrisse, tasuga on raha filter, mida robot ei maksa
+
+Vaikimisi väljas, sest kalender on see, mille järgi hommikul tööd tehakse, ja
+kalender, mis täidab ennast avalikust vormist, on kalender, mida tuleb valvata
+selle asemel et usaldada. Aga see on kliiniku otsus, mitte minu.
+
+`confirmRequest` keeldub ise: juba visiidiks tehtud, mõni muu staatus, aeg
+puudu, tasu maksmata. Ja seob visiidi ainult siis, kui keegi ei jõudnud enne —
+käsitsi kinnitamine samal hetkel ei tohi anda kahte visiiti.
+
 ## [1.74.0] — 2026-09-02
 
 **`build-embed.mjs` — valmis kleebitav plokk, ilma kohatäideteta**

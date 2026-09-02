@@ -32,6 +32,7 @@ const DAYS: { key: string; label: string }[] = [
 
 /** Everything the website reads, in one column. */
 export interface BookingConfig extends BookingRules {
+  automaatKinnitus?: boolean
   visiiditasu?: number
   valuuta?: string
   tagasiUrl?: string
@@ -263,6 +264,37 @@ export function BookingHoursSection({ value, onSaved }: {
               className="input text-sm" />
           </div>
         </div>
+      </div>
+
+      {/* ── Automatic confirmation ────────────────────────────────────────── */}
+      <div className="rounded-xl border border-ink-faint/25 bg-bg-sidebar/40 p-3">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={cfg.automaatKinnitus === true}
+            onChange={e => patch({ automaatKinnitus: e.target.checked })}
+            className="accent-accent mt-0.5"
+          />
+          <span className="min-w-0">
+            <span className="text-xs font-semibold text-ink block">
+              Kinnita broneeringud automaatselt
+            </span>
+            <span className="text-[11px] text-ink-muted block mt-0.5 leading-relaxed">
+              Sees: veebist valitud aeg läheb <strong>kohe kalendrisse</strong>, keegi
+              ei vaata üle. Väljas: taotlus ootab „Taotlused" lehel ja keegi vajutab
+              „Broneeri".
+            </span>
+          </span>
+        </label>
+        {cfg.automaatKinnitus === true && (
+          <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5 mt-2 leading-relaxed">
+            {(cfg.visiiditasu ?? 0) > 0
+              ? 'Visiiditasu on sees — see on tugev filter, sest robot ei maksa. '
+                + 'Kalendrisse jõuab aeg alles pärast laekumist.'
+              : 'Visiiditasu ei küsita, nii et iga veebivormi täitja saab aja otse '
+                + 'kalendrisse. Kaalu tasu sisselülitamist või jäta kinnitamine käsitsi.'}
+          </p>
+        )}
       </div>
 
       {/* ── Closed dates ──────────────────────────────────────────────────── */}

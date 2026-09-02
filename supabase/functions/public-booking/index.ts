@@ -36,7 +36,7 @@ import { ok, fail, failWith, ERRORS } from '../_shared/respond.ts'
 import { ipKey, take } from '../_shared/ratelimit.ts'
 import {
   clinicBySlug, publicServicesOf, insertVisitRequest, recentRequestCount,
-  bookingSettingsOf, attachPayment, requestByOrderUuid, settlePayment,
+  bookingSettingsOf, attachPayment, requestByOrderUuid, settlePayment, confirmRequest,
 } from '../_shared/settings.ts'
 import { createOrder, verifyOrderToken, montonioConfigured } from '../_shared/montonio.ts'
 import {
@@ -87,6 +87,13 @@ async function settleFromToken(token: string): Promise<boolean> {
   })
   if (!verdict.ok) console.error('makse tagasi lükatud:', verdict.reason, verdict.selgitus)
   await settlePayment(row.id, staatus)
+
+  // Paid, and the clinic asked for automatic confirmation: this is the moment.
+  // Not a second earlier — a held slot with an unpaid fee is not a booking.
+  if (verdict.ok && row.clinic_id) {
+    const booking = await bookingSettingsOf(row.clinic_id)
+    if (booking.automaatKinnitus) await confirmRequest(row.id)
+  }
   return verdict.ok
 }
 
@@ -376,6 +383,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
           console.error('montonio order failed', err)
           // Fall through: they asked for an appointment and we have it.
         }
+      }
+
+      // No fee to wait for, so the decision can be made now. `confirmRequest`
+      // refuses on its own if anything is off — this only asks.
+      if (created && booking.automaatKinnitus && hold) {
+        await confirmRequest(created)
       }
 
       // Deliberately says nothing more than "received". No id, no status, no

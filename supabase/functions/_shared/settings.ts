@@ -136,6 +136,15 @@ export async function recentRequestCount(clinicId: string, ipHash: string): Prom
  * same question and must not get two different answers.
  */
 export interface BookingSettings extends BookingRules {
+  /**
+   * Put the visit straight in the calendar, without anyone looking at it.
+   *
+   * OFF by default. The calendar is what the practice runs on in the morning,
+   * and one that fills itself from a public form is one somebody has to police
+   * rather than trust. With a visit fee it is far safer — money is a filter no
+   * bot pays — which is why a request that still owes one is never auto-confirmed.
+   */
+  automaatKinnitus: boolean
   /** 0 = no fee is asked for. The default, deliberately. */
   visiiditasu: number
   valuuta: string
@@ -160,6 +169,8 @@ export async function bookingSettingsOf(clinicId: string): Promise<BookingSettin
   return {
     // Anything unparseable means no fee. Failing towards "do not charge" is the
     // only safe direction: the opposite would invent a price.
+    // Explicit `=== true`: anything else, including a missing key, means off.
+    automaatKinnitus: b.automaatKinnitus === true,
     visiiditasu: Number.isFinite(fee) && fee > 0 ? Math.round(fee * 100) / 100 : 0,
     valuuta: typeof b.valuuta === 'string' && b.valuuta.trim() ? b.valuuta.trim().toUpperCase() : 'EUR',
     tagasiUrl: typeof b.tagasiUrl === 'string' && b.tagasiUrl.trim() ? b.tagasiUrl.trim() : null,
@@ -190,15 +201,15 @@ export async function attachPayment(
 
 /** The row a payment token is about, found by Montonio's own order id. */
 export async function requestByOrderUuid(uuid: string): Promise<
-  { id: string; makse_summa: number | null; makse_staatus: string } | null
+  { id: string; clinic_id: string; makse_summa: number | null; makse_staatus: string } | null
 > {
   const { data, error } = await admin()
     .from('visit_requests')
-    .select('id, makse_summa, makse_staatus')
+    .select('id, clinic_id, makse_summa, makse_staatus')
     .eq('montonio_uuid', uuid)
     .maybeSingle()
   if (error || !data) return null
-  return data as { id: string; makse_summa: number | null; makse_staatus: string }
+  return data as { id: string; clinic_id: string; makse_summa: number | null; makse_staatus: string }
 }
 
 /**
@@ -219,4 +230,64 @@ export async function settlePayment(
     .eq('id', requestId)
     .neq('makse_staatus', 'makstud')
   if (error) throw error
+}
+
+/**
+ * Turn a request into a real visit, and link the two.
+ *
+ * Used only when the clinic has switched automatic confirmation ON. The default
+ * is off, and that default is the careful one: the calendar is what the practice
+ * runs on in the morning, and a calendar that fills itself from a public form is
+ * a calendar somebody has to police instead of trust.
+ *
+ * With a visit fee this is much safer — money is a filter no bot pays — which is
+ * why it only ever runs for a request that owes nothing.
+ */
+export async function confirmRequest(requestId: string): Promise<string | null> {
+  const db = admin()
+  const { data: r, error } = await db
+    .from('visit_requests')
+    .select('id, clinic_id, nimi, telefon, sonum, soovitud_algus, soovitud_kestus, '
+      + 'staatus, visit_id, makse_staatus')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (error || !r) return null
+
+  const row = r as {
+    id: string; clinic_id: string; nimi: string; telefon: string; sonum: string | null
+    soovitud_algus: string | null; soovitud_kestus: number | null
+    staatus: string; visit_id: string | null; makse_staatus: string
+  }
+
+  // Every one of these means "not ours to confirm". Checked here rather than at
+  // the call sites so a second caller cannot skip one.
+  if (row.visit_id) return row.visit_id            // already a visit: no-op
+  if (row.staatus !== 'uus') return null
+  if (!row.soovitud_algus) return null             // no time to book
+  if (row.makse_staatus === 'ootel'
+    || row.makse_staatus === 'ebaonnestus'
+    || row.makse_staatus === 'tuhistatud') return null
+
+  const { data: visit, error: vErr } = await db
+    .from('visits')
+    .insert({
+      clinic_id: row.clinic_id,
+      patsient: row.nimi,
+      algus: row.soovitud_algus,
+      kestus_min: row.soovitud_kestus ?? 30,
+      markus: [`Veebibroneering · ${row.telefon}`, row.sonum].filter(Boolean).join('\n'),
+      staatus: 'planeeritud',
+    })
+    .select('id')
+    .single()
+  if (vErr || !visit) return null
+
+  await db.from('visit_requests')
+    .update({ staatus: 'kinnitatud', visit_id: (visit as { id: string }).id })
+    .eq('id', requestId)
+    // Only if nobody got there first — a person confirming by hand at the same
+    // moment must not end up with two visits for one request.
+    .is('visit_id', null)
+
+  return (visit as { id: string }).id
 }

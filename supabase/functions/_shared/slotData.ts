@@ -109,7 +109,14 @@ export async function loadOf(
   const { data, error } = await admin()
     .from('visits')
     .select('algus, kestus_min')
-    .eq('clinic_id', clinicId)
+    // `clinic_id` was added in sql/015 as NULL and backfilled afterwards, so a
+    // visit written before that has none. Such a row would be INVISIBLE here
+    // and its hour offered to the website — a real patient double-booked.
+    //
+    // Counting it as busy can at worst withhold an hour that another clinic
+    // owns. Withholding a free hour costs a booking; offering a taken one costs
+    // somebody's appointment, so the direction to be wrong in is obvious.
+    .or(`clinic_id.eq.${clinicId},clinic_id.is.null`)
     .gte('algus', from.toISOString())
     .lte('algus', to.toISOString())
     .neq('staatus', 'tuhistatud')
