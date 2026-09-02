@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.63.0 · 02.09.2026 · haru `main`**
+**Seis: v1.77.1 · 02.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 542 rohelist, 0 punast
+npm test        # 617 rohelist, 0 punast
 npm run build
 ```
 
@@ -22,114 +22,81 @@ npm run build
 `VITE_SUPABASE_URL` ja `VITE_SUPABASE_ANON_KEY`. Projekt on
 `wrtucsfmpbwekugzzzxw`.
 
-Supabase CLI vajab uues masinas `supabase login` (brauseripõhine). Projekt on
-juba lingitud selle repo kaudu; saladused elavad Supabase'is, mitte failides.
+Windowsis: PowerShell 5.1 ei toeta `&&`, reamurdmist `\` ega `openssl`. Kõik
+käsud on PowerShelli kujul `docs/veebibroneering.md`-s.
 
 ---
 
-## ✅ Migratsioonid 049–058 on kõik jooksutatud
+## ✅ Migratsioonide seis on nüüd rakenduses
 
-Jooksutatud 02.09.2026. Mida need andsid:
+**Seaded → Andmebaas.** Küsib andmebaasilt otse, mis on jooksutatud ja mis
+mitte, ning ütleb, millise faili sisu SQL editorisse kleepida. Ei ole vaja enam
+mälu järgi arvata — see leht tekkis pärast neljandat korda, kui jooksutamata
+migratsioon avastati ühe ekraani kaupa.
 
-- **`056`** — cron'i teenusevõti Vaulti. Enne seda oli seal kohatäide, mitte
-  võti, ja iga tunnine käivitus sai 401. Automaatne arvete saatmine käib nüüd
-  iga tunni 7. minutil. ⚠ `cron.job_run_details` ütleb „succeeded" ka 401 puhul
-  — päris vastus on `net._http_response` tabelis
-- **`057`** — `jobs.kulu_yle`, omahinna käsitsi ülekirjutus kategooria kaupa
-- **`058`** — `worker_payout_lines.line_key`. Enne seda ei katnud kinnitatud
-  väljamakse oma disaini-, mudeli- ega lisatasuridu; need tulid tagasi ja
-  oleksid teist korda välja makstud
-
-**Kontrolli üks kord üle**, kas vana viga jõudis midagi topelt maksta —
-`sql/058` verify-plokis on selle päring.
+⚠ Pärast veeru lisamist jooksuta **eraldi päringuna**
+`notify pgrst, 'reload schema';` — PostgREST hoiab skeemi vahemälus. See on koht,
+kus „jooksutasin ju ära" kõige sagedamini tõeks osutub ja ikka ei tööta.
 
 ---
 
-## ✅ Mis selles vestluses valmis sai (v1.61.0)
+## ✅ Veebibroneering töötab otsast otsani
 
-Kõik neli asja, mis sa palusid:
+**Juhend: [`docs/veebibroneering.md`](docs/veebibroneering.md)** — seadistus,
+deploy, testimine, veatabel. Kõik käsud PowerShelli kujul.
 
-1. **Kulude tabel on nüüd nähtav ka väljaspool „Muuda"** — töö lugemisvaates,
-   sama komponent, sama arvutus. `payroll.manage` õiguse taga, sest read on
-   inimeste tasumäärad.
-2. **Mudel on kulude listis** — see kood oli juba olemas ja on nüüd testiga
-   kaetud. **Kui sa mudelit ikka ei näe: sinu 10 € reegel ei ole „Mudel"
-   ulatusega.** Töötasud → reegli juures on neli ulatust (Töö / Disain /
-   Muudatus / **Mudel**) — see peab olema Mudel, mitte Töö.
-3. **Kulusid saab käsitsi muuta** — pliiats iga kategooria taga, „reegel" nupp
-   võtab tagasi. Palka see ei puuduta.
-4. **Võlglaste aruanne** — kolm paneeli Statistikas („Võlgu kokku", „Kes on
-   võlgu", „Võla vanus") ja Tabeli lehel kaks uut filtrit („Maksed",
-   „Võlglane"), summad menüüs kirjas.
+Voog: patsient valib teenuse → arvutab hinna hambakaardil → näeb **päris vabu
+aegu** Wivo päevikust → broneerib → taotlus maandub „Taotlused" lehel (punane
+loendur) → keegi vajutab „Broneeri" → visiit kalendris.
 
-Boonus: kolm ammust punast testi parandatud, repo on üleni roheline.
+Tõestatud päris andmetega 02.09: veebist tulnud taotlus jõudis Wivosse ja sai
+visiidiks.
 
----
-
-## ✅ E-post — testaadressi peal, nagu sa ütlesid
-
-Arved lähevad `treialbusiness@gmail.com` peale, **mitte patsientidele**. Kolm
-päris kirja saadetud, PDF-manusega. Idempotentsus tõestatud päris andmetega:
-kaks järjestikust käivitust andsid `sent: 1` ja `sent: 0`.
-
-**Pärast `sql/056` jooksutamist hakkab see käima ise, iga tunni 7. minutil.**
-
-⚠ **Testaadressi eemaldamine Seadetes hakkab saatma päris patsientidele juba
-järgmisel täistunnil** — mitte siis, kui sa midagi vajutad. Enne kontrolli:
-patsientidel on e-post täidetud, kirja tekst on sinu sõnadega, ja kiri ei lähe
-rämpsu (see selgub alles Gmailist väljapoole saates).
-
-Väljalülitamine kahes kohas: Seaded → E-post → „Automaatne saatmine" välja, või
-`update cron.job set active = false where jobname = 'wivo-send-invoices'`.
-
-Seaded → E-post näitab „Ajastatud saatja käis viimati…" — see on südamelöök ja
-ainus koht, kust näeb, kas kutsuja üldse jõuab kohale.
-
----
-
-## ✅ Varem valmis
-
-| Versioon | Mis |
+| Osa | Kus |
 |---|---|
-| 1.63.0 | Valmimiskuupaev lugemisvaates; mudeli reegel vaikis vale ulatusega |
-| 1.62.1 | „40 tööd arvestamata" ei olnud; hoiatus, kui tasu läks kuusse vale kuupäeva järgi |
-| 1.62.0 | **Kinnitatud väljamakse ei katnud oma ridu** (`sql/058`); hoiatused, millega saab midagi teha |
-| 1.61.1 | Kaks paneeli kirjutasid ekraanile `[object Object]` |
-| 1.61.0 | Omahind lugemisvaates + käsitsi ülekirjutus (`sql/057`); võlglaste aruanne |
-| 1.60.1 | Cron ütles „succeeded" ja ükski arve ei liikunud; saatja südamelöök |
-| 1.60.0 | **23 uut paneeli** — võlgnevuse vanus, ühikumajandus, tarne, kliendid |
-| 1.57–1.59 | **Minu vaade** — kohandatav Statistika, paneelid ruutudes, `sql/055` |
-| 1.54.0 | **Neto/bruto palk** + isiklik maksuprofiil, `sql/054` |
-| 1.53.0 | Turunduskontaktide eksport + nõusolek, `sql/053` |
-| 1.47–1.52 | **Arvete e-post**: `invoiceDoc`, `sendGuard`, `mailTemplate`, PDF, ajastus |
-| 1.46.x | Kogusehinnad — mitu krooni, teine hambahind |
-| 1.44–1.45 | Maksegraafik (`sql/049`); osamaksed jätsid töö 1/5 makstuks |
-| 1.41–1.43 | Rahapoole lepitamine: muudatuste kulu, arvemaksed, palgaread |
+| Vaba aja arvutus | `shared/portal/slots.ts` — 20 testi, **ajavööndita** |
+| Ajavööndi teisendus | `supabase/functions/_shared/slotData.ts` — AINUS koht |
+| Hinnakalkulaator | `shared/portal/publicCalculator.ts` — 21 testi |
+| Makse reeglid | `shared/portal/montonioClaims.ts` — 14 testi, krüptota |
+| Allkirjad ja HTTP | `supabase/functions/_shared/montonio.ts` — ainus, mis võtit puudutab |
+| Vidin | `web/embed/wivo-booking.js` — sõltuvusteta, ehitusetapita |
+| Vidina generaator | `node web/embed/build-embed.mjs --clinic <slug>` |
 
-**Tõestatud tee peal:** `supabase functions deploy` pakib kaasa `shared/`
-impordi, mis väljub funktsiooni kaustast. Genereeritud koopia varuplaani ei ole
-vaja.
+### Otsused, mis on tehtud ja mille juurde ei pea tagasi tulema
+
+- **Taotluste süsteem jääb.** Automaatne kinnitamine on Seadetes lüliti taga ja
+  vaikimisi väljas. Põhjus (sinu ja sekretäri oma): nii saab spämmida, ja
+  inimene, kes on juba maksnud, ei taha kuulda, et ta broneering lükati tagasi
+- **Puuduv seade sulgeb päeviku, ei ava kunagi.** Nädalapäev ilma kellaaegadeta
+  on KINNI
+- **Vidin ei arvuta ega valideeri midagi.** Hinnad tulevad serverist vormindatud
+  tekstina; valideerimisest teeb ta ainult tühja välja kontrolli
+- **Kalender ei täida ennast** — visiit tekib siis, kui keegi kinnitab
+
+---
+
+## 🟡 Ootab sind
+
+1. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
+   Ilma võtmeteta jäetakse tasu vahele ja taotlus tuleb ikka kohale
+2. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
+3. **`git push`**
 
 ---
 
 ## 🟡 Teadaolevad võlad
 
 - **`periodMetrics` „käive" liidab muudatuste hinnad juurde.** Ülejäänud
-  rahapool ütleb, et muudatuse kulu on labori oma ega lähe kliendi arvele.
-  Otsustamata, kas käive peab järgnema.
-- **Põrkeid ei näe.** Jagatud majutuse SMTP-l ei ole webhooke: `sent_at`
-  tähendab „server võttis vastu", mitte „inimene sai kätte".
-- **`sql/044` 1. samm on jooksutamata.**
+  rahapool ütleb, et muudatuse kulu on labori oma ega lähe kliendi arvele
+- **Omahinna ülekirjutus (`kulu_yle`) ei kajastu Statistika kuluridades.**
+  `calculateFinance` arvutab kulud oma teed. Teadlik valik, mitte unustus
 - **`jobPeriodDate` langeb ilma valmimiskuupäevata tähtajale ja siis saabumise
-  kuupäevale.** Palga jaoks on see vale — septembris tehtud töö läheb augusti
-  väljamaksesse, sest ta lisati augustis. Ekraan hoiatab nüüd (v1.62.1), aga
-  arvutust ei muudetud: see liigutaks raha juba kinnitatud väljamaksetes.
-  Otsus on tegemata.
-- **Nõustajas on Kiirtöö ja Mudel teineteist välistavad**, töö lehel mitte.
-- **Omahinna ülekirjutus ei kajastu Statistika kuluridades.** `calculateFinance`
-  arvutab kulud oma teed; `kulu_yle` mõjutab praegu ainult töö enda tabelit.
-  Kui tahad, et üle kirjutatud kulu läheks ka kasumiaruandesse, on see järgmine
-  samm — teadlik valik, mitte unustus.
+  kuupäevale.** Palga jaoks vale; ekraan hoiatab (v1.62.1), arvutust ei
+  muudetud, sest see liigutaks raha juba kinnitatud väljamaksetes
+- **Põrkeid ei näe.** `sent_at` tähendab „server võttis vastu"
+- **`sql/044` 1. samm on jooksutamata**
+- **`visits.clinic_id` võib olla NULL** (sql/015 lisas ta nii). Aegade arvutus
+  loeb need hõivatuks — halvimal juhul jääb tund pakkumata, mis on ohutum suund
 
 ---
 
@@ -137,14 +104,13 @@ vaja.
 
 | Mis | Kus |
 |---|---|
+| **Veebibroneeringu juhend** | `docs/veebibroneering.md` |
+| Vidina paigaldus | `web/embed/README.md` |
 | Maksegraafiku + postkasti plaan | `~/.claude/plans/aga-kui-klient-maksab-spicy-hippo.md` |
-| Vana Dentase broneerimisplaan | `~/.claude/plans/i-have-idea-i-glowing-mccarthy.md` |
 | Onboarding'u audit | `docs/onboarding-audit.md` |
 | Finantsnäitajate sõnastik | `docs/finance-metrics.md` |
 | Edge-funktsiooni deploy | `supabase/functions/README.md` |
 | Arendaja püsireeglid | `HANDOFF.md` |
-
-*(Plaanifailid on `~/.claude/plans/` all, MITTE gitis — uues masinas neid ei ole.)*
 
 ---
 
@@ -152,43 +118,32 @@ vaja.
 
 ### 1. Raamatupidamise pakett *(kõrgeim äriline väärtus)*
 
-Ainus konkreetne maksevalmiduse andmepunkt su märkmetes: tehnik ütles
-**39 / 100 / 170 € kuus, tingimusel et raamatupidamise dokumendid tulevad
-automaatselt**. See tingimus on täitmata.
+Ainus konkreetne maksevalmiduse andmepunkt: tehnik ütles **39 / 100 / 170 € kuus,
+tingimusel et raamatupidamise dokumendid tulevad automaatselt**. Tingimus on
+täitmata.
 
-Mõte ei ole raamatupidamine ise — see on Meriti territoorium ja päris vastutus.
-Mõte on **„raamatupidajale valmis pakett"**: lukustatud periood, müügireskontro,
+Mõte ei ole raamatupidamine ise — see on Meriti territoorium. Mõte on
+**„raamatupidajale valmis pakett"**: lukustatud periood, müügireskontro,
 käibemaksu kokkuvõte määrade kaupa, laekumised, kulupool. Andmed on olemas,
-puudub ainult koondamine ja eksport.
+puudub koondamine ja eksport.
 
 ### 2. Müügiblokeerijad *(enne kui Wivot kellelegi müüa)*
 
 - **Litsentsivõtit ei saa väljastada** — `LICENCE_PUBLIC_KEY` on tühi, praegused
   build'id **ei kontrolli litsentsi üldse**. „Labor+" ja „Labor" on
-  funktsionaalselt identsed, uuendusel ei ole midagi müüa.
+  funktsionaalselt identsed
 - **Värskest andmebaasist ei saa Wivot püsti panna** — ükski migratsioon ei loo
-  `jobs` tabelit. Teine kliinik ei saa alustada. Vt `docs/onboarding-audit.md`.
+  `jobs` tabelit. Vt `docs/onboarding-audit.md`
 
-### 3. Broneerimissüsteem *(see, mida sa tahad teha)*
+### 3. Kalendri kolimine Dentasest Wivosse
 
-Plaan `aga-kui-klient-maksab-spicy-hippo.md`, faasid B1–B4. **Miski ei blokeeri
-enam** — deploy on tõestatud ja `_shared/{cors,ratelimit,respond,settings}.ts`
-on juba kirjutatud.
-
-- **B1** `sql/058_visit_requests.sql` *(053–057 on võetud)* — eraldi tabel,
-  mitte `visits` uus staatus. Põhjused plaanis.
-- **B2** `POST /request` olemasolevas `public-booking` funktsioonis.
-- **B3** taotluste postkast Wivos, „Kinnita" avab olemasoleva `VisitForm`-i.
-- **B4** widget kliiniku lehel.
-
-**GDPR hoiatus:** Wivo-native postkast salvestab patsiendi nime ja telefoni
-**meie baasi**, mida vana Dentase-plaan teadlikult vältis. Vaja
-säilitustähtaega (pg_cron kustutab tagasilükatud read), privaatsusteadet ja
-300-tähemärgist piiri vabal tekstiväljal.
+Testimine algab järgmine kuu. Veebibroneering loeb juba **ainult Wivo
+kalendrit**, nii et kolimise järel on see ahel terve. Enne seda elavad kaks
+kalendrit kõrvuti — teadlik hind selle eest, et mitte oodata Dentase API taga.
 
 ### Väiksemad, välja öeldud aga tegemata
 
 - Töö lehele **„Maksegraafik"** nupp, mis avab arve vormi selle töö ja
-  patsiendiga täidetuna. Praegu tuleb Arvete alla minna ja patsient uuesti üles
-  otsida — sa läksid seda ise töö lehelt otsima.
-- `periodMetrics` „käive" ja muudatuste hinnad — vt võlgade nimekirja.
+  patsiendiga täidetuna
+- Automaatne kinnituskiri patsiendile. E-posti taristu on olemas, aga MDR-i
+  tõttu ei tohi kiri sisaldada ravi kohta midagi peale aja

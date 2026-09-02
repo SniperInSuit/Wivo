@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.78.0] — 2026-09-02
+
+**`docs/veebibroneering.md` — juhend, mille järgi saab üksi läbi teha**
+
+Seadistus, deploy, testimine ja veatabel ühes failis. Kõik käsud
+**PowerShelli kujul**, sest `&&`, reamurdmine `\` ja `openssl` ei tööta
+Windowsis — ja pool sellest vestlusest kulus täpsalt nende peale.
+
+- **Kolm kohta, kuhu asjad lähevad** on esimene peatükk: PowerShell / Supabase
+  SQL editor / Wivo rakendus. „Kas see käsk läheb Supabase'i või kuhu" oli
+  korduv küsimus, ja seda ei saa vastata käsku näidates — ainult kohta nimetades
+- Sümptomite tabel: „vorm algab Sinu kontaktist", „aegu ei tule", „CORS viga",
+  „vana käitumine" → põhjus
+- Montonio osa on eraldi, sest ta ootab konto verifitseerimist ja ülejäänu ei
+  sõltu sellest
+
+`NEXT.md` uuendatud: seis v1.77.1, mis on tehtud, mis ootab, ja millised otsused
+on juba tehtud, et nende juurde ei peaks tagasi tulema.
+
 ## [1.77.1] — 2026-09-02
 
 **„Kuni 60 päeva" andis 50 — server tegi seadele oma paranduse**
