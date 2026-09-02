@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.76.0] — 2026-09-02
+
+**Ajavalik on nüüd kalender. Ja kolm viga visiidi vormis.**
+
+**Veebis: kuuruudustik, mitte nimekiri**
+- Kuu vasakul, valitud päeva kellaajad paremal — kuju, mis diaril on, ja kuju,
+  mida kliinik Wivos niikuinii loeb. Püstine nimekiri iga poole tunniga kandis
+  sama infot ja nägi välja nagu järjekord: ei olnud näha, et neljapäev on täis ja
+  reede tühi, ilma mõlemast mööda kerimata
+- **Vaba päev** on täpiga ja klikitav, **kinni või täis** on hall ja ei ole,
+  möödunud päev veel kahvatum. Legend ütleb, kumb on kumb
+- Avaneb **sellel kuul, kus midagi on** — kolmeks nädalaks täis kliinik ei ava
+  tühja ruudustikku. Kuu nupud on aktiivsed ainult sinna, kus aegu leidub
+- Ruudustik ei otsusta ikka midagi ise: mis päevad ja mis kellaajad, tuleb
+  serverist. Ta ainult joonistab vastuse
+
+**Visiidi vorm**
+- **Kestus 30 min ei salvestunud.** Väli kasutas `settings.ajaSamm`-i (kalendris
+  lohistamise samm, 15) sammuna koos `min=5`-ga, nii et brauseri jaoks olid
+  kehtivad ainult 5, 20, 35, 50 — sellest see „kaks lähimat kehtivat väärtust on
+  20 ja 35". Nüüd 5-minutiline samm: 30 on kehtiv, nagu iga muu mõistlik pikkus
+- **Märkuse kast** oli kaks rida ja mitte-venitatav. Veebibroneering saabub
+  kolme reaga (telefon, valitud aeg, patsiendi enda tekst), nii et inimese
+  sõnumit luges pilu kaudu. Nüüd neli rida ja venitatav
+- **Suunav arst** soovitab nüüd juba kasutusel olevaid nimesid. Endiselt vaba
+  väli — saatekiri võib tulla kelleltki, keda siin ei ole — aga „Dr. Meeme Luks"
+  ja „dr meeme luks" ei tohiks olla kaks arsti. Nimekiri tuleb olemasolevatest
+  patsientidest ja visiitidest, mitte käsitsi hoitavast seadest
+
+Taotluste süsteem jääb, nagu leppisime — automaatne kinnitamine on Seadetes
+lüliti taga ja vaikimisi väljas.
+
 ## [1.75.2] — 2026-09-02
 
 **Vorm algas „Sinu kontaktist" ja vaikis maha, miks**

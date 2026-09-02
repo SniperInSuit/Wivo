@@ -279,17 +279,39 @@
 
   var SLOT_CSS = [
     '.wv-slots{margin:.5rem 0}',
-    '.wv-days{display:flex;gap:.35rem;overflow-x:auto;padding-bottom:.25rem}',
-    '.wv-day{flex:0 0 auto;border:1px solid var(--wv-line);border-radius:var(--wv-radius);',
-    'background:var(--wv-bg);color:var(--wv-ink);font:inherit;font-size:.75rem;',
-    'padding:.4rem .6rem;cursor:pointer;text-align:center;line-height:1.25}',
-    '.wv-day[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);color:#fff}',
-    '.wv-day small{display:block;font-size:.65rem;opacity:.75}',
-    '.wv-times{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}',
+    // Month grid on the left, times on the right — the shape a diary has, and
+    // the shape the clinic already reads inside Wivo. A vertical list of every
+    // half-hour was technically the same information and looked like a queue.
+    '.wv-cal{display:grid;grid-template-columns:1fr;gap:1rem}',
+    '@media (min-width:520px){.wv-cal{grid-template-columns:minmax(0,1fr) minmax(0,11rem)}}',
+    '.wv-month{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem}',
+    '.wv-month strong{font-size:.85rem}',
+    '.wv-month button{width:1.9rem;height:1.9rem;padding:0;margin:0;border-radius:var(--wv-radius);',
+    'background:var(--wv-bg);border:1px solid var(--wv-line);color:var(--wv-ink);cursor:pointer;',
+    'font:inherit;line-height:1}',
+    '.wv-month button[disabled]{opacity:.3;cursor:default}',
+    '.wv-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}',
+    '.wv-wd{font-size:.62rem;color:var(--wv-muted);text-align:center;padding:.2rem 0}',
+    '.wv-cell{aspect-ratio:1;border:1px solid transparent;border-radius:var(--wv-radius);',
+    'background:transparent;color:var(--wv-ink);font:inherit;font-size:.78rem;cursor:pointer;',
+    'padding:0;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;',
+    'line-height:1.1;position:relative}',
+    // Free: it has a dot. Closed: greyed and not clickable. Chosen: filled.
+    '.wv-cell.free{border-color:var(--wv-line)}',
+    '.wv-cell.free i{width:4px;height:4px;border-radius:50%;background:var(--wv-accent);',
+    'display:block;margin-top:2px}',
+    '.wv-cell.shut{color:var(--wv-muted);opacity:.45;cursor:default}',
+    '.wv-cell.past{color:var(--wv-muted);opacity:.3;cursor:default}',
+    '.wv-cell[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);color:#fff}',
+    '.wv-cell[aria-pressed="true"] i{background:#fff}',
+    '.wv-times{display:flex;flex-direction:column;gap:.3rem;max-height:15rem;overflow-y:auto}',
     '.wv-time{border:1px solid var(--wv-line);border-radius:var(--wv-radius);background:var(--wv-bg);',
-    'color:var(--wv-ink);font:inherit;font-size:.8rem;padding:.35rem .6rem;cursor:pointer}',
+    'color:var(--wv-ink);font:inherit;font-size:.85rem;padding:.4rem .5rem;cursor:pointer;margin:0}',
     '.wv-time[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
     'color:#fff;font-weight:600}',
+    '.wv-legend{display:flex;gap:.8rem;font-size:.68rem;color:var(--wv-muted);margin-top:.5rem;flex-wrap:wrap}',
+    '.wv-legend span{display:inline-flex;align-items:center;gap:.25rem}',
+    '.wv-legend i{width:6px;height:6px;border-radius:50%;display:inline-block}',
     '.wv-none{font-size:.8rem;color:var(--wv-muted);padding:.5rem 0}',
     // ── Steps ───────────────────────────────────────────────────────────────
     '.wv-step[hidden]{display:none}',
@@ -302,51 +324,75 @@
   ].join('')
 
   var WEEKDAYS = ['P', 'E', 'T', 'K', 'N', 'R', 'L']
-  var MONTHS = ['jaan', 'veebr', 'märts', 'apr', 'mai', 'juuni',
-                'juuli', 'aug', 'sept', 'okt', 'nov', 'dets']
+  var WD_HEAD = ['E', 'T', 'K', 'N', 'R', 'L', 'P']
+  var MONTHS = ['jaanuar', 'veebruar', 'märts', 'aprill', 'mai', 'juuni',
+                'juuli', 'august', 'september', 'oktoober', 'november', 'detsember']
 
   /** '2026-09-07' → 'E 7. sept'. Parsed as UTC so no zone can shift the day. */
   function dayLabel(iso) {
     var p = iso.split('-')
     var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]))
-    return WEEKDAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + '. ' + MONTHS[d.getUTCMonth()]
+    return WEEKDAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + '. '
+      + MONTHS[d.getUTCMonth()].slice(0, 4)
+  }
+
+  function ymd(y, m, d) {
+    return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0')
   }
 
   /**
-   * The time picker.
+   * The time picker: a month grid on the left, that day's times on the right.
    *
-   * It asks the server which times are free and renders the answer. It never
-   * decides that itself: the opening hours, the diary and the load rules all
-   * live on the server, and two answers to "is this hour free" is a double
-   * booking.
+   * A vertical list of every half-hour carried the same information and read
+   * like a queue — you could not see that Thursday was busy and Friday was
+   * empty without scrolling past both. A month is the shape a diary has, and
+   * the shape the clinic already reads inside Wivo.
+   *
+   * It still never decides anything itself: which days have times, and which
+   * times, comes from the server. The grid only draws the answer.
    */
   function mountSlots(host, onPick, onLoaded) {
     var box = el('div', { class: 'wv-slots' })
     host.appendChild(box)
 
-    var label = el('label', { text: 'Vali aeg' })
-    var days = el('div', { class: 'wv-days' })
-    var times = el('div', { class: 'wv-times' })
     var note = el('div', { class: 'wv-none' })
-    box.appendChild(label); box.appendChild(days)
-    box.appendChild(times); box.appendChild(note)
+    box.appendChild(note)
 
-    var data = []
+    var wrapCal = el('div', { class: 'wv-cal' })
+    var left = el('div')
+    var right = el('div')
+    wrapCal.appendChild(left)
+    wrapCal.appendChild(right)
+    box.appendChild(wrapCal)
+
+    var legend = el('div', { class: 'wv-legend' })
+    box.appendChild(legend)
+
+    var byDay = {}          // 'YYYY-MM-DD' -> [times]
     var chosenDay = null
     var chosen = null
     var serviceId = null
+    var view = null         // { y, m } of the month on screen
+    var firstFree = null
 
     function clear() {
-      days.innerHTML = ''; times.innerHTML = ''; note.textContent = ''
-      chosenDay = null; chosen = null
+      byDay = {}; chosenDay = null; chosen = null; view = null; firstFree = null
+      left.innerHTML = ''; right.innerHTML = ''; legend.innerHTML = ''
       onPick(null)
     }
 
     function paintTimes() {
-      times.innerHTML = ''
-      var day = data.filter(function (d) { return d.kuupaev === chosenDay })[0]
-      if (!day) return
-      day.kellad.forEach(function (kell) {
+      right.innerHTML = ''
+      if (!chosenDay) {
+        right.appendChild(el('div', { class: 'wv-none', text: 'Vali kalendrist päev.' }))
+        return
+      }
+      right.appendChild(el('div', {
+        class: 'wv-jaw', text: dayLabel(chosenDay),
+      }))
+      var times = el('div', { class: 'wv-times' })
+      right.appendChild(times)
+      ;(byDay[chosenDay] || []).forEach(function (kell) {
         var b = el('button', {
           type: 'button', class: 'wv-time', 'aria-pressed': 'false', text: kell,
         })
@@ -361,31 +407,95 @@
       })
     }
 
-    function paintDays() {
-      days.innerHTML = ''
-      data.forEach(function (d) {
-        var b = el('button', { type: 'button', class: 'wv-day', 'aria-pressed': 'false' })
-        b.appendChild(document.createTextNode(dayLabel(d.kuupaev)))
-        b.appendChild(el('small', { text: d.kellad.length + ' aega' }))
-        b.addEventListener('click', function () {
-          chosenDay = d.kuupaev
-          chosen = null
-          onPick(null)
-          Array.prototype.forEach.call(days.children, function (c) {
-            c.setAttribute('aria-pressed', c === b ? 'true' : 'false')
-          })
-          paintTimes()
-        })
-        days.appendChild(b)
+    function paintMonth() {
+      left.innerHTML = ''
+      if (!view) return
+
+      var head = el('div', { class: 'wv-month' })
+      var prev = el('button', { type: 'button', text: '‹', 'aria-label': 'Eelmine kuu' })
+      var next = el('button', { type: 'button', text: '›', 'aria-label': 'Järgmine kuu' })
+      head.appendChild(prev)
+      head.appendChild(el('strong', { text: MONTHS[view.m] + ' ' + view.y }))
+      head.appendChild(next)
+      left.appendChild(head)
+
+      // Only where there is something to go to. A month button that leads to an
+      // empty grid is a button that wastes a tap.
+      var days = Object.keys(byDay).sort()
+      var minKey = days[0], maxKey = days[days.length - 1]
+      var cur = ymd(view.y, view.m, 1)
+      prev.disabled = !minKey || cur <= minKey.slice(0, 8) + '01'
+      var nextFirst = view.m === 11 ? ymd(view.y + 1, 0, 1) : ymd(view.y, view.m + 1, 1)
+      next.disabled = !maxKey || nextFirst > maxKey
+      prev.addEventListener('click', function () {
+        view = view.m === 0 ? { y: view.y - 1, m: 11 } : { y: view.y, m: view.m - 1 }
+        paintMonth()
       })
+      next.addEventListener('click', function () {
+        view = view.m === 11 ? { y: view.y + 1, m: 0 } : { y: view.y, m: view.m + 1 }
+        paintMonth()
+      })
+
+      var grid = el('div', { class: 'wv-grid' })
+      WD_HEAD.forEach(function (w) {
+        grid.appendChild(el('div', { class: 'wv-wd', text: w }))
+      })
+
+      var first = new Date(Date.UTC(view.y, view.m, 1))
+      // Monday-first: getUTCDay() is 0 for Sunday, so Sunday needs six blanks.
+      var lead = (first.getUTCDay() + 6) % 7
+      for (var i = 0; i < lead; i++) grid.appendChild(el('div'))
+
+      var last = new Date(Date.UTC(view.y, view.m + 1, 0)).getUTCDate()
+      var today = new Date().toISOString().slice(0, 10)
+      for (var d = 1; d <= last; d++) {
+        var key = ymd(view.y, view.m, d)
+        var times = byDay[key] || []
+        var cls = 'wv-cell'
+        if (key < today) cls += ' past'
+        else if (times.length > 0) cls += ' free'
+        else cls += ' shut'
+
+        var cell = el('button', {
+          type: 'button', class: cls, 'aria-pressed': key === chosenDay ? 'true' : 'false',
+          'aria-label': dayLabel(key) + (times.length
+            ? ' — ' + times.length + ' vaba aega'
+            : ' — vabu aegu ei ole'),
+        })
+        cell.appendChild(document.createTextNode(String(d)))
+        if (times.length > 0) cell.appendChild(el('i'))
+        if (times.length > 0) {
+          ;(function (k) {
+            cell.addEventListener('click', function () {
+              chosenDay = k
+              chosen = null
+              onPick(null)
+              paintMonth()
+              paintTimes()
+            })
+          })(key)
+        }
+        grid.appendChild(cell)
+      }
+      left.appendChild(grid)
+    }
+
+    function paintLegend() {
+      legend.innerHTML = ''
+      var free = el('span')
+      free.appendChild(el('i', { style: 'background:var(--wv-accent)' }))
+      free.appendChild(document.createTextNode('vabad ajad'))
+      var shut = el('span')
+      shut.appendChild(el('i', { style: 'background:#cbd5e1' }))
+      shut.appendChild(document.createTextNode('kinni või täis'))
+      legend.appendChild(free)
+      legend.appendChild(shut)
     }
 
     function load(id) {
       serviceId = id
       clear()
       if (!id) {
-        // Times depend on the service, so there is nothing honest to show yet.
-        // Saying why beats an empty space the visitor has to interpret.
         note.textContent = 'Vali kõigepealt teenus, siis näitame vabu aegu.'
         return
       }
@@ -395,24 +505,28 @@
         .then(function (r) { return r.json() })
         .then(function (body) {
           if (!body || !body.ok) throw new Error('slots failed')
-          data = body.data.paevad || []
+          var paevad = body.data.paevad || []
           note.textContent = ''
-          // The caller owns the heading; `sub` is not in scope here and reaching
-          // for it would have been a ReferenceError the syntax check cannot see.
-          if (onLoaded) onLoaded(data.length)
-          if (data.length === 0) {
-            // Says what to do next rather than only that there is nothing.
+          if (paevad.length === 0) {
             note.textContent = body.data.pohjus
               || 'Vabu aegu hetkel ei ole. Saada taotlus — pakume aja ise.'
+            if (onLoaded) onLoaded(0)
             return
           }
-          paintDays()
+          paevad.forEach(function (p) { byDay[p.kuupaev] = p.kellad })
+          firstFree = paevad[0].kuupaev
+          // Open on the month that HAS something, not on today: a clinic booked
+          // solid for three weeks would otherwise open on an empty grid.
+          view = { y: +firstFree.slice(0, 4), m: +firstFree.slice(5, 7) - 1 }
+          chosenDay = firstFree
+          paintMonth()
+          paintTimes()
+          paintLegend()
+          if (onLoaded) onLoaded(paevad.length)
         })
         .catch(function () {
-          // The form still works without it. Losing the request because the
-          // diary was unreachable would be the worse trade.
-          data = []
           note.textContent = 'Aegu ei õnnestunud laadida. Saada taotlus — pakume aja ise.'
+          if (onLoaded) onLoaded(0)
         })
     }
 

@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Loader2, Save, Trash2, UserRound, X } from 'lucide-react'
 import { format } from 'date-fns'
 import type { Visit, VisitInput, VisitStatus } from '../../types/visit'
 import { EMPTY_VISIT, VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/visit'
-import { useCreateVisit, useUpdateVisit, useDeleteVisit } from '../../hooks/useVisits'
+import { useVisits, useCreateVisit, useUpdateVisit, useDeleteVisit } from '../../hooks/useVisits'
 import { PatientPicker } from '../Patients/PatientPicker'
 import { usePatients } from '../../hooks/usePatients'
 import { useSettings, useVisitTypes } from '../../stores/useSettings'
@@ -43,6 +43,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
   const updateVisit = useUpdateVisit()
   const deleteVisit = useDeleteVisit()
   const { data: patients = [] } = usePatients()
+  const { data: allVisits = [] } = useVisits()
   const { settings } = useSettings()
   const vt = useVisitTypes()
 
@@ -94,6 +95,20 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
       arst: p?.arst?.trim() || f.arst
     }))
   }
+
+  /**
+   * Doctors already recorded, from patients and from visits alike.
+   *
+   * Derived rather than kept in settings: the referring doctor is whoever
+   * happens to refer, and a list somebody must maintain by hand is a list that
+   * is out of date the first time it matters.
+   */
+  const knownDoctors = useMemo(() => {
+    const names = new Set<string>()
+    for (const p of patients) if (p.arst?.trim()) names.add(p.arst.trim())
+    for (const v of allVisits) if (v.arst?.trim()) names.add(v.arst.trim())
+    return [...names].sort((a, b) => a.localeCompare(b, 'et'))
+  }, [patients, allVisits])
 
   const saving = createVisit.isPending || updateVisit.isPending || deleteVisit.isPending
 
@@ -222,12 +237,20 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
 
           <div>
             <label className="label">Suunav arst</label>
+            {/* Suggests the names already in use instead of inviting a new
+                spelling of one of them. Still a free field — a referral can
+                come from somebody who has never appeared here — but "Dr. Meeme
+                Luks" and "dr meeme luks" should not become two doctors. */}
             <input
+              list="wv-arstid"
               value={form.arst ?? ''}
               onChange={e => set('arst', e.target.value || null)}
               placeholder="Dr. …"
               className="input"
             />
+            <datalist id="wv-arstid">
+              {knownDoctors.map(d => <option key={d} value={d} />)}
+            </datalist>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -247,7 +270,13 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
                 type="number"
                 min={5}
                 max={600}
-                step={settings.ajaSamm}
+                // NOT `settings.ajaSamm`. That is the calendar's DRAG grid, and
+                // using it here made the browser refuse 30 minutes: with min=5
+                // and step=15 the only valid values are 5, 20, 35, 50 — which
+                // is what "kaks lähimat kehtivat väärtust on 20 ja 35" meant.
+                // A visit lasts however long it lasts; five-minute granularity
+                // keeps out typos without arguing with the person.
+                step={5}
                 value={form.kestus_min}
                 onChange={e => set('kestus_min', parseInt(e.target.value) || 30)}
                 required
@@ -285,12 +314,16 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
 
           <div>
             <label className="label">Märkus</label>
+            {/* Four rows and resizable: a web booking arrives with three lines
+                already in it (phone, chosen time, the patient's own message),
+                so two rows with `resize-none` meant reading somebody's request
+                through a slot. */}
             <textarea
               value={form.markus ?? ''}
               onChange={e => set('markus', e.target.value || null)}
-              rows={2}
+              rows={4}
               placeholder="Nt proovimine, üleandmine…"
-              className="input resize-none"
+              className="input resize-y min-h-[5rem]"
             />
           </div>
 
