@@ -7,17 +7,18 @@
   <!--
     KOHALIK PROOVILEHT. Ei kuulu kellegi kodulehele.
 
-    Kasutamine:
       cd web/embed
-      npx serve .            (või mis tahes staatiline server)
+      npx serve .                 (PowerShellis: cd web/embed; npx serve .)
       ava http://localhost:3000/test.html
 
-    Ava see PÄRIS pordilt, mitte file:// pealt — file:// saadab Origin: null,
-    mille CORS allowlist õigustatult tagasi lükkab, ja siis paistab katki asi,
-    mis tegelikult töötab.
+    Ava PÄRIS pordilt, mitte file:// pealt — file:// saadab Origin: null, mille
+    CORS allowlist õigustatult tagasi lükkab, ja siis paistab katki asi, mis
+    tegelikult töötab.
 
-    Lisa see aadress ka allowlisti:
-      supabase secrets set PUBLIC_BOOKING_ORIGINS="http://localhost:3000,https://<pärisleht>"
+    Faili ise ei ole vaja muuta: tunnuse saab siin lehel sisestada ja ta jääb
+    meelde. Varem oli siin <slug> kohatäide, mille asendamata jätmine andis
+    „Kliinikut ei leitud" — proovileht, mis nõuab lähtekoodi muutmist, on halb
+    proovileht.
   -->
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -26,10 +27,15 @@
     .card { background: #fff; border-radius: 16px; padding: 1.5rem;
             box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 1.5rem; }
     code { background: #eef2f6; padding: .1rem .3rem; border-radius: 4px; font-size: .85em; }
-    h1 { font-size: 1.3rem; }
+    h1 { font-size: 1.3rem; margin-top: 0; }
     .note { font-size: .85rem; color: #64748b; line-height: 1.5; }
-    /* Teeming: the widget reads these, so a clinic can match its own site
-       without editing wivo-booking.js. */
+    .cfg { display: grid; gap: .6rem; }
+    .cfg label { font-size: .78rem; font-weight: 600; }
+    .cfg input { width: 100%; padding: .5rem .6rem; border: 1px solid #dfe5ec;
+                 border-radius: 8px; font: inherit; font-size: .9rem; box-sizing: border-box; }
+    .cfg button { padding: .55rem 1rem; border: 0; border-radius: 8px;
+                  background: #0AB6C4; color: #fff; font: inherit; font-weight: 600;
+                  cursor: pointer; justify-self: start; }
     .teemitud .wv { --wv-accent: #7c3aed; --wv-radius: 4px; }
   </style>
 </head>
@@ -38,41 +44,86 @@
     <h1>Wivo broneerimisvorm — proovileht</h1>
 
     <div class="card">
-      <div id="wivo-broneering"></div>
+      <div class="cfg">
+        <div>
+          <label for="clinic">Kliiniku tunnus (slug)</label>
+          <input id="clinic" placeholder="fullgevity" autocomplete="off">
+        </div>
+        <div>
+          <label for="base">Funktsiooni aadress</label>
+          <input id="base" autocomplete="off">
+        </div>
+        <button id="load">Laadi vorm</button>
+      </div>
+      <p class="note" style="margin-bottom:0">
+        Tunnus peab olema <strong>täpselt sama</strong>, mis Wivos
+        Seaded&nbsp;→&nbsp;Kliinik&nbsp;→&nbsp;Veebilehe tunnus. Salvestatakse
+        selle brauseri mällu, nii et järgmisel korral on ta juba siin.
+        Saab ka aadressirealt: <code>test.html?clinic=fullgevity</code>
+      </p>
     </div>
+
+    <div class="card"><div id="wivo-broneering"></div></div>
 
     <div class="card note">
       <p><strong>Mida siin kontrollida:</strong></p>
       <ol>
-        <li>Teenuste valik ilmub — kui ei ilmu, töötab vorm ikka (see on tahtlik).</li>
+        <li>Samm 1 „Mida on vaja?" ilmub — kui ei ilmu, ütleb vorm ise punasega, miks.</li>
+        <li>Teenuse valimisel ilmuvad <strong>vabad ajad päris päevikust</strong>.</li>
+        <li>Hõivatud aegu ei ole nimekirjas üldse.</li>
         <li>Tühja nimega saatmine annab vea, ilma serverisse minemata.</li>
-        <li>Saada üks taotlus → Wivos „Taotlused" all peab tekkima rida.</li>
-        <li>Vajuta saatmist kaks korda järjest → Wivos peab olema <strong>üks</strong> rida.
-            See on idempotentsusvõti, mis tekib lehe avamisel.</li>
-        <li>Kirjuta sõnumisse üle 300 tähemärgi → väli ise ei lase.</li>
+        <li>Saada üks taotlus → Wivos „Taotlused" all peab rida tekkima <em>ise</em>.</li>
+        <li>Vajuta saatmist kaks korda järjest → Wivos peab olema <strong>üks</strong> rida.</li>
+        <li>Sõnumisse üle 300 tähemärgi → väli ise ei lase.</li>
         <li>Kuues taotlus tunni jooksul → <code>RATE_LIMITED</code>.</li>
       </ol>
-      <p>Kujundus käib CSS-muutujatega — allpool sama vorm lilla ja teravate nurkadega,
-         faili ennast puutumata.</p>
+      <p>Kujundus käib CSS-muutujatega — allpool sama vorm lilla ja teravate
+         nurkadega, faili ennast puutumata.</p>
     </div>
 
-    <div class="card teemitud">
-      <div id="wivo-teemitud"></div>
-    </div>
+    <div class="card teemitud"><div id="wivo-teemitud"></div></div>
   </div>
 
-  <!-- ⚠ ASENDA <ref> ja <slug> omadega. -->
-  <script
-    src="./wivo-booking.js"
-    data-wivo-base="https://wrtucsfmpbwekugzzzxw.functions.supabase.co/public-booking"
-    data-wivo-clinic="<slug>"
-    data-wivo-target="#wivo-broneering"></script>
+  <script>
+    // Remembered per browser, overridable from the query string. The point is
+    // that running this page never requires editing it.
+    var DEFAULT_BASE = 'https://wrtucsfmpbwekugzzzxw.functions.supabase.co/public-booking'
+    var qs = new URLSearchParams(location.search)
+    var clinicEl = document.getElementById('clinic')
+    var baseEl = document.getElementById('base')
 
-  <script
-    src="./wivo-booking.js"
-    data-wivo-base="https://wrtucsfmpbwekugzzzxw.functions.supabase.co/public-booking"
-    data-wivo-clinic="<slug>"
-    data-wivo-target="#wivo-teemitud"
-    data-wivo-title="Broneeri aeg"></script>
+    clinicEl.value = qs.get('clinic') || localStorage.getItem('wivoTestClinic') || ''
+    baseEl.value = qs.get('base') || localStorage.getItem('wivoTestBase') || DEFAULT_BASE
+
+    function mount() {
+      var clinic = clinicEl.value.trim()
+      var base = baseEl.value.trim().replace(/\/+$/, '')
+      if (!clinic) { clinicEl.focus(); return }
+      localStorage.setItem('wivoTestClinic', clinic)
+      localStorage.setItem('wivoTestBase', base)
+
+      // Fresh containers: the widget appends, so re-loading without clearing
+      // would stack two forms on top of each other.
+      document.getElementById('wivo-broneering').innerHTML = ''
+      document.getElementById('wivo-teemitud').innerHTML = ''
+
+      ;[['#wivo-broneering', 'Küsi vastuvõtuaega'],
+        ['#wivo-teemitud', 'Broneeri aeg']].forEach(function (pair) {
+        var s = document.createElement('script')
+        // Cache-buster: this page exists to see the newest widget, and a
+        // stale one is the most confusing thing it could show.
+        s.src = './wivo-booking.js?v=' + Date.now()
+        s.setAttribute('data-wivo-base', base)
+        s.setAttribute('data-wivo-clinic', clinic)
+        s.setAttribute('data-wivo-target', pair[0])
+        s.setAttribute('data-wivo-title', pair[1])
+        document.body.appendChild(s)
+      })
+    }
+
+    document.getElementById('load').addEventListener('click', mount)
+    clinicEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') mount() })
+    if (clinicEl.value) mount()
+  </script>
 </body>
 </html>
