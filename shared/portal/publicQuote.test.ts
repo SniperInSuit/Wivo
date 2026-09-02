@@ -6,8 +6,8 @@ import type { PublicService } from './publicService'
 import { emptyPublicService, slugify } from './publicService'
 import {
   publicPriceRange, publicPlanSummary, publishProblems, toPublicCatalogue,
+  bookingDuration,
 } from './publicQuote'
-import { bookingDuration } from './publicService'
 
 const CLINIC = { nimi: 'Fullgevity Dental', telefon: '+372 5000 0000', email: 'info@example.ee' }
 

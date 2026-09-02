@@ -12,8 +12,8 @@
  */
 import { Check, X, AlertTriangle } from 'lucide-react'
 import type { PublicService } from '@shared/portal/publicService'
-import { publishProblems } from '@shared/portal/publicQuote'
-import { bookingDuration } from '@shared/portal/publicService'
+import { publishProblems, bookingDuration } from '@shared/portal/publicQuote'
+
 import { openWindows } from '@shared/portal/slots'
 import type { BookingConfig } from './BookingHoursSection'
 

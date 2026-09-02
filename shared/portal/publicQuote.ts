@@ -28,7 +28,6 @@
  *   Vite and `moduleResolution: "bundler"` accept the extension happily, so
  *   both worlds are satisfied by writing it.
  */
-import { bookingDuration } from './publicService.ts'
 import type { PublicService } from './publicService.ts'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -95,6 +94,21 @@ export function publicPlanSummary(s: PublicService): PublicPlanSummary {
       ...(x.ootaegPaevad ? { ootaegTekst: `${vagueDuration(x.ootaegPaevad)} pärast eelmist` } : {}),
     })),
   }
+}
+
+/**
+ * How long to book for. One answer, asked in one place.
+ *
+ * The service's own duration wins; the bookable plan step is the fallback for
+ * treatments that were set up before the field existed, and for genuine
+ * multi-visit plans where the length lives with the visit. 0 means the website
+ * cannot offer a time at all — and refusing beats guessing a chair length.
+ */
+export function bookingDuration(s: Pick<PublicService, 'kestusMin' | 'samm' | 'broneeritavSamm'>): number {
+  const own = Number(s.kestusMin)
+  if (Number.isFinite(own) && own > 0) return Math.round(own)
+  const step = Number(s.samm?.[s.broneeritavSamm]?.kestusMin)
+  return Number.isFinite(step) && step > 0 ? Math.round(step) : 0
 }
 
 /**

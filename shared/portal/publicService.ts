@@ -173,21 +173,6 @@ export interface PublicService {
   }
 }
 
-/**
- * How long to book for. One answer, asked in one place.
- *
- * The service's own duration wins; the bookable plan step is the fallback for
- * treatments that were set up before the field existed, and for genuine
- * multi-visit plans where the length lives with the visit. 0 means the website
- * cannot offer a time at all — and refusing beats guessing a chair length.
- */
-export function bookingDuration(s: Pick<PublicService, 'kestusMin' | 'samm' | 'broneeritavSamm'>): number {
-  const own = Number(s.kestusMin)
-  if (Number.isFinite(own) && own > 0) return Math.round(own)
-  const step = Number(s.samm?.[s.broneeritavSamm]?.kestusMin)
-  return Number.isFinite(step) && step > 0 ? Math.round(step) : 0
-}
-
 /** A brand-new service, ready for the settings editor to fill in. */
 export function emptyPublicService(id: string, jarjekord: number): PublicService {
   return {

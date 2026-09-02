@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.73.1] — 2026-09-02
+
+**`bookingDuration` kolis `publicQuote.ts`-i**
+
+1.73.0 jättis typecheck'i katki ja ma commit'isin selle. `publicQuote.ts` on
+Deno poolt laaditav, seega väärtuseimport vajab `.ts` laiendit — mida
+rendereri tsconfig `composite: true` all vastu ei võta.
+
+Lahendus ei ole seadistuse lõdvendamine, vaid õige kodu: `publicQuote.ts` on
+juba see moodul, kus elavad KÕIK teenusest tuletatud väärtused
+(`publicPriceRange`, `publicPlanSummary`, `publishProblems`). `publicService.ts`
+hoiab tüüpi ja tehast. Nii ei ole ühtegi failideülest väärtuseimporti vaja.
+
 ## [1.73.0] — 2026-09-02
 
 **Kestus on teenuse enda väli — raviplaan ei ole enam kohustuslik**

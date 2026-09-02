@@ -43,8 +43,7 @@ import {
   localDate, isoWeekday, dayDiff, dateRange, loadOf, pendingHolds, toInstant,
 } from '../_shared/slotData.ts'
 import { freeSlots, slotsByDay, slotStillFree } from '@shared/portal/slots.ts'
-import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
-import { bookingDuration } from '@shared/portal/publicService.ts'
+import { toPublicCatalogue, bookingDuration } from '@shared/portal/publicQuote.ts'
 import {
   visitRequestProblems, looksLikeSpam, toVisitRequestRow,
 } from '@shared/portal/visitRequest.ts'
