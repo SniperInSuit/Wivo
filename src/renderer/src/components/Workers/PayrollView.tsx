@@ -1577,6 +1577,25 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
               Vali töötüübid — praegu lisanduks see tasu iga töö peale.
             </p>
           )}
+          {/* "Mudel" is two different things in this app: a rate SCOPE and a
+              work TYPE. Picking the type here makes a rule that pays only for a
+              job carrying a Mudel work ITEM — and models are recorded with the
+              flag beside Kiirtöö, so the rule silently never fires. It looks
+              completely correct in the list, which is why it needs saying at
+              the moment it is written. */}
+          {scope === 'too' && workTypes.some(n => /mudel|model/i.test(n)) && (
+            <p className="text-[10px] text-amber-600 mt-1">
+              Mudelit märgitakse tööl Kiirtöö kõrval, mitte tööosana — see reegel
+              ei rakenduks. Vali pigem „Mille eest: Mudel".{' '}
+              <button
+                type="button"
+                onClick={() => { setScope('mudel'); setWorkTypes([]) }}
+                className="underline font-medium hover:text-amber-700"
+              >
+                Sea ära
+              </button>
+            </p>
+          )}
         </div>
       )}
 

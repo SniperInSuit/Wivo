@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.63.0] — 2026-09-02
+
+**Valmimiskuupäev — nüüd ka lugemisvaates, pliiatsiga**
+
+Väli oli olemas, aga peidus: ainult „Muuda" all ja ainult siis, kui töö oli juba
+valmis-etapis. Imporditud töö kuu parandamiseks tuli avada vorm, mida sa muidu ei
+vajanud.
+
+- Töö lehel, ilma vormita, klikiga muudetav
+- Kui kuupäev puudub, seisab seal oranžilt **„puudub — töötasu läks tähtaja /
+  saabumise kuupäeva järgi"**. See on täpselt see juht, mis paneb palga valesse
+  kuusse, nii et ta peabki välja nägema poolik
+- Automaatne märkimine töötab nagu enne: valmis-etappi liigutades pannakse
+  tänane kuupäev, kui sa ise midagi ei sisestanud
+
+**„Mudel" tähendab selles rakenduses kahte eri asja — ja see vaikis**
+
+Sinu reegel on `Töö tasu (fikseeritud) 10 €/töö` + hall silt `Mudel`. See hall
+silt on **töö tüübi piirang**, mitte „Mille eest". Reegel ütleb seega: maksa
+10 € tööde eest, mille tööosa on tüüpi „Mudel". Sina märgid mudelit **Kiirtöö
+kõrval oleva märkega**, nii et reegel ei rakendu kunagi — ja näeb nimekirjas
+täiesti korrektne välja.
+
+Reegel, mis töötaks: **„Mille eest: Mudel"**, töötüüp valimata.
+
+- Töötasude hoiatus nimetab nüüd täpselt selle juhtumi ja ütleb, mida muuta
+- Reegli **kirjutamise hetkel** hoiatab vorm ise, kui valid töötüübiks „Mudel"
+  ja „Mille eest" on „Teostatud töö" — koos nupuga „Sea ära"
+- 8 testi, sealhulgas üks, mis tõestab, et õigesti seatud reegel maksab 10 €
+
 ## [1.62.1] — 2026-09-02
 
 **„40 tööd arvestamata" — ei olnud**

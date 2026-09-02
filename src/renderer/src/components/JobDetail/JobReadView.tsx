@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2, Plus, Copy, Printer } from 'lucide-react'
+import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2, Plus, Copy, Printer, Pencil } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision, WorkItem } from '../../types/job'
@@ -285,6 +285,14 @@ export function JobReadView({
               {rev && (
                 <Cell label="Kuulub töö juurde" value={job.too || '—'} />
               )}
+              {/* The date wages are paid on. It was editable only inside the
+                  form, and only once the job had reached the done stage — so
+                  correcting an imported job's month meant opening a form you
+                  did not otherwise need. Here it is one click.
+
+                  A revision has its own completion date and is not this one, so
+                  the field belongs to the job view only. */}
+              {!rev && <CompletionDate job={job} />}
             </div>
           </Card>
 
@@ -561,6 +569,82 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * When the work was actually finished — the day payroll pays on.
+ *
+ * Editable in place because it is a CORRECTION, not part of describing a job:
+ * an imported row, or one finished before the stamp existed, pays into whatever
+ * month `jobPeriodDate` falls back to (the deadline, then the day it arrived).
+ * Fixing that had meant opening the edit form and finding the field inside a
+ * block that only appears at the done stage.
+ *
+ * Empty is stated plainly rather than hidden. That is the case that misfiles
+ * wages, so it should look unfinished.
+ */
+function CompletionDate({ job }: { job: Job }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(job.valmis_kuupaev ?? '')
+  const updateJob = useUpdateJob()
+
+  const fallback = job.valmis_aeg ? 'tähtaja' : 'saabumise'
+
+  if (editing) {
+    return (
+      <div className="min-w-0">
+        <Label>Valmimiskuupäev</Label>
+        <div className="flex items-center gap-1">
+          <input
+            type="date" autoFocus
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            className="input py-0.5 px-1.5 text-xs w-auto"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              // Empty clears it — and the screen then says so, rather than
+              // pretending the job has a date it does not have.
+              updateJob.mutate({ id: job.id, valmis_kuupaev: draft || null })
+              setEditing(false)
+            }}
+            className="text-emerald-600 hover:text-emerald-700 text-xs px-1"
+          >
+            Salvesta
+          </button>
+          <button
+            type="button"
+            onClick={() => { setDraft(job.valmis_kuupaev ?? ''); setEditing(false) }}
+            className="text-ink-faint hover:text-ink text-xs px-1"
+          >
+            Loobu
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-w-0">
+      <Label>Valmimiskuupäev</Label>
+      <p className="text-sm text-ink-soft flex items-center gap-1.5">
+        {job.valmis_kuupaev ? fmt(job.valmis_kuupaev, 'dd.MM.yyyy') : (
+          <span className="text-orange-600 text-xs">
+            puudub — töötasu läks {fallback} kuupäeva järgi
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-ink-faint hover:text-accent"
+          title="Muuda valmimiskuupäeva"
+        >
+          <Pencil size={10} />
+        </button>
+      </p>
     </div>
   )
 }

@@ -1145,3 +1145,54 @@ describe('diagnoseEarnings — a pay month decided by a fallback', () => {
     expect(issues[issues.length - 1].code).toBe('periood')
   })
 })
+
+describe('diagnoseEarnings — "Mudel" means two different things', () => {
+  // It is a rate SCOPE ("Mille eest: Mudel") and it is also a WORK TYPE. A rule
+  // restricted to the work type pays only for a job carrying a Mudel work ITEM,
+  // and models are recorded with the flag beside Kiirtöö — so the rule never
+  // fires, while looking entirely correct in the rules list.
+  const modelJob = () => job({
+    assigned_to: TECH, mudel: true, valmis_kuupaev: '2026-08-10',
+    work_items: [item('Kroon', '11')], hind: 100,
+  })
+
+  const diagnose = (rates: WorkerRate[]) => diagnoseEarnings({
+    profileId: TECH, rates, jobs: [modelJob()], hours: [], types: TYPES,
+    periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    today: '2026-08-15',
+  })
+
+  it('names the near miss when the rule is tied to the Mudel work type', () => {
+    const issues = diagnose([
+      rate({ kind: 'hammas', amount: 15 }),
+      rate({ kind: 'too', amount: 10, work_type: 'Mudel' }),   // scope defaults to 'too'
+    ])
+    const rule = issues.find(i => i.code === 'reegel')
+    expect(rule?.label).toContain('Mille eest')
+  })
+
+  it('says the plain thing when there is no model rule at all', () => {
+    const rule = diagnose([rate({ kind: 'hammas', amount: 15 })])
+      .find(i => i.code === 'reegel')
+    expect(rule?.label).toContain('mudeli eest makstavat reeglit ei ole')
+  })
+
+  it('says nothing once the rule is scoped to Mudel', () => {
+    const issues = diagnose([
+      rate({ kind: 'hammas', amount: 15 }),
+      rate({ kind: 'too', amount: 10, applies_to: 'mudel' }),
+    ])
+    expect(issues.find(i => i.code === 'reegel')).toBeUndefined()
+  })
+
+  it('and that rule actually pays', () => {
+    const lines = calculateEarnings({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15 }), rate({ kind: 'too', amount: 10, applies_to: 'mudel' })],
+      jobs: [modelJob()], hours: [], types: TYPES,
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    expect(lines.find(l => l.key.startsWith('mudel:'))?.amount).toBe(10)
+    expect(earningsTotal(lines)).toBe(25)   // 1 hammas × 15 + mudel 10
+  })
+})

@@ -943,7 +943,21 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       // A model on the job with no rule to pay it is silent money: the job is
       // paid, the line for the model simply never appears.
       if (job.mudel && !payProduction(mine, items, earnedOn, types, 'mudel', price)) {
-        add('reegel', 'Tööl on mudel, aga mudeli eest makstavat reeglit ei ole', job)
+        // The near-miss is worth naming separately, because it looks exactly
+        // like a rule that works. "Mudel" exists twice in this app: as a rate
+        // SCOPE ("Mille eest: Mudel") and as a WORK TYPE, and a rule restricted
+        // to the work type pays only for a job that has a Mudel work ITEM. Tick
+        // the flag beside Kiirtöö instead and that rule never fires — silently,
+        // because it is a perfectly valid rule that simply matched nothing.
+        const scopedToModelType = mine.some(r =>
+          (r.applies_to ?? 'too') === 'too'
+          && rateWorkTypes(r).some(n => /mudel|model/i.test(n)))
+        add('reegel',
+          scopedToModelType
+            ? 'Mudeli reegel on piiratud töö tüübiga „Mudel", aga mudel on tööl '
+              + 'märkena Kiirtöö kõrval. Muuda reeglil „Mille eest" väärtuseks Mudel'
+            : 'Tööl on mudel, aga mudeli eest makstavat reeglit ei ole',
+          job)
       }
       // The same confusion from the other side. A model could be recorded two
       // ways — the flag next to Kiirtöö, or a "Mudel" WORK TYPE in the grid —
