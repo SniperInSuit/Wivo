@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.75.1] — 2026-09-02
+
+**Vorm ütles „võtame ühendust" ka siis, kui aeg oli juba kalendris**
+
+Automaatne kinnitamine pandi sisse 1.75.0-s, aga vidin ei teadnud sellest — ta
+näitas iga kord „Taotlus on saadetud. Võtame sinuga peagi ühendust", ka siis kui
+visiit oli **juba loodud**. Patsient oleks helistanud, et küsida broneeringu
+kohta, mis tal juba oli.
+
+- Server vastab nüüd `kinnitatud` ja valitud ajaga
+- Kinnitatud broneering: **„Aeg on broneeritud. E 7. sept kell 09:00"**
+- Kinnitamata: „Kinnitame valitud aja ja võtame sinuga ühendust" — mis on
+  täpsem kui endine „võtame ühendust", kui inimene juba valis kella
+- Pealkiri muutub samuti, kui vabu aegu on: „Vali endale sobiv aeg" asemel
+  „jäta kontakt". Lubada tagasihelistamist samal ekraanil, kus näidatakse vabu
+  aegu, on kaks eri pakkumist korraga
+
+Ei anta ikkagi id-d ega staatuse linki — MDR-i piir püsib. Inimesele tema enda
+valitud kellaaja tagasi ütlemine ei ole „vaade oma ravile", vaid kordamine.
+
+**Parandatud ka:** `sub` ei olnud `mountSlots` skoobis — `node --check` näeb
+süntaksit, mitte skoopi, ja see oleks olnud ReferenceError alles brauseris.
+
 ## [1.75.0] — 2026-09-02
 
 **Automaatne kinnitamine — valikuna. Ja üks vaikne topeltbroneeringu allikas.**

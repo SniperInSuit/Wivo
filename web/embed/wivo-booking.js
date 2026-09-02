@@ -320,7 +320,7 @@
    * live on the server, and two answers to "is this hour free" is a double
    * booking.
    */
-  function mountSlots(host, onPick) {
+  function mountSlots(host, onPick, onLoaded) {
     var box = el('div', { class: 'wv-slots' })
     host.appendChild(box)
 
@@ -397,6 +397,9 @@
           if (!body || !body.ok) throw new Error('slots failed')
           data = body.data.paevad || []
           note.textContent = ''
+          // The caller owns the heading; `sub` is not in scope here and reaching
+          // for it would have been a ReferenceError the syntax check cannot see.
+          if (onLoaded) onLoaded(data.length)
           if (data.length === 0) {
             // Says what to do next rather than only that there is nothing.
             note.textContent = body.data.pohjus
@@ -431,6 +434,8 @@
     root.appendChild(wrap)
 
     wrap.appendChild(el('h2', { text: cfg.pealkiri }))
+    // Rewritten once the diary answers: promising a callback while showing a
+    // list of free times is two different offers on one screen.
     var sub = el('p', { class: 'wv-sub', text:
       'Jäta oma kontakt ja me võtame ühendust, et aeg kokku leppida.' })
     wrap.appendChild(sub)
@@ -622,7 +627,17 @@
           .map(function (x) { return x.id })
         calc = mountCalculator(calcWrap, services)
 
-        slots = mountSlots(slotWrap, function (picked) { chosenSlot = picked })
+        slots = mountSlots(
+          slotWrap,
+          function (picked) { chosenSlot = picked },
+          function (count) {
+            // Promising a callback while showing a list of free times is two
+            // different offers on one screen.
+            if (count > 0) {
+              sub.textContent = 'Vali endale sobiv aeg — näitame ainult neid, mis on vabad.'
+            }
+          },
+        )
         slots.load(chosenService)
         show()
       })
@@ -687,8 +702,25 @@
             if (pay) { window.location.href = pay; return }
             wrap.innerHTML = ''
             var ok = el('div', { class: 'wv-ok' })
-            ok.appendChild(el('strong', { text: 'Taotlus on saadetud.' }))
-            ok.appendChild(el('div', { text: 'Võtame sinuga peagi ühendust.' }))
+            var d = res.body.data || {}
+            if (d.kinnitatud) {
+              // A real visit exists. Saying "we will be in touch" here made
+              // people ring to ask about a booking they already had.
+              ok.appendChild(el('strong', { text: 'Aeg on broneeritud.' }))
+              ok.appendChild(el('div', {
+                text: d.aeg
+                  ? dayLabel(d.aeg.kuupaev) + ' kell ' + d.aeg.kell
+                  : 'Ootame sind kokkulepitud ajal.',
+              }))
+              ok.appendChild(el('div', { text: 'Kui midagi muutub, anna palun teada.' }))
+            } else {
+              ok.appendChild(el('strong', { text: 'Taotlus on saadetud.' }))
+              ok.appendChild(el('div', {
+                text: chosenSlot
+                  ? 'Kinnitame valitud aja ja võtame sinuga ühendust.'
+                  : 'Võtame sinuga peagi ühendust.',
+              }))
+            }
             wrap.appendChild(ok)
             return
           }

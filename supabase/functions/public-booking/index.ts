@@ -387,14 +387,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       // No fee to wait for, so the decision can be made now. `confirmRequest`
       // refuses on its own if anything is off — this only asks.
+      let kinnitatud = false
       if (created && booking.automaatKinnitus && hold) {
-        await confirmRequest(created)
+        kinnitatud = !!(await confirmRequest(created))
       }
 
-      // Deliberately says nothing more than "received". No id, no status, no
-      // link to follow: a patient-facing view of their own care is the MDR line
-      // this product does not cross (project_no_patient_portal).
-      return ok({ saadetud: true }, cors)
+      // `kinnitatud` says whether a real visit exists, so the page can say the
+      // true thing. It used to answer "we will be in touch" even when the time
+      // was already in the calendar — the patient then rang to ask about a
+      // booking they already had.
+      //
+      // Still no id and no status link: a patient-facing view of their own care
+      // is the MDR line this product does not cross. Confirming the time they
+      // just picked is not that — it is repeating back what they did.
+      return ok({
+        saadetud: true,
+        kinnitatud,
+        ...(kinnitatud && wish ? { aeg: { kuupaev: wish.kuupaev, kell: wish.kell } } : {}),
+      }, cors)
     }
 
     /**
