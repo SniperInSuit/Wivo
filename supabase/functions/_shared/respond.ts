@@ -52,4 +52,33 @@ export const ERRORS = {
     et: 'Midagi läks valesti. Helista meile või proovi hiljem uuesti.',
     en: 'Something went wrong.',
   },
+  INVALID: {
+    code: 'INVALID',
+    et: 'Palun kontrolli vormi.',
+    en: 'Please check the form.',
+  },
+  UNKNOWN_SERVICE: {
+    code: 'UNKNOWN_SERVICE',
+    et: 'Sellist teenust ei ole.',
+    en: 'No such service.',
+  },
+  REQUESTS_CLOSED: {
+    code: 'REQUESTS_CLOSED',
+    et: 'Veebivormiga broneerimine ei ole praegu avatud. Helista meile.',
+    en: 'Online requests are closed. Please call us.',
+  },
 } as const satisfies Record<string, ErrorBody>
+
+/**
+ * A refusal that names the fields. Used only for validation, where a generic
+ * message would leave the patient unable to fix anything — everywhere else the
+ * fixed `ERRORS` wording applies, so nothing internal can reach the page.
+ */
+export function failWith(
+  status: number, error: ErrorBody, details: string[], headers: Record<string, string> = {},
+): Response {
+  return new Response(
+    JSON.stringify({ ok: false, error: { ...error, details } }),
+    { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } },
+  )
+}

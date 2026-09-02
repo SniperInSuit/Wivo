@@ -18,6 +18,7 @@ import { SettingsPage } from './components/SettingsPage'
 import { InvoicesView } from './components/Invoices/InvoicesView'
 import { CustomersView } from './components/Customers/CustomersView'
 import { PayrollView } from './components/Workers/PayrollView'
+import { RequestsInbox } from './components/CalendarView/RequestsInbox'
 import { WorkersPage } from './components/Workers/WorkersPage'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
 import { useMarkJobsPaid } from './hooks/useInvoices'
@@ -391,6 +392,7 @@ function AppContent() {
           {view === 'arved' && <InvoicesView jobs={jobs} />}
           {view === 'tootasud' && <PayrollView jobs={jobs} onOpenJob={openEdit} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
+          {view === 'taotlused' && <RequestsInbox />}
           {view === 'settings' && <SettingsPage />}
           {view === 'workers' && <WorkersPage />}
         </main>

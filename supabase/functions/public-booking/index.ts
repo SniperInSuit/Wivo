@@ -11,17 +11,39 @@
  * limiting is the smaller surface.
  *
  * ROUTES
- *   GET /public-booking/services?clinic=<slug>
+ *   GET  /public-booking/services?clinic=<slug>
+ *   POST /public-booking/request?clinic=<slug>
  *
- * Slots and booking arrive once the Dentas API is mapped — see the plan. This
- * route deliberately ships first because it needs no Dentas at all, and because
- * deploying it answers the one open question about `shared/` imports.
+ * `/request` takes an appointment REQUEST, not a booking. It answers "received"
+ * and nothing else — no id, no status, no link back. A patient-facing view of
+ * their own care is the MDR line this product does not cross, and a status link
+ * is exactly that view wearing a convenience's clothes.
+ *
+ * Real slots and confirmed bookings would need the practice calendar, which
+ * lives in Dentas. The inbox in Wivo is what closes that loop by hand, and it
+ * needs no Dentas at all.
  */
 import { preflight, corsHeaders } from '../_shared/cors.ts'
-import { ok, fail, ERRORS } from '../_shared/respond.ts'
+import { ok, fail, failWith, ERRORS } from '../_shared/respond.ts'
 import { ipKey, take } from '../_shared/ratelimit.ts'
-import { clinicBySlug, publicServicesOf } from '../_shared/settings.ts'
+import {
+  clinicBySlug, publicServicesOf,
+  insertVisitRequest, recentRequestCount, acceptsRequests,
+} from '../_shared/settings.ts'
 import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
+import {
+  visitRequestProblems, looksLikeSpam, toVisitRequestRow,
+} from '@shared/portal/visitRequest.ts'
+import type { VisitRequestInput } from '@shared/portal/visitRequest.ts'
+
+/**
+ * Requests per hour per hashed IP per clinic, counted in the DATABASE.
+ *
+ * Six is generous for a person — a family booking one after another — and
+ * nowhere near enough to be worth automating. The in-memory bucket still runs
+ * in front of it to keep obvious floods off the database entirely.
+ */
+const REQUESTS_PER_HOUR = 6
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const pre = preflight(req)
@@ -64,6 +86,66 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // correction feel stuck.
         'Cache-Control': 'public, max-age=300, s-maxage=300',
       })
+    }
+
+    if (req.method === 'POST' && (route === '/request' || route === '/request/')) {
+      // Much tighter than the catalogue's 60/min: this one writes.
+      const ip = await ipKey(req)
+      if (!take(`w:${ip}`, 5)) return fail(429, ERRORS.RATE_LIMITED, cors)
+
+      const slug = (url.searchParams.get('clinic') ?? '').trim()
+      const clinic = slug ? await clinicBySlug(slug) : null
+      if (!clinic) return fail(404, ERRORS.UNKNOWN_CLINIC, cors)
+
+      if (!(await acceptsRequests(clinic.id))) {
+        return fail(403, ERRORS.REQUESTS_CLOSED, cors)
+      }
+
+      let body: VisitRequestInput
+      try {
+        body = await req.json() as VisitRequestInput
+      } catch {
+        return fail(400, ERRORS.INVALID, cors)
+      }
+
+      // A bot gets the same 200 a person gets. Telling it that it was caught is
+      // free information for whoever is writing the next one, and the patient
+      // who somehow tripped it is not helped by an error either.
+      if (looksLikeSpam(body)) return ok({ saadetud: true }, cors)
+
+      // The SAME validator the widget runs. The widget's copy is a courtesy;
+      // this one is the rule, because the widget is public code.
+      const problems = visitRequestProblems(body)
+      if (problems.length > 0) return failWith(400, ERRORS.INVALID, problems, cors)
+
+      // Only a PUBLISHED service may be asked for. Without this the field is an
+      // arbitrary string a stranger writes into the clinic's inbox.
+      const wanted = (body.serviceId ?? '').trim()
+      if (wanted) {
+        const published = toPublicCatalogue(
+          await publicServicesOf(clinic.id),
+          { nimi: clinic.nimi, telefon: clinic.telefon, email: clinic.email },
+        )
+        if (!published.services.some(t => t.id === wanted)) {
+          return fail(400, ERRORS.UNKNOWN_SERVICE, cors)
+        }
+      }
+
+      // The durable half of the rate limit — see recentRequestCount.
+      if (await recentRequestCount(clinic.id, ip) >= REQUESTS_PER_HOUR) {
+        return fail(429, ERRORS.RATE_LIMITED, cors)
+      }
+
+      await insertVisitRequest({
+        ...toVisitRequestRow(body),
+        clinic_id: clinic.id,
+        ip_hash: ip,
+      })
+
+      // Deliberately says nothing more than "received". No id, no status, no
+      // link to follow: a patient-facing view of their own care is the MDR line
+      // this product does not cross (project_no_patient_portal).
+      return ok({ saadetud: true }, cors)
     }
 
     return fail(404, ERRORS.NOT_FOUND, cors)

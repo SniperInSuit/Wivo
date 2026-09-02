@@ -22,11 +22,23 @@ interface VisitFormProps {
   // Creating a visit from a patient's profile — seed the link so it can never be
   // saved against the wrong person or left unlinked.
   prefillPatient?: { id: string; nimi: string; arst: string | null }
+  /**
+   * Seeding a visit from an appointment REQUEST. The person who asked is not
+   * a patient record yet — very often not a patient at all — so the name is
+   * free text and the note carries what they wrote.
+   */
+  prefillRequest?: { nimi: string; markus: string }
+  /**
+   * Fires with the visit that was just CREATED. The request inbox uses it to
+   * link the two rows: without the id coming back, a confirmed request could
+   * not point at the visit it became.
+   */
+  onCreated?: (visitId: string) => void
 }
 
 // datetime-local wants "YYYY-MM-DDTHH:mm" with no timezone suffix
 
-export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpenPatient, prefillPatient }: VisitFormProps) {
+export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpenPatient, prefillPatient, prefillRequest, onCreated }: VisitFormProps) {
   const createVisit = useCreateVisit()
   const updateVisit = useUpdateVisit()
   const deleteVisit = useDeleteVisit()
@@ -50,8 +62,9 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           ...EMPTY_VISIT,
           kestus_min: initialDuration ?? settings.visiidiKestus,
           patient_id: prefillPatient?.id ?? null,
-          patsient: prefillPatient?.nimi ?? '',
+          patsient: prefillPatient?.nimi ?? prefillRequest?.nimi ?? '',
           arst: prefillPatient?.arst ?? null,
+          markus: prefillRequest?.markus ?? null,
           algus: format(initialDate ?? new Date(), "yyyy-MM-dd'T'09:00")
         }
   )
@@ -94,7 +107,12 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
     }
     try {
       if (visit) await updateVisit.mutateAsync({ id: visit.id, ...payload })
-      else await createVisit.mutateAsync(payload)
+      else {
+        const created = await createVisit.mutateAsync(payload)
+        // Before onClose: the caller unmounts this form, and a callback fired
+        // afterwards would run against a component that is already gone.
+        if (created?.id) onCreated?.(created.id)
+      }
       onClose()
     } catch (err) {
       setError(describeError(err))

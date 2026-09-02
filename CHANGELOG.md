@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.64.0] — 2026-09-02
+
+**Visiiditaotluste postkast — broneerimissüsteemi B1–B3**
+
+Patsient küsib kliiniku kodulehel aega, taotlus maandub Wivos postkasti,
+registratuur helistab ja teeb päris visiidi. Kalender ise jääb puutumata.
+
+**`sql/059_visit_requests.sql` — jooksutamata**
+
+- **Oma tabel, mitte `visits` uus staatus.** Kalender näitab, mis on kokku
+  lepitud; kinnitamata taotlused seal sees tähendaks, et kalendrit ei saa enam
+  usaldada — ja kalender on ainus asi, mille järgi hommikul tööd tehakse
+- **Mitte ühtegi `to anon` poliitikat.** Vorm kirjutab teenusevõtmega
+  funktsiooni kaudu. Anonüümne poliitika siin tähendaks, et iga inimene
+  internetis loeb kõikide kliinikute nimesid ja telefoninumbreid
+- **Säilitustähtaeg jookseb ise**: tagasi lükatud ja rämpstaotlused kustuvad
+  90 päeva pärast (pg_cron, öösel 03:20). Taotlus, millest visiiti ei tulnud, on
+  nimi ja telefon, mida ei ole põhjust hoida
+- Sõnumiväli on **serveris** 300 tähemärgiga piiratud, mitte ainult vormil
+
+**`POST /public-booking/request`**
+
+- Sama valideerija, mis vormil (`shared/portal/visitRequest.ts`) — vormi oma on
+  viisakus, serveri oma on reegel, ja üks implementatsioon tähendab, et nad ei
+  saa lahku minna
+- **Honeypot** saab vastuseks sama 200 mis inimene. Talle ütlemine, et ta jäi
+  vahele, on tasuta info järgmise kirjutajale
+- **Püsiv piirang, mitte mälupõhine**: 6 taotlust tunnis IP kohta, loetud
+  TABELIST. Mälus olev ämber nulliks iga külmkäivitusega ja skript, mis natuke
+  ootab, saaks iga kord uue voli
+- Ainult **avaldatud** teenust saab küsida
+- Vastuseks ainult „taotlus saadud" — ei id-d, ei staatust, ei linki.
+  Patsiendile tema enda ravi vaate näitamine on MDR-i piir, mida ei ületa
+
+**Postkast Wivos**
+
+- Uus „Taotlused" külgribal, **loendur uute peal** — postkast, mille avamist
+  peab meeles pidama, ei ole süsteem
+- Telefon ja e-post on klikitavad: keegi peab helistama, ja numbri ümbertrükkimine
+  on koht, kus see seisma jääb
+- „Broneeri" avab **tavalise `VisitForm`-i** eeltäidetuna. Sealt tulev visiit on
+  tavaline visiit — ei teist koodiharu ega teist arusaama sellest, mis on visiit
+- Kinnitamine seob taotluse ja visiidi sama liigutusega, nii et taotlus ei saa
+  seista „kinnitatud" ja osutada eimillelegi
+- Kes käsitles ja millal — muidu helistavad kaks inimest samale inimesele
+- 14 testi
+
 ## [1.63.0] — 2026-09-02
 
 **Valmimiskuupäev — nüüd ka lugemisvaates, pliiatsiga**

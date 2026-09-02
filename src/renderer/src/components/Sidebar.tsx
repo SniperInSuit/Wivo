@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -8,6 +8,7 @@ import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
 import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
 import { useAppVersion } from '../hooks/useAppVersion'
+import { useNewRequestCount } from '../hooks/useVisitRequests'
 
 interface SidebarProps {
   view: ViewMode
@@ -25,6 +26,7 @@ const NAV: {
   { key: 'overview', label: 'Ülevaade',   icon: LayoutDashboard },
   { key: 'board',    label: 'Tööd',       icon: Kanban,          perm: 'jobs.read', lab: true },
   { key: 'calendar', label: 'Kalender',   icon: CalendarDays,    perm: 'visits.read' },
+  { key: 'taotlused', label: 'Taotlused', icon: Inbox,           perm: 'visits.write' },
   { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read', lab: true },
   { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read', clinical: true },
   { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read', lab: true },
@@ -41,6 +43,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { role } = useAuth()
   const { can } = usePermissions()
   const { running } = useAppVersion()
+  const newRequests = useNewRequestCount()
   const wide = settings.ribaLaiendatud
 
   // Shared by the nav items and Seaded so the active treatment never drifts
@@ -78,10 +81,20 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
             key={key}
             onClick={() => onViewChange(key)}
             title={label}
-            className={itemClass(view === key)}
+            className={`${itemClass(view === key)} relative`}
           >
             <Icon size={wide ? 15 : 17} className="flex-shrink-0" />
             <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>{label}</span>
+            {/* Somebody asked for an appointment and nobody has looked yet.
+                It has to be visible from wherever you are, or the inbox is a
+                page people remember to open, which is not a system. */}
+            {key === 'taotlused' && newRequests > 0 && (
+              <span className={`text-[10px] font-bold rounded-full bg-accent text-white min-w-[16px] h-4 px-1 flex items-center justify-center ${
+                wide ? 'ml-auto' : 'absolute top-1 right-1'
+              }`}>
+                {newRequests > 99 ? '99+' : newRequests}
+              </span>
+            )}
           </button>
         ))}
 

@@ -69,3 +69,54 @@ export async function publicServicesOf(clinicId: string): Promise<PublicService[
   if (error || !data) return []
   return Array.isArray(data.public_services) ? data.public_services as PublicService[] : []
 }
+
+/**
+ * Store a visit request. Returns whether a NEW row was written.
+ *
+ * `on conflict do nothing` on (clinic_id, idempotency_key): the same submission
+ * twice is one request. The patient sees success either way — telling somebody
+ * "you already sent this" when they pressed the button twice is a worse answer
+ * than simply agreeing, and it leaks that the first one landed.
+ */
+export async function insertVisitRequest(row: Record<string, unknown>): Promise<boolean> {
+  const { data, error } = await admin()
+    .from('visit_requests')
+    .upsert(row, { onConflict: 'clinic_id,idempotency_key', ignoreDuplicates: true })
+    .select('id')
+  if (error) throw error
+  return (data?.length ?? 0) > 0
+}
+
+/**
+ * How many requests this hashed IP has made to this clinic in the last hour.
+ *
+ * Read from the TABLE, not from memory. The in-memory bucket in ratelimit.ts
+ * resets on every cold start, which is fine for reading a catalogue and useless
+ * for a write: a script that pauses long enough for the instance to recycle
+ * gets a fresh allowance every time. This one survives, because it counts the
+ * rows the abuse actually created.
+ */
+export async function recentRequestCount(clinicId: string, ipHash: string): Promise<number> {
+  const since = new Date(Date.now() - 60 * 60_000).toISOString()
+  const { count, error } = await admin()
+    .from('visit_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('clinic_id', clinicId)
+    .eq('ip_hash', ipHash)
+    .gte('created_at', since)
+  if (error) throw error
+  return count ?? 0
+}
+
+/** Does this clinic accept requests from its website at all? */
+export async function acceptsRequests(clinicId: string): Promise<boolean> {
+  const { data, error } = await admin()
+    .from('clinic_settings')
+    .select('public_services')
+    .eq('clinic_id', clinicId)
+    .maybeSingle()
+  if (error || !data) return false
+  // A clinic with nothing published has not set the public side up, and a form
+  // that posts into a mailbox nobody has opened is worse than no form.
+  return Array.isArray(data.public_services) && data.public_services.length > 0
+}
