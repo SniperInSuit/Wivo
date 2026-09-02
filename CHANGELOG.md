@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.68.0] — 2026-09-02
+
+**Hinnakalkulaator lõpuni — hambakaart vormis, hinnakiri Seadetes (C1)**
+
+Montoniost sõltumatu pool tehtud, kuni konto verifitseerimine käib.
+
+**Seaded → Patsiendi hinnakiri → „Luba hamba kaupa arvutamine"**
+- Hamba hind, kogusehinnad, lisavalikud (ühekordne või hamba kohta), ülempiir
+- Näidis kõrval jookseb **sama `calculatePublic` funktsiooni** peal, mida veeb
+  kasutab. Kui see ekraan hakkaks ise korrutama, saaks ta veebist erineva
+  vastuse anda — see on täpsalt see viga, mille vältimiseks jagatud moodul on
+- Teenus ilma selleta jääb hinnavahemikuga, nagu enne
+
+**Hambakaart vidinas**
+- FDI numbritega, kaks rida nuppe. **Mitte 3D mudel:** 3D stseen on megabaite
+  teeki ja WebGL-i kontekst töö jaoks, mille kaks rida nuppe teevad telefonis
+  paremini — ja FDI on see numeratsioon, mida hambaarst niikuinii loeb
+- Hind uueneb valiku muutmisel. Päringud on koondatud: terve kaare läbi
+  koputamine teeb ÜHE päringu, mitte kakskümmend
+- Vidin ei korruta midagi — saadab valiku ja trükib serveri vastuse
+
+**Taotlusega koos salvestatakse valik ja näidatud summa** (`sql/061`, laiendatud
+— fail on ohutu korduvalt jooksutada). Nii nagu arve rida salvestab hinna:
+hilisem hinnamuutus ei muuda seda, mida inimene nägi. Ja summa arvutatakse
+serveris uuesti — brauser saadab ainult valiku, sest summa, mille avalik leht
+saaks ise nimetada, on summa, mille igaüks saab nimetada.
+
+Postkastis on rea peal „Veebis arvutatud: 500.00 € · hinnanguline" koos
+hammastega — summa, mille taga ei ole hambaid, ei ole kontrollitav.
+
 ## [1.67.0] — 2026-09-02
 
 **Visiiditasu Montonioga (C4)**

@@ -234,3 +234,36 @@ pangaleht katkes, oleks halvem tehing.
   ehita enne, kui see on läbi räägitud
 - **Ei broneeri aega.** Tasu kinnitab tõsist kavatsust; aja lepib kokku
   registratuur. Päris ajavalik tuleb siis, kui kalender on Wivos
+---
+
+## Hinnakalkulaator
+
+Patsient valib hambakaardilt hambad, valib teenuse, ja näeb hinda kohe.
+
+**Seadistus:** Wivo → Seaded → Patsiendi hinnakiri → teenuse juures
+**„Luba hamba kaupa arvutamine"**. Seal saab panna hamba hinna, kogusehinnad
+(mitme hamba puhul odavam), lisavalikud (toonivalik, garantii) ja ülempiiri.
+Kõrval on näidis, mis jookseb **sama funktsiooni** peal, mida veeb kasutab.
+
+Teenus ilma selleta jääb endiselt hinnavahemikuga — kalkulaator lihtsalt ei
+paku teda.
+
+### Hambakaart, mitte 3D mudel
+
+Kaart on **FDI numbritega**, kaks rida nuppe. 3D stseen tähendaks megabaite
+teeki ja WebGL-i konteksti töö jaoks, mille kaks rida nuppe teevad telefonis
+paremini — ja FDI on see numeratsioon, mida hambaarst niikuinii loeb, nii et
+mida patsient valib, on see, mida kliinik näeb.
+
+### Mida kalkulaator EI tee
+
+- **Ei ole siduv.** Iga vastuse kõrval seisab, et täpne hind selgub vastuvõtul.
+  Arst ei saa hinnastada suud, mida ta ei ole näinud
+- **Ei diagnoosi.** Patsient valib, mida ta soovib. Miski ei ütle, et hammas
+  *vajab* krooni — see oleks diagnoos ja hoopis teine reguleeritud toode
+- **Ei arvuta brauseris.** Vidin saadab valiku ja trükib serveri vastuse. Kaks
+  eri arvutust lähevad ühel päeval lahku, patsiendi ees
+
+Taotlusega koos salvestatakse **valik ja näidatud summa** — nii nagu arve rida
+salvestab hinna. Hilisem hinnamuutus ei muuda seda, mida inimene nägi, ja
+registratuur näeb hambaid, mitte ainult numbrit.

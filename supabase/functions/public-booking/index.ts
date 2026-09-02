@@ -231,10 +231,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
         return fail(429, ERRORS.RATE_LIMITED, cors)
       }
 
+      // What they priced, RE-PRICED here. The browser sends only the selection;
+      // the total is computed from the clinic's own list, because a figure a
+      // public page could name is a figure anybody can name.
+      const valik = Array.isArray((body as { valik?: CalculatorSelection[] }).valik)
+        ? (body as { valik: CalculatorSelection[] }).valik
+        : []
+      const quote = valik.length > 0
+        ? calculatePublic(await publicServicesOf(clinic.id), valik)
+        : null
+
       const created = await insertVisitRequest({
         ...toVisitRequestRow(body),
         clinic_id: clinic.id,
         ip_hash: ip,
+        // Stored the way an invoice line stores its price: what the person was
+        // SHOWN must not change later because the price list did.
+        ...(quote ? { valik, hinnang: quote.kokku } : {}),
       })
 
       // A visit fee, when the clinic asks for one. The amount is read HERE from

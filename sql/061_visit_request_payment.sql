@@ -36,6 +36,25 @@ alter table public.visit_requests
   add column if not exists montonio_uuid text,
   add column if not exists makstud_at    timestamptz;
 
+-- Mida patsient kalkulaatoris valis, ja mis summa talle NÄIDATI.
+--
+-- Summa salvestatakse nagu arve rida salvestab hinna: dokument, mis on inimesele
+-- näidatud, ei tohi hiljem muutuda sellepärast, et hinnakiri muutus. Valik
+-- (hambad FDI numbritena) käib kaasa, sest summa, mille taga ei ole hambaid, ei
+-- ole kellegi poolt kontrollitav.
+--
+-- Mõlemad arvutatakse SERVERIS. Brauser saadab ainult valiku.
+alter table public.visit_requests
+  add column if not exists valik    jsonb,
+  add column if not exists hinnang  numeric(10,2);
+
+comment on column public.visit_requests.valik is
+  'Kalkulaatori valik: [{serviceId, hambad:[FDI], lisad:[id]}]. Mida patsient '
+  'valis, mitte mida ta vajab — diagnoosi see ei sisalda.';
+comment on column public.visit_requests.hinnang is
+  'Summa, mida patsiendile veebis NÄIDATI. Ei ole siduv pakkumine; salvestatud, '
+  'et hilisem hinnamuutus ei muudaks seda, mida inimene nägi.';
+
 alter table public.visit_requests
   drop constraint if exists visit_requests_makse_valid;
 alter table public.visit_requests
@@ -70,6 +89,9 @@ comment on column public.clinic_settings.broneering is
   'valuuta: "EUR", tagasiUrl: string }. Summa loetakse SIIT, mitte kliendilt.';
 
 -- ─── Verify ─────────────────────────────────────────────────────────────────
+--
+-- 0. See fail on ohutu KORDUVALT jooksutada (`add column if not exists`).
+--    Kui jooksutasid ta enne kalkulaatori osa lisandumist, jooksuta uuesti.
 --
 -- 1. Veerud ja piirang:
 -- select column_name, data_type, column_default from information_schema.columns

@@ -45,6 +45,9 @@ export interface VisitRequest {
   makse_staatus: 'vaba' | 'ootel' | 'makstud' | 'ebaonnestus' | 'tuhistatud'
   makse_summa: number | null
   makstud_at: string | null
+  /** What the patient picked in the calculator, and what they were shown. */
+  valik: { serviceId: string; hambad: string[]; lisad?: string[] }[] | null
+  hinnang: number | null
 }
 
 const KEY = ['visit_requests']
@@ -56,7 +59,7 @@ const KEY = ['visit_requests']
 const COLUMNS =
   'id, clinic_id, service_id, nimi, telefon, email, eelistatud_aeg, sonum, '
   + 'staatus, visit_id, kasitles, kasitletud_at, created_at, '
-  + 'makse_staatus, makse_summa, makstud_at'
+  + 'makse_staatus, makse_summa, makstud_at, valik, hinnang'
 
 export function useVisitRequests() {
   const qc = useQueryClient()

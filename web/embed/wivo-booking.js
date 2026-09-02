@@ -95,6 +95,187 @@
     return 'k-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10)
   }
 
+
+  // ── The tooth chart ───────────────────────────────────────────────────────
+  // An FDI chart, NOT a 3D model. A 3D scene on a marketing page is megabytes
+  // of library and a WebGL context for a job that two rows of buttons do better
+  // on a phone: pick the teeth, see the price. The numbering is the one every
+  // dentist already uses, so what the patient picks is what the clinic reads.
+  var FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
+  var FDI_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38]
+
+  var CALC_CSS = [
+    '.wv-calc{margin:.5rem 0 1rem}',
+    '.wv-arch{display:flex;gap:2px;justify-content:center;margin:.25rem 0}',
+    '.wv-t{flex:1 1 0;min-width:0;aspect-ratio:3/4;border:1px solid var(--wv-line);',
+    'border-radius:4px;background:var(--wv-bg);color:var(--wv-muted);font:inherit;',
+    'font-size:.6rem;cursor:pointer;padding:0;line-height:1;margin:0}',
+    '.wv-t[aria-pressed="true"]{background:var(--wv-accent);border-color:var(--wv-accent);',
+    'color:#fff;font-weight:700}',
+    '.wv-mid{width:6px;flex:0 0 6px}',
+    '.wv-jaw{font-size:.68rem;color:var(--wv-muted);text-align:center;margin:.35rem 0 .1rem}',
+    '.wv-sum{margin-top:.75rem;padding:.7rem .8rem;border-radius:var(--wv-radius);',
+    'background:var(--wv-bg);border:1px solid var(--wv-line)}',
+    '.wv-total{font-size:1.25rem;font-weight:700}',
+    '.wv-line{font-size:.78rem;color:var(--wv-muted);margin-top:.15rem}',
+    '.wv-warn{font-size:.7rem;color:var(--wv-muted);margin-top:.5rem;line-height:1.45}',
+    '.wv-addons{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}',
+    '.wv-addons label{display:inline-flex;align-items:center;gap:.3rem;margin:0;',
+    'font-weight:400;font-size:.78rem;cursor:pointer}',
+    '.wv-addons input{width:auto}',
+  ].join('')
+
+  /**
+   * The calculator: renders a chart, asks the server what it costs, prints what
+   * the server said.
+   *
+   * It never multiplies anything. A price on a public page is a commercial
+   * statement, and two pieces of code arriving at one separately will one day
+   * disagree — after a price change, in front of a patient.
+   */
+  function mountCalculator(host, services) {
+    var calculable = services.filter(function (s) { return !!s.kalkulaator })
+    if (calculable.length === 0) return null
+
+    var box = el('div', { class: 'wv-calc' })
+    host.appendChild(box)
+
+    box.appendChild(el('label', { for: 'wv-calc-service', text: 'Mida on vaja?' }))
+    var pick = el('select', { id: 'wv-calc-service' })
+    calculable.forEach(function (s) {
+      pick.appendChild(el('option', { value: s.id, text: s.nimi }))
+    })
+    box.appendChild(pick)
+
+    var chosen = {}
+    var current = calculable[0].id
+    var buttons = {}
+
+    function state() {
+      if (!chosen[current]) chosen[current] = { teeth: {}, lisad: {} }
+      return chosen[current]
+    }
+
+    function arch(list) {
+      var row = el('div', { class: 'wv-arch' })
+      list.forEach(function (fdi, i) {
+        if (i === 8) row.appendChild(el('span', { class: 'wv-mid' }))
+        var b = el('button', {
+          type: 'button', class: 'wv-t', 'aria-pressed': 'false',
+          'aria-label': 'Hammas ' + fdi, text: String(fdi),
+        })
+        b.addEventListener('click', function () {
+          var st = state()
+          if (st.teeth[fdi]) delete st.teeth[fdi]
+          else st.teeth[fdi] = true
+          paint()
+          refresh()
+        })
+        buttons[fdi] = b
+        row.appendChild(b)
+      })
+      return row
+    }
+
+    box.appendChild(el('div', { class: 'wv-jaw', text: 'Ülemine lõualuu' }))
+    box.appendChild(arch(FDI_UPPER))
+    box.appendChild(el('div', { class: 'wv-jaw', text: 'Alumine lõualuu' }))
+    box.appendChild(arch(FDI_LOWER))
+
+    var addonsBox = el('div', { class: 'wv-addons' })
+    box.appendChild(addonsBox)
+
+    var sum = el('div', { class: 'wv-sum' })
+    box.appendChild(sum)
+
+    function paint() {
+      var st = state()
+      Object.keys(buttons).forEach(function (fdi) {
+        buttons[fdi].setAttribute('aria-pressed', st.teeth[fdi] ? 'true' : 'false')
+      })
+      var svc = calculable.filter(function (s) { return s.id === current })[0]
+      addonsBox.innerHTML = ''
+      var lisad = (svc && svc.kalkulaator && svc.kalkulaator.lisad) || []
+      lisad.forEach(function (a) {
+        var id = 'wv-lisa-' + current + '-' + a.id
+        var cb = el('input', { type: 'checkbox', id: id })
+        if (st.lisad[a.id]) cb.setAttribute('checked', 'checked')
+        cb.addEventListener('change', function () {
+          if (st.lisad[a.id]) delete st.lisad[a.id]
+          else st.lisad[a.id] = true
+          refresh()
+        })
+        var lab = el('label', { for: id })
+        lab.appendChild(cb)
+        lab.appendChild(document.createTextNode(a.nimi))
+        addonsBox.appendChild(lab)
+      })
+    }
+
+    /** The selection, in the shape /quote takes. */
+    function selection() {
+      return Object.keys(chosen).map(function (sid) {
+        return {
+          serviceId: sid,
+          hambad: Object.keys(chosen[sid].teeth),
+          lisad: Object.keys(chosen[sid].lisad),
+        }
+      }).filter(function (x) { return x.hambad.length > 0 })
+    }
+
+    var pending = null
+    function refresh() {
+      var sel = selection()
+      if (sel.length === 0) { sum.innerHTML = ''; return }
+
+      // Tapping across an arch fires a dozen changes. Answering only the last
+      // keeps the figure honest and the server quiet.
+      clearTimeout(pending)
+      pending = setTimeout(function () {
+        fetch(cfg.base + '/quote?clinic=' + encodeURIComponent(cfg.clinic), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ valik: sel }),
+        })
+          .then(function (r) { return r.json() })
+          .then(function (body) {
+            if (!body || !body.ok) throw new Error('quote failed')
+            var d = body.data
+            sum.innerHTML = ''
+            ;(d.probleemid || []).forEach(function (p) {
+              sum.appendChild(el('div', { class: 'wv-line', text: p }))
+            })
+            if (d.read.length) {
+              // Every string here was formatted BY THE SERVER.
+              sum.appendChild(el('div', { class: 'wv-total', text: d.kokkuTekst }))
+              d.read.forEach(function (l) {
+                sum.appendChild(el('div', { class: 'wv-line', text: l.nimi + ': ' + l.tekst }))
+                ;(l.lisad || []).forEach(function (a) {
+                  sum.appendChild(el('div', { class: 'wv-line', text: '+ ' + a.nimi }))
+                })
+              })
+            }
+            // Always, never conditionally: an estimate must not read as a quote.
+            sum.appendChild(el('div', { class: 'wv-warn', text: d.hoiatus }))
+          })
+          .catch(function () {
+            sum.innerHTML = ''
+            sum.appendChild(el('div', { class: 'wv-line', text:
+              'Hinda ei õnnestunud arvutada. Saada taotlus ära — me ütleme hinna.' }))
+          })
+      }, 220)
+    }
+
+    pick.addEventListener('change', function () {
+      current = pick.value
+      paint()
+      refresh()
+    })
+
+    paint()
+    return { selection: selection }
+  }
+
   function mount(root) {
     var idempotencyKey = newKey()
 
@@ -104,7 +285,7 @@
       return
     }
 
-    var style = el('style', { text: CSS })
+    var style = el('style', { text: CSS + CALC_CSS })
     var wrap = el('div', { class: 'wv' })
     root.appendChild(style)
     root.appendChild(wrap)
@@ -117,10 +298,13 @@
     var form = el('form', { novalidate: 'novalidate' })
     wrap.appendChild(form)
 
-    // Service picker. Added only once the catalogue actually arrives — see
-    // fallback 1 in the header comment.
+    // Service picker and calculator. Both appear only once the catalogue
+    // actually arrives — see fallback 1 in the header comment.
     var serviceWrap = el('div')
     form.appendChild(serviceWrap)
+    var calcWrap = el('div')
+    form.appendChild(calcWrap)
+    var calc = null
 
     function field(name, label, type, hint) {
       form.appendChild(el('label', { for: 'wv-' + name, text: label }))
@@ -202,6 +386,10 @@
         })
         select.addEventListener('change', function () { chosenService = select.value || null })
         serviceWrap.appendChild(select)
+
+        // The chart, when at least one service is priced per tooth. Services
+        // without per-tooth pricing keep the range they already had.
+        calc = mountCalculator(calcWrap, services)
       })
       .catch(function () {
         // Fallback 1: no catalogue, no picker, form still works. Silent on
@@ -237,6 +425,10 @@
           email: email.value,
           eelistatudAeg: aeg.value,
           sonum: sonum.value,
+          // What they priced. The clinic reads FDI numbers, so the request
+          // carries the selection rather than only the total — a number with no
+          // teeth behind it cannot be checked by anybody.
+          valik: calc ? calc.selection() : [],
           veebileht: hpInput.value,
           // The SAME key for every attempt from this page load. Pressing send
           // again after a timeout is safe: the server keeps one row.

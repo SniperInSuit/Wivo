@@ -170,6 +170,25 @@ export function RequestsInbox() {
                       <span className="min-w-0">{r.sonum}</span>
                     </p>
                   )}
+                  {/* What they priced. The FDI numbers matter more than the
+                      figure: a total with no teeth behind it cannot be checked
+                      by the person who picks up the phone. */}
+                  {r.valik && r.valik.length > 0 && (
+                    <div className="mt-1.5 rounded-lg bg-bg-sidebar px-2 py-1.5">
+                      <p className="text-[11px] text-ink-soft">
+                        Veebis arvutatud:{' '}
+                        <span className="font-semibold tabular-nums">
+                          {r.hinnang != null ? `${Number(r.hinnang).toFixed(2)} €` : '—'}
+                        </span>
+                        <span className="text-ink-faint"> · hinnanguline</span>
+                      </p>
+                      {r.valik.map((v, i) => (
+                        <p key={i} className="text-[10px] text-ink-muted">
+                          {v.serviceId}: {v.hambad.join(', ') || '—'}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-[10px] text-ink-faint mt-1.5">
                     Saadetud {fmt(r.created_at)}
                     {r.service_id && ` · soovitud teenus: ${r.service_id}`}

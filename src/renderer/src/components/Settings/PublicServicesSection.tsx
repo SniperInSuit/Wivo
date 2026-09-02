@@ -5,6 +5,7 @@ import {
 import type { PublicService, PublicPlanStep } from '@shared/portal/publicService'
 import { publicPriceRange, publicPlanSummary, publishProblems } from '@shared/portal/publicQuote'
 import { useSettings } from '../../stores/useSettings'
+import { CalculatorEditor } from './CalculatorEditor'
 
 /**
  * Seaded → Patsiendi hinnakiri.
@@ -239,6 +240,8 @@ function ServiceRow({
               className="input text-sm"
             />
           </div>
+
+          <CalculatorEditor teenus={teenus} onPatch={onPatch} />
 
           <PlanEditor
             sammud={teenus.samm}
