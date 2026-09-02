@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.72.0] — 2026-09-02
+
+**Seaded → Andmebaas: mis migratsioonid on päriselt jooksutatud**
+
+Sa avastasid neljandat korda jooksutamata migratsiooni ühe ekraani kaupa —
+seekord `sql/047`, mille tõttu patsiendi hinnakiri jäi ainult sinu arvutisse.
+Sellele tuli teha lõpp.
+
+- **Küsib andmebaasilt, mitte mälu järgi.** Iga migratsiooni kohta tehakse
+  `select <veerg> limit 0` — sama päring, mille rakendus niikuinii teeks,
+  ainult küsimusena „kas see on üldse võimalik". Ühtegi rida ei laadita
+- **Ebaselgus ei loe puuduvaks.** Kui päring kukub muul põhjusel (ühendus,
+  RLS), ütleb ta „ei saanud kontrollida". Kellelegi juba jooksutatud
+  migratsiooni uuesti soovitamine on omaette raisatud õhtupoolik
+- Puuduvad failid loetletakse numbrilises järjekorras, koos meeldetuletusega
+  `notify pgrst, 'reload schema';` — PostgREST hoiab skeemi vahemälus ega
+  märka uut veergu kohe. See on koht, kus „jooksutasin ju ära" kõige sagedamini
+  tõeks osutub ja ikka ei tööta
+
+Migratsioon, mis muudab ainult piirangut või poliitikat, ei ole nimekirjas —
+teda ei saa niimoodi näha, ja oletamine oleks halvem kui vaikimine.
+
 ## [1.71.1] — 2026-09-02
 
 **Kestuse väli oli olemas, aga peidus — ja veateade saatis vale faili juurde**

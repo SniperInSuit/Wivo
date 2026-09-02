@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle} from 'lucide-react'
+import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database
+} from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
@@ -15,6 +16,7 @@ import { LicenseSection } from './Settings/LicenseSection'
 import { PublicServicesSection } from './Settings/PublicServicesSection'
 import { EmailSection } from './Settings/EmailSection'
 import { slugify } from '@shared/portal/publicService'
+import { MigrationStatus } from './Settings/MigrationStatus'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -24,7 +26,7 @@ const STAGE_PALETTE = [
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#0E1116'
 ]
 
-type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents' | 'avalik' | 'epost'
+type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents' | 'avalik' | 'epost' | 'andmebaas'
 
 // Personal preferences vs clinic configuration.
 //
@@ -59,6 +61,10 @@ const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: 
       // "what is this system allowed to do with our mailbox".
       { key: 'epost', label: 'E-post', icon: Mail },
       { key: 'litsents', label: 'Litsents', icon: KeyRound },
+      // Migrations are run by hand, so "did I run that one" is answered by
+      // memory. Memory is wrong, and the way it is wrong is a feature that
+      // quietly keeps its data on one computer.
+      { key: 'andmebaas', label: 'Andmebaas', icon: Database },
     ]
   },
   {
@@ -1390,6 +1396,8 @@ export function SettingsPage() {
         )}
 
         {activeGroup === 'litsents' && <LicenseSection />}
+
+        {activeGroup === 'andmebaas' && <MigrationStatus />}
 
         {activeGroup === 'epost' && <EmailSection />}
 
