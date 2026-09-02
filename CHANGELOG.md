@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.71.0] — 2026-09-02
+
+**Demo ilma Montoniota — ja üks vaikiv viga selle teel**
+
+Montonio oli juba vabatahtlik: ilma võtmeteta jäetakse makse vahele ja taotlus
+tuleb ikka kohale. Aga kaks asja oleks demo ära rikkunud.
+
+**`sql/062` — taotlused reaalajas.** `visit_requests` ei olnud kunagi
+`supabase_realtime` publikatsioonis, nii et postkasti realtime-tellimus oli
+**vaikiv**: ei viga, ei hoiatust, lihtsalt ei juhtu midagi. Veebist tulnud
+taotlus oleks ilmunud alles siis, kui keegi juhtub lehte uuendama — mis on
+täpsalt see, mida „live" ei ole. Eraldi failina, sest `ALTER PUBLICATION`
+lukustub teiste lausetega ühes tehingus teineteise taha.
+
+**Valmiduse paneel** Seaded → Patsiendi hinnakiri all. Kõik need vead näevad
+veebist ühesugused välja — „vabu aegu ei ole" — ja igal on eri põhjus: slug
+puudu, teenus avaldamata, teenusel kestust ei ole, tööajad määramata. Paneel
+ütleb, milline neist, ja mida teha.
+
+`README` sai demo järjekorra: mida teha, mida peaks nägema sammu kaupa, ja
+tabeli sümptomitest põhjusteni.
+
 ## [1.70.0] — 2026-09-02
 
 **Vorm sammudena — nagu töö lisamine Wivos**

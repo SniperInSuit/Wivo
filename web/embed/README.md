@@ -279,3 +279,60 @@ mida patsient valib, on see, mida kliinik näeb.
 Taotlusega koos salvestatakse **valik ja näidatud summa** — nii nagu arve rida
 salvestab hinna. Hilisem hinnamuutus ei muuda seda, mida inimene nägi, ja
 registratuur näeb hambaid, mitte ainult numbrit.
+---
+
+## Demo ilma Montoniota
+
+Montonio on **vabatahtlik**. Ilma võtmeteta jäetakse makse vaikselt vahele ja
+taotlus tuleb ikka kohale — nii saab kogu voo läbi mängida enne, kui raha
+üldse mängu tuleb.
+
+### Järjekord
+
+1. **`sql/062`** — visiiditaotlused reaalajas. Ilma selleta taotlus salvestub,
+   aga postkast ei uuene ise: registratuur avastab ta alles lehte uuendades.
+   Jooksuta **eraldi päringuna**, mitte koos teistega.
+
+2. **Wivo → Seaded → Patsiendi hinnakiri.** Ülal on **valmiduse paneel** —
+   punased read ütlevad täpselt, mis puudu. Vaja on: slug, vähemalt üks avaldatud
+   teenus, sellel **broneeritava visiidi kestus minutites**, ja tööajad.
+   Visiiditasu jäta demo ajaks **0** peale.
+
+3. **Deploy:**
+   ```bash
+   supabase secrets set      PUBLIC_BOOKING_ORIGINS="http://localhost:3000,https://sinu-leht.ee"      IP_HASH_PEPPER="$(openssl rand -hex 32)"
+
+   supabase functions deploy public-booking --no-verify-jwt
+   ```
+
+4. **Proovi kohalikult:**
+   ```bash
+   cd web/embed && npx serve .
+   ```
+   Ava `http://localhost:3000/test.html`, pane sinna oma slug.
+
+### Mida peaks nägema
+
+| Sinu tegevus | Wivos |
+|---|---|
+| Valid teenuse | Vormis ilmub hambakaart (kui teenus on hamba kaupa hinnastatud) |
+| Valid hambad | Hind ilmub kohe, „hinnanguline" all |
+| Valid aja | Ajad tulevad **sinu tööaegadest ja päris päevikust** |
+| Saadad vormi | **„Taotlused" lehele ilmub rida ise**, ilma uuendamata |
+| Vajutad „Broneeri" | Avaneb tavaline visiidi vorm, **aeg on juba täidetud** |
+| Salvestad | Visiit ilmub kalendrisse; taotlus on „Kinnitatud" ja osutab visiidile |
+| Küsid uuesti sama aega | Seda aega enam ei pakuta |
+
+### Kui midagi ei tööta
+
+| Sümptom | Põhjus |
+|---|---|
+| Vorm ei ilmu üldse | `data-wivo-base` või `data-wivo-clinic` puudu |
+| „Vali kõigepealt teenus" ei kao | Teenus valimata — see on samm 1 |
+| Aegu ei tule | Teenusel puudub kestus, või tööajad on määramata. Vaata valmiduse paneeli |
+| Taotlus ei ilmu ise | `sql/062` jooksutamata |
+| CORS viga konsoolis | `PUBLIC_BOOKING_ORIGINS` ei sisalda seda aadressi. `www` ja ilma on eri asjad |
+| 404 UNKNOWN_CLINIC | Slug on kirjutamata või kirjaviga |
+
+Kui see kõik töötab, siis lisandub Montonio ja **ainus muutus vormis on see, et
+pärast saatmist suunatakse panka**. Ülejäänu jääb samaks.

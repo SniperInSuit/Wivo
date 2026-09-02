@@ -8,6 +8,7 @@ import { useSettings } from '../../stores/useSettings'
 import { CalculatorEditor } from './CalculatorEditor'
 import { BookingHoursSection, type BookingConfig } from './BookingHoursSection'
 import { supabase, getActiveClinicId } from '../../lib/supabase'
+import { BookingReadiness } from './BookingReadiness'
 
 /**
  * Seaded → Patsiendi hinnakiri.
@@ -29,6 +30,7 @@ export function PublicServicesSection() {
   // Hours live in their own column (sql/061) rather than in the settings store:
   // they are read by the public edge function and by nothing else in the app.
   const [broneering, setBroneering] = useState<BookingConfig | null>(null)
+  const [clinicSlug, setClinicSlug] = useState<string | null>(null)
 
   useEffect(() => {
     const clinicId = getActiveClinicId()
@@ -36,6 +38,8 @@ export function PublicServicesSection() {
     supabase.from('clinic_settings').select('broneering').eq('clinic_id', clinicId)
       .maybeSingle()
       .then(({ data }) => setBroneering(((data?.broneering as BookingConfig) ?? {})))
+    supabase.from('clinics').select('public_slug').eq('id', clinicId).maybeSingle()
+      .then(({ data }) => setClinicSlug((data?.public_slug as string) ?? null))
   }, [])
 
   const teenused = [...settings.avalikudTeenused].sort((a, b) => a.jarjekord - b.jarjekord)
@@ -112,7 +116,14 @@ export function PublicServicesSection() {
       {/* When the website may offer those services. Below the list because the
           question only arises once there is something to book. */}
       {broneering && (
-        <div className="mt-6 pt-5 border-t border-ink-faint/15 max-w-2xl">
+        <div className="mt-6 pt-5 border-t border-ink-faint/15 max-w-2xl space-y-5">
+          {/* First, because every one of these failures looks identical from
+              the website: the form shows no times. */}
+          <BookingReadiness
+            slug={clinicSlug}
+            teenused={teenused}
+            broneering={broneering}
+          />
           <BookingHoursSection value={broneering} onSaved={setBroneering} />
         </div>
       )}
