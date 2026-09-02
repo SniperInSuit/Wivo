@@ -282,7 +282,7 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'yhik.kiirtoo_tasuvus': ctx => (
     <StatTile
-      icon={Zap} label="Kiirtöö tasuvus" value={`${ctx.stats.kiirtooJobs} tööd`}
+      icon={Zap} label="Kiirtöö tasuvus" value={`${ctx.stats.kiirtooJobs.length} tööd`}
       accent="#F97316"
       sub={ctx.m.money > 0
         ? `${eur(ctx.stats.kiirtooRevenue)} · ${pct(share(ctx.stats.kiirtooRevenue, ctx.m.money))} käibest`
@@ -396,7 +396,10 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     <StatTile
       icon={Repeat} label="Revisjonimäär" value={pct(ctx.stats.revisionRate)}
       accent={ctx.stats.revisionRate > 15 ? '#EF4444' : '#EC4899'}
-      sub={`${ctx.stats.withRevision} tööd ${ctx.stats.totalWork}-st`}
+      // `filtered.length`, not `totalWork`: the rate is jobs-with-a-revision
+      // over JOBS, and `totalWork` is units. The old line printed a denominator
+      // the percentage above it was never computed from.
+      sub={`${ctx.stats.withRevision.length} tööd ${ctx.stats.filtered.length}-st`}
     />
   ),
 

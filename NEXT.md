@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.61.0 · 02.09.2026 · haru `main`**
+**Seis: v1.61.1 · 02.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 514 rohelist, 0 punast
+npm test        # 515 rohelist, 0 punast
 npm run build
 ```
 
@@ -106,6 +106,7 @@ ainus koht, kust näeb, kas kutsuja üldse jõuab kohale.
 
 | Versioon | Mis |
 |---|---|
+| 1.61.1 | Kaks paneeli kirjutasid ekraanile `[object Object]` |
 | 1.61.0 | Omahind lugemisvaates + käsitsi ülekirjutus (`sql/057`); võlglaste aruanne |
 | 1.60.1 | Cron ütles „succeeded" ja ükski arve ei liikunud; saatja südamelöök |
 | 1.60.0 | **23 uut paneeli** — võlgnevuse vanus, ühikumajandus, tarne, kliendid |

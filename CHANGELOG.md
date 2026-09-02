@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.61.1] — 2026-09-02
+
+**Kaks paneeli kirjutasid ekraanile `[object Object]`**
+
+- **Revisjonimäär** näitas „[object Object],[object Object],… tööd 47-st".
+  `ctx.stats.withRevision` on tööde MASSIIV, mitte arv, ja see interpoleeriti
+  otse teksti sisse
+- Sama viga **Kiirtöö tasuvuse** peamises numbris (`kiirtooJobs`) — seal ainult
+  seetõttu nähtamatu, et paneel ei olnud sinu vaates
+- **Revisjonimäära nimetaja oli ka vale.** Protsent arvutati tööde arvust, all
+  seisis `totalWork` ehk ühikud: 29.4% oli 10/34, aga ekraanil seisis „47-st".
+  Nüüd on nimetaja sama, millest protsent tuleb
+- **TypeScript ei püüa seda kinni** — mallstringi sisse tohib panna mistahes
+  tüübi. Kompilaator oli roheline, build oli roheline, ja ainus koht, kus see
+  välja tuli, oli ekraanipilt. Lisatud `render.test.ts`, mis loeb faili tekstina
+  ja keeldub paljast massiivist mallstringi sees
+
 ## [1.61.0] — 2026-09-02
 
 **Omahind ilma vormi avamata, käsitsi parandatav — ja võlglaste nimekiri**
