@@ -47,6 +47,46 @@ export interface PublicPlanStep {
  */
 export type PublicConfirmation = 'puudub' | 'kood' | 'smart-id'
 
+/**
+ * Volume pricing for the patient calculator: six crowns cost less each than one.
+ *
+ * The SEMANTICS deliberately match `shared/pricing/workTypes.ts` `tierFor` —
+ * highest `alates` at or below the quantity wins — but the type is redeclared
+ * here rather than imported. `shared/portal/` must not reach into the lab price
+ * book: that separation is what keeps the clinic's margin out of a file the
+ * public surface imports, and it is worth one duplicated four-line interface.
+ */
+export interface PublicPriceTier {
+  /** From this many teeth onward. */
+  alates: number
+  /** Price PER TOOTH at that quantity. Patient price. */
+  hind: number
+}
+
+/** One thing the patient can add on: a shade, a material, a guarantee. */
+export interface PublicAddOn {
+  id: string
+  nimi: string
+  /** Added ONCE per job, not per tooth, unless `hambaKohta`. */
+  hind: number
+  hambaKohta?: boolean
+  kirjeldus?: string
+}
+
+export interface PublicCalculatorPricing {
+  /** Patient price for ONE tooth. VAT included per the service's kmSisaldub. */
+  hambaHind: number
+  astmed?: PublicPriceTier[]
+  lisad?: PublicAddOn[]
+  /**
+   * Most teeth this service can be calculated for. Above it the calculator
+   * stops giving a number and says to get in touch — a full-arch case is not
+   * something a website should price, and a calculator that confidently prices
+   * 28 crowns is worse than one that admits its limit.
+   */
+  maxHambaid?: number
+}
+
 export interface PublicService {
   /**
    * Stable slug — the URL key, and the join key to Dentas.
@@ -91,6 +131,17 @@ export interface PublicService {
   /** 0-based index into `samm` — which visit the website actually books. */
   broneeritavSamm: number
   dentasServiceId?: string
+
+  /**
+   * Per-tooth pricing, for the website calculator. Absent = this service is
+   * quoted as a RANGE only and the calculator will not offer it.
+   *
+   * Optional on purpose. "Hügieen" has one price and nothing to calculate;
+   * "Kroon" is priced per tooth and is exactly what a patient wants to add up
+   * before they ring anybody. Forcing every service to be calculable would mean
+   * inventing per-tooth prices for services that do not have them.
+   */
+  kalkulaator?: PublicCalculatorPricing
 
   // ── Tiered friction ──────────────────────────────────────────────────────
   kinnitus: PublicConfirmation

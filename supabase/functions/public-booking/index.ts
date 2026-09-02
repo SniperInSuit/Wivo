@@ -12,6 +12,7 @@
  *
  * ROUTES
  *   GET  /public-booking/services?clinic=<slug>
+ *   POST /public-booking/quote?clinic=<slug>
  *   POST /public-booking/request?clinic=<slug>
  *
  * `/request` takes an appointment REQUEST, not a booking. It answers "received"
@@ -33,6 +34,8 @@ import { toPublicCatalogue } from '@shared/portal/publicQuote.ts'
 import {
   visitRequestProblems, looksLikeSpam, toVisitRequestRow,
 } from '@shared/portal/visitRequest.ts'
+import { calculatePublic } from '@shared/portal/publicCalculator.ts'
+import type { CalculatorSelection } from '@shared/portal/publicCalculator.ts'
 import type { VisitRequestInput } from '@shared/portal/visitRequest.ts'
 
 /**
@@ -85,6 +88,41 @@ Deno.serve(async (req: Request): Promise<Response> => {
         // correction feel stuck.
         'Cache-Control': 'public, max-age=300, s-maxage=300',
       })
+    }
+
+    /**
+     * What the patient's selection costs. A READ that happens to be a POST,
+     * because the selection is a list and a query string is the wrong place
+     * for one.
+     *
+     * The arithmetic lives here and not in the widget on purpose: a price on a
+     * public page is a commercial statement, and two implementations of it will
+     * one day disagree in front of a patient. The widget renders the strings
+     * this returns.
+     */
+    if (req.method === 'POST' && (route === '/quote' || route === '/quote/')) {
+      const ip = await ipKey(req)
+      // Looser than /request — this one only reads, and a person moving teeth
+      // around on the map legitimately asks many times in a minute.
+      if (!take(`q:${ip}`, 60)) return fail(429, ERRORS.RATE_LIMITED, cors)
+
+      const slug = (url.searchParams.get('clinic') ?? '').trim()
+      const clinic = slug ? await clinicBySlug(slug) : null
+      if (!clinic) return fail(404, ERRORS.UNKNOWN_CLINIC, cors)
+
+      let selection: CalculatorSelection[]
+      try {
+        const body = await req.json() as { valik?: CalculatorSelection[] }
+        selection = Array.isArray(body?.valik) ? body.valik : []
+      } catch {
+        return fail(400, ERRORS.INVALID, cors)
+      }
+
+      // Straight from the published catalogue. A price the patient sees is by
+      // construction a price the clinic published — there is no second list.
+      const quote = calculatePublic(await publicServicesOf(clinic.id), selection)
+      // Never cached: a stale price is the one thing this route must not serve.
+      return ok(quote, { ...cors, 'Cache-Control': 'no-store' })
     }
 
     if (req.method === 'POST' && (route === '/request' || route === '/request/')) {

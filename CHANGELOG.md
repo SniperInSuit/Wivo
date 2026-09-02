@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.66.0] — 2026-09-02
+
+**Hinnakalkulaator — arvutuse pool (C1, esimene osa)**
+
+Patsient valib hambad ja teenuse, näeb hinda kohe. See versioon sisaldab
+arvutust ja marsruuti; hambakaart vormis tuleb järgmisena.
+
+- `shared/portal/publicCalculator.ts` — kogu arvutus ÜHES kohas, ja see jookseb
+  **serveris**. Vidin võiks hambad hinnaga läbi korrutada, aga ei tohi: hind
+  avalikul lehel on äriline avaldus, ja kaks eri implementatsiooni lähevad ühel
+  päeval lahku — tavaliselt pärast hinnamuutust, alati patsiendi ees
+- **Ei ole kunagi siduv.** `siduv: false` igal vastusel ja `hoiatus` kõrval:
+  arst ei saa hinnastada suud, mida ta ei ole näinud. Kalkulaator, mis loeb
+  siduva pakkumisena, on lubadus, mida kliinik ei saa pidada
+- **Ei diagnoosi.** Patsient valib, mida ta soovib; miski siin ei otsusta, et
+  hammas VAJAB krooni — see oleks diagnoos ja hoopis teine reguleeritud toode
+- **Keeldub numbrist, kui ei tea:** üle `maxHambaid` valiku puhul ei anna summat,
+  vaid palub ühendust võtta. Kalkulaator, mis enesekindlalt hinnastab 28 krooni,
+  on halvem kui see, mis oma piiri tunnistab. Sama, kui teenusel hamba hinda ei
+  ole, ja kui käibemaksu käsitlus ridade vahel erineb
+- Kogusehinnad: kõrgeim sobiv aste võidab, kirjutamise järjekorrast sõltumata —
+  sama reegel mis labori hinnaraamatus, aga tahtlikult eraldi tekstina, sest
+  `shared/portal/` ei tohi labori hinnaraamatusse ulatuda
+- Lisad (toon, garantii) kas ühekordselt või hamba kohta
+- `POST /public-booking/quote` — `Cache-Control: no-store`, sest vana hind on
+  ainus asi, mida see marsruut serveerida ei tohi
+- 21 testi
+
+**Miks makse ei ole veel siin**
+
+Kaardimakseid ei saa ise vastu võtta — see nõuab PCI-DSS vastavust ja
+acquiring-lepingut. Ilma kolmanda osapooleta on päris variant pangaülekanne
+viitenumbriga (arved ja `payments.reference` on juba olemas), aga see **ei ole
+kohene**: broneering kinnitub laekumisel. Ehitus jääb makselahendusest
+sõltumatuks, nii et Montonio lisamine hiljem on üks webhook, mitte ümberkirjutamine.
+
 ## [1.65.0] — 2026-09-02
 
 **Broneerimisvorm kliiniku kodulehele — B4**
