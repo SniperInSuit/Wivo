@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.76.1] — 2026-09-02
+
+**Taotluste loendur on punane**
+
+Oli türkiis nagu kõik muu. Iga teine türkiis asi selles rakenduses on koht,
+kuhu sa VÕID minna; see on inimene, kes ootab vastust, ja peab lugema „tegele
+minuga" üle toa. Ka veidi suurem ja hoveril ütleb, mitu neist ootab.
+
 ## [1.76.0] — 2026-09-02
 
 **Ajavalik on nüüd kalender. Ja kolm viga visiidi vormis.**

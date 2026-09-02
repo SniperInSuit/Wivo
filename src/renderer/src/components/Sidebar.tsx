@@ -88,10 +88,18 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
             {/* Somebody asked for an appointment and nobody has looked yet.
                 It has to be visible from wherever you are, or the inbox is a
                 page people remember to open, which is not a system. */}
+            {/* RED, not the accent colour. Every other teal thing in this app
+                is a place you MAY go; this is a person waiting for an answer,
+                and it should read as "deal with me" from across the room.
+                No ring: the rail is dark and an active item is light, so any
+                single ring colour would be wrong against one of them. */}
             {key === 'taotlused' && newRequests > 0 && (
-              <span className={`text-[10px] font-bold rounded-full bg-accent text-white min-w-[16px] h-4 px-1 flex items-center justify-center ${
-                wide ? 'ml-auto' : 'absolute top-1 right-1'
-              }`}>
+              <span
+                title={`${newRequests} uut taotlust ootab vastust`}
+                className={`text-[10px] font-bold rounded-full bg-red-500 text-white min-w-[17px] h-[17px] px-1 flex items-center justify-center ${
+                  wide ? 'ml-auto' : 'absolute top-0.5 right-0.5'
+                }`}
+              >
                 {newRequests > 99 ? '99+' : newRequests}
               </span>
             )}
