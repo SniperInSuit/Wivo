@@ -365,13 +365,19 @@ export function jobTotalCosts(input: JobTotalInput): JobTotal {
       input.materialCosts, input.materialPrices,
     )?.summa ?? 0
 
-    const cons = items
-      ? items.reduce((s, x) => s + workTypeConsumables(x.too, workTypes, toothCount(x.hambad)).total, 0)
-      : workTypeConsumables(job.too ?? '', workTypes, toothCount(teeth)).total
-
+    // NO consumables. The work type's `kulud` are screws, ti-bases and
+    // abutments — bought once for the case, and on a remake they are already in
+    // the patient's mouth. Charging them again made every remake of a 1200 €
+    // Allon4 read 1313 € whatever had actually been redone, and five of them
+    // added 6000 € of hardware nobody bought.
+    //
+    // When a remake genuinely does consume one — a screw that sheared — that is
+    // `extra_costs` on the revision, which is exactly what the field was added
+    // for. The default is the conservative one: it under-states rather than
+    // inventing a cost, and the technician can add what really went.
     const extras = round2((r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0))
     const labour = round2(labourOf.get(r.id) ?? 0)
-    const mat = round2(material + cons)
+    const mat = round2(material)
 
     return {
       id: r.id,

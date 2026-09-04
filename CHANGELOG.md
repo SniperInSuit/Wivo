@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.82.1] — 2026-09-04
+
+**Parandus: muudatus ei osta abutmente teist korda**
+
+v1.82.0 laadis tööliigi tarvikud (kruvid, ti-baasid, abutmendid) **igale
+muudatusele täies mahus uuesti**. 1200 € Allon4 puhul tähendas see, et iga
+muudatus näitas ~1313 €, ükskõik mis seal päriselt tehti, ja viis muudatust
+lisasid 6000 € riistvara, mida keegi ei ostnud. Kate näitas −19%.
+
+- **Muudatusele arvestatakse vaik ja tema enda lisakulud, mitte tööliigi
+  tarvikud.** Abutmendid on patsiendi suus — ümbertegemine ei osta neid uuesti
+- **Iga muudatuse rida ütleb nüüd, millest number koosneb** („töö 24.00 ·
+  materjal 7.00 €"). Just selle puudumine lasi vea märkamatuks jääda: paljas
+  summa, mille kõrval polnud midagi, mille vastu teda kontrollida
+- Sama viga oli **Statistika ümbertegemise aruandes** (`revisionLoss`) — seal
+  arvestati samuti täis tarvikukomplekt iga ümbertegemise kohta. Parandatud;
+  muudatuse enda lisakulud lähevad nüüd sinna sisse
+
+3 uut testi, kontrollitud vea taastamisega — kõik kolm kukuvad õigel põhjusel.
+
 ## [1.82.0] — 2026-09-04
 
 **Töö kulu koos muudatustega — üks number kogu juhtumi kohta**

@@ -291,3 +291,58 @@ describe('jobTotalCosts — original plus remakes', () => {
 })
 
 const round = (n: number) => Math.round(n * 100) / 100
+
+describe('jobTotalCosts — what a remake does NOT re-buy', () => {
+  // The bug this test exists for: the work type's consumables were charged in
+  // full on every revision, so five remakes of a 1200 € Allon4 added 6000 € of
+  // screws and abutments that were already in the patient's mouth. Every remake
+  // read the same ~1313 € whatever had actually been redone.
+  const KULUKAS = [{
+    nimi: 'Allon4', hex: '#000', match: 'allon4',
+    kulud: [{ nimi: 'Abutmendid', summa: 100, tyyp: 'hammas' as const }],
+  }] as unknown as JobTotalInput['workTypes']
+
+  const base = () => totalInput({
+    job: {
+      ...totalInput().job,
+      too: 'Allon4',
+      work_items: [{ id: 'a', too: 'Allon4', hambad: '11,12,13' }],
+      hambad: '11,12,13',
+      revisions: [revision({ work_items: [{ id: 'r', too: 'Allon4', hambad: '11,12,13' }] })],
+    } as Job,
+    workTypes: KULUKAS,
+    rates: [rate({ work_type: 'Allon4' }), rate({ work_type: 'Allon4', applies_to: 'muudatus', amount: 8 })],
+  })
+
+  it('charges the consumables once, on the original', () => {
+    const t = jobTotalCosts(base())
+    expect(cat(t.base, 'tarvikud').amount).toBe(300)   // 3 teeth × 100 €
+    expect(t.revisions[0].material).toBe(0)            // no resin priced, no screws
+  })
+
+  it('does not put a second set of hardware on the remake', () => {
+    const t = jobTotalCosts(base())
+    // 3 × 8 € rework labour and nothing else. If consumables leak back in this
+    // becomes 324 and the case total is 300 € too high.
+    expect(t.revisions[0].total).toBe(24)
+  })
+
+  // The escape hatch that makes the conservative default safe: a remake that
+  // really did eat a screw records it, and then it counts.
+  it('counts hardware the remake really did consume', () => {
+    const b = base()
+    const job = b.job
+    const t = jobTotalCosts({
+      ...b,
+      job: {
+        ...job,
+        revisions: [revision({
+          work_items: [{ id: 'r', too: 'Allon4', hambad: '11,12,13' }],
+          extra_costs: [{ nimi: 'Murdunud kruvi', summa: 100 }],
+        })],
+      } as Job,
+    })
+    expect(t.revisions[0].extras).toBe(100)
+    expect(t.revisions[0].total).toBe(124)
+  })
+})

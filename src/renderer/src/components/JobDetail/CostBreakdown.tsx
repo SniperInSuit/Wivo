@@ -201,16 +201,31 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
           {showRemakes && (
             <div className="pl-4 space-y-0.5 border-l border-ink-faint/20 ml-1">
               {total!.revisions.map(r => (
-                <div key={r.id} className="flex justify-between text-[11px] gap-2">
-                  <span className="text-ink-muted truncate">
-                    Muudatus {r.nr}
-                    {r.note ? ` · ${r.note}` : ''}
-                    {/* Both are reasons a remake costs less than it looks, and
-                        both are worth seeing next to the number, not guessing at. */}
-                    {!r.tasustatav && <span className="text-ink-faint"> · tasustamata</span>}
-                    {!r.valmis && <span className="text-amber-600"> · pooleli</span>}
-                  </span>
-                  <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
+                <div key={r.id} className="py-0.5">
+                  <div className="flex justify-between text-[11px] gap-2">
+                    <span className="text-ink-muted truncate">
+                      Muudatus {r.nr}
+                      {r.note ? ` · ${r.note}` : ''}
+                      {/* Both are reasons a remake costs less than it looks, and
+                          both are worth seeing next to the number, not guessing at. */}
+                      {!r.tasustatav && <span className="text-ink-faint"> · tasustamata</span>}
+                      {!r.valmis && <span className="text-amber-600"> · pooleli</span>}
+                    </span>
+                    <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
+                  </div>
+                  {/* What the number is MADE OF. Without this a remake was a
+                      bare figure with nothing to check it against — which is
+                      how a thousand euros of consumables charged twice went
+                      unnoticed until somebody said "why is every one 1313". */}
+                  {r.total > 0 && (
+                    <div className="text-[10px] text-ink-faint tabular-nums">
+                      {[
+                        r.labour > 0 ? `töö ${r.labour.toFixed(2)}` : null,
+                        r.material > 0 ? `materjal ${r.material.toFixed(2)}` : null,
+                        r.extras > 0 ? `lisa ${r.extras.toFixed(2)}` : null,
+                      ].filter(Boolean).join(' · ')} €
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -575,8 +575,16 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const shareOf = (v: number) => v / reasons.length
       const revMat = r.materjal ?? j.materjal
       const revHambad = r.hambad ?? j.hambad
-      const revMaterial = (jobMaterialCost({ materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts, materialPrices) ?? 0)
-        + workTypeConsumables(j.too, types, toothCount(revHambad)).total
+      // Resin only. The work type's consumables — screws, ti-bases, abutments —
+      // are bought once for the case; on a remake they are already in the
+      // patient's mouth. Adding them here charged a full set of hardware for
+      // every redo, which on an Allon4 is over a thousand euros of loss that
+      // never happened. A remake that really did eat a screw records it as an
+      // extra cost on the revision.
+      const revMaterial = jobMaterialCost(
+        { materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts, materialPrices,
+      ) ?? 0
+      const revExtras = (r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0)
 
       for (const reason of reasons) {
         const b = reasonBuckets.get(reason) ?? {
@@ -584,7 +592,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         }
         b.count++
         b.recovered += shareOf(Number(r.price ?? 0))
-        b.material += shareOf(revMaterial)
+        b.material += shareOf(revMaterial + revExtras)
         reasonBuckets.set(reason, b)
       }
     }
