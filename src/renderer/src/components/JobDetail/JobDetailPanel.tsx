@@ -616,6 +616,31 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     : null
 
   const hambad = form.hambad ?? ''
+
+  // Capsules. Computed ONCE, here, because two places need the same answer —
+  // the field below and the save guard — and a rule with two implementations
+  // is a rule that will disagree with itself.
+  //
+  // The teeth are read the way jobCosts reads them: from the work items when
+  // there are any, falling back to the flat column. The flat one is only
+  // synced on save, so reading it alone made the count 0 on every split job —
+  // which is most of them.
+  const kapsel = (() => {
+    const mat = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
+    if (!mat) return null
+    const teeth = form.work_items.length > 0
+      ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
+      : hambad
+    const d = jobMaterialDetail(
+      { materjal: mat, hambad: teeth, masina: form.masina, materjali_yhikud: null },
+      settings.materialCosts, settings.materialPrices,
+    )
+    // kapsleid === null means this material is priced per tooth. Nothing to
+    // ask for, and nothing to block a save over.
+    return d && d.kapsleid != null ? { arvutatud: d.kapsleid, hind: d.summa } : null
+  })()
+  /** Required only at the done stage — see the guard in handleSubmit. */
+  const kapselPuudu = !!kapsel && form.status === doneStageKey && form.materjali_yhikud == null
   const smallCount = countSmallTeeth(hambad)
   const largeCount = countLargeTeeth(hambad)
   const typePriceInfo = workTypePriceFor(form.too, settings.tooTuubid, toothCountOf(hambad), useDiscount)
@@ -627,6 +652,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaveError(null)
+    // A capsule count is asked for at the DONE stage and not before. Earlier the
+    // plate does not exist yet, so the only number anybody could type would be
+    // the one we computed — a guess wearing a technician's name. At "Valmis" the
+    // plate has been seen, and this is the last moment before the figure enters
+    // the month's costs, where correcting it means correcting a paid period.
+    if (kapselPuudu) {
+      setSaveError(
+        `Sisesta kapslite arv (arvutatud: ${kapsel!.arvutatud}). `
+        + 'Valmis töö omahind läheb kuu kuludesse — kapslite arv peab olema päris, mitte hinnang.'
+      )
+      return
+    }
     const cleaned: JobInput = {
       ...form,
       // Sync denormalized too/hambad from work_items if items exist
@@ -1473,54 +1510,60 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* How many capsules this job actually took.
                   Beside the machine, because a capsule belongs to a printer —
-                  and only shown when the material is priced by capsule, so a
-                  lab buying resin by the bottle never sees it.
+                  and only when the material is priced by capsule, so a lab
+                  buying resin by the bottle never sees this field at all.
 
-                  Capacity is an ESTIMATE: real fit depends on tooth size,
+                  Capacity is an ESTIMATE. Real fit depends on tooth size,
                   supports and how the plate was packed, and the technician can
-                  see the plate. A number they read beats one we derived. */}
-              {(() => {
-                const mat = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
-                if (!mat) return null
-                const arvutatud = jobMaterialDetail(
-                  { materjal: mat, hambad: hambad, masina: form.masina, materjali_yhikud: null },
-                  settings.materialCosts, settings.materialPrices,
-                )
-                // Priced per tooth, not per capsule — nothing to correct.
-                if (!arvutatud || arvutatud.kapsleid == null) return null
-                return (
-                  <div>
-                    <label className="label flex items-center gap-1.5">
-                      <Cpu size={11} /> Kapsleid
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number" min={0} step={1}
-                        value={form.materjali_yhikud ?? ''}
-                        onChange={e => set(
-                          'materjali_yhikud',
-                          e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
-                        )}
-                        placeholder={String(arvutatud.kapsleid)}
-                        className="input w-24"
-                      />
-                      {form.materjali_yhikud != null && (
-                        <button
-                          type="button"
-                          onClick={() => set('materjali_yhikud', null)}
-                          className="text-[11px] text-ink-faint hover:text-ink"
-                        >
-                          tagasi arvutatud {arvutatud.kapsleid} peale
-                        </button>
+                  see the plate. A number they read beats one we derived — which
+                  is why at "Valmis" we insist on theirs. */}
+              {kapsel && (
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    <Cpu size={11} /> Kapsleid
+                    {form.status === doneStageKey && (
+                      <span className="text-red-500" title="Kohustuslik valmis tööl">*</span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min={0} step={1}
+                      value={form.materjali_yhikud ?? ''}
+                      onChange={e => set(
+                        'materjali_yhikud',
+                        e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
                       )}
-                    </div>
-                    <p className="text-[10px] text-ink-faint mt-1">
-                      Tühjaks jättes arvutatakse mahutavusest: {arvutatud.kapsleid} kapslit.
-                      Sisesta oma arv, kui plaat läks teisiti.
-                    </p>
+                      placeholder={String(kapsel.arvutatud)}
+                      className={`input w-24 ${kapselPuudu ? 'border-amber-400 bg-amber-50' : ''}`}
+                    />
+                    {/* One click to accept the computed number. Without this,
+                        "required" would mostly mean retyping what is already on
+                        screen — friction that teaches people to type anything. */}
+                    {form.materjali_yhikud == null ? (
+                      <button
+                        type="button"
+                        onClick={() => set('materjali_yhikud', kapsel.arvutatud)}
+                        className="btn-ghost text-xs border border-ink-faint/25"
+                      >
+                        Kinnita {kapsel.arvutatud}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => set('materjali_yhikud', null)}
+                        className="text-[11px] text-ink-faint hover:text-ink"
+                      >
+                        tühjenda
+                      </button>
+                    )}
                   </div>
-                )
-              })()}
+                  <p className={`text-[10px] mt-1 ${kapselPuudu ? 'text-amber-700' : 'text-ink-faint'}`}>
+                    {kapselPuudu
+                      ? `Valmis tööl on kapslite arv kohustuslik — see läheb kuu kuludesse. Mahutavuse järgi ${kapsel.arvutatud}.`
+                      : `Mahutavuse järgi ${kapsel.arvutatud} kapslit (${kapsel.hind.toFixed(2)} €). Sisesta oma arv, kui plaat läks teisiti.`}
+                  </p>
+                </div>
+              )}
 
               {/* Kruvi / abutment for the active work item. Rendered here as
                   well as inside WorkItemsField because the two job-page layouts

@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.79.1] — 2026-09-04
+
+**Kapslite arv on valmis tööl kohustuslik**
+
+- **Väli oli peidus töödel, kus hambad on tööosade sees.** Ta luges hambaid
+  `form.hambad` pealt, mis sünkroonitakse alles salvestamisel — nii tuli
+  tööosadega tööl (ehk enamikul) arvutuseks 0 hammast ja väli ei ilmunudki.
+  Nüüd loeb ta hambaid samamoodi nagu `jobCosts`: tööosadest, kui neid on
+- **„Valmis" etapil on väli kohustuslik.** Varem mitte: siis plaati veel ei ole
+  ja ainus arv, mida keegi sisestada saaks, oleks meie enda arvutatud arv
+  tehniku nime all. „Valmis" on viimane hetk enne seda, kui number läheb kuu
+  kuludesse
+- **Nupp „Kinnita N"** täidab arvutatud arvu ühe klikiga. Ilma selleta
+  tähendaks „kohustuslik" enamasti ekraanil oleva numbri ümberkirjutamist —
+  hõõrdumist, mis õpetab suvalist arvu tippima
+- Nähtavus ja salvestuse värav arvutatakse **ühest kohast** (`kapsel`), mitte
+  kaks korda eraldi
+
+⚠ Värav on vormis. Kanban-laual saab töö „Valmis" veergu ikka lohistada ja siis
+jääb kulu arvutatud arvu peale — kulurida ütleb sel juhul „2 kapslit" ilma
+märketa „(käsitsi)", nii et vahe on näha.
+
 ## [1.79.0] — 2026-09-04
 
 **Kapsel on jagamatu ühik, mitte hamba hind**
