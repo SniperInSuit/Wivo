@@ -221,7 +221,9 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
                     <div className="text-[10px] text-ink-faint tabular-nums">
                       {[
                         r.labour > 0 ? `töö ${r.labour.toFixed(2)}` : null,
-                        r.material > 0 ? `materjal ${r.material.toFixed(2)}` : null,
+                        r.material - r.tarvikud > 0
+                          ? `materjal ${(r.material - r.tarvikud).toFixed(2)}` : null,
+                        r.tarvikud > 0 ? `uued tarvikud ${r.tarvikud.toFixed(2)}` : null,
                         r.extras > 0 ? `lisa ${r.extras.toFixed(2)}` : null,
                       ].filter(Boolean).join(' · ')} €
                     </div>

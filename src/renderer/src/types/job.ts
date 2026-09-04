@@ -25,6 +25,18 @@ export interface Revision {
   disain_id?: string  // Design file reference for this revision
   mudel_id?: string   // Job number of the printed model — only when mudel is set
   extra_costs?: { nimi: string; summa: number }[] // Additional costs (e.g. replacement screw)
+  /**
+   * How many NEW abutments/ti-bases were ordered for this remake.
+   *
+   * Absent/null = the same hardware was reused, which is the common case and
+   * costs nothing: the abutments are in the patient's mouth. A number means
+   * that many were re-ordered, priced at the work type's per-tooth rate.
+   *
+   * Deliberately a COUNT and not a euro sum. The lab knows how many it ordered;
+   * what one costs is already in Seaded, and asking for it twice is how the two
+   * stop agreeing.
+   */
+  uusi_tarvikuid?: number
   // Why the revision was needed. A remake often has more than one cause — the
   // shade was wrong AND the fit was poor — and forcing a single choice made the
   // reason statistics quietly lossy.

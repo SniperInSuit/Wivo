@@ -21,7 +21,7 @@ import { revisionReasons, jobWorkItems } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
-import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
+import { resolveWorkType, workTypeConsumables, abutmentUnitPrice } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
 import { materialUnitCost, materialPiecePrice, overheadsMonthly } from '@shared/pricing/priceBook'
 import {
@@ -585,6 +585,11 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         { materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts, materialPrices,
       ) ?? 0
       const revExtras = (r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0)
+      // Abutments the lab actually re-ordered for this remake, counted on the
+      // revision itself. Zero when they were reused, which is the common case.
+      const revTarvikud = Number(r.uusi_tarvikuid) > 0
+        ? Math.floor(Number(r.uusi_tarvikuid)) * abutmentUnitPrice(j.too, types)
+        : 0
 
       for (const reason of reasons) {
         const b = reasonBuckets.get(reason) ?? {
@@ -592,7 +597,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         }
         b.count++
         b.recovered += shareOf(Number(r.price ?? 0))
-        b.material += shareOf(revMaterial + revExtras)
+        b.material += shareOf(revMaterial + revExtras + revTarvikud)
         reasonBuckets.set(reason, b)
       }
     }

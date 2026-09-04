@@ -23,7 +23,7 @@ import { jobWorkItems, workItemDesigner } from '../types/job'
 import type { WorkerRate } from './earnings'
 import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
-import { workTypeConsumables, type WorkType } from '../config/workTypes'
+import { workTypeConsumables, abutmentUnitPrice, type WorkType } from '../config/workTypes'
 import type { MaterialPricing } from '@shared/pricing/priceBook'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -281,8 +281,10 @@ export interface RevisionCost {
   note: string
   /** As PAYROLL computes it — not re-derived here. See the note in jobTotalCosts. */
   labour: number
-  /** Resin and consumables. Spent whether or not anybody was paid for the redo. */
+  /** Resin plus any re-ordered hardware. Spent whether or not anybody was paid. */
   material: number
+  /** Of `material`, the part that is newly ordered abutments. 0 when reused. */
+  tarvikud: number
   extras: number
   total: number
   /** False = the lab's own fault, so nobody is paid. The resin still went. */
@@ -375,15 +377,23 @@ export function jobTotalCosts(input: JobTotalInput): JobTotal {
     // `extra_costs` on the revision, which is exactly what the field was added
     // for. The default is the conservative one: it under-states rather than
     // inventing a cost, and the technician can add what really went.
+    // Hardware the remake really did order. Asked on the revision form rather
+    // than assumed either way: "we reused them" and "we ordered four new ones"
+    // are both normal, and only the person who placed the order knows which.
+    const uusi = Number(r.uusi_tarvikuid)
+    const tarvikud = Number.isFinite(uusi) && uusi > 0
+      ? round2(Math.floor(uusi) * abutmentUnitPrice(items?.[0]?.too ?? job.too, workTypes))
+      : 0
+
     const extras = round2((r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0))
     const labour = round2(labourOf.get(r.id) ?? 0)
-    const mat = round2(material)
+    const mat = round2(material + tarvikud)
 
     return {
       id: r.id,
       nr: i + 1,
       note: r.note ?? '',
-      labour, material: mat, extras,
+      labour, material: mat, extras, tarvikud,
       total: round2(labour + mat + extras),
       tasustatav: r.taspidev !== false,
       valmis: (r.status ?? '') === doneStageKey,

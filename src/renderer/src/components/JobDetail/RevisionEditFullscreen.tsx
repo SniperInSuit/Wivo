@@ -18,7 +18,7 @@ import { MACHINE_OPTIONS } from '../../types/job'
 import { jobMaterialCost } from '../../lib/finance'
 import { pickRateFor, type WorkerRate } from '../../lib/earnings'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
-import { resolveWorkType } from '../../config/workTypes'
+import { resolveWorkType, abutmentUnitPrice } from '../../config/workTypes'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -40,6 +40,9 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
   const [form, setForm] = useState({
     note: revision.note,
     reasons: revisionReasons(revision),
+    // null = the same abutments were reused, which is both the common case and
+    // the free one. A number is how many new ones were ordered.
+    uusi_tarvikuid: typeof revision.uusi_tarvikuid === 'number' ? revision.uusi_tarvikuid : null as number | null,
     // null = whoever is on the job. A remake is often picked up by someone else.
     assigned_to: revision.assigned_to ?? null as string | null,
     designed_by: revision.designed_by ?? null as string | null,
@@ -121,9 +124,16 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
     }
   }
 
+  // Newly ordered hardware. The unit price comes from the work type's per-tooth
+  // consumables — the same 1200 €/12 the original was costed from — so nobody
+  // has to look an abutment price up and type it as a euro sum.
+  const tarvikuHind = abutmentUnitPrice(primaryToo, types)
+  const uusiTarvikuid = form.uusi_tarvikuid ?? 0
+  const tarvikuKulu = Math.round(uusiTarvikuid * tarvikuHind * 100) / 100
+
   const labourCost = form.taspidev ? Math.round((techCost + designCost) * 100) / 100 : 0
   const extraTotal = form.extra_costs.reduce((s, c) => s + (c.summa || 0), 0)
-  const autoPrice = Math.round((matCost + labourCost + extraTotal) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
+  const autoPrice = Math.round((matCost + labourCost + extraTotal + tarvikuKulu) * (form.kiirtoo ? settings.kiirtooKordaja : 1) * 100) / 100
 
   function handleSubmit(e?: React.FormEvent | React.MouseEvent) {
     e?.preventDefault()
@@ -151,6 +161,9 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
       kiirtoo: form.kiirtoo || undefined,
       mudel: form.mudel || undefined,
       taspidev: form.taspidev ? undefined : false,
+      // Absent, never 0: "reused them" and "ordered zero" are the same fact,
+      // and storing a 0 would make the question look answered when it was not.
+      uusi_tarvikuid: (form.uusi_tarvikuid ?? 0) > 0 ? form.uusi_tarvikuid! : undefined,
       purunenud_hambad: form.purunenud_hambad || undefined,
       print_id: form.print_id || undefined,
       disain_id: form.disain_id || undefined,
@@ -498,11 +511,65 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 {!effectiveTechId && form.taspidev && <p className="text-slate-600">Tehnik määramata</p>}
                 {effectiveTechId && techCost === 0 && form.taspidev && <p className="text-slate-600">Tehnikul puudub tasureegel</p>}
                 {matCost > 0 && <p>Materjal: {matCost.toFixed(2)} €</p>}
+                {tarvikuKulu > 0 && <p>Uued tarvikud: {uusiTarvikuid} × {tarvikuHind.toFixed(2)} € = {tarvikuKulu.toFixed(2)} €</p>}
                 {extraTotal > 0 && <p>Lisakulud: {extraTotal.toFixed(2)} €</p>}
                 {form.kiirtoo && <p>× {settings.kiirtooKordaja} (kiirtöö)</p>}
                 {!form.taspidev && <p className="text-amber-400">Tasustamata — tööjõud ei arvestata</p>}
               </div>
             </div>
+
+            {/* Abutments. Asked, never assumed: reusing them is normal and free,
+                ordering new ones is normal and expensive, and only the person
+                who placed the order knows which happened. Before this the cost
+                engine had to guess, and it guessed wrong in both directions —
+                first charging a full set every time, then none. */}
+            {tarvikuHind > 0 && (
+              <div>
+                <label className="label text-slate-400">Abutmendid / tarvikud</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => set('uusi_tarvikuid', null)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      form.uusi_tarvikuid == null
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-accent/50'
+                    }`}
+                  >
+                    Samad, taaskasutatud
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set('uusi_tarvikuid', form.uusi_tarvikuid ?? teethCount ?? 1)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      form.uusi_tarvikuid != null
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-accent/50'
+                    }`}
+                  >
+                    Telliti uued
+                  </button>
+                  {form.uusi_tarvikuid != null && (
+                    <>
+                      <input
+                        type="number" min={1} step={1}
+                        value={form.uusi_tarvikuid}
+                        onChange={e => set('uusi_tarvikuid', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="input w-20 bg-slate-800 border-slate-600 text-slate-100 focus:border-accent text-xs"
+                      />
+                      <span className="text-[11px] text-slate-400 tabular-nums">
+                        × {tarvikuHind.toFixed(2)} € ={' '}
+                        <strong className="text-slate-100">{tarvikuKulu.toFixed(2)} €</strong>
+                      </span>
+                    </>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Taaskasutatud abutmendid on patsiendi suus ega maksa midagi. Ühiku
+                  hind tuleb tööliigi tarvikutest, sa ei pea seda siia tippima.
+                </p>
+              </div>
+            )}
 
             {/* Lisakulud — exceptional costs like replacement screws */}
             <div>

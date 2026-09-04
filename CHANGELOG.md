@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.83.0] — 2026-09-04
+
+**Muudatus küsib abutmentide kohta, ei oleta**
+
+Ümbertegemine kas kasutab samu abutmente või tellib uued, ja need kaks maksavad
+väga erinevalt. Seni pidi kuluarvestus ära arvama — ja arvas mõlemat pidi
+valesti: enne laadis iga muudatuse peale täiskomplekti, siis v1.82.1 mitte
+ühtegi.
+
+- **Muudatuse vormis on nüüd valik: „Samad, taaskasutatud" / „Telliti uued".**
+  Uute puhul sisestad arvu ja kõrval jookseb kohe `2 × 100.00 € = 200.00 €`
+- **Ühiku hind tuleb tööliigi tarvikutest**, mitte käsitsi tipitud eurodest.
+  Sama number, millest originaal on arvestatud — sa ei pea abutmendi hinda
+  kuskilt otsima ega kahes kohas sünkroonis hoidma
+- Küsimus ilmub ainult siis, kui tööliigil **on** hambapõhine tarvikukulu.
+  Kroonil, mille tarvik on ühekordne pakenditasu, seda ei küsita
+- Taaskasutamine on vaikevalik ja maksab 0 — abutmendid on patsiendi suus
+- Arv ei ole piiratud hammaste arvuga: tagavara tellimine või eemaldamisel
+  vigastatud abutment on päris asjad
+- Kulurida näitab uued tarvikud eraldi materjalist; Statistika ümbertegemise
+  aruanne loeb neid samuti
+
+Uus väli `Revision.uusi_tarvikuid` — puudub tähendab „taaskasutati", mitte
+„null tükki". Andmebaasi muudatust pole vaja, muudatused elavad `jobs.revisions`
+jsonb-s.
+
+6 uut testi.
+
 ## [1.82.1] — 2026-09-04
 
 **Parandus: muudatus ei osta abutmente teist korda**

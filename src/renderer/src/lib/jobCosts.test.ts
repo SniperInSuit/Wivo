@@ -327,6 +327,46 @@ describe('jobTotalCosts — what a remake does NOT re-buy', () => {
     expect(t.revisions[0].total).toBe(24)
   })
 
+  // What the technician is now ASKED, instead of the engine guessing. Reusing
+  // costs nothing; ordering four is four, priced from the work type.
+  it('charges nothing when the abutments were reused', () => {
+    const t = jobTotalCosts(base())
+    expect(t.revisions[0].tarvikud).toBe(0)
+  })
+
+  it('charges the ones that were actually re-ordered', () => {
+    const b = base()
+    const t = jobTotalCosts({
+      ...b,
+      job: {
+        ...b.job,
+        revisions: [revision({
+          work_items: [{ id: 'r', too: 'Allon4', hambad: '11,12,13' }],
+          uusi_tarvikuid: 2,
+        })],
+      } as Job,
+    })
+    expect(t.revisions[0].tarvikud).toBe(200)        // 2 × 100 €
+    expect(t.revisions[0].total).toBe(224)           // + 3 × 8 € rework
+  })
+
+  // Ordering four when three teeth were redone is legal — a spare gets ordered,
+  // or one was damaged on removal. The count is the lab's, not ours to cap.
+  it('does not cap the count at the number of teeth', () => {
+    const b = base()
+    const t = jobTotalCosts({
+      ...b,
+      job: {
+        ...b.job,
+        revisions: [revision({
+          work_items: [{ id: 'r', too: 'Allon4', hambad: '11,12,13' }],
+          uusi_tarvikuid: 4,
+        })],
+      } as Job,
+    })
+    expect(t.revisions[0].tarvikud).toBe(400)
+  })
+
   // The escape hatch that makes the conservative default safe: a remake that
   // really did eat a screw records it, and then it counts.
   it('counts hardware the remake really did consume', () => {

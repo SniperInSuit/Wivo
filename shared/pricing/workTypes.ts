@@ -138,6 +138,26 @@ export function workTypeConsumables(
 }
 
 /**
+ * What ONE unit of per-tooth hardware costs — an abutment, a ti-base, a screw.
+ *
+ * Only the `hammas` entries: a flat `too` cost is per case (a packing charge,
+ * a courier) and is not something you order more of because a tooth was redone.
+ *
+ * Exists so a remake can ask "how many new ones?" and get a price. Without it
+ * the only honest answer was "add a line under Lisakulud and look the price up
+ * yourself", which is a question the app already knows the answer to.
+ */
+export function abutmentUnitPrice(
+  too: string | null | undefined, types: WorkType[]
+): number {
+  const t = resolveWorkType(too, types)
+  const total = (t.kulud ?? [])
+    .filter(k => k.tyyp === 'hammas' && k.summa > 0)
+    .reduce((s, k) => s + k.summa, 0)
+  return Math.round(total * 100) / 100
+}
+
+/**
  * The tier that applies at this quantity, or null when the base price does.
  *
  * The HIGHEST `alates` at or below the quantity wins, so the list can be
