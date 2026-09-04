@@ -23,6 +23,7 @@ import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings
 import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
+import { materialUnitCost } from '@shared/pricing/priceBook'
 import {
   calculateEarnings, earningsTotal, grossOf,
   type WorkerRate, type WorkHours, type PayrollTaxRates,
@@ -46,23 +47,41 @@ const coverage = (total: number, covered: number): Coverage => ({
   total, covered, get missing() { return Math.max(0, this.total - this.covered) },
 })
 
-/** Material cost of one job, or null when the material has no cost recorded. */
 /**
- * Material cost for a job. Checks machine-specific cost first (key: "material|machine"),
- * then falls back to base material cost (key: "material").
- * This is because capsule capacity differs by machine:
- *   Pro2 arch kit → bulk, lower per-tooth cost
- *   Midas → tooth per capsule (1 large, up to 3 small), higher per-tooth cost
+ * What one job's material cost, and HOW that number was arrived at.
+ *
+ * ── Two ways to price the same resin ─────────────────────────────────────────
+ * Per tooth (`small` / `large`), or per CAPSULE. A capsule is indivisible: five
+ * small teeth fit in two of them, and two small teeth still open a whole one.
+ * A per-tooth price cannot say either of those things — it is linear, and it
+ * was wrong in both directions for every Midas job this lab has ever costed.
+ *
+ * The capsule price wins when the material has one. The per-tooth price stays
+ * for everything bought by the bottle, and for every clinic that has not filled
+ * the capsule fields in.
+ *
+ * ── The technician has the last word ─────────────────────────────────────────
+ * `job.materjali_yhikud` is what they actually used, counted off the plate.
+ * Capacity is an estimate — real fit depends on tooth size and supports — so a
+ * number somebody read beats a number we derived.
+ *
+ * The machine matters and is checked first (key "material|machine"), because
+ * the same resin behaves differently per printer: a Pro2 arch kit is bulk, a
+ * Midas capsule is not.
  */
-/**
- * Material cost for a job. Checks `costs` first (explicit cost prices),
- * falls back to `fallbackPrices` (selling prices used as cost estimate).
- */
-export function jobMaterialCost(
-  job: Pick<Job, 'materjal' | 'hambad' | 'masina'>,
+export interface MaterialDetail {
+  summa: number
+  /** Null when this material is priced per tooth rather than per capsule. */
+  kapsleid: number | null
+  /** True when the count came from the technician, not from capacity. */
+  kasitsi: boolean
+}
+
+export function jobMaterialDetail(
+  job: Pick<Job, 'materjal' | 'hambad' | 'masina' | 'materjali_yhikud'>,
   costs: Record<string, MaterialPricing>,
   fallbackPrices?: Record<string, MaterialPricing>
-): number | null {
+): MaterialDetail | null {
   const mat = job.materjal?.trim()
   if (!mat) return null
   const machine = job.masina?.trim()
@@ -88,14 +107,52 @@ export function jobMaterialCost(
     return baseKey ? table[baseKey] : undefined
   }
 
+  // "Has a price" now includes a capsule price. Without this a material priced
+  // ONLY by capsule reads as having no cost at all and falls through to the
+  // selling prices — the exact opposite of what was configured.
+  const priced = (c: MaterialPricing | undefined): boolean =>
+    !!c && (c.small > 0 || c.large > 0 || Number(c.yhikHind) > 0)
+
   // Try explicit cost prices first, fall back to selling prices as estimate
   let c = findCost(mat, costs)
-  if (!c || (c.small === 0 && c.large === 0)) {
+  if (!priced(c)) {
     if (fallbackPrices) c = findCost(mat, fallbackPrices)
   }
-  if (!c || (c.small === 0 && c.large === 0)) return null
+  if (!priced(c)) return null
+
   const h = job.hambad ?? ''
-  return round2(countSmallTeeth(h) * c.small + countLargeTeeth(h) * c.large)
+  const small = countSmallTeeth(h)
+  const large = countLargeTeeth(h)
+
+  const unit = materialUnitCost(c!, small, large)
+  if (unit) {
+    // The technician's own count, when they gave one. `null`/absent means
+    // "work it out"; a deliberate 0 means this job opened no capsule at all,
+    // and those must stay distinguishable or the correction cannot be undone.
+    const said = job.materjali_yhikud
+    const kasitsi = typeof said === 'number' && Number.isFinite(said) && said >= 0
+    const kapsleid = kasitsi ? Math.floor(said as number) : unit.kapsleid
+    return {
+      kapsleid,
+      kasitsi,
+      summa: round2(kapsleid * Number(c!.yhikHind)),
+    }
+  }
+
+  return {
+    summa: round2(small * c!.small + large * c!.large),
+    kapsleid: null,
+    kasitsi: false,
+  }
+}
+
+/** Just the number. The shape every existing caller already expects. */
+export function jobMaterialCost(
+  job: Pick<Job, 'materjal' | 'hambad' | 'masina' | 'materjali_yhikud'>,
+  costs: Record<string, MaterialPricing>,
+  fallbackPrices?: Record<string, MaterialPricing>
+): number | null {
+  return jobMaterialDetail(job, costs, fallbackPrices)?.summa ?? null
 }
 
 /**

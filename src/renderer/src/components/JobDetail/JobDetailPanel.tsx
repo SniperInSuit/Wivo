@@ -29,6 +29,7 @@ import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { jobPaymentState } from '../../lib/jobPayments'
+import { jobMaterialDetail } from '../../lib/finance'
 import { jobCosts } from '../../lib/jobCosts'
 import { CostBreakdown } from './CostBreakdown'
 import { MarkPaidDialog } from './MarkPaidDialog'
@@ -515,6 +516,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         kirjeldus: job.kirjeldus ?? '',
         materjal: job.materjal ?? '',
         masina: job.masina ?? '',
+        // Left UNDEFINED when the job has none, never null: an undefined key is
+        // dropped from the JSON, so a clinic that has not run sql/063 yet never
+        // sends a column that does not exist.
+        ...(typeof job.materjali_yhikud === 'number'
+          ? { materjali_yhikud: job.materjali_yhikud }
+          : {}),
         print_id: job.print_id ?? '',
         disain_id: job.disain_id ?? '',
         varv: job.varv ?? '',
@@ -1463,6 +1470,57 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   )
                 })()}
               </div>
+
+              {/* How many capsules this job actually took.
+                  Beside the machine, because a capsule belongs to a printer —
+                  and only shown when the material is priced by capsule, so a
+                  lab buying resin by the bottle never sees it.
+
+                  Capacity is an ESTIMATE: real fit depends on tooth size,
+                  supports and how the plate was packed, and the technician can
+                  see the plate. A number they read beats one we derived. */}
+              {(() => {
+                const mat = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
+                if (!mat) return null
+                const arvutatud = jobMaterialDetail(
+                  { materjal: mat, hambad: hambad, masina: form.masina, materjali_yhikud: null },
+                  settings.materialCosts, settings.materialPrices,
+                )
+                // Priced per tooth, not per capsule — nothing to correct.
+                if (!arvutatud || arvutatud.kapsleid == null) return null
+                return (
+                  <div>
+                    <label className="label flex items-center gap-1.5">
+                      <Cpu size={11} /> Kapsleid
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" min={0} step={1}
+                        value={form.materjali_yhikud ?? ''}
+                        onChange={e => set(
+                          'materjali_yhikud',
+                          e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
+                        )}
+                        placeholder={String(arvutatud.kapsleid)}
+                        className="input w-24"
+                      />
+                      {form.materjali_yhikud != null && (
+                        <button
+                          type="button"
+                          onClick={() => set('materjali_yhikud', null)}
+                          className="text-[11px] text-ink-faint hover:text-ink"
+                        >
+                          tagasi arvutatud {arvutatud.kapsleid} peale
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-ink-faint mt-1">
+                      Tühjaks jättes arvutatakse mahutavusest: {arvutatud.kapsleid} kapslit.
+                      Sisesta oma arv, kui plaat läks teisiti.
+                    </p>
+                  </div>
+                )
+              })()}
 
               {/* Kruvi / abutment for the active work item. Rendered here as
                   well as inside WorkItemsField because the two job-page layouts

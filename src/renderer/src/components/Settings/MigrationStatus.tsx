@@ -35,6 +35,8 @@ interface Probe {
  * absent rather than guessed at.
  */
 const PROBES: Probe[] = [
+  { fail: 'sql/063_job_material_units.sql', table: 'jobs', column: 'materjali_yhikud',
+    mis: 'Mitu kapslit töö päriselt võttis (kapslihind materjalidel)' },
   { fail: 'sql/062_visit_requests_realtime.sql', table: 'visit_requests', column: 'id',
     mis: 'Taotlused reaalajas (sama tabel kui 059 — kontrollib olemasolu)' },
   { fail: 'sql/061_visit_request_payment.sql', table: 'visit_requests', column: 'soovitud_algus',

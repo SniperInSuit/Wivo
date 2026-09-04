@@ -19,6 +19,76 @@ import { countLargeTeeth, countSmallTeeth } from './teeth'
 export interface MaterialPricing {
   small: number   // €/tooth for positions 1–5 (incisors, canines, premolars)
   large: number   // €/tooth for positions 6–8 (molars)
+
+  /**
+   * A capsule or cartridge is INDIVISIBLE, and a per-tooth price cannot say so.
+   *
+   * The intent was always there — `finance.ts` has carried the comment "Midas →
+   * tooth per capsule (1 large, up to 3 small)" for a long time — but expressing
+   * it as a price difference between `small` and `large` is linear, and a
+   * capsule is not. Linear is wrong in both directions:
+   *
+   *   5 small teeth  → 5 × small, when two capsules actually covered them
+   *   2 small teeth  → 2 × small, when you opened a whole capsule regardless
+   *
+   * With these fields the cost becomes `ceil(slots / mahutavus) × hind`, which
+   * is what the bench sees on the print plate.
+   *
+   * ABSENT = the old linear behaviour, unchanged. Nothing about a lab that has
+   * not filled this in moves.
+   */
+  yhikHind?: number       // € for one capsule
+  yhikMahutavus?: number  // how many "slots" fit in one capsule
+  /**
+   * Slots a molar consumes. Defaults to the whole capsule — one big tooth fills
+   * it — which is exactly what the old comment described. A small tooth is
+   * always 1 slot; a second knob for that would be a setting nobody could
+   * check against anything real.
+   */
+  yhikSuurSlot?: number
+}
+
+/** What one capsule-priced material costs, and how many capsules that is. */
+export interface MaterialUnits {
+  kapsleid: number
+  summa: number
+}
+
+/**
+ * Capsule cost for a given tooth mix, or null when this material is not priced
+ * by capsule at all.
+ *
+ * Null rather than 0 on purpose: "no capsule price configured" and "this job
+ * needs no capsules" are different answers, and only the caller knows whether
+ * to fall back to the per-tooth price or to report nothing.
+ *
+ * Rounds UP, because half a capsule cannot be bought or returned. Zero teeth is
+ * the one case that rounds to zero — an empty job opens nothing.
+ */
+export function materialUnitCost(
+  p: Pick<MaterialPricing, 'yhikHind' | 'yhikMahutavus' | 'yhikSuurSlot'>,
+  small: number,
+  large: number,
+): MaterialUnits | null {
+  const hind = Number(p.yhikHind)
+  const mahutavus = Number(p.yhikMahutavus)
+  // A capacity of zero would divide by zero and a negative one would return a
+  // negative count. Either means the setting is not usable, so the caller falls
+  // back to the per-tooth price rather than getting a nonsense number.
+  if (!Number.isFinite(hind) || hind <= 0) return null
+  if (!Number.isFinite(mahutavus) || mahutavus <= 0) return null
+
+  const suurSlot = Number.isFinite(Number(p.yhikSuurSlot)) && Number(p.yhikSuurSlot)! > 0
+    ? Number(p.yhikSuurSlot)
+    : mahutavus
+
+  const s = Math.max(0, Math.floor(small))
+  const l = Math.max(0, Math.floor(large))
+  const slots = s * 1 + l * suurSlot
+  if (slots <= 0) return { kapsleid: 0, summa: 0 }
+
+  const kapsleid = Math.ceil(slots / mahutavus)
+  return { kapsleid, summa: Math.round(kapsleid * hind * 100) / 100 }
 }
 
 /** Flat overhead the lab carries on every job — gloves, disinfection. A COST. */

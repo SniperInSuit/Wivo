@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database
 } from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
+import { materialUnitCost } from '@shared/pricing/priceBook'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
 import { useAuth, type Clinic } from '../context/AuthContext'
@@ -582,13 +583,89 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
 
 // ─── Material cost tabs (per machine) ─────────────────────────────────────────
 
+/**
+ * Capsule pricing for one material — off until somebody fills it in.
+ *
+ * A capsule is INDIVISIBLE, and the per-tooth price above cannot say so: five
+ * small teeth fit two capsules, and two small teeth still open a whole one. The
+ * intent was in the code for a long time as a comment ("Midas → 1 large, up to
+ * 3 small") but expressed as a price difference, which is linear and therefore
+ * wrong in both directions.
+ *
+ * Hidden by default because most materials are bought by the bottle and have
+ * nothing to say here. A row of empty boxes on every material would make the
+ * common case pay for the rare one.
+ */
+function CapsuleRow({ pricing, onSet }: {
+  pricing?: import('../stores/useSettings').MaterialPricing
+  onSet: (field: keyof import('../stores/useSettings').MaterialPricing, value: number) => void
+}) {
+  const hind = pricing?.yhikHind ?? 0
+  const mahutavus = pricing?.yhikMahutavus ?? 0
+  const suur = pricing?.yhikSuurSlot ?? 0
+
+  if (!(hind > 0)) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSet('yhikHind', 21)}
+        className="text-[10px] text-accent hover:underline mt-0.5"
+      >
+        + Kapslihind
+      </button>
+    )
+  }
+
+  // The same function the cost engine runs. A worked example is the only way a
+  // capacity number is checkable by looking — nobody can verify "3" on its own.
+  const naidis = materialUnitCost(
+    { yhikHind: hind, yhikMahutavus: mahutavus, yhikSuurSlot: suur || undefined }, 5, 0,
+  )
+
+  return (
+    <div className="mt-1 ml-1 pl-2 border-l-2 border-accent/25">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[10px] text-ink-muted">kapsel</span>
+        <PriceInput value={hind} onChange={v => onSet('yhikHind', v)} />
+        <span className="text-[10px] text-ink-muted">mahub</span>
+        <input
+          type="number" min={1} step={1} value={mahutavus || ''}
+          onChange={e => onSet('yhikMahutavus', parseInt(e.target.value, 10) || 0)}
+          placeholder="3"
+          className="input py-0.5 text-[11px] w-14 text-right"
+        />
+        <span className="text-[10px] text-ink-muted">väikest · molaar võtab</span>
+        <input
+          type="number" min={0} step={1} value={suur || ''}
+          onChange={e => onSet('yhikSuurSlot', parseInt(e.target.value, 10) || 0)}
+          placeholder={String(mahutavus || 3)}
+          className="input py-0.5 text-[11px] w-14 text-right"
+        />
+        <button
+          type="button"
+          onClick={() => onSet('yhikHind', 0)}
+          title="Kapslihind välja — tagasi hamba kaupa"
+          className="text-[10px] text-ink-faint hover:text-red-500 ml-auto"
+        >
+          eemalda
+        </button>
+      </div>
+      <p className="text-[10px] text-ink-faint mt-0.5">
+        {naidis
+          ? `5 väikest hammast = ${naidis.kapsleid} kapslit = ${naidis.summa.toFixed(2)} €`
+          : 'Mahutavus on täitmata — kuni siis arvutatakse hamba kaupa.'}
+      </p>
+    </div>
+  )
+}
+
 function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, setMaterialPrice, setMaterialCost }: {
   materjalid: string[]
   masinad: string[]
   materialPrices: Record<string, import('../stores/useSettings').MaterialPricing>
   materialCosts: Record<string, import('../stores/useSettings').MaterialPricing>
   setMaterialPrice: (material: string, size: 'small' | 'large', value: number) => void
-  setMaterialCost: (material: string, size: 'small' | 'large', value: number) => void
+  setMaterialCost: (material: string, field: keyof import('../stores/useSettings').MaterialPricing, value: number) => void
 }) {
   const [costTab, setCostTab] = useState<string>('base')
   const tabs = ['base', ...masinad]
@@ -661,15 +738,21 @@ function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, 
             {materjalid.map(material => {
               const key = costKey(material)
               return (
-                <div key={material} className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 items-center px-1 py-0.5 min-w-[340px]">
-                  <span className="text-sm text-ink truncate" title={material}>{material}</span>
-                  <PriceInput
-                    value={materialCosts[key]?.small ?? 0}
-                    onChange={v => setMaterialCost(key, 'small', v)}
-                  />
-                  <PriceInput
-                    value={materialCosts[key]?.large ?? 0}
-                    onChange={v => setMaterialCost(key, 'large', v)}
+                <div key={material} className="px-1 py-0.5 min-w-[340px]">
+                  <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 items-center">
+                    <span className="text-sm text-ink truncate" title={material}>{material}</span>
+                    <PriceInput
+                      value={materialCosts[key]?.small ?? 0}
+                      onChange={v => setMaterialCost(key, 'small', v)}
+                    />
+                    <PriceInput
+                      value={materialCosts[key]?.large ?? 0}
+                      onChange={v => setMaterialCost(key, 'large', v)}
+                    />
+                  </div>
+                  <CapsuleRow
+                    pricing={materialCosts[key]}
+                    onSet={(field, v) => setMaterialCost(key, field, v)}
                   />
                 </div>
               )

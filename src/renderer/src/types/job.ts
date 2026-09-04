@@ -261,6 +261,21 @@ export interface Job {
   too: string | null        // Töö — work type (crown, bridge, veneer…)
   materjal: string | null   // Materjal — resin material (may include shade, e.g. "Ceramic Crown HT A2")
   masina: string | null     // Masin — printer (Pro2, Midas)
+  /**
+   * How many capsules this job ACTUALLY used (migration 063).
+   *
+   * The capsule count is normally worked out from the material's capacity, but
+   * capacity is an estimate — real fit depends on tooth size and supports, and
+   * the technician can see the plate. A number they read beats a number we
+   * derived, so when this is set it wins.
+   *
+   * `null`/absent means "work it out"; `0` means this job opened no capsule.
+   * The two must stay distinguishable or the correction cannot be taken back —
+   * the same rule `kulu_yle` follows.
+   *
+   * Only meaningful for a material priced per capsule; ignored otherwise.
+   */
+  materjali_yhikud?: number | null
   print_id: string | null   // Print ID — SprintRay job number for lookup
   disain_id: string | null  // Disain ID — design file or job reference
   varv: string | null       // Värv — VITA shade of the finished tooth

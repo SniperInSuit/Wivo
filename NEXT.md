@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.77.1 · 02.09.2026 · haru `main`**
+**Seis: v1.79.0 · 04.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 617 rohelist, 0 punast
+npm test        # 631 rohelist, 0 punast
 npm run build
 ```
 
@@ -77,10 +77,17 @@ visiidiks.
 
 ## 🟡 Ootab sind
 
-1. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
+1. **`sql/063` + kapslihind.** Jooksuta `sql/063_job_material_units.sql`, siis
+   eraldi `notify pgrst, 'reload schema';`. Seejärel Seaded → Hinnad →
+   Materjalid → Midas → **„+ Kapslihind"**: hind `21`, mahutavus `3`, molaar `3`.
+   ⚠ Enne sisselülitamist vaata Statistika → Rahandus „Materjal ja tarvikud"
+   number üles — see **muutub tagantjärele kõikidel varasematel töödel**, sest
+   materjalikulu arvutatakse iga kord praegustest seadetest, mitte ei salvestata
+   töö küljes. See on parandus, aga ta peab olema teadlik
+2. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
    Ilma võtmeteta jäetakse tasu vahele ja taotlus tuleb ikka kohale
-2. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
-3. **`git push`**
+3. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
+4. **`git push`**
 
 ---
 
@@ -95,6 +102,10 @@ visiidiks.
   muudetud, sest see liigutaks raha juba kinnitatud väljamaksetes
 - **Põrkeid ei näe.** `sent_at` tähendab „server võttis vastu"
 - **`sql/044` 1. samm on jooksutamata**
+- **Kapsli mahutavus on hinnang.** Tegelik mahtumine sõltub hamba suurusest,
+  tugedest ja sellest, kuidas plaat pakiti. Sellepärast on tehniku käsitsi arv
+  arvutatud arvust eespool — ja ainult üle ühe töö. Plaadi jagamine mitme töö
+  vahel (`print_id`) on teadlikult tegemata: vt plaani „Faas 2"
 - **`visits.clinic_id` võib olla NULL** (sql/015 lisas ta nii). Aegade arvutus
   loeb need hõivatuks — halvimal juhul jääb tund pakkumata, mis on ohutum suund
 

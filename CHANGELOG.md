@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.79.0] — 2026-09-04
+
+**Kapsel on jagamatu ühik, mitte hamba hind**
+
+Midase kapsel maksis Wivos 21 € **hamba kohta**. Plaadile mahub mitu hammast
+ühe kapsli jagu — päris töös katsid **2 kapslit 5 hammast**, mitte 5 kapslit.
+Viga käis mõlemat pidi: 5 hammast näitas 105 € asemel tegelikku 42 €, aga 2
+hammast näitas 42 €, kuigi avati üks kapsel 21 € eest.
+
+Kavatsus oli koodis juba kirjas (`finance.ts`: „1 large, up to 3 small") — aga
+väljendatud `small`/`large` hinnavahena, mis ei ümarda kunagi terve kapsli peale
+üles. Nüüd on kapslil **hind ja mahutavus**, ja arv ümardatakse üles.
+
+- **Seaded → Hinnad → Materjalid** → materjali juures link **„+ Kapslihind"**:
+  kapsli hind, mahutavus, mitu kohta molaar võtab. Kõrval jookseb näidis („5
+  väikest hammast = 2 kapslit = 42.00 €"), mille arvutab **seesama funktsioon**,
+  mis kulusid arvutab — nii ei saa näidis ja tulemus lahku minna
+- **Kuluridal seisab, kuidas number tekkis:** „OnX Tough 2: 2 kapslit", mitte
+  paljas „42.00 €". Summa, mille taga ei ole ühikute arvu, ei ole plaati vaadates
+  kontrollitav
+- **Töö vormis väli „Kapsleid"** — masina kõrval, sest kapsel kuulub printeri
+  juurde. Tühi = arvuta mahutavusest (arvutatud arv on placeholder). Tehnik näeb
+  plaati; tema loetud arv lööb arvutatud arvu, ja rida ütleb siis „(käsitsi)"
+- Ilma kapslihinnata jääb kõik täpselt endiseks — 14 uut testi katavad ka
+  vigase mahutavuse (0, negatiivne, puuduv), mis langeb tagasi hambapõhisele
+  hinnale, mitte ei jaga nulliga
+
+⚠ **Materjalikulu arvutatakse iga kord praegustest seadetest**, seda ei
+salvestata töö küljes. Kapslihinna sisselülitamine **muudab varasemate tööde
+marginaali tagantjärele** Rahanduses ja Statistikas — väiksed tööd kallimaks,
+suured odavamaks. See on parandus, mitte viga, aga vaata number enne ja pärast
+üle, et muutus oleks teadlik.
+
+**Vajab `sql/063_job_material_units.sql`** + `notify pgrst, 'reload schema';`.
+Seaded → Andmebaas ütleb, kas ta on jooksutatud.
+
 ## [1.78.0] — 2026-09-02
 
 **`docs/veebibroneering.md` — juhend, mille järgi saab üksi läbi teha**

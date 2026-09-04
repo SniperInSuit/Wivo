@@ -22,7 +22,7 @@ import type { Job } from '../types/job'
 import { jobWorkItems, workItemDesigner } from '../types/job'
 import type { WorkerRate } from './earnings'
 import { pickRateFor } from './earnings'
-import { jobMaterialCost } from './finance'
+import { jobMaterialDetail } from './finance'
 import { workTypeConsumables, type WorkType } from '../config/workTypes'
 import type { MaterialPricing } from '@shared/pricing/priceBook'
 
@@ -63,6 +63,7 @@ export interface JobCostsInput {
   job: Pick<Job,
     'work_items' | 'too' | 'hambad' | 'materjal' | 'masina' | 'kiirtoo' | 'mudel'
     | 'assigned_to' | 'designed_by' | 'extra_costs' | 'kulu_yle' | 'hind' | 'disain_hind'
+    | 'materjali_yhikud'
   >
   rates: WorkerRate[]
   workTypes: WorkType[]
@@ -182,12 +183,26 @@ export function jobCosts(input: JobCostsInput): JobCosts {
 
   // ── Material ──────────────────────────────────────────────────────────────
   const effectiveMaterial = items.find(i => i.materjal)?.materjal ?? (job.materjal ?? '')
-  const matCost = jobMaterialCost(
-    { materjal: effectiveMaterial, hambad: allTeeth, masina: job.masina },
+  const mat = jobMaterialDetail(
+    {
+      materjal: effectiveMaterial, hambad: allTeeth, masina: job.masina,
+      materjali_yhikud: job.materjali_yhikud,
+    },
     materialCosts, materialPrices
-  ) ?? 0
+  )
+  const matCost = mat?.summa ?? 0
+  // The line SAYS how the number was reached. "42.00 €" against a plate the
+  // technician can see is not checkable; "2 kapslit × 21.00 €" is — and when
+  // they typed the count themselves, the line says that too, so a corrected
+  // figure never looks like a computed one.
+  const matLabel = !mat
+    ? (effectiveMaterial || 'Materjal')
+    : mat.kapsleid == null
+      ? (effectiveMaterial || 'Materjal')
+      : `${effectiveMaterial || 'Materjal'}: ${mat.kapsleid} kapslit`
+        + `${mat.kasitsi ? ' (käsitsi)' : ''}`
   const matLines: CostLine[] = matCost > 0
-    ? [{ label: effectiveMaterial || 'Materjal', amount: matCost }]
+    ? [{ label: matLabel, amount: matCost }]
     : []
 
   // ── Consumables ───────────────────────────────────────────────────────────
