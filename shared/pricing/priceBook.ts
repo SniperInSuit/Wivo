@@ -98,15 +98,70 @@ export interface FixedCost {
 }
 
 /**
- * A recurring cost of being open at all — rent, the mill lease, software.
+ * How often a recurring cost falls due. Rent is monthly, an insurance premium
+ * is yearly, lunch is a WORKING day — not a calendar one, because nobody eats
+ * at the bench on Sunday. That distinction is the whole reason `paev` is
+ * converted through working days per week and not through 30.44.
+ */
+export type OverheadPeriood = 'paev' | 'nadal' | 'kuu' | 'aasta'
+
+/**
+ * A recurring cost of being open at all — rent, the mill lease, software, food.
  *
- * Monthly, because that is how they are invoiced and how anyone thinks about
- * them. Deliberately NOT per job: overheads exist whether or not a job was
- * made, and spreading them per job makes a quiet month look profitable.
+ * Deliberately NOT per job: overheads exist whether or not a job was made, and
+ * spreading them per job makes a quiet month look profitable. Per-job costs are
+ * `FixedCost`, a separate list, and that separation is on purpose.
+ *
+ * Everything is normalised to a MONTH internally, because that is what the
+ * finance period prorates from. The period is only how it was ENTERED.
  */
 export interface Overhead {
-  nimi: string    // e.g. "Rent", "Freesipingi liising", "Tarkvara"
-  summa: number   // € per month
+  nimi: string    // e.g. "Rent", "Freesipingi liising", "Toit"
+  summa: number   // € per `periood`
+  /**
+   * Missing = 'kuu'. Every row saved before this field existed was monthly, so
+   * the default is not a guess — it is what those rows meant.
+   */
+  periood?: OverheadPeriood
+}
+
+/** Weeks in a month. 52/12 — not 4, which loses about 8% of every weekly cost. */
+const WEEKS_PER_MONTH = 52 / 12
+
+/**
+ * One overhead row as € per month, whatever period it was typed in.
+ *
+ * `toopaevi` is working days per week and only affects `paev` rows. It is a
+ * clinic setting rather than a constant because a four-day lab exists, and
+ * feeding it 5 would overstate their food bill by a quarter.
+ */
+export function overheadMonthly(o: Overhead, toopaevi = 5): number {
+  const summa = Number(o.summa)
+  if (!Number.isFinite(summa) || summa === 0) return 0
+  switch (o.periood ?? 'kuu') {
+    case 'aasta': return summa / 12
+    case 'nadal': return summa * WEEKS_PER_MONTH
+    case 'paev': {
+      // A nonsense working-week must not silently zero a real cost or invent
+      // one. Clamp to a week, and fall back to 5 when it is not a number.
+      const d = Number.isFinite(Number(toopaevi)) ? Math.min(7, Math.max(0, Number(toopaevi))) : 5
+      return summa * d * WEEKS_PER_MONTH
+    }
+    default: return summa
+  }
+}
+
+/** What the whole list costs per month. */
+export function overheadsMonthly(overheads: Overhead[], toopaevi = 5): number {
+  return (overheads ?? []).reduce((s, o) => s + overheadMonthly(o, toopaevi), 0)
+}
+
+/** For labels: "/kuus", "/päev". One place, so screens cannot disagree. */
+export const OVERHEAD_PERIOOD_SILT: Record<OverheadPeriood, string> = {
+  paev:  '/tööpäev',
+  nadal: '/nädal',
+  kuu:   '/kuus',
+  aasta: '/aasta',
 }
 
 /** An add-on the customer can be charged for. Revenue, not cost. */

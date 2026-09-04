@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database
 } from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
-import { materialUnitCost } from '@shared/pricing/priceBook'
+import { materialUnitCost, overheadsMonthly } from '@shared/pricing/priceBook'
+import type { OverheadPeriood } from '@shared/pricing/priceBook'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
 import { useAuth, type Clinic } from '../context/AuthContext'
@@ -2109,12 +2110,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Üldkulud kuus</h3>
+              <h3 className="text-sm font-semibold text-ink">Üldkulud</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
-              Rent, liisingud, tarkvara, side — kulud, mis kehtivad sõltumata sellest,
+              Rent, liisingud, tarkvara, side, toit — kulud, mis kehtivad sõltumata sellest,
               kas sel kuul töid tehti. Ilma nendeta näitab Rahandus katet, mitte kasumit.
-              Perioodile jagatakse päevade järgi, nii et lühem vaade ei näita terve kuu renti.
+              Iga kulu juures saab valida, kui tihti ta tuleb; kõik taandatakse kuule ja
+              jagatakse perioodile päevade järgi, nii et lühem vaade ei näita terve kuu renti.
             </p>
             <div className="space-y-1.5 mb-2">
               {settings.yldkulud.map((o, idx) => (
@@ -2145,7 +2147,23 @@ export function SettingsPage() {
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
                   </div>
-                  <span className="text-xs text-ink-faint">/kuus</span>
+                  {/* How often it falls due. Everything is converted to a
+                      month before it reaches Rahandus — this only says how it
+                      was TYPED, which is how the person actually knows it. */}
+                  <select
+                    value={o.periood ?? 'kuu'}
+                    onChange={e => {
+                      const next = [...settings.yldkulud]
+                      next[idx] = { ...next[idx], periood: e.target.value as OverheadPeriood }
+                      setYldkulud(next)
+                    }}
+                    className="input py-1.5 text-xs w-24"
+                  >
+                    <option value="paev">/tööpäev</option>
+                    <option value="nadal">/nädal</option>
+                    <option value="kuu">/kuus</option>
+                    <option value="aasta">/aasta</option>
+                  </select>
                   <button
                     type="button"
                     onClick={() => setYldkulud(settings.yldkulud.filter((_, i) => i !== idx))}
@@ -2156,9 +2174,28 @@ export function SettingsPage() {
                 </div>
               ))}
             </div>
+            {/* Only asked for once a per-day cost exists. A lab entering rent
+                and nothing else never needs to answer it, and an unexplained
+                number in a costs card is a number people distrust. */}
+            {settings.yldkulud.some(o => o.periood === 'paev') && (
+              <div className="flex items-center gap-2 mb-2 rounded-lg bg-bg-sidebar/60 px-2.5 py-2">
+                <span className="text-xs text-ink-muted">Tööpäevi nädalas</span>
+                <input
+                  type="number" min={1} max={7} step={1}
+                  value={settings.toopaevadNadalas}
+                  onChange={e => setNumber('toopaevadNadalas',
+                    Math.min(7, Math.max(1, parseInt(e.target.value, 10) || 5)))}
+                  className="input py-1 text-sm w-16 text-right"
+                />
+                <span className="text-[11px] text-ink-faint">
+                  Ainult /tööpäev ridade jaoks — {(52 / 12 * settings.toopaevadNadalas).toFixed(1)} päeva kuus.
+                  Toitu ei osteta pühapäeval, seega ei jagata seda kalendripäevadega.
+                </span>
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => setYldkulud([...settings.yldkulud, { nimi: '', summa: 0 }])}
+              onClick={() => setYldkulud([...settings.yldkulud, { nimi: '', summa: 0, periood: 'kuu' }])}
               className="btn-ghost text-xs border border-ink-faint/25"
             >
               <Plus size={12} /> Lisa üldkulu
@@ -2167,9 +2204,15 @@ export function SettingsPage() {
               <p className="text-xs text-ink-muted mt-2">
                 Kokku{' '}
                 <strong className="text-ink tabular-nums">
-                  {settings.yldkulud.reduce((s, o) => s + (o.summa || 0), 0).toFixed(2)} €
+                  {/* The SAME function Rahandus uses. A total computed
+                      separately here would be a second implementation of the
+                      conversion, and the two would drift. */}
+                  {overheadsMonthly(settings.yldkulud, settings.toopaevadNadalas).toFixed(2)} €
                 </strong>{' '}
                 kuus
+                {settings.yldkulud.some(o => (o.periood ?? 'kuu') !== 'kuu') && (
+                  <span className="text-ink-faint"> · kõik taandatud kuule</span>
+                )}
               </p>
             )}
           </section>

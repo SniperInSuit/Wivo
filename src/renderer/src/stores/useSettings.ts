@@ -225,6 +225,11 @@ export interface WivoSettings {
   // Kuised püsikulud, mis kehtivad sõltumata sellest, kas töid tehti: rent,
   // liisingud, tarkvara. Nendeta on Rahandus brutomarginaal, mitte kasum.
   yldkulud: Overhead[]
+  // ─── Tööpäevi nädalas ──────────────────────────────────────────────────────
+  // Only used to convert overheads entered per WORKING day (lunch, coffee) into
+  // a monthly figure. Not a calendar setting and not the booking diary's hours:
+  // those say when patients can come, this says how often the bench is manned.
+  toopaevadNadalas: number
 }
 
 const EMPTY_MATERIAL: MaterialPricing = { small: 0, large: 0 }
@@ -278,6 +283,7 @@ function defaultSettings(): WivoSettings {
     kliinilineRezhiim: false,
     laboriRezhiim: true,
     yldkulud: [],
+    toopaevadNadalas: 5,
     makseTahtaegPaevades: 14,
     tooandjaMaksudProtsent: 0,
     tulumaksProtsent: 0,
@@ -467,6 +473,10 @@ function loadSettings(): WivoSettings {
       fixedCostsPerJob: Array.isArray(stored.fixedCostsPerJob) ? stored.fixedCostsPerJob.map(c => ({ ...c })) : [],
       lisateenused: Array.isArray(stored.lisateenused) ? stored.lisateenused.map(s => ({ ...s })) : [],
       yldkulud: Array.isArray(stored.yldkulud) ? stored.yldkulud.map(o => ({ ...o })) : [],
+      // 0 is not a working week and would silently zero every per-day cost.
+      toopaevadNadalas: Number(stored.toopaevadNadalas) >= 1
+        ? Math.min(7, Number(stored.toopaevadNadalas))
+        : 5,
     }
   } catch {
     return defaultSettings()

@@ -180,6 +180,7 @@ export function useStatsContext(
       materialPrices: settings.materialPrices,
       fixedCosts: settings.fixedCostsPerJob,
       overheads: settings.yldkulud,
+      toopaevadNadalas: settings.toopaevadNadalas,
       doneStageKey,
       periodStart: range.start,
       periodEnd: range.end,
@@ -190,7 +191,7 @@ export function useStatsContext(
   }, [
     wantsFinance, jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers,
     wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob,
-    settings.yldkulud, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent,
+    settings.yldkulud, settings.toopaevadNadalas, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent,
     settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent,
     settings.kogumispensionProtsent, doneStageKey, range,
   ])

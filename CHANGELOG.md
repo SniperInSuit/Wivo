@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.80.0] — 2026-09-04
+
+**Üldkulul on periood: /tööpäev, /nädal, /kuus, /aasta**
+
+Üldkulu sai olla ainult kuine. Toit on päevakulu, kindlustus aastakulu — ja
+mõlemad tuli enne käsitsi kuuks arvutada, mis tähendab, et keegi tegi peast
+korrutustehte ja Rahandus näitas selle tulemust.
+
+- **Iga üldkulu rea kõrval on nüüd valik.** Kõik taandatakse kuule (`52/12`
+  nädalat, mitte 4 — 4 kaotaks nädalakulust ~8%) ja alles siis jagatakse
+  perioodile. Periood on see, kuidas kulu **sisestati**, mitte kuidas teda
+  arvestatakse
+- **„/tööpäev" tähendab tööpäeva, mitte kalendripäeva.** Lõunat ei osteta
+  pühapäeval: 5 €/päev on 108 € kuus, mitte 152 €. Selleks tekkis kaardile väli
+  **„Tööpäevi nädalas"** (vaikimisi 5), mis on nähtaval ainult siis, kui mõni
+  rida on päevapõhine
+- Kokkuvõtte number arvutab **sama funktsiooniga**, mida Rahandus kasutab
+- Vana rida ilma perioodita loetakse kuiseks — see pole oletus, vaid see, mida
+  ta tähendas. 13 uut testi, sh vigane töönädal (0, negatiivne, 99), mis ei tohi
+  kulu vaikselt nulli viia ega välja mõelda
+
+**Kõrvalleid:** Rahanduse vaade ei kuulanud üldkulude muutust üldse —
+`useMemo` sõltuvustes polnud `settings.yldkulud`. Rendi muutmine ei värskendanud
+kasumit enne, kui midagi muud ekraanil liikus. Parandatud.
+
+Per töö kulud (kindad, visiirid) jäävad omaette kaardile: üldkulu on olemas ka
+siis, kui tööd ei tehtud, ja tema laialijagamine tööde peale näitaks vaikset
+kuud kasumlikuna.
+
 ## [1.79.1] — 2026-09-04
 
 **Kapslite arv on valmis tööl kohustuslik**

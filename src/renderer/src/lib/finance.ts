@@ -23,7 +23,7 @@ import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings
 import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
-import { materialUnitCost } from '@shared/pricing/priceBook'
+import { materialUnitCost, overheadsMonthly } from '@shared/pricing/priceBook'
 import {
   calculateEarnings, earningsTotal, grossOf,
   type WorkerRate, type WorkHours, type PayrollTaxRates,
@@ -165,9 +165,12 @@ export function jobMaterialCost(
 const MEAN_MONTH_DAYS = 30.44
 
 export function overheadForPeriod(
-  overheads: Overhead[], periodStart: string, periodEnd: string
+  overheads: Overhead[], periodStart: string, periodEnd: string, toopaevi = 5
 ): number {
-  const monthly = overheads.reduce((s, o) => s + (Number(o.summa) || 0), 0)
+  // Each row is normalised to a month FIRST — a weekly or per-working-day cost
+  // is not comparable to rent until it is. Only then is the month prorated to
+  // the window on screen, which is a question about the VIEW, not the cost.
+  const monthly = overheadsMonthly(overheads, toopaevi)
   if (monthly <= 0) return 0
   const start = Date.parse(`${periodStart}T00:00:00Z`)
   const end = Date.parse(`${periodEnd}T00:00:00Z`)
@@ -301,6 +304,8 @@ export interface FinanceInput {
   fixedCosts: FixedCost[]
   /** Monthly recurring costs. Empty = overheads unknown, reported as 0. */
   overheads: Overhead[]
+  /** Working days per week — only affects overheads entered per working day. */
+  toopaevadNadalas?: number
   doneStageKey: string
   periodStart: string
   periodEnd: string
@@ -421,7 +426,9 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   // Overheads are charged by the month, so a period that is not a whole month
   // gets its share by days. A three-day view showing a full month's rent would
   // read as a catastrophic loss.
-  const overheadCost = overheadForPeriod(overheads ?? [], periodStart, overheadEnd ?? periodEnd)
+  const overheadCost = overheadForPeriod(
+    overheads ?? [], periodStart, overheadEnd ?? periodEnd, input.toopaevadNadalas,
+  )
   const netMargin = round2(grossMargin - overheadCost)
   const netMarginPct = billed > 0 ? round2((netMargin / billed) * 100) : 0
 

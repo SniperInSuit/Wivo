@@ -111,13 +111,14 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     materialPrices: settings.materialPrices,
     fixedCosts: settings.fixedCostsPerJob,
     overheads: settings.yldkulud,
+    toopaevadNadalas: settings.toopaevadNadalas,
     doneStageKey,
     periodStart: range.start,
     periodEnd: range.end,
     // Rent does not accrue for days that have not happened. Counts use the
     // whole period; overheads use only the elapsed part of it.
     overheadEnd: elapsedEndOf(range),
-  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent, doneStageKey, range])
+  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, settings.yldkulud, settings.toopaevadNadalas, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent, doneStageKey, range])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
   // real money leaving the account.

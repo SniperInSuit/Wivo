@@ -49,7 +49,8 @@ describe('the public DTO never carries margin', () => {
     pricing: {
       designFee: 999, hambaHind: 999, kiirtooKordaja: 999,
       fixedCostsPerJob: [{ nimi: 'LEAK-fixed', summa: 999 }],
-      yldkulud: [{ nimi: 'LEAK-overhead', summa: 999 }],
+      yldkulud: [{ nimi: 'LEAK-overhead', summa: 999, periood: 'paev' }],
+      toopaevadNadalas: 4,
     },
     payroll: { tooandjaMaksudProtsent: 33.8 },
     soodushind: 999,
@@ -66,7 +67,7 @@ describe('the public DTO never carries margin', () => {
     for (const key of [
       'kulud', 'material_costs', 'material_prices', 'pricing', 'payroll',
       'soodushind', 'designFee', 'hambaHind', 'kiirtooKordaja',
-      'fixedCostsPerJob', 'yldkulud', 'sisemine', 'labWorkTypes',
+      'fixedCostsPerJob', 'yldkulud', 'toopaevadNadalas', 'sisemine', 'labWorkTypes',
     ]) {
       expect(json).not.toContain(`"${key}"`)
     }
