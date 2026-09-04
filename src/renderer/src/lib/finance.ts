@@ -23,7 +23,7 @@ import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings
 import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
-import { materialUnitCost, overheadsMonthly } from '@shared/pricing/priceBook'
+import { materialUnitCost, materialPiecePrice, overheadsMonthly } from '@shared/pricing/priceBook'
 import {
   calculateEarnings, earningsTotal, grossOf,
   type WorkerRate, type WorkHours, type PayrollTaxRates,
@@ -48,22 +48,19 @@ const coverage = (total: number, covered: number): Coverage => ({
 })
 
 /**
- * What one job's material cost, and HOW that number was arrived at.
+ * What one job's material COSTS the lab, and how that number was reached.
  *
- * ── Two ways to price the same resin ─────────────────────────────────────────
- * Per tooth (`small` / `large`), or per CAPSULE. A capsule is indivisible: five
- * small teeth fit in two of them, and two small teeth still open a whole one.
- * A per-tooth price cannot say either of those things — it is linear, and it
- * was wrong in both directions for every Midas job this lab has ever costed.
+ * ── Two ways to be priced ────────────────────────────────────────────────────
+ * Per TOOTH, which is how resin bought by the bottle behaves, or per CAPSULE,
+ * which is how a Midas cartridge behaves. Nothing in Seaded says which: the
+ * material has one piece price, and the job says how many pieces it took.
  *
- * The capsule price wins when the material has one. The per-tooth price stays
- * for everything bought by the bottle, and for every clinic that has not filled
- * the capsule fields in.
- *
- * ── The technician has the last word ─────────────────────────────────────────
- * `job.materjali_yhikud` is what they actually used, counted off the plate.
- * Capacity is an estimate — real fit depends on tooth size and supports — so a
- * number somebody read beats a number we derived.
+ * A capsule is INDIVISIBLE, and a per-tooth price cannot say so — two teeth
+ * managed on one capsule cost one capsule, five teeth spread over two cost two.
+ * Earlier this was attempted with a capacity figure in Seaded, and it was the
+ * wrong shape: how many teeth fit one plate depends on tooth size, supports and
+ * how the plate was packed. Nobody can configure that. The person standing at
+ * the printer can simply see it, so they type it and we multiply.
  *
  * The machine matters and is checked first (key "material|machine"), because
  * the same resin behaves differently per printer: a Pro2 arch kit is bulk, a
@@ -71,10 +68,12 @@ const coverage = (total: number, covered: number): Coverage => ({
  */
 export interface MaterialDetail {
   summa: number
-  /** Null when this material is priced per tooth rather than per capsule. */
+  /** Capsules charged, or null when nobody gave a count and teeth were used. */
   kapsleid: number | null
-  /** True when the count came from the technician, not from capacity. */
+  /** True when the sum came from a typed capsule count rather than from teeth. */
   kasitsi: boolean
+  /** € for one piece of this material, after machine resolution. */
+  tykihind: number
 }
 
 export function jobMaterialDetail(
@@ -107,11 +106,8 @@ export function jobMaterialDetail(
     return baseKey ? table[baseKey] : undefined
   }
 
-  // "Has a price" now includes a capsule price. Without this a material priced
-  // ONLY by capsule reads as having no cost at all and falls through to the
-  // selling prices — the exact opposite of what was configured.
   const priced = (c: MaterialPricing | undefined): boolean =>
-    !!c && (c.small > 0 || c.large > 0 || Number(c.yhikHind) > 0)
+    !!c && (c.small > 0 || c.large > 0)
 
   // Try explicit cost prices first, fall back to selling prices as estimate
   let c = findCost(mat, costs)
@@ -120,29 +116,23 @@ export function jobMaterialDetail(
   }
   if (!priced(c)) return null
 
+  // A capsule count typed on the job WINS, and nothing in Seaded competes with
+  // it. Two teeth managed on one capsule cost one capsule — the person at the
+  // printer saw that, and no capacity figure could have worked it out.
+  //
+  // `null`/absent means nobody said, so the per-tooth price stands. A
+  // deliberate 0 means this job opened nothing, which is a different statement
+  // and has to stay one, or the correction could never be taken back.
+  const tykihind = materialPiecePrice(c!)
+  const unit = materialUnitCost(c!, job.materjali_yhikud)
+  if (unit) return { ...unit, kasitsi: true, tykihind }
+
   const h = job.hambad ?? ''
-  const small = countSmallTeeth(h)
-  const large = countLargeTeeth(h)
-
-  const unit = materialUnitCost(c!, small, large)
-  if (unit) {
-    // The technician's own count, when they gave one. `null`/absent means
-    // "work it out"; a deliberate 0 means this job opened no capsule at all,
-    // and those must stay distinguishable or the correction cannot be undone.
-    const said = job.materjali_yhikud
-    const kasitsi = typeof said === 'number' && Number.isFinite(said) && said >= 0
-    const kapsleid = kasitsi ? Math.floor(said as number) : unit.kapsleid
-    return {
-      kapsleid,
-      kasitsi,
-      summa: round2(kapsleid * Number(c!.yhikHind)),
-    }
-  }
-
   return {
-    summa: round2(small * c!.small + large * c!.large),
+    summa: round2(countSmallTeeth(h) * c!.small + countLargeTeeth(h) * c!.large),
     kapsleid: null,
     kasitsi: false,
+    tykihind,
   }
 }
 

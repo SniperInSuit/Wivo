@@ -1,94 +1,71 @@
-import { describe, it, expect } from 'vitest'
-import { materialUnitCost } from './priceBook'
-
 /**
- * The Midas capsule as the lab actually uses it: 21 € a capsule, three small
- * teeth to a capsule, one molar filling one on its own.
+ * Capsule cost. The count is TYPED, never derived.
  *
- * These numbers are not invented — they are what the owner read off the print
- * plate: two capsules covered five teeth, where Wivo had been charging five.
+ * An earlier version of this file tested a capacity model — capsules per plate
+ * worked out from tooth sizes. It was replaced because how many teeth fit on
+ * one plate depends on supports and packing, which no setting can know and the
+ * technician can simply see. What is left is one multiplication, and these
+ * tests exist for what happens around its edges.
  */
-const MIDAS = { yhikHind: 21, yhikMahutavus: 3, yhikSuurSlot: 3 }
+import { describe, it, expect } from 'vitest'
+import { materialUnitCost, materialPiecePrice, type MaterialPricing } from './priceBook'
 
-describe('materialUnitCost — kapsel on jagamatu', () => {
-  it('viis väikest hammast on kaks kapslit, mitte viis', () => {
-    // The whole reason this function exists.
-    expect(materialUnitCost(MIDAS, 5, 0)).toEqual({ kapsleid: 2, summa: 42 })
+const MIDAS: MaterialPricing = { small: 21, large: 21 }
+
+describe('materialPiecePrice', () => {
+  it('takes the base rate', () => {
+    expect(materialPiecePrice({ small: 21, large: 21 })).toBe(21)
   })
 
-  it('kaks väikest hammast on ikkagi terve kapsel', () => {
-    // The error in the other direction: you opened it, you paid for it.
-    expect(materialUnitCost(MIDAS, 2, 0)).toEqual({ kapsleid: 1, summa: 21 })
+  // A lab that only priced molars still has a price; refusing it would send a
+  // real cost to zero.
+  it('falls back to the molar rate when only that is set', () => {
+    expect(materialPiecePrice({ small: 0, large: 25 })).toBe(25)
   })
 
-  it('kolm väikest hammast mahub täpselt ühte', () => {
-    expect(materialUnitCost(MIDAS, 3, 0)).toEqual({ kapsleid: 1, summa: 21 })
-  })
-
-  it('neljas hammas avab teise kapsli', () => {
-    expect(materialUnitCost(MIDAS, 4, 0)).toEqual({ kapsleid: 2, summa: 42 })
-  })
-
-  it('üks molaar täidab kapsli üksi', () => {
-    expect(materialUnitCost(MIDAS, 0, 1)).toEqual({ kapsleid: 1, summa: 21 })
-  })
-
-  it('molaar ja kaks väikest on kaks kapslit', () => {
-    // 3 slots for the molar + 2 = 5 slots = ceil(5/3) = 2.
-    expect(materialUnitCost(MIDAS, 2, 1)).toEqual({ kapsleid: 2, summa: 42 })
-  })
-
-  it('tühi töö ei ava ühtegi kapslit', () => {
-    // The one case that rounds DOWN to zero.
-    expect(materialUnitCost(MIDAS, 0, 0)).toEqual({ kapsleid: 0, summa: 0 })
+  it('is zero when the material has no price at all', () => {
+    expect(materialPiecePrice({ small: 0, large: 0 })).toBe(0)
   })
 })
 
-describe('materialUnitCost — millal ta keeldub', () => {
-  it('ilma kapsli hinnata ei ütle midagi', () => {
-    // null, not 0: "not priced by capsule" and "costs nothing" are different
-    // answers, and only the caller knows to fall back to the per-tooth price.
-    expect(materialUnitCost({}, 5, 0)).toBeNull()
-    expect(materialUnitCost({ yhikMahutavus: 3 }, 5, 0)).toBeNull()
+describe('materialUnitCost', () => {
+  // The case the owner reported: two teeth managed on one capsule.
+  it('charges one capsule for two teeth when one is what was used', () => {
+    expect(materialUnitCost(MIDAS, 1)).toEqual({ kapsleid: 1, summa: 21 })
   })
 
-  it('ilma mahutavuseta ei ütle midagi', () => {
-    expect(materialUnitCost({ yhikHind: 21 }, 5, 0)).toBeNull()
+  it('charges what was actually opened, however many teeth', () => {
+    expect(materialUnitCost(MIDAS, 2)).toEqual({ kapsleid: 2, summa: 42 })
+    expect(materialUnitCost(MIDAS, 5)).toEqual({ kapsleid: 5, summa: 105 })
   })
 
-  it('vigane mahutavus ei jaga nulliga ega anna miinust', () => {
-    for (const bad of [0, -3, NaN, Infinity]) {
-      expect(materialUnitCost({ yhikHind: 21, yhikMahutavus: bad }, 5, 0), String(bad))
-        .toBeNull()
-    }
+  // Zero is an ANSWER — "this job opened nothing" — and must not be confused
+  // with never having been asked.
+  it('accepts a deliberate zero', () => {
+    expect(materialUnitCost(MIDAS, 0)).toEqual({ kapsleid: 0, summa: 0 })
   })
 
-  it('vigane hind lükatakse samamoodi tagasi', () => {
-    for (const bad of [0, -21, NaN]) {
-      expect(materialUnitCost({ yhikHind: bad, yhikMahutavus: 3 }, 5, 0), String(bad))
-        .toBeNull()
-    }
-  })
-})
-
-describe('materialUnitCost — molaari slot', () => {
-  it('vaikimisi täidab molaar terve kapsli', () => {
-    // yhikSuurSlot absent → defaults to the whole capacity.
-    expect(materialUnitCost({ yhikHind: 21, yhikMahutavus: 3 }, 0, 1))
-      .toEqual({ kapsleid: 1, summa: 21 })
-    expect(materialUnitCost({ yhikHind: 21, yhikMahutavus: 3 }, 0, 2))
-      .toEqual({ kapsleid: 2, summa: 42 })
+  // Null means "nobody said", so the caller falls back to the per-tooth price.
+  it('returns null when no count was given', () => {
+    expect(materialUnitCost(MIDAS, null)).toBeNull()
+    expect(materialUnitCost(MIDAS, undefined)).toBeNull()
   })
 
-  it('aga seda saab üle öelda, kui molaar võtab vähem', () => {
-    // A lab whose molars take two slots, not three: two molars then share.
-    const p = { yhikHind: 21, yhikMahutavus: 4, yhikSuurSlot: 2 }
-    expect(materialUnitCost(p, 0, 2)).toEqual({ kapsleid: 1, summa: 21 })
-    expect(materialUnitCost(p, 0, 3)).toEqual({ kapsleid: 2, summa: 42 })
+  it('refuses a negative or unparseable count rather than inventing one', () => {
+    expect(materialUnitCost(MIDAS, -1)).toBeNull()
+    expect(materialUnitCost(MIDAS, NaN)).toBeNull()
+    expect(materialUnitCost(MIDAS, Infinity)).toBeNull()
   })
 
-  it('eirab vigast slotti ja kasutab mahutavust', () => {
-    expect(materialUnitCost({ yhikHind: 21, yhikMahutavus: 3, yhikSuurSlot: 0 }, 0, 1))
-      .toEqual({ kapsleid: 1, summa: 21 })
+  it('refuses when the material has no price — 0 € would look like a free job', () => {
+    expect(materialUnitCost({ small: 0, large: 0 }, 2)).toBeNull()
+  })
+
+  it('floors a fractional count; half a capsule cannot be bought', () => {
+    expect(materialUnitCost(MIDAS, 2.7)).toEqual({ kapsleid: 2, summa: 42 })
+  })
+
+  it('rounds money to cents', () => {
+    expect(materialUnitCost({ small: 20.555, large: 0 }, 3)!.summa).toBe(61.67)
   })
 })

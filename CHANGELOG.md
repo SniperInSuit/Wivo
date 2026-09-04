@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.81.0] — 2026-09-04
+
+**Kapslite arv sisestatakse tööl, mitte tuletatakse seadetest**
+
+v1.79.0 pani mahutavuse Seadetesse ja arvutas kapslite arvu hammaste järgi.
+Vale kuju: mitu hammast ühele plaadile mahub, sõltub hamba suurusest, tugedest
+ja sellest, kuidas plaat pakiti — seda ei oska keegi seadistada, aga printeri
+juures seisev inimene lihtsalt näeb.
+
+- **Seaded on täpselt sellised, nagu olid.** Ainult tükihinnad. Kapslihinna,
+  mahutavuse ja molaari-slotti väljad on kadunud — kapsli hind ON materjali
+  tükihind, ja teine väli sama numbri jaoks oleks teine koht, mida sünkroonis
+  hoida
+- **Töö vormis väli „Kapsleid"** masina all: sisesta arv, kõrval jookseb kohe
+  `2 × 21.00 € = 42.00 €`. 2 hammast ja 1 kapsel = 21 €, ilma et ükski valem
+  peaks mahutavust teadma
+- **Tühjaks jättes ei muutu midagi** — kulu arvestatakse hammaste järgi nagu
+  alati, ja väli ütleb, mis see summa oleks
+- **Valmis tööl on arv kohustuslik, kui masin on valitud.** Kapsel kuulub
+  printeri juurde: töö, mis printeri juurest läbi ei käinud, ei kulutanud
+  kapslit ja seda ei blokeerita. Kui kapsleid ei kulunud, sisesta 0
+- Kulurida: „Crown HT: 2 kapslit × 21.00 €"
+
+Varasemad tööd jäävad hammaste järgi seni, kuni keegi arvu sisestab — erinevalt
+v1.79.0-st ei muutu ükski vana marginaal tagantjärele iseenesest.
+
+Vajab endiselt `sql/063_job_material_units.sql`-i.
+
 ## [1.80.0] — 2026-09-04
 
 **Üldkulul on periood: /tööpäev, /nädal, /kuus, /aasta**

@@ -617,30 +617,43 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
   const hambad = form.hambad ?? ''
 
-  // Capsules. Computed ONCE, here, because two places need the same answer —
-  // the field below and the save guard — and a rule with two implementations
-  // is a rule that will disagree with itself.
+  // Capsules. Computed ONCE, here, because three places need the same answer —
+  // the field, the save guard and the price hint — and a rule with three
+  // implementations is a rule that will disagree with itself.
   //
   // The teeth are read the way jobCosts reads them: from the work items when
-  // there are any, falling back to the flat column. The flat one is only
-  // synced on save, so reading it alone made the count 0 on every split job —
-  // which is most of them.
+  // there are any, falling back to the flat column. The flat one is only synced
+  // on save, so reading it alone made this wrong on every split job.
   const kapsel = (() => {
     const mat = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
     if (!mat) return null
     const teeth = form.work_items.length > 0
       ? form.work_items.map(i => i.hambad).filter(Boolean).join(',')
       : hambad
-    const d = jobMaterialDetail(
-      { materjal: mat, hambad: teeth, masina: form.masina, materjali_yhikud: null },
-      settings.materialCosts, settings.materialPrices,
+    const arg = { materjal: mat, hambad: teeth, masina: form.masina }
+    const hambaPohine = jobMaterialDetail(
+      { ...arg, materjali_yhikud: null }, settings.materialCosts, settings.materialPrices,
     )
-    // kapsleid === null means this material is priced per tooth. Nothing to
-    // ask for, and nothing to block a save over.
-    return d && d.kapsleid != null ? { arvutatud: d.kapsleid, hind: d.summa } : null
+    if (!hambaPohine || hambaPohine.tykihind <= 0) return null
+    const sisestatud = jobMaterialDetail(
+      { ...arg, materjali_yhikud: form.materjali_yhikud }, settings.materialCosts, settings.materialPrices,
+    )
+    return {
+      tykihind: hambaPohine.tykihind,
+      /** What the material costs if no count is given — the per-tooth sum. */
+      hammasteJargi: hambaPohine.summa,
+      /** What it costs with the count that is currently typed, if any. */
+      summa: sisestatud?.summa ?? hambaPohine.summa,
+    }
   })()
-  /** Required only at the done stage — see the guard in handleSubmit. */
-  const kapselPuudu = !!kapsel && form.status === doneStageKey && form.materjali_yhikud == null
+
+  // Asked for at the done stage, and only when a MACHINE is set. A capsule
+  // belongs to a printer: a job that never went near one was not printed from a
+  // capsule, and blocking it would be asking for a number that does not exist.
+  // Before "Valmis" the plate may not exist yet either, and this is the last
+  // moment before the figure lands in the month's costs.
+  const kapselPuudu = !!kapsel && !!form.masina
+    && form.status === doneStageKey && form.materjali_yhikud == null
   const smallCount = countSmallTeeth(hambad)
   const largeCount = countLargeTeeth(hambad)
   const typePriceInfo = workTypePriceFor(form.too, settings.tooTuubid, toothCountOf(hambad), useDiscount)
@@ -659,8 +672,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     // the month's costs, where correcting it means correcting a paid period.
     if (kapselPuudu) {
       setSaveError(
-        `Sisesta kapslite arv (arvutatud: ${kapsel!.arvutatud}). `
-        + 'Valmis töö omahind läheb kuu kuludesse — kapslite arv peab olema päris, mitte hinnang.'
+        `Sisesta kapslite arv — ${form.masina} on kapslimasin ja valmis töö omahind `
+        + 'läheb kuu kuludesse. Kui kapsleid ei kulunud, sisesta 0.'
       )
       return
     }
@@ -1508,22 +1521,15 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 })()}
               </div>
 
-              {/* How many capsules this job actually took.
-                  Beside the machine, because a capsule belongs to a printer —
-                  and only when the material is priced by capsule, so a lab
-                  buying resin by the bottle never sees this field at all.
-
-                  Capacity is an ESTIMATE. Real fit depends on tooth size,
-                  supports and how the plate was packed, and the technician can
-                  see the plate. A number they read beats one we derived — which
-                  is why at "Valmis" we insist on theirs. */}
+              {/* Capsules used. Not a correction to a computed number —
+                  it IS the number. Two teeth on one capsule cost one capsule,
+                  and nothing in Seaded had to be told the capacity, because
+                  nothing in Seaded can see the plate. */}
               {kapsel && (
                 <div>
                   <label className="label flex items-center gap-1.5">
                     <Cpu size={11} /> Kapsleid
-                    {form.status === doneStageKey && (
-                      <span className="text-red-500" title="Kohustuslik valmis tööl">*</span>
-                    )}
+                    {kapselPuudu && <span className="text-amber-600" title="Kohustuslik valmis tööl">*</span>}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1533,21 +1539,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         'materjali_yhikud',
                         e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
                       )}
-                      placeholder={String(kapsel.arvutatud)}
+                      placeholder="—"
                       className={`input w-24 ${kapselPuudu ? 'border-amber-400 bg-amber-50' : ''}`}
                     />
-                    {/* One click to accept the computed number. Without this,
-                        "required" would mostly mean retyping what is already on
-                        screen — friction that teaches people to type anything. */}
-                    {form.materjali_yhikud == null ? (
-                      <button
-                        type="button"
-                        onClick={() => set('materjali_yhikud', kapsel.arvutatud)}
-                        className="btn-ghost text-xs border border-ink-faint/25"
-                      >
-                        Kinnita {kapsel.arvutatud}
-                      </button>
-                    ) : (
+                    <span className="text-xs text-ink-muted tabular-nums">
+                      × {kapsel.tykihind.toFixed(2)} € ={' '}
+                      <strong className="text-ink">{kapsel.summa.toFixed(2)} €</strong>
+                    </span>
+                    {form.materjali_yhikud != null && (
                       <button
                         type="button"
                         onClick={() => set('materjali_yhikud', null)}
@@ -1559,8 +1558,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   </div>
                   <p className={`text-[10px] mt-1 ${kapselPuudu ? 'text-amber-700' : 'text-ink-faint'}`}>
                     {kapselPuudu
-                      ? `Valmis tööl on kapslite arv kohustuslik — see läheb kuu kuludesse. Mahutavuse järgi ${kapsel.arvutatud}.`
-                      : `Mahutavuse järgi ${kapsel.arvutatud} kapslit (${kapsel.hind.toFixed(2)} €). Sisesta oma arv, kui plaat läks teisiti.`}
+                      ? 'Valmis tööl on kapslite arv kohustuslik — see läheb kuu kuludesse.'
+                      : `Tühjaks jättes arvestatakse hammaste järgi: ${kapsel.hammasteJargi.toFixed(2)} €.`}
                   </p>
                 </div>
               )}

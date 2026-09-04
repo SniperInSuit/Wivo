@@ -192,15 +192,13 @@ export function jobCosts(input: JobCostsInput): JobCosts {
   )
   const matCost = mat?.summa ?? 0
   // The line SAYS how the number was reached. "42.00 €" against a plate the
-  // technician can see is not checkable; "2 kapslit × 21.00 €" is — and when
-  // they typed the count themselves, the line says that too, so a corrected
-  // figure never looks like a computed one.
-  const matLabel = !mat
+  // technician can see is not checkable; "2 kapslit × 21.00 €" is. Per-tooth
+  // jobs keep the bare material name, because there the teeth are the answer
+  // and they are already on screen.
+  const matLabel = !mat || mat.kapsleid == null
     ? (effectiveMaterial || 'Materjal')
-    : mat.kapsleid == null
-      ? (effectiveMaterial || 'Materjal')
-      : `${effectiveMaterial || 'Materjal'}: ${mat.kapsleid} kapslit`
-        + `${mat.kasitsi ? ' (käsitsi)' : ''}`
+    : `${effectiveMaterial || 'Materjal'}: ${mat.kapsleid} kapslit`
+      + ` × ${mat.tykihind.toFixed(2)} €`
   const matLines: CostLine[] = matCost > 0
     ? [{ label: matLabel, amount: matCost }]
     : []

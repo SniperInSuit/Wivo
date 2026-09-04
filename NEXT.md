@@ -77,13 +77,13 @@ visiidiks.
 
 ## 🟡 Ootab sind
 
-1. **`sql/063` + kapslihind.** Jooksuta `sql/063_job_material_units.sql`, siis
-   eraldi `notify pgrst, 'reload schema';`. Seejärel Seaded → Hinnad →
-   Materjalid → Midas → **„+ Kapslihind"**: hind `21`, mahutavus `3`, molaar `3`.
-   ⚠ Enne sisselülitamist vaata Statistika → Rahandus „Materjal ja tarvikud"
-   number üles — see **muutub tagantjärele kõikidel varasematel töödel**, sest
-   materjalikulu arvutatakse iga kord praegustest seadetest, mitte ei salvestata
-   töö küljes. See on parandus, aga ta peab olema teadlik
+1. **`sql/063`.** Jooksuta `sql/063_job_material_units.sql`, siis eraldi
+   `notify pgrst, 'reload schema';`. Seadetes ei ole midagi teha — kapsli hind
+   ON juba materjali tükihind (Midas 21 €). Töö vormi tekib masina alla väli
+   **„Kapsleid"**: sisesta arv, kulu on `arv × 21 €`. Tühjaks jättes arvestatakse
+   endiselt hammaste järgi.
+   ⚠ Varasemad tööd jäävad hammaste järgi seni, kuni keegi kapslite arvu
+   sisestab — need ei muutu tagantjärele iseenesest
 2. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
    Ilma võtmeteta jäetakse tasu vahele ja taotlus tuleb ikka kohale
 3. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
@@ -102,10 +102,9 @@ visiidiks.
   muudetud, sest see liigutaks raha juba kinnitatud väljamaksetes
 - **Põrkeid ei näe.** `sent_at` tähendab „server võttis vastu"
 - **`sql/044` 1. samm on jooksutamata**
-- **Kapsli mahutavus on hinnang.** Tegelik mahtumine sõltub hamba suurusest,
-  tugedest ja sellest, kuidas plaat pakiti. Sellepärast on tehniku käsitsi arv
-  arvutatud arvust eespool — ja ainult üle ühe töö. Plaadi jagamine mitme töö
-  vahel (`print_id`) on teadlikult tegemata: vt plaani „Faas 2"
+- **Kapslite arv käib ühe töö kohta.** Plaadi jagamine mitme töö vahel
+  (`print_id`) on teadlikult tegemata: kui üks plaat kandis kahe töö hambaid,
+  tuleb arv ise nende vahel ära jagada. Vt plaani „Faas 2"
 - **`visits.clinic_id` võib olla NULL** (sql/015 lisas ta nii). Aegade arvutus
   loeb need hõivatuks — halvimal juhul jääb tund pakkumata, mis on ohutum suund
 
