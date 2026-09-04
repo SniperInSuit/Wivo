@@ -173,3 +173,121 @@ describe('jobCosts — the margin', () => {
     expect(r.margin).toBe(-10)
   })
 })
+
+// ─── The whole case, remakes included ────────────────────────────────────────
+
+import { jobTotalCosts } from './jobCosts'
+import type { Job, Revision } from '../types/job'
+import type { JobTotalInput } from './jobCosts'
+
+const DONE = 'valmis'
+
+const revision = (over: Partial<Revision> = {}): Revision => ({
+  id: crypto.randomUUID(),
+  ts: '2026-08-01T10:00:00Z',
+  note: 'Uuesti',
+  status: DONE,
+  valmis_kuupaev: '2026-08-05',
+  work_items: [{ id: 'r1', too: 'Kroon', hambad: '11' }],
+  ...over,
+} as Revision)
+
+function totalInput(over: Partial<JobTotalInput> = {}): JobTotalInput {
+  const base = input()
+  return {
+    ...base,
+    job: { ...(base.job as object), id: 'job-1', patsient: 'Test', revisions: [] } as unknown as Job,
+    doneStageKey: DONE,
+    ...over,
+  } as JobTotalInput
+}
+
+describe('jobTotalCosts — original plus remakes', () => {
+  it('equals the plain job cost when there are no revisions', () => {
+    const t = jobTotalCosts(totalInput())
+    expect(t.revisionTotal).toBe(0)
+    expect(t.total).toBe(t.base.total)
+    expect(t.margin).toBe(t.base.margin)
+  })
+
+  // The whole point: the margin on the job page was overstating itself by
+  // exactly the cost of the remakes, which were shown but never added.
+  it('adds a remake to the total and takes it off the margin', () => {
+    const job = totalInput().job
+    const rev = revision()
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, revisions: [rev] } as Job,
+      // A rate scoped to revisions — otherwise rework is unpaid, see below.
+      rates: [rate({}), rate({ applies_to: 'muudatus', amount: 8 })],
+    }))
+    expect(t.revisions).toHaveLength(1)
+    expect(t.revisions[0].labour).toBe(8)          // 1 tooth × 8 €
+    expect(t.total).toBe(round(t.base.total + 8))
+    expect(t.margin).toBe(round(t.base.revenue - t.total))
+  })
+
+  // Rework is UNPAID unless a rule says otherwise. This is the payroll rule,
+  // and the reason labour is asked of calculateEarnings instead of re-derived:
+  // a formula written here would have paid the ordinary Kroon rate.
+  it('pays nothing for a remake when no rule covers rework', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, revisions: [revision()] } as Job,
+      rates: [rate({})],   // plain 'too' rate, pay_revisions not set
+    }))
+    expect(t.revisions[0].labour).toBe(0)
+  })
+
+  it('pays nothing when the remake is the lab\u2019s own fault', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, revisions: [revision({ taspidev: false })] } as Job,
+      rates: [rate({}), rate({ applies_to: 'muudatus', amount: 8 })],
+    }))
+    expect(t.revisions[0].labour).toBe(0)
+    expect(t.revisions[0].tasustatav).toBe(false)
+  })
+
+  // An unfinished remake has consumed resin but earned nobody anything yet.
+  it('carries an unfinished remake\u2019s material but not its labour', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, materjal: 'Crown HT', revisions: [revision({ status: 'disain' })] } as Job,
+      materialCosts: { 'Crown HT': { small: 7, large: 7 } },
+      rates: [rate({}), rate({ applies_to: 'muudatus', amount: 8 })],
+    }))
+    expect(t.revisions[0].valmis).toBe(false)
+    expect(t.revisions[0].labour).toBe(0)
+    expect(t.revisions[0].material).toBe(7)        // one tooth of resin, still spent
+  })
+
+  it('counts a remake\u2019s own extra costs', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: {
+        ...job,
+        revisions: [revision({ extra_costs: [{ nimi: 'Uus kruvi', summa: 12.5 }] })],
+      } as Job,
+    }))
+    expect(t.revisions[0].extras).toBe(12.5)
+    expect(t.revisionTotal).toBe(12.5)
+  })
+
+  it('numbers remakes the way the job page chips do', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, revisions: [revision(), revision(), revision()] } as Job,
+    }))
+    expect(t.revisions.map(r => r.nr)).toEqual([1, 2, 3])
+  })
+
+  it('reports no percentage when the job has no price to take one of', () => {
+    const job = totalInput().job
+    const t = jobTotalCosts(totalInput({
+      job: { ...job, hind: null, disain_hind: null, revisions: [revision()] } as Job,
+    }))
+    expect(t.marginPct).toBeNull()
+  })
+})
+
+const round = (n: number) => Math.round(n * 100) / 100

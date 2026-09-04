@@ -10,10 +10,10 @@
  * rate change. Nobody's wages move.
  */
 import { useState } from 'react'
-import { Pencil, RotateCcw, Check, X } from 'lucide-react'
-import type { JobCosts, CostKey } from '../../lib/jobCosts'
+import { Pencil, RotateCcw, Check, X, ChevronDown, ChevronRight } from 'lucide-react'
+import type { JobCosts, CostKey, JobTotal } from '../../lib/jobCosts'
 
-export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, dense }: {
+export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, dense, total }: {
   costs: JobCosts
   /** False in the read view: the numbers show, the pencils do not. */
   editable: boolean
@@ -22,9 +22,22 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
   /** The edit form's ad-hoc cost editor, dropped in where the ad-hoc lines go. */
   extraCostsSlot?: React.ReactNode
   dense?: boolean
+  /**
+   * The whole case, remakes included. When given, the totals below become the
+   * case's rather than the original's — which is what anybody asking "what did
+   * this patient's work cost us" means. Absent on a revision's own view, where
+   * the original's figure is the honest answer.
+   */
+  total?: JobTotal
 }) {
   const [editing, setEditing] = useState<CostKey | null>(null)
   const [draft, setDraft] = useState('')
+  const [showRemakes, setShowRemakes] = useState(false)
+
+  const hasRemakes = !!total && total.revisions.length > 0
+  // The margin follows whatever the total line says, so the two can never
+  // disagree about which cost they are a percentage of.
+  const shown = hasRemakes ? total! : costs
 
   const nothingToShow =
     costs.total === 0 &&
@@ -159,16 +172,62 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
         </div>
       ))}
 
+      {/* When there are remakes, this line is the ORIGINAL only and says so —
+          an unlabelled "Kokku kulu" that silently excluded five remakes is
+          what made the margin on this page wrong. */}
       <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
-        <span className="font-semibold text-ink">Kokku kulu</span>
-        <span className="font-bold text-red-500 tabular-nums">{costs.total.toFixed(2)} €</span>
+        <span className={hasRemakes ? 'text-ink-muted' : 'font-semibold text-ink'}>
+          {hasRemakes ? 'Originaal' : 'Kokku kulu'}
+        </span>
+        <span className={`tabular-nums ${hasRemakes ? 'text-ink' : 'font-bold text-red-500'}`}>
+          {costs.total.toFixed(2)} €
+        </span>
       </div>
 
-      {costs.revenue > 0 && (
+      {hasRemakes && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowRemakes(v => !v)}
+            className="w-full flex justify-between items-center text-xs hover:opacity-70 transition-opacity"
+          >
+            <span className="text-ink-muted flex items-center gap-1">
+              {showRemakes ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              Muudatused ({total!.revisions.length})
+            </span>
+            <span className="tabular-nums text-ink">{total!.revisionTotal.toFixed(2)} €</span>
+          </button>
+
+          {showRemakes && (
+            <div className="pl-4 space-y-0.5 border-l border-ink-faint/20 ml-1">
+              {total!.revisions.map(r => (
+                <div key={r.id} className="flex justify-between text-[11px] gap-2">
+                  <span className="text-ink-muted truncate">
+                    Muudatus {r.nr}
+                    {r.note ? ` · ${r.note}` : ''}
+                    {/* Both are reasons a remake costs less than it looks, and
+                        both are worth seeing next to the number, not guessing at. */}
+                    {!r.tasustatav && <span className="text-ink-faint"> · tasustamata</span>}
+                    {!r.valmis && <span className="text-amber-600"> · pooleli</span>}
+                  </span>
+                  <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
+            <span className="font-semibold text-ink">Kokku kulu</span>
+            <span className="font-bold text-red-500 tabular-nums">{total!.total.toFixed(2)} €</span>
+          </div>
+        </>
+      )}
+
+      {shown.revenue > 0 && (
         <div className="flex justify-between text-xs">
           <span className="text-ink-muted">Kate</span>
-          <span className={`font-semibold tabular-nums ${costs.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {costs.margin.toFixed(2)} € ({costs.marginPct != null ? `${costs.marginPct.toFixed(0)}%` : '—'})
+          <span className={`font-semibold tabular-nums ${shown.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            {shown.margin.toFixed(2)} € ({shown.marginPct != null ? `${shown.marginPct.toFixed(0)}%` : '—'})
           </span>
         </div>
       )}

@@ -14,7 +14,7 @@ import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useUpdateJob } from '../../hooks/useJobs'
-import { jobCosts } from '../../lib/jobCosts'
+import { jobTotalCosts } from '../../lib/jobCosts'
 import { CostBreakdown } from './CostBreakdown'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -61,7 +61,7 @@ export function JobReadView({
   const linkedPatientId = job.patient_id
     ?? patients.find(p => p.nimi.trim().toLowerCase() === (job.patsient ?? '').trim().toLowerCase())?.id
     ?? null
-  const { stageMap } = usePipeline()
+  const { stageMap, doneStageKey } = usePipeline()
   const revisions = job.revisions ?? []
   const { data: allPayments = [] } = usePayments()
   const deletePayment = useDeletePayment()
@@ -80,14 +80,19 @@ export function JobReadView({
   const { data: staff = [] } = useClinicProfiles()
   const updateJob = useUpdateJob()
   const showCosts = can('payroll.manage')
-  const costs = jobCosts({
+  // The whole case, remakes included. `jobTotalCosts` runs `jobCosts` inside
+  // itself, so the original's four categories and the case total come from one
+  // call and cannot disagree about what the original cost.
+  const total = jobTotalCosts({
     job,
     rates,
     workTypes: settings.tooTuubid,
     materialCosts: settings.materialCosts,
     materialPrices: settings.materialPrices,
     workers: staff,
+    doneStageKey,
   })
+  const costs = total.base
   const rev: Revision | null = activeRevisionId
     ? revisions.find(r => r.id === activeRevisionId) ?? null
     : null
@@ -105,6 +110,9 @@ export function JobReadView({
     : jobWorkItems(job)
   const showItemsBlock = rev ? shownItems.length > 0 : shownItems.length > 1
 
+  // What was CHARGED for the remakes. Deliberately not the same number as
+  // `total.revisionTotal`, which is what they COST — the two answer different
+  // questions and were only ever confusable because one label said "kulu".
   const revTotal = revisions.reduce((s, r) => s + (r.price ?? 0), 0)
   const extras = job.disain_hind ?? 0
   // Revision costs are internal (technician cost), not client-facing
@@ -352,10 +360,10 @@ export function JobReadView({
                 <span className="text-sm font-semibold text-ink">Kokku tööl</span>
                 <span className="text-sm font-bold text-ink">{jobGrandTotal.toFixed(2)} €</span>
               </div>
-              {revisions.length > 0 && !rev && (
+              {revisions.length > 0 && !rev && showCosts && (
                 <div className="flex items-center justify-between text-[11px] text-ink-faint mt-1">
                   <span>Muudatuste kulu (sisemine)</span>
-                  <span className="tabular-nums">{revTotal.toFixed(2)} €</span>
+                  <span className="tabular-nums">{total.revisionTotal.toFixed(2)} €</span>
                 </div>
               )}
             </div>
@@ -427,6 +435,7 @@ export function JobReadView({
           {showCosts && !rev && (
             <CostBreakdown
               costs={costs}
+              total={total}
               editable
               dense
               onOverride={(key, value) => {

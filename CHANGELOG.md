@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.82.0] — 2026-09-04
+
+**Töö kulu koos muudatustega — üks number kogu juhtumi kohta**
+
+Töö lehel seisis „Kokku kulu 1727 €" ja kate „75%", aga viie muudatuse kulu
+seisis eraldi väikeses hallis reas ja neid kahte ei liidetud kunagi kokku.
+Juhtum oli teinud 62%, mitte 75%.
+
+- **Kulutabelis on nüüd „Originaal" → „Muudatused (5)" → „Kokku kulu".**
+  Muudatuste rida avaneb: iga muudatus eraldi, koos märkusega, ning märgetega
+  **tasustamata** (labori enda viga, kellelegi ei makstud) ja **pooleli**
+- **Kate arvestatakse sellest samast numbrist**, mida ülal näidatakse — enam ei
+  saa juhtuda, et protsent käib ühe summa ja rida teise kohta
+- Kui muudatusi pole, näeb tabel välja täpselt nagu enne
+
+**Kust muudatuse tööjõukulu tuleb:** palgamootorist (`calculateEarnings`),
+mitte uuest valemist. Muudatus **ei maksa nagu töö** — `muudatus`-skoobiga
+määr võidab, ilma selleta kehtib ainult „Katab ka muudatused" märkega määr, ja
+`taspidev: false` ei maksa üldse. Siin ise arvutamine oleks olnud teine teostus
+sellestsamast reeglist ja need kaks oleksid ajapikku lahku läinud — täpselt see
+viga, mis selles koodis on juba kuus korda juhtunud, sama numbri ümber.
+
+Materjal ja tarvikud loetakse muudatusele ka siis, kui ta on pooleli — vaik on
+kulunud sõltumata sellest, kas keegi sai selle eest palka.
+
+Testid: 9 uut, sh kontroll, et tasustamata muudatus ei maksa midagi ja et
+tavaline `too`-määr ei hakka vaikselt ümbertegemist maksma. Kokkuliitmise test
+kontrollitud vea taastamisega — ta kukub õigel põhjusel.
+
 ## [1.81.0] — 2026-09-04
 
 **Kapslite arv sisestatakse tööl, mitte tuletatakse seadetest**

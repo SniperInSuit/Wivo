@@ -21,7 +21,7 @@
 import type { Job } from '../types/job'
 import { jobWorkItems, workItemDesigner } from '../types/job'
 import type { WorkerRate } from './earnings'
-import { pickRateFor } from './earnings'
+import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
 import { workTypeConsumables, type WorkType } from '../config/workTypes'
 import type { MaterialPricing } from '@shared/pricing/priceBook'
@@ -262,4 +262,135 @@ function coveredBy<T extends { too: string }>(r: WorkerRate, items: T[]): T[] {
   const rt = (r.work_type ?? '').toLowerCase()
   if (!rt) return items
   return items.filter(i => rt.split('|').some(wt => i.too.toLowerCase().includes(wt.trim())))
+}
+
+// ─── The whole case: original + every remake ─────────────────────────────────
+
+/**
+ * What one revision cost the lab.
+ *
+ * A remake is not free and it is not billed, so it lands entirely on the
+ * margin. Until this existed the job page showed `sum(rev.price)` in small grey
+ * type beside the total and left the two unadded — a job with five remakes read
+ * 75% margin when it had made 62%.
+ */
+export interface RevisionCost {
+  id: string
+  /** 1-based, matching the "Muudatus 3" chips on the job page. */
+  nr: number
+  note: string
+  /** As PAYROLL computes it — not re-derived here. See the note in jobTotalCosts. */
+  labour: number
+  /** Resin and consumables. Spent whether or not anybody was paid for the redo. */
+  material: number
+  extras: number
+  total: number
+  /** False = the lab's own fault, so nobody is paid. The resin still went. */
+  tasustatav: boolean
+  /** Unfinished remakes carry material but no labour — payroll has not paid it. */
+  valmis: boolean
+}
+
+export interface JobTotal {
+  /** The original job, exactly as `jobCosts` reports it. */
+  base: JobCosts
+  revisions: RevisionCost[]
+  revisionTotal: number
+  /** base.total + revisionTotal — what the case has cost the lab, all in. */
+  total: number
+  revenue: number
+  margin: number
+  marginPct: number | null
+}
+
+export interface JobTotalInput extends Omit<JobCostsInput, 'job'> {
+  job: Job
+  /** Which stage means finished. Revision labour is only paid once it is. */
+  doneStageKey: string
+}
+
+/**
+ * Cost of a case including its remakes.
+ *
+ * ── Why labour comes from `calculateEarnings` ────────────────────────────────
+ * A revision does NOT pay like a job. A rate scoped to `muudatus` wins; without
+ * one, only a rate with "Katab ka muudatused" ticked applies; and `taspidev:
+ * false` (the lab's own fault) pays nothing at all. Re-deriving that here would
+ * be a second implementation of the payroll rule, and the two would drift the
+ * first time somebody changed one of them — which is the failure this codebase
+ * has already had, in six places, over this exact number.
+ *
+ * So the pay engine is ASKED, over an open-ended period and with nothing marked
+ * as already paid: the question is what the remake cost, not what is still owed.
+ */
+export function jobTotalCosts(input: JobTotalInput): JobTotal {
+  const { job, workers, rates, workTypes, doneStageKey } = input
+  const base = jobCosts(input)
+  const revs = job.revisions ?? []
+
+  // Every revision line for this job, whoever earned it. `jobs: [job]` keeps
+  // the engine to one case; the period is deliberately open so that a remake
+  // finished in any month still counts towards what this case cost.
+  const labourOf = new Map<string, number>()
+  if (revs.length > 0) {
+    for (const w of workers) {
+      const lines = calculateEarnings({
+        profileId: w.id, rates, jobs: [job], hours: [], types: workTypes,
+        periodStart: '1900-01-01', periodEnd: '2999-12-31', doneStageKey,
+        alreadyPaid: new Set(), includeMonthly: false,
+        rushMultiplier: w.kiirtoo_kordaja ?? 1,
+      })
+      for (const l of lines) {
+        if (!l.revision_id) continue
+        labourOf.set(l.revision_id, (labourOf.get(l.revision_id) ?? 0) + l.amount)
+      }
+    }
+  }
+
+  const revisions: RevisionCost[] = revs.map((r, i) => {
+    // A revision inherits what it does not restate — the same fallback the
+    // read view uses, so an unchanged field means "unchanged", not "empty".
+    const teeth = r.hambad ?? job.hambad ?? ''
+    const items = Array.isArray(r.work_items) && r.work_items.length > 0 ? r.work_items : null
+    const material = jobMaterialDetail(
+      {
+        materjal: r.materjal ?? job.materjal,
+        hambad: items ? items.map(x => x.hambad).filter(Boolean).join(',') : teeth,
+        masina: job.masina,
+        // Capsules are counted per JOB. A remake reprinted on the same plate
+        // has no field of its own, so it falls back to the per-tooth price
+        // rather than silently charging the job's capsules twice.
+        materjali_yhikud: null,
+      },
+      input.materialCosts, input.materialPrices,
+    )?.summa ?? 0
+
+    const cons = items
+      ? items.reduce((s, x) => s + workTypeConsumables(x.too, workTypes, toothCount(x.hambad)).total, 0)
+      : workTypeConsumables(job.too ?? '', workTypes, toothCount(teeth)).total
+
+    const extras = round2((r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0))
+    const labour = round2(labourOf.get(r.id) ?? 0)
+    const mat = round2(material + cons)
+
+    return {
+      id: r.id,
+      nr: i + 1,
+      note: r.note ?? '',
+      labour, material: mat, extras,
+      total: round2(labour + mat + extras),
+      tasustatav: r.taspidev !== false,
+      valmis: (r.status ?? '') === doneStageKey,
+    }
+  })
+
+  const revisionTotal = round2(revisions.reduce((s, r) => s + r.total, 0))
+  const total = round2(base.total + revisionTotal)
+  const revenue = base.revenue
+  const margin = round2(revenue - total)
+
+  return {
+    base, revisions, revisionTotal, total, revenue, margin,
+    marginPct: revenue > 0 ? round2((margin / revenue) * 100) : null,
+  }
 }
