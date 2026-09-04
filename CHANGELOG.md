@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.83.0] — 2026-09-04
+## [1.83.1] — 2026-09-04
 
 **Muudatus küsib abutmentide kohta, ei oleta**
 
@@ -11,9 +11,11 @@ valesti: enne laadis iga muudatuse peale täiskomplekti, siis v1.82.1 mitte
 
 - **Muudatuse vormis on nüüd valik: „Samad, taaskasutatud" / „Telliti uued".**
   Uute puhul sisestad arvu ja kõrval jookseb kohe `2 × 100.00 € = 200.00 €`
-- **Ühiku hind tuleb tööliigi tarvikutest**, mitte käsitsi tipitud eurodest.
-  Sama number, millest originaal on arvestatud — sa ei pea abutmendi hinda
-  kuskilt otsima ega kahes kohas sünkroonis hoidma
+- **Ühiku hind tuleb sealt, kus ta juba on:** Seaded → Hinnad → tööliik →
+  „Kruvi" `/hammas`. Sama number, millest originaal on arvestatud — sa ei pea
+  abutmendi hinda kuskilt otsima ega kahes kohas sünkroonis hoidma. Vormil on
+  kirjas, millistest ridadest ühiku hind kokku tuli, nii et kui tööliigil on
+  mitu hambapõhist kulu, on nende kokkuliitmine näha, mitte peidus
 - Küsimus ilmub ainult siis, kui tööliigil **on** hambapõhine tarvikukulu.
   Kroonil, mille tarvik on ühekordne pakenditasu, seda ei küsita
 - Taaskasutamine on vaikevalik ja maksab 0 — abutmendid on patsiendi suus

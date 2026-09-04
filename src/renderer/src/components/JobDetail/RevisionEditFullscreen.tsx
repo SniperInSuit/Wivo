@@ -18,7 +18,7 @@ import { MACHINE_OPTIONS } from '../../types/job'
 import { jobMaterialCost } from '../../lib/finance'
 import { pickRateFor, type WorkerRate } from '../../lib/earnings'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
-import { resolveWorkType, abutmentUnitPrice } from '../../config/workTypes'
+import { resolveWorkType, abutmentUnitPrice, abutmentUnitParts } from '../../config/workTypes'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -128,6 +128,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
   // consumables — the same 1200 €/12 the original was costed from — so nobody
   // has to look an abutment price up and type it as a euro sum.
   const tarvikuHind = abutmentUnitPrice(primaryToo, types)
+  const tarvikuOsad = abutmentUnitParts(primaryToo, types)
   const uusiTarvikuid = form.uusi_tarvikuid ?? 0
   const tarvikuKulu = Math.round(uusiTarvikuid * tarvikuHind * 100) / 100
 
@@ -564,9 +565,14 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                     </>
                   )}
                 </div>
+                {/* WHERE the unit price came from. A work type with two
+                    per-tooth costs bundles both into one "abutment", and that
+                    is worth seeing rather than discovering in a margin. */}
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Taaskasutatud abutmendid on patsiendi suus ega maksa midagi. Ühiku
-                  hind tuleb tööliigi tarvikutest, sa ei pea seda siia tippima.
+                  Taaskasutatud abutmendid on patsiendi suus ega maksa midagi.
+                  Ühiku hind tuleb Seaded → Hinnad → {primaryToo || 'tööliik'} →{' '}
+                  {tarvikuOsad.map(k => `${k.nimi} ${k.summa.toFixed(2)} €`).join(' + ')}
+                  {' '}/hammas.
                 </p>
               </div>
             )}

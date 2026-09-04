@@ -147,13 +147,19 @@ export function workTypeConsumables(
  * the only honest answer was "add a line under Lisakulud and look the price up
  * yourself", which is a question the app already knows the answer to.
  */
+export function abutmentUnitParts(
+  too: string | null | undefined, types: WorkType[]
+): { nimi: string; summa: number }[] {
+  const t = resolveWorkType(too, types)
+  return (t.kulud ?? [])
+    .filter(k => k.tyyp === 'hammas' && k.summa > 0)
+    .map(k => ({ nimi: k.nimi || 'Tarvik', summa: k.summa }))
+}
+
 export function abutmentUnitPrice(
   too: string | null | undefined, types: WorkType[]
 ): number {
-  const t = resolveWorkType(too, types)
-  const total = (t.kulud ?? [])
-    .filter(k => k.tyyp === 'hammas' && k.summa > 0)
-    .reduce((s, k) => s + k.summa, 0)
+  const total = abutmentUnitParts(too, types).reduce((s, k) => s + k.summa, 0)
   return Math.round(total * 100) / 100
 }
 
