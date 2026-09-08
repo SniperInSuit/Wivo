@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.84.1] — 2026-09-04
+
+**Windowsi build töötab jälle — `package-lock.json` oli versioonis maha jäänud**
+
+`npm ci` kukkus läbi teatega „Missing: esbuild@0.28.2 from lock file". See teade
+on eksitav: lukufaili **sisu oli täiesti korras** — samad 774 paketti, mis peabki.
+Erinevus oli üksainus väli: lukufaili juurversioon oli `1.44.0`, `package.json`
+oma `1.84.0`.
+
+Sellest piisab. `npm ci` loeb sellise luku kehtetuks ja **lahendab kogu puu
+uuesti** `package.json` vahemike järgi — ja teeb seda CI npm-iga (10.8.2), mis
+lahendab `vitest`-i nõude `vite ^6 || ^7 || ^8` teisiti kui npm, millega lukk
+kirjutati. Üks jõuab vite 8 (rolldown, esbuildi ei ole) ja teine vite 7
+(esbuild 0.28.2) juurde. Sealt see puuduv pakett.
+
+- Lukufail sünkroonitud, `npm ci --dry-run` läheb läbi
+- **CI Node 20 → 22.** Iga `@supabase/*` pakett nõuab `engines >= 22` ja hoiatas
+  iga paigalduse juures. Hoiatus täna on viga ühe minor-väljalaske pärast
+- **HANDOFF.md püsireegel:** versiooni tõstetakse `npm version <x.y.z>
+  --no-git-tag-version`-iga, mitte `package.json`-i käsitsi redigeerides. Käsitsi
+  jätab luku vanale numbrile. See on nüüd **kolmas kord**, kui see Windowsi
+  build'i katki teeb (`034e699`, `fbbafba`, siin) — ja sümptom ei osuta kordagi
+  versiooniväljale
+
+`allowScripts` plokk `package.json`-is on jäänuk: ühtegi seda lugevat tööriista
+(lavamoat/allow-scripts) projektis ei ole. Jäetud puutumata, aga see on surnud
+kood.
+
 ## [1.84.0] — 2026-09-04
 
 **Muudatusel on oma kapslid, ja töötüüpi saab juurde lisada**

@@ -1,13 +1,21 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.31.0
+## Current version: 1.84.1
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
 > file instead.
 >
-> **Process rule:** every change ships as a new version — bump `package.json` **and** add a
+> **Process rule:** every change ships as a new version — bump the version **and** add a
 > `CHANGELOG.md` entry. The changelog is the audit trail.
+>
+> Bump with `npm version <x.y.z> --no-git-tag-version`, never by hand-editing
+> `package.json`. Editing by hand leaves `package-lock.json` on the old number, and
+> `npm ci` then treats the lock as invalid and RE-RESOLVES the tree from scratch — on
+> a different npm than the one that wrote the lock, which lands on different
+> versions and fails with a confusing "Missing: esbuild@… from lock file". This has
+> now broken the Windows build three times (see `034e699`, `fbbafba`, `v1.84.1`), and
+> the symptom never once points at the version field.
 >
 > **Trust rule:** this app now holds money. Prefer a number that admits what it
 > cannot see over one that looks complete and is wrong.

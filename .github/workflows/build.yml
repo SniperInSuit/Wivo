@@ -18,7 +18,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not 20: every @supabase/* package declares engines >= 22 and
+          # warned on every install. A warning today is an error one minor
+          # release from now, and the build machine is the cheapest place to
+          # find that out late.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
