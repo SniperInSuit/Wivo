@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.84.4] — 2026-09-04
+
+**Release avaldatakse õige sildiga**
+
+v1.84.3 järel läksid `npm ci` (48 s), build ja Windowsi pakendamine kõik läbi —
+sõltuvuspuu parandus oli õige. Katki jäi ainult viimane samm: `release not
+found`.
+
+Põhjus: samm küsis release'i **palja numbriga** (`1.84.3`), aga electron-builder
+märgistab ta **`v1.84.3`** — tema `vPrefixedTagName` on vaikimisi sees. Draft
+jäi seega avaldamata, ja `electron-updater` ei näe draft'e, ehk keegi poleks
+uuendust kätte saanud.
+
+- Proovitakse mõlemat kuju, `v<versioon>` enne
+- Ebaõnnestumisel prinditakse **päris release'ide nimekiri** (`gh release list`).
+  „release not found" ütlemata, mis seal *on*, on umbtee — ja sellel sammul ei
+  ole kokkuvõtte lehel muud võimalust ennast seletada
+- `Get-Content package.json -Raw` — ilma `-Raw`-ita läheb `ConvertFrom-Json`-i
+  massiiv ridu, mis töötab juhuslikult, mitte kavatsuse järgi
+
 ## [1.84.3] — 2026-09-04
 
 **Windowsi build: `vitest` 4 → 3, ja topeltvite kaob puust ära**

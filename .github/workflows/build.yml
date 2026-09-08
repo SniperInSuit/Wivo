@@ -49,12 +49,32 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --publish always --config.forceCodeSigning=false
 
-      # electron-builder creates a draft release. Publish it so
-      # electron-updater can find it — drafts are invisible to the client.
+      # electron-builder creates a DRAFT release, and electron-updater cannot
+      # see drafts — so it has to be published or nobody gets the update.
+      #
+      # The tag is `v<version>`: electron-builder's `vPrefixedTagName` defaults
+      # to true. This step asked for the bare number and got "release not
+      # found". Both spellings are tried, because a release made before that
+      # default was understood may carry either.
+      #
+      # On failure the actual release list is printed. "release not found"
+      # without saying what DOES exist is a dead end, and this step has no
+      # other way to be read from the summary page.
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
-          gh release edit $version --draft=false --repo ${{ github.repository }}
         shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $repo = "${{ github.repository }}"
+          foreach ($tag in @("v$version", $version)) {
+            gh release view $tag --repo $repo *> $null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Avaldan release'i $tag"
+              gh release edit $tag --draft=false --repo $repo
+              exit $LASTEXITCODE
+            }
+          }
+          Write-Host "::error::Release'i ei leitud sildiga v$version ega $version"
+          gh release list --repo $repo --limit 10
+          exit 1
