@@ -15,7 +15,7 @@ import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
 import { MACHINE_OPTIONS } from '../../types/job'
-import { jobMaterialCost } from '../../lib/finance'
+import { jobMaterialCost, jobMaterialDetail } from '../../lib/finance'
 import { pickRateFor, type WorkerRate } from '../../lib/earnings'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { resolveWorkType, abutmentUnitPrice, abutmentUnitParts } from '../../config/workTypes'
@@ -26,12 +26,19 @@ interface RevisionEditFullscreenProps {
   jobAssignedTo?: string | null
   /** The parent job's designed_by */
   jobDesignedBy?: string | null
+  /**
+   * The parent job's printer. A revision has no machine of its own — the read
+   * view says "sama kui tööl" — but the material COST is machine-specific
+   * ("Crown HT|Midas"), so without this a remake was priced off the base
+   * material and a capsule price set on the Midas tab never applied.
+   */
+  jobMasina?: string | null
   onSave: (updated: Revision) => void
   onCancel: () => void
   saving?: boolean
 }
 
-export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy, onSave, onCancel, saving }: RevisionEditFullscreenProps) {
+export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy, jobMasina, onSave, onCancel, saving }: RevisionEditFullscreenProps) {
   const { stages } = usePipeline()
   const { settings } = useSettings()
   const wt = settings.tooTuubid
@@ -43,6 +50,8 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
     // null = the same abutments were reused, which is both the common case and
     // the free one. A number is how many new ones were ordered.
     uusi_tarvikuid: typeof revision.uusi_tarvikuid === 'number' ? revision.uusi_tarvikuid : null as number | null,
+    // A remake is its own print. Absent = price it by tooth, as on the job.
+    materjali_yhikud: typeof revision.materjali_yhikud === 'number' ? revision.materjali_yhikud : null as number | null,
     // null = whoever is on the job. A remake is often picked up by someone else.
     assigned_to: revision.assigned_to ?? null as string | null,
     designed_by: revision.designed_by ?? null as string | null,
@@ -83,10 +92,25 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
   // Auto cost: material + actual worker rate + extra costs
   // Material: check work_items' materials first, then form.materjal
   const effectiveMaterjal = form.work_items.find(i => i.materjal)?.materjal ?? form.materjal
-  const matCost = jobMaterialCost(
-    { materjal: effectiveMaterjal, hambad: allHambad, masina: null },
-    settings.materialCosts, settings.materialPrices
+  const matArg = {
+    materjal: effectiveMaterjal, hambad: allHambad,
+    // The job's printer: a revision has none of its own, and the cost table is
+    // keyed "material|machine". Passing null priced every remake off the base
+    // material and skipped anything set on the Midas tab.
+    masina: jobMasina ?? null,
+  }
+  const matDetail = jobMaterialDetail(
+    { ...matArg, materjali_yhikud: form.materjali_yhikud },
+    settings.materialCosts, settings.materialPrices,
+  )
+  const matCost = matDetail?.summa ?? 0
+  // What it would cost by tooth, for the hint under the capsule box — so the
+  // difference is visible before the count is typed, not after.
+  const matHammasteJargi = jobMaterialCost(
+    { ...matArg, materjali_yhikud: null },
+    settings.materialCosts, settings.materialPrices,
   ) ?? 0
+  const tykihind = matDetail?.tykihind ?? 0
   const teethCount = allHambad.split(',').filter(t => t.trim()).length
   const today = new Date().toISOString().slice(0, 10)
   const types = wt
@@ -165,6 +189,9 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
       // Absent, never 0: "reused them" and "ordered zero" are the same fact,
       // and storing a 0 would make the question look answered when it was not.
       uusi_tarvikuid: (form.uusi_tarvikuid ?? 0) > 0 ? form.uusi_tarvikuid! : undefined,
+      // Absent means "by tooth"; a deliberate 0 means this remake opened no
+      // capsule. Both are real answers and must stay apart.
+      materjali_yhikud: form.materjali_yhikud ?? undefined,
       purunenud_hambad: form.purunenud_hambad || undefined,
       print_id: form.print_id || undefined,
       disain_id: form.disain_id || undefined,
@@ -511,13 +538,55 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 {designCost > 0 && <p>Disain: {designLabel} = {designCost.toFixed(2)} €</p>}
                 {!effectiveTechId && form.taspidev && <p className="text-slate-600">Tehnik määramata</p>}
                 {effectiveTechId && techCost === 0 && form.taspidev && <p className="text-slate-600">Tehnikul puudub tasureegel</p>}
-                {matCost > 0 && <p>Materjal: {matCost.toFixed(2)} €</p>}
+                {matCost > 0 && (
+                  <p>
+                    Materjal: {matCost.toFixed(2)} €
+                    {matDetail?.kapsleid != null && ` (${matDetail.kapsleid} kapslit)`}
+                  </p>
+                )}
                 {tarvikuKulu > 0 && <p>Uued tarvikud: {uusiTarvikuid} × {tarvikuHind.toFixed(2)} € = {tarvikuKulu.toFixed(2)} €</p>}
                 {extraTotal > 0 && <p>Lisakulud: {extraTotal.toFixed(2)} €</p>}
                 {form.kiirtoo && <p>× {settings.kiirtooKordaja} (kiirtöö)</p>}
                 {!form.taspidev && <p className="text-amber-400">Tasustamata — tööjõud ei arvestata</p>}
               </div>
             </div>
+
+            {/* Capsules for THIS remake. Its own print, its own plate: reprinting
+                two teeth does not re-open the capsules the original used, and
+                until now the remake was always priced by tooth with no way to
+                say otherwise. */}
+            {tykihind > 0 && (
+              <div>
+                <label className="label text-slate-400 flex items-center gap-1.5">
+                  <Cpu size={11} /> Kapsleid
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} step={1}
+                    value={form.materjali_yhikud ?? ''}
+                    onChange={e => set(
+                      'materjali_yhikud',
+                      e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
+                    )}
+                    placeholder="—"
+                    className="input w-24 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent text-xs"
+                  />
+                  <span className="text-[11px] text-slate-400 tabular-nums">
+                    × {tykihind.toFixed(2)} € ={' '}
+                    <strong className="text-slate-100">{matCost.toFixed(2)} €</strong>
+                  </span>
+                  {form.materjali_yhikud != null && (
+                    <button type="button" onClick={() => set('materjali_yhikud', null)}
+                      className="text-[11px] text-slate-500 hover:text-slate-300">
+                      tühjenda
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Tühjaks jättes arvestatakse hammaste järgi: {matHammasteJargi.toFixed(2)} €.
+                </p>
+              </div>
+            )}
 
             {/* Abutments. Asked, never assumed: reusing them is normal and free,
                 ordering new ones is normal and expensive, and only the person

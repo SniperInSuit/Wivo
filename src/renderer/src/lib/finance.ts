@@ -582,7 +582,11 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       // never happened. A remake that really did eat a screw records it as an
       // extra cost on the revision.
       const revMaterial = jobMaterialCost(
-        { materjal: revMat, hambad: revHambad, masina: j.masina }, materialCosts, materialPrices,
+        {
+          materjal: revMat, hambad: revHambad, masina: j.masina,
+          materjali_yhikud: r.materjali_yhikud ?? null,
+        },
+        materialCosts, materialPrices,
       ) ?? 0
       const revExtras = (r.extra_costs ?? []).reduce((s, c) => s + (Number(c.summa) || 0), 0)
       // Abutments the lab actually re-ordered for this remake, counted on the

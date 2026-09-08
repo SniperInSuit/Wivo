@@ -359,10 +359,10 @@ export function jobTotalCosts(input: JobTotalInput): JobTotal {
         materjal: r.materjal ?? job.materjal,
         hambad: items ? items.map(x => x.hambad).filter(Boolean).join(',') : teeth,
         masina: job.masina,
-        // Capsules are counted per JOB. A remake reprinted on the same plate
-        // has no field of its own, so it falls back to the per-tooth price
-        // rather than silently charging the job's capsules twice.
-        materjali_yhikud: null,
+        // The remake's OWN capsule count. A remake is its own print on its own
+        // plate — reprinting two teeth does not re-open what the original used,
+        // and it does not inherit the job's count either. Absent = by tooth.
+        materjali_yhikud: r.materjali_yhikud ?? null,
       },
       input.materialCosts, input.materialPrices,
     )?.summa ?? 0

@@ -23,6 +23,7 @@ interface RevisionBlockProps {
   onAutoEditDone?: () => void
   jobAssignedTo?: string | null
   jobDesignedBy?: string | null
+  jobMasina?: string | null
 }
 
 const EMPTY_DRAFT = {
@@ -45,7 +46,7 @@ const EMPTY_DRAFT = {
 
 type Draft = typeof EMPTY_DRAFT
 
-export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone, jobAssignedTo, jobDesignedBy }: RevisionBlockProps) {
+export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEditId, onAutoEditDone, jobAssignedTo, jobDesignedBy, jobMasina }: RevisionBlockProps) {
   const { settings } = useSettings()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
@@ -208,6 +209,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
           revision={{ id: crypto.randomUUID(), ts: new Date().toISOString(), note: '', status: 'disain' }}
           jobAssignedTo={jobAssignedTo}
           jobDesignedBy={jobDesignedBy}
+          jobMasina={jobMasina}
           onSave={rev => {
             if (!rev.note.trim()) return
             onChange([...value, rev])
@@ -370,6 +372,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                 revision={rev}
                 jobAssignedTo={jobAssignedTo}
                 jobDesignedBy={jobDesignedBy}
+                jobMasina={jobMasina}
                 onSave={updated => {
                   try {
                     debugLog('info', 'Revision save', { id: rev.id, mudel: updated.mudel, keys: Object.keys(updated) })

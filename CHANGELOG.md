@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.84.0] — 2026-09-04
+
+**Muudatusel on oma kapslid, ja töötüüpi saab juurde lisada**
+
+- **Kapslite väli on nüüd ka muudatuse vormis.** Ümbertegemine on oma trükk oma
+  plaadil — kahe hamba uuesti printimine ei ava neid kapsleid, mis originaal
+  kulutas, ega päri ka originaali arvu. Tühjaks jättes arvestatakse hammaste
+  järgi, nagu enne
+- **„Näita kõiki (14)" → „+ Lisa töötüüp (14)".** See nupp oli ainus viis
+  teist tööd juurde panna, aga ta oli sõnastatud nagu vaatefilter, nii et
+  valitud tööosaga vormil paistis, et rohkem lisada ei saagi
+- **Töötüübi plaadid ei ole enam pimedas režiimis valged.** `bg-white` oli
+  kõvasti sisse kirjutatud mõlema teema jaoks — muudatuse tumedal vormil andis
+  see 13 valget kaarti, mis nägid välja nagu viga
+
+**Kõrvalleid ja parandatud:** muudatuse materjalikulu arvestati alati
+**baasmaterjali** hinnaga, sest masin anti sisse `null`-ina. Kulutabel on aga
+võtmega `"Crown HT|Midas"` — nii et Midase vahelehele pandud hind ei jõudnud
+ühelegi ümbertegemisele. Töö masin antakse nüüd muudatuse vormi kaasa
+(`jobMasina`); muudatusel endal masinavälja ei ole ega tule, ta on alati töö
+oma.
+
+Uus väli `Revision.materjali_yhikud` — puudub tähendab „hammaste järgi",
+teadlik 0 tähendab „ühtegi kapslit ei avatud". Andmebaasi muudatust pole vaja.
+
+4 uut testi.
+
 ## [1.83.1] — 2026-09-04
 
 **Muudatus küsib abutmentide kohta, ei oleta**

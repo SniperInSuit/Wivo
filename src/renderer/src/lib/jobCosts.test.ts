@@ -386,3 +386,49 @@ describe('jobTotalCosts — what a remake does NOT re-buy', () => {
     expect(t.revisions[0].total).toBe(124)
   })
 })
+
+describe('jobTotalCosts — a remake is its own print', () => {
+  const withMat = (rev: Partial<Revision>) => {
+    const b = totalInput()
+    return jobTotalCosts({
+      ...b,
+      job: {
+        ...b.job,
+        materjal: 'Crown HT',
+        revisions: [revision({ work_items: [{ id: 'r', too: 'Kroon', hambad: '11,12' }], ...rev })],
+      } as Job,
+      materialCosts: { 'Crown HT': { small: 21, large: 21 } },
+    })
+  }
+
+  it('prices a remake by tooth when no capsule count is given', () => {
+    expect(withMat({}).revisions[0].material).toBe(42)      // 2 × 21 €
+  })
+
+  // The whole point of the field: two teeth managed on one capsule.
+  it('uses the remake\u2019s own capsule count when it has one', () => {
+    expect(withMat({ materjali_yhikud: 1 }).revisions[0].material).toBe(21)
+  })
+
+  // A remake that reprinted nothing — the fix was polishing — is a real answer,
+  // and must not read as "nobody said" and fall back to the per-tooth price.
+  it('honours a deliberate zero', () => {
+    expect(withMat({ materjali_yhikud: 0 }).revisions[0].material).toBe(0)
+  })
+
+  // The count belongs to the remake, never inherited: the original's capsules
+  // were opened for the original.
+  it('does not inherit the job\u2019s capsule count', () => {
+    const b = totalInput()
+    const t = jobTotalCosts({
+      ...b,
+      job: {
+        ...b.job,
+        materjal: 'Crown HT', materjali_yhikud: 5,
+        revisions: [revision({ work_items: [{ id: 'r', too: 'Kroon', hambad: '11,12' }] })],
+      } as Job,
+      materialCosts: { 'Crown HT': { small: 21, large: 21 } },
+    })
+    expect(t.revisions[0].material).toBe(42)   // by tooth, not 5 × 21
+  })
+})

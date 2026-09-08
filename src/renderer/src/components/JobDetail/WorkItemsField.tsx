@@ -18,7 +18,7 @@
  * layout renders the odontogram in a different column entirely.
  */
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronUp, Plus } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
 import { workTypeRules } from '@shared/wizard'
@@ -89,6 +89,7 @@ export function WorkItemsField({
   const c = dark
     ? {
         typeBorder: 'border-slate-600 hover:border-accent/50',
+        typeCard: 'bg-slate-800',
         typeLabel: 'text-slate-200',
         chipHover: 'hover:border-slate-500',
         faint: 'text-slate-500',
@@ -97,6 +98,7 @@ export function WorkItemsField({
       }
     : {
         typeBorder: 'border-ink-faint/25 hover:border-accent/40',
+        typeCard: 'bg-white',
         typeLabel: 'text-ink',
         chipHover: 'hover:border-ink-faint/30',
         faint: 'text-ink-faint',
@@ -203,7 +205,7 @@ export function WorkItemsField({
                 className={`relative rounded-xl border-2 overflow-hidden text-center transition-all duration-150 disabled:opacity-50 ${
                   picked
                     ? 'border-accent bg-accent/5 shadow-card'
-                    : `${c.typeBorder} bg-white hover:shadow-sm`
+                    : `${c.typeBorder} ${c.typeCard} hover:shadow-sm`
                 }`}
               >
                 {picked && (
@@ -241,8 +243,8 @@ export function WorkItemsField({
               dark ? 'text-slate-400 hover:text-slate-200' : 'text-ink-muted hover:text-ink'
             }`}
           >
-            {showAllTypes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {showAllTypes ? 'Peida' : `Näita kõiki (${wt.types.length})`}
+            {showAllTypes ? <ChevronUp size={14} /> : <Plus size={14} />}
+            {showAllTypes ? 'Peida' : `Lisa töötüüp (${wt.types.length})`}
           </button>
         )}
         </>

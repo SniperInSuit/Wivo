@@ -37,6 +37,14 @@ export interface Revision {
    * stop agreeing.
    */
   uusi_tarvikuid?: number
+  /**
+   * Capsules this remake took. Its own count, not the job's: a remake is its
+   * own print, on its own plate, and reprinting two teeth does not re-open the
+   * capsules the original used.
+   *
+   * Absent = price it by tooth, exactly as on the job.
+   */
+  materjali_yhikud?: number
   // Why the revision was needed. A remake often has more than one cause — the
   // shade was wrong AND the fit was poor — and forcing a single choice made the
   // reason statistics quietly lossy.

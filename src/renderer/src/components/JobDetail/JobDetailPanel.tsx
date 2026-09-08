@@ -1830,6 +1830,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 onChange={revs => set('revisions', revs)}
                 jobAssignedTo={form.assigned_to}
                 jobDesignedBy={form.designed_by}
+                jobMasina={form.masina}
               />
             </div>
 
@@ -1857,6 +1858,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             revision={revision}
             jobAssignedTo={job.assigned_to}
             jobDesignedBy={job.designed_by}
+            jobMasina={job.masina}
             onSave={async rev => {
               if (!rev.note.trim()) return
               try {
