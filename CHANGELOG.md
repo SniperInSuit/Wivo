@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.84.2] — 2026-09-04
+
+**CI: npm on nüüd fikseeritud, action'id uuendatud**
+
+v1.84.1 sünkroonis lukufaili versiooni ja build kukkus ikka. Üks asi ei klapi
+selle diagnoosiga: versioon triivis ~40 väljalaset ja build töötas kogu selle
+aja. Ehk versiooniväli **üksi** ei olnud põhjus.
+
+Tegelik oht on **npm-i versioonivahe**: lukufaili kirjutab minu masina npm,
+loeb GitHubi runneri oma, ja runneri image muutub meie alt. Kaks npm-i
+lahendavad `vitest`-i nõude `vite ^6 || ^7 || ^8` erinevalt — üks jõuab vite 8
+(rolldown, esbuildi pole) ja teine vite 7 (esbuild 0.28.2) juurde. Lukus on
+vite 8, ja teine npm nõuab paketti, mida puus üldse pole.
+
+- **`npm i -g npm@12`** enne `npm ci`-d: lukku loeb sama npm, mis ta kirjutas
+- **`actions/checkout@v4` → `@v5`, `setup-node@v4` → `@v5`** — GitHub hoiatas
+  jooksu peal, et need on Node 20 peal ja sunnitakse Node 24-le
+- **Uus samm „Versions"** (`node -v; npm -v`, `if: always()`) — `npm ci` on nüüd
+  kaks korda katki läinud ja kokkuvõtte leht ei näita kordagi, millise npm-iga.
+  Üks rida olekut vastab esimesele küsimusele iga kord
+
+Kontrollitud lokaalselt: `npm ci` puhtas kaustas läheb läbi, 692 paketti.
+Lukufail sisaldab kõiki 17 `@rolldown/binding-*` platvormi, nii et puudu ei ole
+midagi.
+
 ## [1.84.1] — 2026-09-04
 
 **Windowsi build töötab jälle — `package-lock.json` oli versioonis maha jäänud**

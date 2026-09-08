@@ -14,9 +14,9 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           # 22, not 20: every @supabase/* package declares engines >= 22 and
           # warned on every install. A warning today is an error one minor
@@ -25,8 +25,25 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The npm that READS the lock must be the npm that WROTE it. The runner
+      # image ships whatever npm its Node bundles, and that changes under us —
+      # which is how a lock that installs fine locally started failing here with
+      # "Missing: esbuild@0.28.2", a package the tree does not even contain.
+      # Two npm majors resolve vitest's "vite ^6 || ^7 || ^8" differently: one
+      # lands on vite 8 (rolldown, no esbuild), the other on vite 7 (esbuild).
+      # Pin it, and the lock means the same thing in both places.
+      - name: Pin npm to the version that wrote the lock
+        run: npm i -g npm@12
+
       - name: Install dependencies
         run: npm ci
+
+      # `npm ci` is the step that has broken twice and the summary page never
+      # shows why. One line of state costs nothing and answers the first
+      # question every time.
+      - name: Versions
+        if: always()
+        run: node -v; npm -v
 
       - name: Create .env file
         run: |
