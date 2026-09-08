@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.84.3] — 2026-09-04
+
+**Windowsi build: `vitest` 4 → 3, ja topeltvite kaob puust ära**
+
+Kolm katset ravisid sümptomit. Põhjus oli see:
+
+`vitest@4` nõuab **`vite ^6 || ^7 || ^8`**, aga projekt on `vite ^5.4.6` peal,
+sest `electron-vite@2` vajab vite 5. Nii tekkis puusse **kaks vitet** — juurtes
+5.4.21 ja `vitest`-i all pesastatult teine. Ja *milline* teine, sõltub sellest,
+milline npm puud lahendab: minu masina npm 12 jõuab **vite 8**-ni (rolldown,
+esbuildi üldse pole), CI npm 10.8 **vite 7**-ni (esbuild 0.28.2). Lukus oli
+vite 8, CI nõudis esbuildi — sealt „Missing: esbuild@0.28.2 from lock file",
+paketi kohta, mida meie puus polnudki.
+
+`vitest@3.2.7` võtab `vite ^5.0.0 || ^6.0.0 || ^7.0.0-0` — meie juurvite
+**rahuldab selle**. Pesastatud vitet ei teki, rolldownit ei tule, esbuild jääb
+üheks (0.21.5, seesama, mis `allowScripts`-is kirjas). Puu on lame ja iga npm
+loeb teda ühtemoodi.
+
+Testid kasutavad ainult `describe` / `it` / `expect` — vitest 4-le omast API-t
+mitte kusagil, nii et see ei ole kompromiss, vaid ülearuse sõltuvuse kaotamine.
+751 → 692 paigaldatud paketti.
+
+- **CI Node 20 → 22** (`@supabase/*` nõuab `engines >= 22`)
+- **`actions/checkout@v4` → `@v5`, `setup-node@v4` → `@v5`** — GitHub hoiatas,
+  et need on Node 20 peal ja sunnitakse Node 24-le
+- **Uus samm „Versions"** (`node -v; npm -v`) — `npm ci` on kolm korda katki
+  läinud ja kokkuvõtte leht ei näita kordagi, millise npm-iga
+- v1.84.2 npm-i pin **võetud tagasi**: `npm@12` nõuab `node ^22.22.2 ||
+  ^24.15.0`, mis oleks Node 22-l olnud uus murdumiskoht. Puu parandamine on
+  õige ravi, pini enam vaja ei ole
+
+Kontrollitud: `npm ci` puhtas kaustas läheb läbi (692 paketti), 659 testi
+rohelist, typecheck ja build puhtad.
+
 ## [1.84.2] — 2026-09-04
 
 **CI: npm on nüüd fikseeritud, action'id uuendatud**
