@@ -19,6 +19,7 @@ import { jobMaterialCost, jobMaterialDetail } from '../../lib/finance'
 import { pickRateFor, type WorkerRate } from '../../lib/earnings'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { resolveWorkType, abutmentUnitPrice, abutmentUnitParts } from '../../config/workTypes'
+import { usesCapsules } from '@shared/pricing/priceBook'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -110,7 +111,9 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
     { ...matArg, materjali_yhikud: null },
     settings.materialCosts, settings.materialPrices,
   ) ?? 0
-  const tykihind = matDetail?.tykihind ?? 0
+  // Same rule as the job form: the printer decides, not the material.
+  const kapslimasin = usesCapsules(jobMasina, settings.kapslimasinad)
+  const tykihind = kapslimasin ? (matDetail?.tykihind ?? 0) : 0
   const teethCount = allHambad.split(',').filter(t => t.trim()).length
   const today = new Date().toISOString().slice(0, 10)
   const types = wt

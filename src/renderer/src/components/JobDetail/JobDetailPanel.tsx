@@ -30,6 +30,7 @@ import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoic
 import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { jobMaterialDetail } from '../../lib/finance'
+import { usesCapsules } from '@shared/pricing/priceBook'
 import { jobCosts } from '../../lib/jobCosts'
 import { CostBreakdown } from './CostBreakdown'
 import { MarkPaidDialog } from './MarkPaidDialog'
@@ -625,6 +626,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   // there are any, falling back to the flat column. The flat one is only synced
   // on save, so reading it alone made this wrong on every split job.
   const kapsel = (() => {
+    // The MACHINE decides. A capsule belongs to a printer, and the same resin
+    // is a cartridge on a Midas and a bottle on a Pro2 — so keying this off the
+    // material asked for a capsule count on every machine in the lab, and
+    // refused to save a finished job until it got one.
+    if (!usesCapsules(form.masina, settings.kapslimasinad)) return null
     const mat = form.work_items.find(i => i.materjal)?.materjal ?? (form.materjal ?? '')
     if (!mat) return null
     const teeth = form.work_items.length > 0
@@ -652,7 +658,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   // capsule, and blocking it would be asking for a number that does not exist.
   // Before "Valmis" the plate may not exist yet either, and this is the last
   // moment before the figure lands in the month's costs.
-  const kapselPuudu = !!kapsel && !!form.masina
+  const kapselPuudu = !!kapsel
     && form.status === doneStageKey && form.materjali_yhikud == null
   const smallCount = countSmallTeeth(hambad)
   const largeCount = countLargeTeeth(hambad)
@@ -1486,6 +1492,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       }))
                     } else {
                       set('masina', val)
+                      // A capsule count recorded for one printer is not a fact
+                      // about another. Cleared on the way OUT of a capsule
+                      // machine only — never invented on the way in.
+                      if (!usesCapsules(val, settings.kapslimasinad)) {
+                        set('materjali_yhikud', null)
+                      }
                     }
                   }
                   return (

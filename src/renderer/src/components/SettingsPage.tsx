@@ -1222,7 +1222,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
 
 export function SettingsPage() {
   const {
-    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud,
+    settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud, setKapslimasinad,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
@@ -1636,6 +1636,51 @@ export function SettingsPage() {
               onRename={(a, b) => renameOption('masinad', a, b)}
               onReset={() => resetOptions('masinad')}
             />
+          </section>
+          )}
+
+          {/* Which printers work from capsules. A property of the MACHINE, not
+              of the material: the same resin is a cartridge on one and a bottle
+              on the next, and keying it off the material made the job form
+              demand a capsule count on a Pro2 and refuse to save. */}
+          {activeGroup === 'masinad' && settings.masinad.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Cpu size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">Kapslimasinad</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
+              Märgi masinad, mis prindivad kapslist. Nendel küsib töö vorm, mitu
+              kapslit kulus, ja valmis tööl on vastus kohustuslik — kaks hammast
+              ühel kapslil maksavad ühe kapsli, mida hambapõhine hind ei oska
+              öelda. Märkimata masinatel ei küsita midagi ja miski ei blokeeri.
+            </p>
+            <div className="flex gap-2 items-center flex-wrap">
+              {settings.masinad.map(m => {
+                const on = settings.kapslimasinad.includes(m)
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setKapslimasinad(
+                      on ? settings.kapslimasinad.filter(x => x !== m) : [...settings.kapslimasinad, m]
+                    )}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all duration-100 ${
+                      on
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                )
+              })}
+            </div>
+            {settings.kapslimasinad.length === 0 && (
+              <p className="text-[11px] text-ink-faint mt-2">
+                Ühtegi märgitud — kapslite arvu ei küsita kusagil.
+              </p>
+            )}
           </section>
           )}
 

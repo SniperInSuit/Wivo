@@ -71,6 +71,26 @@ export function materialUnitCost(
   return { kapsleid: count, summa: Math.round(count * hind * 100) / 100 }
 }
 
+/**
+ * Does this machine print from capsules?
+ *
+ * A CAPSULE belongs to a printer, not to a material. The same resin is a
+ * cartridge on one machine and a bottle on the next, so nothing about the
+ * material can answer this — which is exactly the mistake that made the job
+ * form demand a capsule count on a Pro2.
+ *
+ * An empty list means the lab has no capsule machines, so nothing is asked and
+ * nothing is blocked. That is the default: a feature nobody has configured must
+ * not stand between anyone and the Save button.
+ */
+export function usesCapsules(
+  masina: string | null | undefined, kapslimasinad: string[] | null | undefined
+): boolean {
+  const m = (masina ?? '').trim()
+  if (!m) return false
+  return (kapslimasinad ?? []).some(k => k.trim().toLowerCase() === m.toLowerCase())
+}
+
 /** Flat overhead the lab carries on every job — gloves, disinfection. A COST. */
 export interface FixedCost {
   nimi: string    // e.g. "Kindad ja visiirid", "Desinfitseerimine"

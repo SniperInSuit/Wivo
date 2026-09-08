@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.85.0] — 2026-09-04
+
+**Parandus: Pro2 ei küsi enam kapsleid — kapsel kuulub masinale, mitte materjalile**
+
+Pro2 tööd ei saanud valmis märkida: vorm nõudis kapslite arvu masinal, millel
+kapsleid ei ole.
+
+See on minu viga ja ta tekkis kahes sammus. v1.79.1 tegi kapslite arvu valmis
+tööl kohustuslikuks — siis oli see turvaline, sest väli ilmus ainult materjalile,
+millele oli Seadetes eraldi **kapslihind** pandud. v1.81.0 võttis selle
+kapslihinna välja (õigesti — sa ütlesid, et seadetesse jäävad ainult tükihinnad),
+aga **jättis värava alles**. Koos hinnaga kadus ainus signaal, mis eristas
+kapslimaterjali pudelimaterjalist, ja „kohustuslik" laienes vaikselt igale
+masinale. Ma pidin selle samas commitis läbi mõtlema.
+
+- **Seaded → Masinad → „Kapslimasinad".** Märgi masinad, mis prindivad kapslist.
+  Ainult neil küsib töö vorm kapslite arvu ja ainult neil on ta valmis tööl
+  kohustuslik
+- **Vaikimisi on nimekiri tühi** — kohe pärast uuendust ei küsita kusagil midagi
+  ja miski ei blokeeri. Funktsioon, mida keegi pole seadistanud, ei tohi seista
+  Salvesta nupu ees
+- **Masina vahetamine kapslivabale kustutab arvu** — ühe printeri kapslite arv ei
+  ole fakt teise kohta. Kustutatakse ainult välja liikudes, sisse liikudes ei
+  mõelda midagi välja
+- Sama reegel kehtib muudatuse vormis, töö masina järgi
+
+Otsus, mis jääb: **salvestatud arvu austatakse alati**, ka siis, kui masin
+hiljem märgistusest välja võetakse. Lipp otsustab, kas **küsida**, mitte kas
+arvutada — seadete lüliti ei kirjuta ümber seda, mis kord üles kirjutati.
+
+`usesCapsules()` on üks teostus `shared/pricing/priceBook.ts`-s, 6 testiga —
+sh see, et „Pro2" ei sobitu „Pro"-ga ja et tühi seadistus ei blokeeri midagi.
+
 ## [1.84.4] — 2026-09-04
 
 **Release avaldatakse õige sildiga**

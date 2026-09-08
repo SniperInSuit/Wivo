@@ -133,6 +133,10 @@ export interface WivoSettings {
   // These were hardcoded constants, which meant a lab with a third printer or a
   // material outside the SprintRay range had to type it free-hand every time.
   masinad: string[]       // Masinad — printer buttons on the job form
+  // Which of those print from CAPSULES. Drives one thing: whether the job form
+  // asks how many were used, and insists on an answer at "Valmis". Empty by
+  // default — a lab with no capsule printers is never asked and never blocked.
+  kapslimasinad: string[]
   materjalid: string[]    // Materjalid — material buttons + the price table rows
   // Töö tüübid — suggestions on the job form's Töö field AND the colour key for
   // every calendar fill, dashboard swatch and legend row.
@@ -249,6 +253,7 @@ function defaultSettings(): WivoSettings {
     paneeliSuund: 'fullscreen' as const,
     tekstiSuurus: 1,
     masinad: [...MACHINE_OPTIONS],
+    kapslimasinad: [],
     materjalid: [...MATERIAL_OPTIONS],
     // Every permission off. A clinic that connects a mailbox and walks away
     // has connected a mailbox and nothing else.
@@ -432,6 +437,7 @@ function loadSettings(): WivoSettings {
       // at a size from which the settings page could not be reached again.
       tekstiSuurus: clampTextScale(stored.tekstiSuurus),
       masinad: strList(stored.masinad, def.masinad),
+      kapslimasinad: strList(stored.kapslimasinad, def.kapslimasinad),
       materjalid: strList(stored.materjalid, def.materjalid),
       tooTuubid: mergeLegacyPrices(
         workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
@@ -685,6 +691,10 @@ export function useSettings() {
     setSettings(prev => ({ ...prev, yldkulud: items }), ['pricing'])
   }, [setSettings])
 
+  const setKapslimasinad = useCallback((items: string[]) => {
+    setSettings(prev => ({ ...prev, kapslimasinad: items }), ['pricing'])
+  }, [setSettings])
+
   const setLisateenused = useCallback((items: ExtraService[]) => {
     setSettings(prev => ({ ...prev, lisateenused: items }), ['pricing'])
   }, [setSettings])
@@ -924,7 +934,7 @@ export function useSettings() {
 
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
-    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setPaneeliSuund,
+    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setKapslimasinad, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     setEpost,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,

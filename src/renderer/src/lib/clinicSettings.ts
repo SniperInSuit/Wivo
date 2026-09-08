@@ -46,6 +46,7 @@ export interface ClinicSettingsRow {
     lisateenused: import('../stores/useSettings').ExtraService[]
     yldkulud: import('../stores/useSettings').Overhead[]
     toopaevadNadalas: number
+    kapslimasinad: string[]
   }
   payroll: {
     tooandjaMaksudProtsent: number
@@ -130,6 +131,10 @@ export function toRow(s: WivoSettings, stages: PipelineStage[]): Omit<ClinicSett
       lisateenused: s.lisateenused,
       yldkulud: s.yldkulud,
       toopaevadNadalas: s.toopaevadNadalas,
+      // In `pricing` rather than `machines`: it changes how material cost is
+      // worked out, and `machines` is a plain string[] that other code reads
+      // as "the buttons on the job form".
+      kapslimasinad: s.kapslimasinad,
     },
     payroll: {
       tooandjaMaksudProtsent: s.tooandjaMaksudProtsent,
@@ -185,6 +190,7 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   lisateenused: 'pricing',
   yldkulud: 'pricing',
   toopaevadNadalas: 'pricing',
+  kapslimasinad: 'pricing',
   ajajoonAlgus: 'calendar',
   ajajoonLopp: 'calendar',
   nadalAlgus: 'calendar',
