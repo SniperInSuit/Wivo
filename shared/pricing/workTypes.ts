@@ -91,6 +91,14 @@ export interface WorkType {
 // ones that would also match them ("implantkroon" before "kroon").
 export const DEFAULT_WORK_TYPES: WorkType[] = [
   { nimi: 'Implantkroon',    hex: '#6366F1', match: ['implantkroon', 'abutmendile'] },
+  // Both families at once: it spans teeth like a bridge AND sits on implants,
+  // so workTypeRules gives it `isBridge` (consecutive teeth, one arch) and
+  // `supportsAbutment` (a code per implant) without either rule being touched —
+  // the name carries "sild" and "implant" and the matcher reads both.
+  //
+  // Listed before Sild for reading, not for matching: resolveWorkType sorts by
+  // name LENGTH, so the longer name is tested first wherever it sits.
+  { nimi: 'Implantaadisild', hex: '#D946EF', match: ['implantsild', 'implant bridge', 'implantaadi sild'] },
   { nimi: 'Kroon',           hex: '#3B82F6', match: ['crown'] },
   { nimi: 'Sild',            hex: '#8B5CF6', match: ['bridge'] },
   { nimi: 'Viniir',          hex: '#10B981', match: ['veneer'] },
@@ -108,10 +116,41 @@ export const DEFAULT_WORK_TYPES: WorkType[] = [
 
 export const UNKNOWN_WORK_TYPE: WorkType = { nimi: 'Muu / määramata', hex: '#94A3B8' }
 
-// Colour picks offered when adding or recolouring a type. Same palette as the
-// pipeline stages, so the two editors read as one system.
+/**
+ * Puts "Implantaadisild" into a work-type list written before the type existed.
+ *
+ * `tooTuubid` is the LAB's list, not ours: adding to DEFAULT_WORK_TYPES only
+ * reaches a fresh install, and telling somebody to press "Taasta vaikeväärtused"
+ * would take their prices and colours with it.
+ *
+ * Runs ONCE, gated by the caller on a stored flag. Without that gate this is a
+ * type that grows back on every reload, and a lab that deleted it on purpose
+ * would have to delete it forever.
+ *
+ * Skipped when the list already answers to the name or any of its synonyms — a
+ * lab that called it "Implantsild" keeps theirs instead of getting a near
+ * duplicate beside it. Inserted after Implantkroon rather than appended,
+ * because the order of this list is the order of the buttons on the job form.
+ */
+export function seedImplantBridge(list: WorkType[]): WorkType[] {
+  const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === 'Implantaadisild')
+  if (!seed) return list
+  const claims = [seed.nimi.toLowerCase(), ...(seed.match ?? []).map(m => m.toLowerCase())]
+  const present = list.some(t =>
+    [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+  )
+  if (present) return list
+  const at = list.findIndex(t => t.nimi.toLowerCase() === 'implantkroon')
+  const copy: WorkType = { ...seed }
+  return at < 0 ? [...list, copy] : [...list.slice(0, at + 1), copy, ...list.slice(at + 1)]
+}
+
+// Colour picks offered when adding or recolouring a type. Mostly the pipeline
+// stages' palette, so the two editors read as one system — plus the fuchsia
+// that Implantaadisild is seeded with, because a colour the app assigns but the
+// picker cannot offer is one a recolour throws away for good.
 export const WORK_TYPE_PALETTE = [
-  '#6366F1', '#8B5CF6', '#A855F7', '#EC4899', '#F43F5E', '#EF4444',
+  '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E', '#EF4444',
   '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#10B981',
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#94A3B8'
 ]

@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.79.0 · 04.09.2026 · haru `main`**
+**Seis: v1.86.0 · 14.09.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 631 rohelist, 0 punast
+npm test        # 685 rohelist, 0 punast
 npm run build
 ```
 

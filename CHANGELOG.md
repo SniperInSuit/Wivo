@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.86.0] — 2026-09-14
+
+**Uus tööliik: Implantaadisild**
+
+Ta kuulub korraga kahte perre — ulatub üle hammaste nagu sild JA istub
+implantaatidel. Mõlemad reeglid tulid kaasa ilma ühtegi reeglit puutumata,
+sest nimi kannab nii „sild" kui „implant" ja klassifitseerija loeb mõlemat:
+
+- **Hambad järjestikku ühes lõuas** (`isBridge`) — nagu tavalisel sillal
+- **Abutmendi kood iga ühiku kohta** (`supportsAbutment`) — mida tavalisel
+  sillal ei ole, ja mis on põhjus, miks see väärib eraldi tüüpi. Abutmendid on
+  kruvidena Seaded → Hinnad all, ja muudatuse vorm küsib nüüd ka nende kohta
+- Ikoon on **implandi** oma, mitte silla: tehniku jaoks on määrav riistvara pool
+- Üksiku hamba otsetee on välja lülitatud — sild on definitsiooni järgi mitu ühikut
+
+**Olemasolev kasutaja saab ta kätte.** `tooTuubid` on labori enda nimekiri, nii
+et vaikeväärtuse muutmine üksi ei annaks midagi ja „Taasta vaikeväärtused" oleks
+hinnad kaasa võtnud. Tüüp lisatakse **ühe korra**, Implantkrooni järele, ja
+seejärel märgitakse lipp — nii et kui sa ta ära kustutad, jääb ta kustutatuks.
+Kui sul on juba oma nimega vaste („Implantsild"), ei lisata midagi.
+
+**Kontrollitud, mitte oletatud:** `resolveWorkType` sorteerib nime pikkuse järgi
+ja teeb ka pöördvõrdluse, nii et pikk nimi võib lühema tööd endale tõmmata. Iga
+olemasolev sisend on testis läbi käidud — „Sild", „Zirkoonsild", „Sild 14-16",
+„Implantkroon", „abutmendile" ja ülejäänud resolveeruvad täpselt nagu enne.
+
+Värv `#D946EF` on lisatud ka värvivalikusse — värv, mille rakendus annab, aga
+mida valik ei paku, kaoks esimese ümbervärvimisega jäädavalt.
+
+20 uut testi.
+
 ## [1.85.0] — 2026-09-04
 
 **Parandus: Pro2 ei küsi enam kapsleid — kapsel kuulub masinale, mitte materjalile**

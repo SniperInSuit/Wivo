@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
 import {
-  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType,
+  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType, seedImplantBridge,
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
 import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
@@ -162,6 +162,15 @@ export interface WivoSettings {
   // Internal bookkeeping, not a user setting: marks that the 1.7.13 colour
   // repair has already run, so it cannot re-run and overwrite a deliberate pick.
   tooVarvidParandatud: boolean
+  /**
+   * One-time marker for seeding "Implantaadisild" into a list that predates it.
+   *
+   * `tooTuubid` is the LAB's list, not ours — adding to DEFAULT_WORK_TYPES only
+   * reaches a fresh install, and `resetWorkTypes` would take their prices with
+   * it. So the type is inserted once, here, and the flag makes sure a type
+   * somebody then deletes stays deleted.
+   */
+  implantsildLisatud: boolean
   // ─── Kalender ──────────────────────────────────────────────────────────────
   // Every one of these replaced a constant hardcoded in a component, which meant
   // the app assumed one particular lab's working day and pricing.
@@ -271,6 +280,7 @@ function defaultSettings(): WivoSettings {
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
     avalikudTeenused: [],
     tooVarvidParandatud: true,
+    implantsildLisatud: true,
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
     nadalAlgus: 9,
@@ -439,10 +449,15 @@ function loadSettings(): WivoSettings {
       masinad: strList(stored.masinad, def.masinad),
       kapslimasinad: strList(stored.kapslimasinad, def.kapslimasinad),
       materjalid: strList(stored.materjalid, def.materjalid),
-      tooTuubid: mergeLegacyPrices(
-        workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
-        (stored as { tooHinnad?: unknown }).tooHinnad
-      ),
+      tooTuubid: (() => {
+        const base = mergeLegacyPrices(
+          workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
+          (stored as { tooHinnad?: unknown }).tooHinnad
+        )
+        // Once. The flag below is written on every save, so a type deleted
+        // afterwards stays deleted.
+        return stored.implantsildLisatud ? base : seedImplantBridge(base)
+      })(),
       // An empty stored list is a deliberate "I deleted them all", so only a
       // MISSING key falls back to the defaults.
       visiidiTyybid: Array.isArray(stored.visiidiTyybid)
@@ -459,6 +474,7 @@ function loadSettings(): WivoSettings {
       // would be right by luck rather than by design.
       epost: { ...def.epost, ...(stored.epost as Partial<MailSettings> | undefined ?? {}) },
       tooVarvidParandatud: true,
+      implantsildLisatud: true,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
       nadalAlgus: stored.nadalAlgus ?? 9,
