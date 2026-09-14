@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.86.1] — 2026-09-14
+
+**Parandus: Implantaadisild ei jõudnud kohale**
+
+v1.86.0 lisas tüübi ainult sinna, kust `localStorage` loetakse. Kliiniku seaded
+saabuvad hetk hiljem ja **asendavad tööliikide nimekirja tervikuna** — ning seal
+uut tüüpi ei ole. Külv kadus enne, kui keegi seda nägi.
+
+Lipp oli ka vales suunas: „lisatud" märgiti kohaliku lugemise ajal ära, nii et
+kui sünkroonimine tüübi maha võttis, oli lipu järgi töö tehtud ja teist katset
+ei tulnud kunagi.
+
+- Lipp on nüüd **„eemaldatud"**, mitte „lisatud". Külv jookseb igal saabuval
+  nimekirjal, ükskõik kummalt poolt, ja ainus asi, mis ta lõpetab, on see, et sa
+  tüübi ise ära kustutad. Sünkroonimise järjekord ei loe enam
+- **Sisestuskoha otsing tunneb ümber nimetatud naabri ära.** Sinu nimekirjas on
+  „Implantaadi kroon", mitte „Implantkroon" — täpse sõna otsimine ei leidnud
+  seda ja pani uue tüübi nimekirja lõppu, kus võluri „Näita rohkem" ta ära
+  peidab. Seetõttu ta ka tundus puuduvat
+
+5 uut testi: ümber nimetatud naaber, kaks korda jooksutamine (külv peab olema
+idempotentne, sest ta jookseb nüüd kahes kohas), ja et „Sild" ega „Implantaadi
+kroon" ei loeks ennast ekslikult juba olemasolevaks vasteks.
+
 ## [1.86.0] — 2026-09-14
 
 **Uus tööliik: Implantaadisild**

@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
 import {
-  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType, seedImplantBridge,
+  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType, seedImplantBridge, claimsImplantBridge,
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
 import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
@@ -163,14 +163,17 @@ export interface WivoSettings {
   // repair has already run, so it cannot re-run and overwrite a deliberate pick.
   tooVarvidParandatud: boolean
   /**
-   * One-time marker for seeding "Implantaadisild" into a list that predates it.
+   * Set when somebody DELETES "Implantaadisild", and the only thing that stops
+   * it being seeded back.
    *
-   * `tooTuubid` is the LAB's list, not ours — adding to DEFAULT_WORK_TYPES only
-   * reaches a fresh install, and `resetWorkTypes` would take their prices with
-   * it. So the type is inserted once, here, and the flag makes sure a type
-   * somebody then deletes stays deleted.
+   * It is phrased as "removed" rather than "added" on purpose. The first
+   * version was an added-flag set while reading localStorage, and the clinic
+   * row — which arrives later and replaces `tooTuubid` wholesale — then wiped
+   * the seeded type while the flag said the job was done. The type never
+   * appeared. A removed-flag makes the seed idempotent: run it on every list
+   * that arrives, from wherever, and let one explicit deletion end it.
    */
-  implantsildLisatud: boolean
+  implantsildEemaldatud: boolean
   // ─── Kalender ──────────────────────────────────────────────────────────────
   // Every one of these replaced a constant hardcoded in a component, which meant
   // the app assumed one particular lab's working day and pricing.
@@ -280,7 +283,7 @@ function defaultSettings(): WivoSettings {
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
     avalikudTeenused: [],
     tooVarvidParandatud: true,
-    implantsildLisatud: true,
+    implantsildEemaldatud: false,
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
     nadalAlgus: 9,
@@ -454,9 +457,7 @@ function loadSettings(): WivoSettings {
           workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
           (stored as { tooHinnad?: unknown }).tooHinnad
         )
-        // Once. The flag below is written on every save, so a type deleted
-        // afterwards stays deleted.
-        return stored.implantsildLisatud ? base : seedImplantBridge(base)
+        return stored.implantsildEemaldatud ? base : seedImplantBridge(base)
       })(),
       // An empty stored list is a deliberate "I deleted them all", so only a
       // MISSING key falls back to the defaults.
@@ -474,7 +475,7 @@ function loadSettings(): WivoSettings {
       // would be right by luck rather than by design.
       epost: { ...def.epost, ...(stored.epost as Partial<MailSettings> | undefined ?? {}) },
       tooVarvidParandatud: true,
-      implantsildLisatud: true,
+      implantsildEemaldatud: !!stored.implantsildEemaldatud,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
       nadalAlgus: stored.nadalAlgus ?? 9,
@@ -573,7 +574,18 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
   const prev = snapshot
   const next: WivoSettings = {
     ...prev,
-    ...(row.work_types ? { tooTuubid: workTypeList(row.work_types, prev.tooTuubid, false) } : {}),
+    // Seeded here too, because this REPLACES the list. Doing it only while
+    // reading localStorage meant the clinic row — which arrives a moment later
+    // and knows nothing about a type added in this version — quietly removed it
+    // again, and the wizard never showed it.
+    ...(row.work_types
+      ? {
+          tooTuubid: (() => {
+            const list = workTypeList(row.work_types, prev.tooTuubid, false)
+            return prev.implantsildEemaldatud ? list : seedImplantBridge(list)
+          })(),
+        }
+      : {}),
     // Absent on every row written before 1.34 — keep whatever is local rather
     // than blanking the list on the first sync after an upgrade.
     ...(Array.isArray(row.visit_types) && row.visit_types.length > 0
@@ -789,7 +801,15 @@ export function useSettings() {
   }, [setSettings])
 
   const removeWorkType = useCallback((nimi: string) => {
-    setSettings(prev => ({ ...prev, tooTuubid: prev.tooTuubid.filter(t => t.nimi !== nimi) }), ['work_types'])
+    setSettings(prev => ({
+      ...prev,
+      tooTuubid: prev.tooTuubid.filter(t => t.nimi !== nimi),
+      // Deleting the seeded type is what ends the seeding. Without this it
+      // would be back on the next sync, and there would be no way to refuse it.
+      implantsildEemaldatud: prev.implantsildEemaldatud || claimsImplantBridge(
+        prev.tooTuubid.find(t => t.nimi === nimi)
+      ),
+    }), ['work_types'])
   }, [setSettings])
 
   const updateWorkType = useCallback((nimi: string, patch: Partial<WorkType>) => {

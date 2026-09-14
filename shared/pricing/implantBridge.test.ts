@@ -9,7 +9,10 @@
  * implants needs consecutive teeth AND an abutment code per unit.
  */
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_WORK_TYPES, resolveWorkType, seedImplantBridge, type WorkType } from './workTypes'
+import {
+  DEFAULT_WORK_TYPES, resolveWorkType, seedImplantBridge, claimsImplantBridge,
+  type WorkType,
+} from './workTypes'
 import { workTypeRules } from '../wizard/workTypeRules'
 
 const T = DEFAULT_WORK_TYPES
@@ -77,6 +80,21 @@ describe('seedImplantBridge — reaching a list that predates the type', () => {
     expect(out.map(t => t.nimi)).toEqual(['Implantkroon', 'Implantaadisild', 'Kroon', 'Sild'])
   })
 
+  // A real lab's list says "Implantaadi kroon". Matching the literal
+  // "implantkroon" missed it and put the new type last, where the wizard hides
+  // it behind "Näita rohkem" and it reads as never having been added.
+  it('finds a renamed implant crown to sit beside', () => {
+    const out = seedImplantBridge([wt('Kroon'), wt('Implantaadi kroon'), wt('Sild')])
+    expect(out.map(t => t.nimi)).toEqual(['Kroon', 'Implantaadi kroon', 'Implantaadisild', 'Sild'])
+  })
+
+  // Running it twice must change nothing: it runs on the local list AND again
+  // on the clinic row, and those arrive in an order nobody controls.
+  it('is idempotent', () => {
+    const once = seedImplantBridge([wt('Implantkroon'), wt('Sild')])
+    expect(seedImplantBridge(once)).toEqual(once)
+  })
+
   it('appends when there is no Implantkroon to sit beside', () => {
     const out = seedImplantBridge([wt('Kroon')])
     expect(out.map(t => t.nimi)).toEqual(['Kroon', 'Implantaadisild'])
@@ -103,5 +121,29 @@ describe('seedImplantBridge — reaching a list that predates the type', () => {
     const added = out.find(t => t.nimi === 'Implantaadisild')!
     added.hex = '#FFFFFF'
     expect(DEFAULT_WORK_TYPES.find(t => t.nimi === 'Implantaadisild')!.hex).toBe('#D946EF')
+  })
+})
+
+describe('claimsImplantBridge — what counts as "the lab already has one"', () => {
+  const wt = (nimi: string, match?: string[]): WorkType =>
+    ({ nimi, hex: '#000', ...(match ? { match } : {}) })
+
+  it('recognises the seeded type and its synonyms', () => {
+    expect(claimsImplantBridge(wt('Implantaadisild'))).toBe(true)
+    expect(claimsImplantBridge(wt('Implantsild'))).toBe(true)
+    expect(claimsImplantBridge(wt('Meie oma', ['implant bridge']))).toBe(true)
+  })
+
+  // The two neighbours it must never be confused with, or deleting one of them
+  // would silently stop the other from ever being offered.
+  it('does not claim a plain bridge or an implant crown', () => {
+    expect(claimsImplantBridge(wt('Sild'))).toBe(false)
+    expect(claimsImplantBridge(wt('Implantkroon'))).toBe(false)
+    expect(claimsImplantBridge(wt('Implantaadi kroon'))).toBe(false)
+  })
+
+  it('survives nothing', () => {
+    expect(claimsImplantBridge(null)).toBe(false)
+    expect(claimsImplantBridge(undefined)).toBe(false)
   })
 })

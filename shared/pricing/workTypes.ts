@@ -132,15 +132,25 @@ export const UNKNOWN_WORK_TYPE: WorkType = { nimi: 'Muu / määramata', hex: '#9
  * duplicate beside it. Inserted after Implantkroon rather than appended,
  * because the order of this list is the order of the buttons on the job form.
  */
+export function claimsImplantBridge(t: WorkType | null | undefined): boolean {
+  if (!t) return false
+  const seed = DEFAULT_WORK_TYPES.find(x => x.nimi === 'Implantaadisild')
+  if (!seed) return false
+  const claims = [seed.nimi, ...(seed.match ?? [])].map(x => x.toLowerCase())
+  return [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+}
+
 export function seedImplantBridge(list: WorkType[]): WorkType[] {
   const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === 'Implantaadisild')
   if (!seed) return list
-  const claims = [seed.nimi.toLowerCase(), ...(seed.match ?? []).map(m => m.toLowerCase())]
-  const present = list.some(t =>
-    [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+  if (list.some(claimsImplantBridge)) return list
+  // Next to the implant crown, whatever the lab calls it — one lab's is
+  // "Implantaadi kroon". An exact-literal search missed that and appended the
+  // type to the end of the list, where the wizard hides it behind "Näita
+  // rohkem" and it reads as missing.
+  const at = list.findIndex(t =>
+    [t.nimi, ...(t.match ?? [])].some(tok => /implant.*kroon|implant.*crown/i.test(tok))
   )
-  if (present) return list
-  const at = list.findIndex(t => t.nimi.toLowerCase() === 'implantkroon')
   const copy: WorkType = { ...seed }
   return at < 0 ? [...list, copy] : [...list.slice(0, at + 1), copy, ...list.slice(at + 1)]
 }
