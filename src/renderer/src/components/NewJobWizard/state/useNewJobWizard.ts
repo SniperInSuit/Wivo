@@ -120,6 +120,10 @@ function sanitize(
   merged.abutmentByTooth = (merged.abutmentByTooth && typeof merged.abutmentByTooth === 'object')
     ? merged.abutmentByTooth
     : {}
+  // Absent on every draft written before implants could be marked.
+  merged.implantsByType = (merged.implantsByType && typeof merged.implantsByType === 'object')
+    ? merged.implantsByType
+    : {}
   merged.pricing = { ...base.pricing, ...(merged.pricing ?? {}) }
   // A draft is never resumed mid-insert.
   merged.status = 'draft'

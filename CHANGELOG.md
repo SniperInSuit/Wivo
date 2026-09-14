@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.87.1] — 2026-09-14
+
+**Implantaatide märkimine töötab nüüd ka uue töö võluris**
+
+v1.87.0 ühendas nupu ainult töö vormi. Võluri hambakaart on sama komponent, aga
+ta jõuab sinna `WizardOdontogram`-i kaudu, ja sinna ma käsitlejat ei andnud —
+nupp oli olemas, aga mitte kusagil nähtav.
+
+Võluril on ka oma andmetee: hambad elavad `NewJobState`-is numbritena tööliigi
+kaupa ja `WorkItem` tuletatakse lugemisel. Ainult ühe tee ühendamine tähendas,
+et teine ei teadnud implantaatidest midagi.
+
+- `NewJobState.implantsByType` — sama kuju, mis `selectedTeeth`-il
+- `wizardWorkItems` kannab märgitud hambad üle ja **filtreerib valiku vastu**:
+  sammul 2 hamba maha võtmine võtab kaasa ka tema implantaadi, muidu luuakse
+  töö kruviga ühiku vastu, mida ei tehtagi
+- Märgid ignoreeritakse tööliigil, mis implantaadil ei istu — vana mustand ei
+  saa neid sisse smugeldada
+- „Tühjenda" nullib ka implantaadid
+
+5 uut testi võluri teekonnale eraldi, sest see on eraldi andmetee.
+
+Üks asi, mille test paljastas ja mis ei olnud viga: `implantaadid` on
+anatoomilises järjekorras (18 enne 14), täpselt nagu `hambad`. Test kontrollib
+nüüd nende **kooskõla**, mitte minu oletust — nii ei saa need kaks lahku minna.
+
 ## [1.87.0] — 2026-09-14
 
 **Hambakaardil saab märkida, millised hambad istuvad implantaadil**

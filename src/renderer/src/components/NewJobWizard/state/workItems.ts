@@ -72,6 +72,14 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
     // the mixed case stores exactly the exceptions.
     const abut = abutmentsFor(state, key, hambad, rules.supportsAbutment)
 
+    // Which of those teeth sit on an implant. Filtered against `hambad` rather
+    // than trusted: deselecting a tooth must not leave an implant behind it,
+    // priced into the screws and invisible on the chart.
+    const picked = new Set(rules.toothMode === 'none' ? [] : (state.selectedTeeth[key] ?? []))
+    const implants = rules.supportsAbutment
+      ? (state.implantsByType[key] ?? []).filter(t => picked.has(t))
+      : []
+
     return [{
       id: `wiz:${key}`,
       too: nimi,
@@ -79,6 +87,7 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
       ...mat,
       ...mach,
       ...abut,
+      ...(implants.length > 0 ? { implantaadid: teethToHambad(implants) } : {}),
       ...(rules.isBridge ? { bridge: true } : {}),
     }]
   })

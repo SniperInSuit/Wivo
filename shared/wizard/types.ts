@@ -102,6 +102,19 @@ export interface NewJobState {
   abutmentByType: Record<string, string>
   /** key = FDI number as a string. Beats `abutmentByType` for that tooth. */
   abutmentByTooth: Record<string, string>
+  /**
+   * Which of a work TYPE's teeth sit on an implant. Same shape as
+   * `selectedTeeth`, and always a subset of it.
+   *
+   * A five-unit implant bridge is not five implants — two or three carry it and
+   * the rest are pontics. Without this the screw cost counted units, and the
+   * chart could not show where the surgeon actually placed anything.
+   *
+   * A missing or empty entry means nobody said, and the cost falls back to
+   * counting teeth exactly as before. Never inferred: no tooth number tells you
+   * whether there is titanium under it.
+   */
+  implantsByType: Record<string, number[]>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
   /** Köndivärv — the prepared stump's shade (VITA ND1–ND9 or free text). */
@@ -220,6 +233,7 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     machineByType: {},
     abutmentByType: {},
     abutmentByTooth: {},
+    implantsByType: {},
     defaultShade: null,
     dieShade: null,
     glaze: null,

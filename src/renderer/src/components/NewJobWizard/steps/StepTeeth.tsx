@@ -169,8 +169,24 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     setTeethFor(activeType, cur.includes(fdi) ? cur.filter(t => t !== fdi) : [...cur, fdi])
   }
 
+  /**
+   * Mark or unmark one tooth as sitting on an implant.
+   *
+   * Only a tooth this type already has: an implant under a tooth nobody is
+   * making is not a fact about the job, and marking one would put a screw on
+   * the invoice for a unit that does not exist.
+   */
+  function toggleImplant(fdi: number) {
+    if (!activeType) return
+    const picked = state.selectedTeeth[activeType] ?? []
+    if (!picked.includes(fdi)) return
+    const cur = state.implantsByType[activeType] ?? []
+    const next = cur.includes(fdi) ? cur.filter(t => t !== fdi) : [...cur, fdi]
+    patch({ implantsByType: { ...state.implantsByType, [activeType]: sortTeeth(next) } })
+  }
+
   function clearAll() {
-    patch({ selectedTeeth: {} })
+    patch({ selectedTeeth: {}, implantsByType: {} })
   }
 
   /**
@@ -416,6 +432,13 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
             activeType={activeType}
             colorMap={colorMap}
             onToggleTooth={toggleTooth}
+            // Only for work that CAN sit on an implant — the same rule that
+            // decides whether an abutment code is asked for on this step.
+            onToggleImplant={
+              activeType && rulesByName.get(activeType)?.supportsAbutment
+                ? toggleImplant
+                : undefined
+            }
             reservedByArch={archOwners}
           />
         </div>
