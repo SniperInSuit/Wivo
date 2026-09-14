@@ -20,6 +20,7 @@
 import { useState } from 'react'
 import { ChevronUp, Plus } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
+import { toggleImplantTooth } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
 import { workTypeRules } from '@shared/wizard'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -368,6 +369,15 @@ export function WorkItemsField({
               activeItemId={activeId}
               colorMap={colorMap}
               onToggleTooth={toggleTooth}
+              onToggleImplant={(() => {
+                const it = value.find(i => i.id === activeId)
+                if (!it || !workTypeRules(it.too, wt.types).supportsAbutment) return undefined
+                return (tooth: number) => onChange(value.map(item =>
+                  item.id === activeId
+                    ? { ...item, implantaadid: toggleImplantTooth(item, tooth) }
+                    : item
+                ))
+              })()}
               disabled={disabled}
             />
           ) : (

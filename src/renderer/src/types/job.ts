@@ -112,6 +112,20 @@ export interface WorkItem {
   bridge?: boolean        // true = teeth form a connected bridge unit
   materjal?: string       // material for this specific work item
   masina?: string         // machine for this specific work item
+  /**
+   * Which of this item's teeth sit on an IMPLANT. FDI, comma-separated, always
+   * a subset of `hambad`.
+   *
+   * A five-unit implant bridge is not five implants — two or three carry it and
+   * the rest are pontics hanging between them. Without this the lab was charged
+   * a screw per unit, which is hardware nobody ordered, and the map could not
+   * show which teeth the surgeon actually placed.
+   *
+   * Absent = nothing marked, and everything behaves exactly as before: the
+   * per-tooth consumables count teeth. Marking is opt-in and never inferred —
+   * we cannot know from a tooth number whether there is titanium under it.
+   */
+  implantaadid?: string
   kruvi?: string          // screw/abutment reference for every tooth of this item
   /**
    * Per-TOOTH screw / abutment reference, keyed by FDI number as a string.
@@ -170,6 +184,58 @@ export function jobDesigners(
 export const jobHasDesigner = (
   job: Pick<Job, 'work_items' | 'too' | 'hambad' | 'designed_by'>, profileId: string
 ): boolean => jobDesigners(job).includes(profileId)
+
+/** FDI numbers marked as implants on this item, cleaned and de-duplicated. */
+export const implantTeeth = (item: Pick<WorkItem, 'implantaadid' | 'hambad'>): string[] => {
+  const own = new Set((item.hambad ?? '').split(',').map(t => t.trim()).filter(Boolean))
+  const marked = (item.implantaadid ?? '').split(',').map(t => t.trim()).filter(Boolean)
+  // Only teeth the item still HAS. Deselecting a tooth must not leave an
+  // implant behind it, counted in costs and invisible on the map.
+  return [...new Set(marked.filter(t => own.has(t)))]
+}
+
+/**
+ * How many units of per-tooth hardware this item needs.
+ *
+ * `null` when nothing is marked — which means "nobody said", and the caller
+ * falls back to counting teeth exactly as it always did. A marked ZERO is not
+ * possible: unmarking the last implant clears the field, and an item with no
+ * implants is an item that needs no implant hardware.
+ */
+export const implantCount = (item: Pick<WorkItem, 'implantaadid' | 'hambad'>): number | null => {
+  const n = implantTeeth(item).length
+  return n > 0 ? n : null
+}
+
+/** Toggle one tooth's implant mark, returning the new comma string or undefined. */
+export const toggleImplantTooth = (
+  item: Pick<WorkItem, 'implantaadid' | 'hambad'>, tooth: string | number
+): string | undefined => {
+  const t = String(tooth).trim()
+  const cur = implantTeeth(item)
+  const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t]
+  // Kept in the item's own tooth order, so the string reads like the map.
+  const order = (item.hambad ?? '').split(',').map(x => x.trim()).filter(Boolean)
+  const sorted = order.filter(x => next.includes(x))
+  return sorted.length > 0 ? sorted.join(',') : undefined
+}
+
+/**
+ * Units of per-tooth HARDWARE a whole job needs — screws, ti-bases, abutments.
+ *
+ * Implants where they are marked, teeth where they are not, summed per work
+ * item. A job with nothing marked returns exactly its tooth count, so this can
+ * replace a plain count anywhere without moving a single existing number.
+ */
+export const jobHardwareUnits = (
+  job: { work_items?: WorkItem[] | null; hambad?: string | null }
+): number => {
+  const items = Array.isArray(job.work_items) ? job.work_items : []
+  const countOf = (h: string | null | undefined) =>
+    (h ?? '').split(',').filter(t => t.trim()).length
+  if (items.length === 0) return countOf(job.hambad)
+  return items.reduce((n, i) => n + (implantCount(i) ?? countOf(i.hambad)), 0)
+}
 
 /** The abutment for ONE tooth: its own code, else the item's, else nothing. */
 export const abutmentFor = (

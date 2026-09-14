@@ -28,6 +28,7 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
+import { toggleImplantTooth } from '../../types/job'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { jobMaterialDetail } from '../../lib/finance'
 import { usesCapsules } from '@shared/pricing/priceBook'
@@ -1358,6 +1359,21 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       items={form.work_items}
                       activeItemId={activeWorkItemId}
                       colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}
+                      // Only offered for work that CAN sit on an implant — the
+                      // same rule that decides whether an abutment code is
+                      // asked for, so the two can never disagree.
+                      onToggleImplant={(() => {
+                        const it = form.work_items.find(i => i.id === activeWorkItemId)
+                        if (!it || !workTypeRules(it.too, wt.types).supportsAbutment) return undefined
+                        return (tooth: number) => setForm(f => ({
+                          ...f,
+                          work_items: f.work_items.map(item =>
+                            item.id === activeWorkItemId
+                              ? { ...item, implantaadid: toggleImplantTooth(item, tooth) }
+                              : item
+                          ),
+                        }))
+                      })()}
                       onToggleTooth={tooth => {
                         if (!activeWorkItemId) return
                         const s = String(tooth)

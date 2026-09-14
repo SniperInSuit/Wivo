@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.87.0] — 2026-09-14
+
+**Hambakaardil saab märkida, millised hambad istuvad implantaadil**
+
+Viieühikuline implantaadisild ei ole viis implantaati — kaks või kolm kannavad
+teda ja ülejäänud on vahelülid. Seni ostis kuluarvestus **kruvi iga ühiku
+kohta**, ehk riistvara, mida keegi ei tellinud.
+
+- **Kaardil nupp „Implantaadid".** Sisse lülitades klõpsad valitud hammastel,
+  mis istuvad implantaadil — need saavad tumeda rõnga ja kruvimärgi. Ülejäänud
+  on vahelülid
+- **Kruvide kulu loeb märgitud implantaate**, mitte hambaid. Kuluridal seisab
+  „Kruvi (2 implantaati) 200.00 €", mitte paljas summa — viieühikulisel sillal
+  on just see ainus asi, mis seletab, miks number ei ole 500
+- **Sama kaart võluris ja töö vormis** — üks komponent, üks muudatus
+- Nupp ilmub ainult tööliikidel, mis **saavad** implantaadil istuda — sama
+  reegel, mis otsustab abutmendi koodi küsimise, nii et need kaks ei saa lahku
+  minna
+- Implantaate ei saa lohistades „värvida" nagu hambaid: nad pannakse ükshaaval
+  ja lohistamise eksitus jõuaks arvele
+
+**Märkimata jätmine ei muuda mitte midagi.** `jobHardwareUnits` annab märgistuseta
+tööl täpselt hammaste arvu, seega ükski varasem number ei liigu. Märkimine on
+teadlik valik ja seda ei tuletata kunagi — hamba numbrist ei saa teada, kas
+tema all on titaan.
+
+Sama arvestus ka Statistikas (neljas kohas), et töö leht ja koondnumbrid ei
+hakkaks lahku minema.
+
+Hamba eemaldamine valikust võtab kaasa ka tema implantaadimärke — muidu jääks
+kulu ridadesse riistvara, mida kaardil ei ole näha.
+
+29 uut testi. Kuluarvestuse testid kontrollitud vea taastamisega — kukuvad
+õigel põhjusel.
+
 ## [1.86.1] — 2026-09-14
 
 **Parandus: Implantaadisild ei jõudnud kohale**

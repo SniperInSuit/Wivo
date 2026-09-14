@@ -9,8 +9,9 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FlipHorizontal2, Trash2 } from 'lucide-react'
+import { FlipHorizontal2, Trash2, Bolt } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
+import { implantTeeth } from '../../types/job'
 
 // ─── FDI numbering ──────────────────────────────────────────────────────────
 const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -43,10 +44,19 @@ interface Props {
   activeItemId: string | null
   colorMap: Record<string, string>
   onToggleTooth: (tooth: number) => void
+  /**
+   * Mark a tooth as sitting on an implant. Omit and the whole implant mode is
+   * absent — which is how every work type that has no implants keeps a map with
+   * one job: picking teeth.
+   */
+  onToggleImplant?: (tooth: number) => void
   disabled?: boolean
 }
 
-export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleTooth, disabled }: Props) {
+export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleTooth, onToggleImplant, disabled }: Props) {
+  // Implant mode retargets the SAME click. A separate map, or a modifier key,
+  // would both be worse: one doubles the drawing, the other is invisible.
+  const [implantMode, setImplantMode] = useState(false)
   const [mirror, setMirror] = useState(() => {
     try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
   })
@@ -75,6 +85,9 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
       if (s) toothOwner.set(s, { itemId: item.id, color, num: idx + 1, showNum })
     }
   }
+
+  const implantSet = new Set<string>()
+  for (const item of items) for (const t of implantTeeth(item)) implantSet.add(t)
 
   // ── Legend data ───────────────────────────────────────────────────────────
   type LegendItem = { too: string; color: string; count: number }
@@ -124,12 +137,22 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     if (disabled || !activeItemId) return
     const s = String(num)
     const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
+    if (implantMode) {
+      // Only a tooth this item already has. An implant under a tooth nobody is
+      // making is not a fact about this job, and marking one would silently add
+      // hardware to a unit that does not exist.
+      if (isOwned) onToggleImplant?.(num)
+      return
+    }
     paintingRef.current = isOwned ? 'remove' : 'add'
     paintedRef.current = new Set([num])
     onToggleTooth(num)
   }
 
   function handlePointerEnter(num: number) {
+    // No drag-painting of implants: they are placed one at a time by a surgeon
+    // and a dragged mistake here becomes hardware on the invoice.
+    if (implantMode) return
     if (!paintingRef.current || disabled || !activeItemId) return
     if (paintedRef.current.has(num)) return
     paintedRef.current.add(num)
@@ -152,6 +175,7 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     const isActive = owner?.itemId === activeItemId
     const canClick = !disabled && !!activeItemId
     const bridgeColor = bridgeToRight(num, archNums)
+    const isImplant = implantSet.has(s)
 
     return (
       <motion.button
@@ -183,6 +207,27 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
         <span className="text-[11px] font-bold" style={{ transform: `rotate(${-rotation}deg)` }}>
           {num}
         </span>
+        {/* Implant marker. A ring and a dot rather than a different fill: the
+            fill already says which work item owns this tooth, and a second
+            meaning on the same channel would cost the first one. */}
+        {isImplant && (
+          <>
+            <span
+              className="absolute inset-0 rounded-lg pointer-events-none ring-2 ring-offset-1 ring-slate-900/70"
+              style={{ zIndex: 2 }}
+            />
+            <span
+              className="absolute rounded-full bg-slate-900 pointer-events-none flex items-center justify-center"
+              style={{
+                width: 12, height: 12, zIndex: 3,
+                right: -4,
+                ...(isUpper ? { top: -4 } : { bottom: -4 }),
+              }}
+            >
+              <Bolt size={8} className="text-white" />
+            </span>
+          </>
+        )}
         {/* Bridge connector — bar below (upper arch) or above (lower arch) */}
         {bridgeColor && (
           <span
@@ -222,7 +267,23 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
       {/* ── Arch card ────────────────────────────────────────────────────── */}
       <div className="rounded-2xl bg-gradient-to-b from-rose-50/50 to-pink-50/30 border border-pink-100/60 px-6 py-5">
         {/* Mirror toggle */}
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-end items-center gap-1 mb-2">
+          {/* Only when the caller says this work can sit on implants. A map
+              that has nothing to mark must not grow a button about it. */}
+          {onToggleImplant && (
+            <button
+              type="button"
+              onClick={() => setImplantMode(v => !v)}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ${
+                implantMode
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/60'
+              }`}
+            >
+              <Bolt size={12} />
+              {implantMode ? 'Märgi implantaadid' : 'Implantaadid'}
+            </button>
+          )}
           <button type="button" onClick={toggleMirror}
             className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
           >
@@ -230,6 +291,13 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
             {mirror ? 'Patsiendi vaade' : 'Arsti vaade'}
           </button>
         </div>
+
+        {implantMode && (
+          <p className="text-[11px] text-slate-500 text-center mb-2">
+            Klõpsa valitud hammastel, mis istuvad implantaadil. Ülejäänud on
+            vahelülid. Kruvide kulu arvestatakse märgitud hammaste järgi.
+          </p>
+        )}
 
         {/* ── Upper arch ─────────────────────────────────────────────────── */}
         <div className="flex justify-center mb-1">

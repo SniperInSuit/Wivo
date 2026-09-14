@@ -432,3 +432,45 @@ describe('jobTotalCosts — a remake is its own print', () => {
     expect(t.revisions[0].material).toBe(42)   // by tooth, not 5 × 21
   })
 })
+
+describe('jobCosts — hardware follows implants, not teeth', () => {
+  const KRUVIGA = [{
+    nimi: 'Implantaadisild', hex: '#000', match: ['implantsild'],
+    kulud: [{ nimi: 'Kruvi', summa: 100, tyyp: 'hammas' as const }],
+  }] as unknown as JobCostsInput['workTypes']
+
+  const five = (implantaadid?: string) => jobCosts(input({
+    job: {
+      ...input().job,
+      too: 'Implantaadisild',
+      hambad: '14,15,16,17,18',
+      work_items: [{ id: 'a', too: 'Implantaadisild', hambad: '14,15,16,17,18', ...(implantaadid ? { implantaadid } : {}) }],
+    },
+    workTypes: KRUVIGA,
+    rates: [],
+  }))
+
+  // The compatibility half: an unmarked job must cost exactly what it did.
+  it('counts teeth when no implants are marked', () => {
+    expect(cat(five(), 'tarvikud').amount).toBe(500)   // 5 × 100 €
+  })
+
+  // The point: three of those five units are pontics and buy no screw.
+  it('counts implants when they are marked', () => {
+    expect(cat(five('14,18'), 'tarvikud').amount).toBe(200)
+  })
+
+  // An implant on a tooth that was later deselected must not keep its screw.
+  it('ignores an implant on a tooth the item no longer has', () => {
+    const r = jobCosts(input({
+      job: {
+        ...input().job,
+        too: 'Implantaadisild', hambad: '14,15',
+        work_items: [{ id: 'a', too: 'Implantaadisild', hambad: '14,15', implantaadid: '14,18' }],
+      },
+      workTypes: KRUVIGA,
+      rates: [],
+    }))
+    expect(cat(r, 'tarvikud').amount).toBe(100)
+  })
+})

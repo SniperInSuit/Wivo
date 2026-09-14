@@ -17,7 +17,7 @@
  *   not see, and the UI shows it next to the number.
  */
 import type { Job } from '../types/job'
-import { revisionReasons, jobWorkItems } from '../types/job'
+import { revisionReasons, jobWorkItems, implantCount, jobHardwareUnits } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
@@ -400,7 +400,8 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   for (const j of done) {
     const c = jobMaterialCost(j, materialCosts, materialPrices)
     if (c != null) { materialCost += c; costedJobs++ }
-    consumableCost += workTypeConsumables(j.too, types, toothCount(j.hambad)).total
+    // Hardware, so implants where they are marked — see jobHardwareUnits.
+    consumableCost += workTypeConsumables(j.too, types, jobHardwareUnits(j)).total
   }
   materialCost = round2(materialCost)
   consumableCost = round2(consumableCost)
@@ -444,7 +445,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     const jobMatCost = jobMaterialCost(j, materialCosts, materialPrices) ?? 0
     // Distribute revenue/income/material proportionally by tooth count when multi-type
     const totalTeeth = toothCount(j.hambad) || 1
-    const jobCons = workTypeConsumables(j.too, types, totalTeeth).total
+    const jobCons = workTypeConsumables(j.too, types, jobHardwareUnits(j)).total
 
     if (items.length <= 1) {
       // Single type — attribute everything to it
@@ -491,7 +492,9 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         b.income += round2(jobIncome * share)
         b.revenue += round2(jobRev * share)
         b.material += round2(jobMatCost * share)
-        b.costs += round2(workTypeConsumables(item.too, types, itemTeeth).total + fixedShare)
+        b.costs += round2(
+          workTypeConsumables(item.too, types, implantCount(item) ?? itemTeeth).total + fixedShare
+        )
         typeBuckets.set(name, b)
       }
     }
@@ -520,7 +523,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
         const teeth = toothCount(item.hambad)
         // Revisions are cost only (internal), not income — but they ARE work done
         b.teeth += teeth
-        b.costs += workTypeConsumables(item.too, types, teeth).total
+        b.costs += workTypeConsumables(item.too, types, implantCount(item) ?? teeth).total
         b.material += (jobMaterialCost({ materjal: rev.materjal ?? j.materjal, hambad: item.hambad, masina: j.masina }, materialCosts, materialPrices) ?? 0)
       }
     }

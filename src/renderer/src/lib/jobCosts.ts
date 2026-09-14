@@ -19,7 +19,7 @@
  * nothing else, so typing 25 here never moves anybody's wages — see sql/057.
  */
 import type { Job } from '../types/job'
-import { jobWorkItems, workItemDesigner } from '../types/job'
+import { jobWorkItems, workItemDesigner, implantCount } from '../types/job'
 import type { WorkerRate } from './earnings'
 import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
@@ -204,10 +204,22 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     : []
 
   // ── Consumables ───────────────────────────────────────────────────────────
-  const consLines: CostLine[] = items.flatMap(i =>
-    workTypeConsumables(i.too, workTypes, toothCount(i.hambad)).items
-      .map(c => ({ label: c.nimi, amount: c.summa }))
-  )
+  // Per-tooth consumables are hardware: a screw, a ti-base, an abutment. On a
+  // five-unit implant bridge carried by two implants, three of those units are
+  // pontics hanging in between — they need no screw, and counting teeth bought
+  // three the lab never ordered.
+  //
+  // Only when implants are actually MARKED. Nothing marked means nobody said,
+  // and then the count is teeth, exactly as it always was.
+  const consLines: CostLine[] = items.flatMap(i => {
+    const implants = implantCount(i)
+    // The line SAYS what it counted. "Kruvi 200 €" on a five-unit bridge is not
+    // checkable; "Kruvi: 2 implantaati" is, and it is the only thing on screen
+    // that explains why it is not five.
+    const tag = implants != null ? ` (${implants} implantaati)` : ''
+    return workTypeConsumables(i.too, workTypes, implants ?? toothCount(i.hambad)).items
+      .map(c => ({ label: `${c.nimi}${tag}`, amount: c.summa }))
+  })
 
   const yle = (job.kulu_yle ?? {}) as Partial<Record<CostKey, number>>
   const build = (key: CostKey, lines: CostLine[]): CostCategory => {
