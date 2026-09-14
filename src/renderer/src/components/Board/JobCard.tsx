@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { MessageSquare, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
+import { jobImplantTeeth } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
@@ -114,7 +115,7 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       {/* Tooth badges */}
       {job.hambad && (
         <div className="mb-2">
-          <ToothBadges hambad={job.hambad} max={5} />
+          <ToothBadges hambad={job.hambad} max={5} implantaadid={jobImplantTeeth(job)} />
         </div>
       )}
 

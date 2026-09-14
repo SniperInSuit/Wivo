@@ -237,6 +237,18 @@ export const jobHardwareUnits = (
   return items.reduce((n, i) => n + (implantCount(i) ?? countOf(i.hambad)), 0)
 }
 
+/**
+ * Every implant-marked tooth on a job, across its work items, as one comma
+ * string — for the flat tooth list and the board card, which show a job's teeth
+ * without any notion of which item they came from.
+ */
+export const jobImplantTeeth = (
+  job: { work_items?: WorkItem[] | null }
+): string => {
+  const items = Array.isArray(job.work_items) ? job.work_items : []
+  return [...new Set(items.flatMap(implantTeeth))].join(',')
+}
+
 /** The abutment for ONE tooth: its own code, else the item's, else nothing. */
 export const abutmentFor = (
   item: Pick<WorkItem, 'kruvi' | 'kruvid'>, tooth: string

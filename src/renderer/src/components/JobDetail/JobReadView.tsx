@@ -3,7 +3,7 @@ import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Tras
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision, WorkItem } from '../../types/job'
-import { jobWorkItems, abutmentSummary } from '../../types/job'
+import { jobWorkItems, abutmentSummary, jobImplantTeeth } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { usePayments, useDeletePayment, useInvoices } from '../../hooks/useInvoices'
@@ -273,7 +273,11 @@ export function JobReadView({
               <div>
                 <Label>Hambad (FDI)</Label>
                 {teeth > 0
-                  ? <ToothBadges hambad={v.teeth} max={32} />
+                  ? <ToothBadges
+                      hambad={v.teeth}
+                      max={32}
+                      implantaadid={jobImplantTeeth({ work_items: shownItems })}
+                    />
                   : <p className="text-sm text-ink-faint">—</p>}
               </div>
               )}
@@ -574,7 +578,7 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
               )
             })()}
             <span className="text-xs text-ink-muted ml-auto">{teethCount} hammast</span>
-            <ToothBadges hambad={item.hambad} max={8} />
+            <ToothBadges hambad={item.hambad} max={8} implantaadid={item.implantaadid} />
           </div>
         )
       })}

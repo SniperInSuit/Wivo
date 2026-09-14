@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.87.2] — 2026-09-14
+
+**Implantaadihambad on numbrite juures ära märgitud**
+
+Kaardil sai implantaadid ära märkida, aga igal pool mujal olid hambad ühesugune
+rida numbreid. Implantaadisillal kannavad teda kaks-kolm ühikut ja ülejäänud on
+vahelülid — see vahe otsustab kruvide kulu ja oli seni nähtav ainult kaardil.
+
+Implantaadihammas on nüüd **tume silt kollase punktiga**, hiirega peale minnes
+„Hammas 14 — implantaadil". Kõikjal, kus hambanumbreid näidatakse:
+
+- Töö lehel nii lame hammaste rida kui tööosade plokk
+- Kanban-laua kaartidel ja koondatud „Valmis" kaardil
+- Patsiendi tööde ajaloos
+- Võluri kokkuvõttes enne töö loomist — seal on oma, suurem sildikuju, aga
+  märge on sama. See on ekraan, kus töö kinnitatakse, ja kruvi, mida seal näha
+  ei ole, on kruvi, mida ei saa enne arvet kontrollida
+
+Punkt, mitte ikoon: sildid on 20 px kõrged ja neid on lauakaardil viis kõrvuti,
+kus igasugune joonistus muutub mudaks.
+
+`jobImplantTeeth()` kogub töö implantaadid tööosadest kokku — lame hammaste rida
+ja lauakaart ei tea tööosadest midagi. Ta filtreerib sama moodi nagu kõik muu:
+märge hambal, mida tööosal enam ei ole, ei jõua ka siltidele.
+
+4 uut testi.
+
 ## [1.87.1] — 2026-09-14
 
 **Implantaatide märkimine töötab nüüd ka uue töö võluris**

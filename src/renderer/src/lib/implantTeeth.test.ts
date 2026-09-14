@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  implantTeeth, implantCount, toggleImplantTooth, jobHardwareUnits,
+  implantTeeth, implantCount, toggleImplantTooth, jobHardwareUnits, jobImplantTeeth,
   type WorkItem,
 } from './../types/job'
 
@@ -100,5 +100,42 @@ describe('jobHardwareUnits', () => {
       hambad: '',
     })
     expect(units).toBe(4)
+  })
+})
+
+describe('jobImplantTeeth — the job’s implants as one list', () => {
+  const item2 = (over: Partial<WorkItem> = {}): WorkItem =>
+    ({ id: 'a', too: 'Implantaadisild', hambad: '14,15,16,17,18', ...over })
+
+  it('gathers marks from every work item', () => {
+    const s = jobImplantTeeth({ work_items: [
+      item2({ id: 'a', implantaadid: '14,18' }),
+      item2({ id: 'b', hambad: '24,25', implantaadid: '24' }),
+    ] })
+    expect(s.split(',').sort()).toEqual(['14', '18', '24'])
+  })
+
+  // The board card and the flat tooth list both draw a job's teeth with no
+  // notion of items; an empty string there means "mark nothing", which is right.
+  it('is empty when nothing is marked or there are no items', () => {
+    expect(jobImplantTeeth({ work_items: [item2()] })).toBe('')
+    expect(jobImplantTeeth({ work_items: [] })).toBe('')
+    expect(jobImplantTeeth({})).toBe('')
+  })
+
+  // Two items can legitimately claim the same number only by mistake, but the
+  // chip list must not then draw the same tooth twice.
+  it('does not repeat a tooth', () => {
+    const s = jobImplantTeeth({ work_items: [
+      item2({ id: 'a', implantaadid: '14' }),
+      item2({ id: 'b', implantaadid: '14' }),
+    ] })
+    expect(s).toBe('14')
+  })
+
+  // Same guard as everywhere else: a mark on a tooth the item lost is not a
+  // fact about the job and must not reach the chips either.
+  it('ignores a mark on a tooth the item no longer has', () => {
+    expect(jobImplantTeeth({ work_items: [item2({ hambad: '14,15', implantaadid: '18' })] })).toBe('')
   })
 })

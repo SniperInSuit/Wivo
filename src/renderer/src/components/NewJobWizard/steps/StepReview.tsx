@@ -40,20 +40,38 @@ function fmtDate(iso: string | null): string {
 }
 
 /** FDI numbers as separate badges — a comma list of 14 numbers is unreadable. */
-function ToothBadges({ hambad }: { hambad: string }) {
+function ToothBadges({ hambad, implantaadid }: { hambad: string; implantaadid?: string }) {
   const teeth = hambad.split(',').map(t => t.trim()).filter(Boolean)
   if (teeth.length === 0) return null
+  // Its own copy of the chip rather than ui/ToothBadges: the wizard runs at a
+  // larger type scale throughout. The implant mark has to be here too — this is
+  // the screen where the job is confirmed, and a screw you cannot see here is
+  // one you cannot check before it is on the invoice.
+  const implants = new Set((implantaadid ?? '').split(',').map(t => t.trim()).filter(Boolean))
   return (
     <span className="flex flex-wrap gap-1">
-      {teeth.map(t => (
-        <span
-          key={t}
-          className="px-2 py-0.5 rounded-md bg-bg-sidebar border border-ink-faint/25
-                     text-base font-medium text-ink tabular-nums"
-        >
-          {t}
-        </span>
-      ))}
+      {teeth.map(t => {
+        const isImplant = implants.has(t)
+        return (
+          <span
+            key={t}
+            title={isImplant ? `Hammas ${t} — implantaadil` : undefined}
+            className={`relative px-2 py-0.5 rounded-md border text-base font-medium tabular-nums ${
+              isImplant
+                ? 'bg-slate-800 border-slate-800 text-white'
+                : 'bg-bg-sidebar border-ink-faint/25 text-ink'
+            }`}
+          >
+            {t}
+            {isImplant && (
+              <span
+                aria-hidden
+                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 ring-1 ring-white"
+              />
+            )}
+          </span>
+        )
+      })}
     </span>
   )
 }
@@ -210,7 +228,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                   value={
                     item.hambad ? (
                       <span className="flex flex-col gap-1">
-                        <ToothBadges hambad={item.hambad} />
+                        <ToothBadges hambad={item.hambad} implantaadid={item.implantaadid} />
                         <span className="text-base text-ink-muted">
                           {item.hambad.split(',').filter(t => t.trim()).length} hammast
                           {item.bridge ? ' · sild' : ''}

@@ -6,6 +6,7 @@
 import { CornerDownLeft, Euro, Zap } from 'lucide-react'
 import { toDate, fmtDate } from '../../lib/dates'
 import type { Job } from '../../types/job'
+import { jobImplantTeeth } from '../../types/job'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -84,7 +85,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
           {/* Revised teeth */}
           {latest.hambad && (
             <div className="mt-1">
-              <ToothBadges hambad={latest.hambad} max={6} />
+              <ToothBadges hambad={latest.hambad} max={6} implantaadid={jobImplantTeeth(latest)} />
             </div>
           )}
 
