@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import type { Job, Revision, WorkItem } from '../types/job'
 import type { WorkType } from '../config/workTypes'
 import {
-  calculateEarnings, diagnoseEarnings, earningsTotal,
+  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs,
   grossFromNet, grossOf, payslipFromGross,
   type WorkerRate, type RateKind, type RateScope, type PayrollTaxRates,
 } from './earnings'
@@ -1254,5 +1254,48 @@ describe('design on only some of an item\u2019s teeth', () => {
       ...perTooth,
     ]
     expect(earningsTotal(run(rates, [partial('18')], TECH))).toBe(14)   // both teeth made
+  })
+})
+
+// ─── Work that belongs to nobody ─────────────────────────────────────────────
+// diagnoseEarnings runs PER WORKER and skips any job the worker has no part in,
+// so a job with neither a technician nor a designer is skipped by every pass
+// there is. It reaches no payslip and no warning — the lab finishes it, nobody
+// is paid, and the screen says nothing.
+describe('unassignedFinishedJobs', () => {
+  const ctx = (jobs: ReturnType<typeof job>[]) => ({
+    jobs, periodStart: '2026-09-01', periodEnd: '2026-09-30', doneStageKey: DONE,
+  })
+  const done = (over: Parameters<typeof job>[0] = {}) =>
+    job({ status: DONE, valmis_kuupaev: '2026-09-16', work_items: [item('Kroon', '11')], ...over })
+
+  it('names a finished job with nobody on it', () => {
+    const j = done({ assigned_to: null, designed_by: null })
+    expect(unassignedFinishedJobs(ctx([j])).map(x => x.id)).toEqual([j.id])
+  })
+
+  it('says nothing about a job that has a technician', () => {
+    expect(unassignedFinishedJobs(ctx([done({ assigned_to: TECH, designed_by: null })]))).toEqual([])
+  })
+
+  // A designer on any single work item makes the job somebody's, even with no
+  // technician — they will be paid for the design and the job is not invisible.
+  it('says nothing about a job that only has a designer', () => {
+    expect(unassignedFinishedJobs(ctx([done({ assigned_to: null, designed_by: DESIGNER })]))).toEqual([])
+    const perItem = done({
+      assigned_to: null, designed_by: null,
+      work_items: [{ ...item('Kroon', '11'), designed_by: DESIGNER }],
+    })
+    expect(unassignedFinishedJobs(ctx([perItem]))).toEqual([])
+  })
+
+  // Unfinished work is not a finding: nobody expects to be paid for it yet.
+  it('ignores work that is not finished', () => {
+    expect(unassignedFinishedJobs(ctx([done({ assigned_to: null, designed_by: null, status: 'disain' })]))).toEqual([])
+  })
+
+  it('ignores a job finished in another month', () => {
+    const j = done({ assigned_to: null, designed_by: null, valmis_kuupaev: '2026-08-16' })
+    expect(unassignedFinishedJobs(ctx([j]))).toEqual([])
   })
 })

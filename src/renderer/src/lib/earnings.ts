@@ -22,7 +22,7 @@
  *   single job, so they are computed from logged hours and from the period.
  */
 import type { Job, Revision, WorkItem } from '../types/job'
-import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth } from '../types/job'
+import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth, jobDesigners } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
@@ -855,6 +855,33 @@ export interface EarningsIssue {
  * it is look at August.
  */
 const PERIOD_LABEL = 'Valmis, aga teisel perioodil — tasu arvestatakse seal'
+
+/**
+ * Finished jobs in this period that belong to NOBODY.
+ *
+ * `diagnoseEarnings` runs per worker and skips any job the worker has no part
+ * in — so a job with neither a technician nor a designer is skipped by every
+ * pass there is. It never reaches a payslip and never appears under "why is
+ * some work missing": the lab finishes it, nobody is paid, and the screen says
+ * nothing at all.
+ *
+ * That cannot be answered per worker, only for the payout as a whole, which is
+ * why this is its own function rather than another `add()` in the loop.
+ */
+export function unassignedFinishedJobs(
+  ctx: Pick<EarningsContext, 'jobs' | 'periodStart' | 'periodEnd' | 'doneStageKey'>
+): { id: string; label: string }[] {
+  const { jobs, periodStart, periodEnd, doneStageKey } = ctx
+  return jobs
+    .filter(j => j.status === doneStageKey)
+    .filter(j => {
+      const on = jobEarnedOn(j)
+      return !!on && on >= periodStart && on <= periodEnd
+    })
+    // A designer named on any single work item counts: the job is somebody's.
+    .filter(j => !j.assigned_to && jobDesigners(j).length === 0)
+    .map(j => ({ id: j.id, label: `${itemsLabel(payItemsOf(j))} · ${j.patsient}` }))
+}
 
 export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   const {

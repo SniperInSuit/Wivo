@@ -26,7 +26,7 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  grossOf, payslipFromGross,
+  unassignedFinishedJobs, grossOf, payslipFromGross,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
   type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue,
@@ -200,6 +200,15 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       ).length,
     }
   }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey, taxRates])
+
+  // Not per worker — see unassignedFinishedJobs. A job with nobody on it is in
+  // no worker's list, so no worker's diagnostics can ever mention it.
+  const unassigned = useMemo(
+    () => unassignedFinishedJobs({
+      jobs, periodStart: period.start, periodEnd: period.end, doneStageKey,
+    }),
+    [jobs, period, doneStageKey]
+  )
 
   // Employees and contractors cannot be added into one "gross" figure: only the
   // first kind carries employer taxes, and calling an invoice "brutopalk" would
@@ -430,6 +439,47 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Work that belongs to NOBODY. Every warning below this one lives inside
+          a worker's card, and a job with neither a technician nor a designer is
+          in none of them — the per-worker diagnostics skips any job the worker
+          has no part in, so this is the one finding that has to be reported for
+          the payout as a whole or not at all. */}
+      {unassigned.length > 0 && (
+        <div className="card p-3 border border-orange-200 bg-orange-50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={13} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-orange-800">
+                {unassigned.length} valmis tööd ilma teostaja ja disainijata — nende eest ei maksta kellelegi
+              </p>
+              <p className="text-[11px] text-orange-700/80 mt-0.5">
+                Ava töö ja määra Teostaja. Ilma selleta ei jõua töö ühelegi palgareale
+                ega ka ühegi töötaja hoiatuste alla.
+              </p>
+              <p className="text-[11px] text-orange-700 mt-1">
+                {unassigned.slice(0, 5).map((u, i) => (
+                  <span key={u.id}>
+                    {i > 0 && ' · '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const j = jobs.find(x => x.id === u.id)
+                        if (j && onOpenJob) onOpenJob(j)
+                      }}
+                      className="underline decoration-dotted underline-offset-2 hover:text-orange-900"
+                      title="Ava töö"
+                    >
+                      {u.label}
+                    </button>
+                  </span>
+                ))}
+                {unassigned.length > 5 && ` · +${unassigned.length - 5}`}
+              </p>
+            </div>
           </div>
         </div>
       )}

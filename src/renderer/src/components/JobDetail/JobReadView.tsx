@@ -78,6 +78,8 @@ export function JobReadView({
   const { settings } = useSettings()
   const { data: rates = [] } = useWorkerRates()
   const { data: staff = [] } = useClinicProfiles()
+  // Whether an unassigned role is a finding or just an unanswered question.
+  const isDone = job.status === doneStageKey
   const updateJob = useUpdateJob()
   const showCosts = can('payroll.manage')
   // The whole case, remakes included. `jobTotalCosts` runs `jobCosts` inside
@@ -325,6 +327,19 @@ export function JobReadView({
                 </div>
               )}
               <Cell label="Masin" value={v.machine || (rev ? 'sama kui tööl' : '—')} strong />
+              {/* Who made it and who designed it. These were on the form and
+                  NOWHERE on the read view, so a finished job with nobody
+                  assigned looked exactly like one with two people on it — and
+                  the only symptom was a 0 € cost line and a job that never
+                  reached anybody's payslip. Missing is drawn in amber rather
+                  than as an em dash, because on a finished job it is a finding,
+                  not a blank. */}
+              {!rev && (
+                <>
+                  <WorkerCell label="Teostaja" id={job.assigned_to} staff={staff} done={isDone} />
+                  <WorkerCell label="Disainija" id={job.designed_by} staff={staff} done={isDone} />
+                </>
+              )}
               <Cell label="Print ID" value={v.printId || '—'} mono />
               <Cell label="Disain ID" value={v.designId || '—'} mono />
               {/* Only for work that actually has a model — otherwise every job
@@ -548,6 +563,33 @@ function PaymentRow({ payment: p, onDelete }: {
           <Trash2 size={10} />
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * A person's name, or a visible gap.
+ *
+ * On a FINISHED job an unassigned role is a finding: nobody is paid for it and
+ * nothing anywhere else says so — the payroll page cannot report it either,
+ * because its diagnostics run per worker and this job belongs to none. On work
+ * still in progress it is simply not answered yet, so it stays quiet.
+ */
+function WorkerCell({ label, id, staff, done }: {
+  label: string
+  id: string | null | undefined
+  staff: { id: string; full_name?: string | null }[]
+  done: boolean
+}) {
+  const name = id ? (staff.find(w => w.id === id)?.full_name || '—') : null
+  return (
+    <div className="min-w-0">
+      <Label>{label}</Label>
+      {name
+        ? <p className="text-sm text-ink-soft truncate">{name}</p>
+        : done
+          ? <p className="text-sm text-amber-600">määramata — tasu ei arvestata</p>
+          : <p className="text-sm text-ink-faint">—</p>}
     </div>
   )
 }

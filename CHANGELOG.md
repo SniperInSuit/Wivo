@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.88.1] — 2026-09-16
+
+**Valmis töö, millel ei ole teostajat, on nüüd nähtav**
+
+Töö, millel ei ole ei teostajat ega disainijat, oli **kõikjal nähtamatu**:
+palgaridadele ta ei jõudnud, „Miks mõni töö siin ei ole" alla samuti mitte, ja
+töö lehel ei olnud kumbagi välja üldse kirjas. Ainus jälg oli kuluridadel
+`Tehnik 0.00 €` — mis näeb välja nagu viga, mitte nagu puuduv vastus.
+
+Põhjus on struktuurne: palgahoiatused arvutatakse **töötaja kaupa** ja iga pass
+hüppab üle töödest, millega sel inimesel pistmist ei ole. Töö, mis ei kuulu
+kellelegi, jääb igast passist välja — seda ei saa töötaja tasandil üldse
+raporteerida.
+
+- **Töö lehel on nüüd Teostaja ja Disainija.** Valmis tööl, kus nimi puudub,
+  seisab kollaselt **„määramata — tasu ei arvestata"**. Pooleli tööl on lihtsalt
+  kriips, sest seal ei ole see veel leid
+- **Palgalehel, töötajate kaartide kohal**, on hoiatus koos linkidega töödele:
+  „N valmis tööd ilma teostaja ja disainijata — nende eest ei maksta kellelegi"
+- `unassignedFinishedJobs()` on eraldi funktsioon, mitte uus rida
+  `diagnoseEarnings`-i sees — küsimusele saab vastata ainult kogu väljamakse
+  kohta, mitte ühe inimese kohta
+
+Disainija tööosal loeb: töö, millel on disainija kas või ühel tööosal, kuulub
+kellelegi ja hoiatust ei tule.
+
+6 uut testi.
+
+**Ei olnud viga v1.88.0-s.** Kontrollisin: selle muudatuse ainsad puudutused
+`earnings.ts`-s on disaini poolel, ja tehniku tee ei ole muutunud alates
+v1.63.0-st.
+
 ## [1.88.0] — 2026-09-16
 
 **Disainija saab palka nende hammaste eest, mida ta päriselt disainis**
