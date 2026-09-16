@@ -80,6 +80,12 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
       ? (state.implantsByType[key] ?? []).filter(t => picked.has(t))
       : []
 
+    // Which teeth the DESIGNER did. Stored only when it is a real subset:
+    // "all of them" has to stay unsaid, or a tooth added later would arrive
+    // already assigned to the technician.
+    const designed = (state.designByType[key] ?? []).filter(t => picked.has(t))
+    const partialDesign = designed.length > 0 && designed.length < picked.size
+
     return [{
       id: `wiz:${key}`,
       too: nimi,
@@ -88,6 +94,7 @@ export function wizardWorkItems(state: NewJobState, types: readonly WorkType[]):
       ...mach,
       ...abut,
       ...(implants.length > 0 ? { implantaadid: teethToHambad(implants) } : {}),
+      ...(partialDesign ? { disain_hambad: teethToHambad(designed) } : {}),
       ...(rules.isBridge ? { bridge: true } : {}),
     }]
   })

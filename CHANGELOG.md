@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.88.0] — 2026-09-16
+
+**Disainija saab palka nende hammaste eest, mida ta päriselt disainis**
+
+SprintRay AI ei disaini kolmandaid molaare, nii et kahe hambaga töös teeb tehnik
+ühe ise ja disainija teise. Wivos oli disain **tööosa kohta**: niipea kui
+disainija oli märgitud, maksti talle kõigi tööosa hammaste eest — ka nende, mida
+ta ei puutunud.
+
+- **Tööosal on nüüd `disain_hambad`** — millised hambad disainija tegi. Puudub
+  tähendab „kõik", nagu seni, nii et ükski varasem palgarida ei liigu
+- **Töö vormis ja muudatuse vormis**: hambakaardi kohal nupp **„Disainija
+  hambad"** — võta märge maha hammastelt, mille tehnik ise disainis. Märgitud
+  hammas saab lilla joone
+- **Võluris** küsitakse seda **disainija välja all sammul 4**, mitte kaardil.
+  Hambad valitakse sammul 2, kus disainijat veel ei ole — nupp kaardil poleks
+  kunagi nähtavale jõudnud. Küsimus tekib siis, kui nimi on ekraanil
+- **Kuluridal seisab jaotus**: „Kroon (1/2 hammast)". Poole väiksem summa ilma
+  seletuseta näeb välja nagu viga
+- Töö lehel on tööosa juures märge **„disain 1/2"**, et jaotus oleks näha ilma
+  vormi avamata
+
+**Lõks, mis tuli enne parandada:** `priceShare` — protsendireegli hinnajaotus —
+võrdles kõigepealt **tööosade arvu** ja tagastas 1 kohe, kui neid oli sama palju.
+Osalise disaini puhul on tööosade arv ikka sama, nii et protsendipõhine
+disainija oleks saanud terve hinna, kuigi tegi poole. Nüüd otsustavad alati
+hambad. Ükski olemasolev test ei liikunud — seda ma kontrollisin enne muudatust
+ja pärast.
+
+10 uut palgatesti, sh see, et märkimata tööosa maksab täpselt sama nagu enne.
+Kontrollitud vea taastamisega: vana käitumine kukutab 3 testi.
+
 ## [1.87.2] — 2026-09-14
 
 **Implantaadihambad on numbrite juures ära märgitud**

@@ -9,9 +9,9 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FlipHorizontal2, Trash2, Bolt } from 'lucide-react'
+import { FlipHorizontal2, Trash2, Bolt, PenTool } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
-import { implantTeeth } from '../../types/job'
+import { implantTeeth, designTeeth } from '../../types/job'
 
 // ─── FDI numbering ──────────────────────────────────────────────────────────
 const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -50,13 +50,24 @@ interface Props {
    * one job: picking teeth.
    */
   onToggleImplant?: (tooth: number) => void
+  /**
+   * Mark a tooth as designed by the DESIGNER rather than by the technician.
+   * Omit and the mode is absent — which is every item with no designer, and
+   * every lab where one person designs the whole thing.
+   */
+  onToggleDesign?: (tooth: number) => void
   disabled?: boolean
 }
 
-export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleTooth, onToggleImplant, disabled }: Props) {
-  // Implant mode retargets the SAME click. A separate map, or a modifier key,
+/** Which of the two marking modes the chart is in. null = picking teeth. */
+type MarkMode = 'implant' | 'design'
+
+export function MultiOdontogramPicker({
+  items, activeItemId, colorMap, onToggleTooth, onToggleImplant, onToggleDesign, disabled,
+}: Props) {
+  // A marking mode retargets the SAME click. A second chart, or a modifier key,
   // would both be worse: one doubles the drawing, the other is invisible.
-  const [implantMode, setImplantMode] = useState(false)
+  const [markMode, setMarkMode] = useState<MarkMode | null>(null)
   const [mirror, setMirror] = useState(() => {
     try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
   })
@@ -88,6 +99,15 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
 
   const implantSet = new Set<string>()
   for (const item of items) for (const t of implantTeeth(item)) implantSet.add(t)
+
+  // Teeth the DESIGNER did. Only meaningful where the item says something: an
+  // item with nothing marked is designed whole, and marking every tooth on the
+  // chart would be noise on the overwhelmingly common case.
+  const designSet = new Set<string>()
+  for (const item of items) {
+    if (!item.disain_hambad) continue
+    for (const t of designTeeth(item).split(',')) if (t.trim()) designSet.add(t.trim())
+  }
 
   // ── Legend data ───────────────────────────────────────────────────────────
   type LegendItem = { too: string; color: string; count: number }
@@ -137,11 +157,14 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     if (disabled || !activeItemId) return
     const s = String(num)
     const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
-    if (implantMode) {
-      // Only a tooth this item already has. An implant under a tooth nobody is
-      // making is not a fact about this job, and marking one would silently add
-      // hardware to a unit that does not exist.
-      if (isOwned) onToggleImplant?.(num)
+    if (markMode) {
+      // Only a tooth this item already has. A mark on a tooth nobody is making
+      // is not a fact about this job — an implant under a unit that does not
+      // exist, or design pay for a tooth nobody designed.
+      if (isOwned) {
+        if (markMode === 'implant') onToggleImplant?.(num)
+        else onToggleDesign?.(num)
+      }
       return
     }
     paintingRef.current = isOwned ? 'remove' : 'add'
@@ -150,9 +173,10 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
   }
 
   function handlePointerEnter(num: number) {
-    // No drag-painting of implants: they are placed one at a time by a surgeon
-    // and a dragged mistake here becomes hardware on the invoice.
-    if (implantMode) return
+    // No drag-painting while marking: both marks move money — hardware on the
+    // invoice, or a tooth onto somebody's payslip — and a dragged mistake is
+    // the easiest kind to not notice.
+    if (markMode) return
     if (!paintingRef.current || disabled || !activeItemId) return
     if (paintedRef.current.has(num)) return
     paintedRef.current.add(num)
@@ -176,6 +200,7 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
     const canClick = !disabled && !!activeItemId
     const bridgeColor = bridgeToRight(num, archNums)
     const isImplant = implantSet.has(s)
+    const isDesigned = designSet.has(s)
 
     return (
       <motion.button
@@ -228,6 +253,20 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
             </span>
           </>
         )}
+        {/* Designed by the designer — a violet bar along the outer edge. A
+            different channel from the implant ring, because one tooth can
+            easily be both: a third molar on an implant that the AI would not
+            design either. */}
+        {isDesigned && (
+          <span
+            aria-hidden
+            className="absolute rounded-full bg-violet-500 pointer-events-none"
+            style={{
+              left: 4, right: 4, height: 3, zIndex: 2,
+              ...(isUpper ? { top: 2 } : { bottom: 2 }),
+            }}
+          />
+        )}
         {/* Bridge connector — bar below (upper arch) or above (lower arch) */}
         {bridgeColor && (
           <span
@@ -268,20 +307,34 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
       <div className="rounded-2xl bg-gradient-to-b from-rose-50/50 to-pink-50/30 border border-pink-100/60 px-6 py-5">
         {/* Mirror toggle */}
         <div className="flex justify-end items-center gap-1 mb-2">
-          {/* Only when the caller says this work can sit on implants. A map
-              that has nothing to mark must not grow a button about it. */}
+          {/* Only the modes the caller enabled. A chart with nothing to mark
+              must not grow buttons about marking. */}
           {onToggleImplant && (
             <button
               type="button"
-              onClick={() => setImplantMode(v => !v)}
+              onClick={() => setMarkMode(m => (m === 'implant' ? null : 'implant'))}
               className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ${
-                implantMode
+                markMode === 'implant'
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-white/60'
               }`}
             >
               <Bolt size={12} />
-              {implantMode ? 'Märgi implantaadid' : 'Implantaadid'}
+              Implantaadid
+            </button>
+          )}
+          {onToggleDesign && (
+            <button
+              type="button"
+              onClick={() => setMarkMode(m => (m === 'design' ? null : 'design'))}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ${
+                markMode === 'design'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/60'
+              }`}
+            >
+              <PenTool size={12} />
+              Disainija hambad
             </button>
           )}
           <button type="button" onClick={toggleMirror}
@@ -292,10 +345,17 @@ export function MultiOdontogramPicker({ items, activeItemId, colorMap, onToggleT
           </button>
         </div>
 
-        {implantMode && (
+        {markMode === 'implant' && (
           <p className="text-[11px] text-slate-500 text-center mb-2">
             Klõpsa valitud hammastel, mis istuvad implantaadil. Ülejäänud on
             vahelülid. Kruvide kulu arvestatakse märgitud hammaste järgi.
+          </p>
+        )}
+        {markMode === 'design' && (
+          <p className="text-[11px] text-violet-600 text-center mb-2">
+            Klõpsa hammastel, mille disainis <strong>disainija</strong>. Ülejäänud
+            tegi tehnik ise. Märkimata jätmine tähendab, et disainija tegi kõik —
+            disainitasu arvestatakse märgitud hammaste järgi.
           </p>
         )}
 

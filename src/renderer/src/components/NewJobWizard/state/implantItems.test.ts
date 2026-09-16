@@ -67,3 +67,38 @@ describe('wizardWorkItems — implants', () => {
     expect(item(state({ implantsByType: { Implantaadisild: [14] } })).bridge).toBe(true)
   })
 })
+
+describe('wizardWorkItems — design split', () => {
+  it('stores the subset the designer actually did', () => {
+    const i = item(state({
+      selectedTeeth: { Implantaadisild: [14, 15, 16] },
+      designByType: { Implantaadisild: [16] },
+    }))
+    expect(i.disain_hambad).toBe('16')
+  })
+
+  // "All of them" has to stay UNSAID, or a tooth added to the item later would
+  // arrive already assigned to the technician.
+  it('stores nothing when the designer did everything', () => {
+    const i = item(state({
+      selectedTeeth: { Implantaadisild: [14, 15] },
+      designByType: { Implantaadisild: [14, 15] },
+    }))
+    expect(i.disain_hambad).toBeUndefined()
+  })
+
+  it('stores nothing when nobody said', () => {
+    expect(item(state()).disain_hambad).toBeUndefined()
+    expect(item(state({ designByType: { Implantaadisild: [] } })).disain_hambad).toBeUndefined()
+  })
+
+  // A mark left on a tooth that was unticked on step 2 would otherwise reach
+  // the payslip for a tooth that is not being made.
+  it('drops a mark on a tooth that is no longer selected', () => {
+    const i = item(state({
+      selectedTeeth: { Implantaadisild: [14, 15] },
+      designByType: { Implantaadisild: [14, 18] },
+    }))
+    expect(i.disain_hambad).toBe('14')
+  })
+})

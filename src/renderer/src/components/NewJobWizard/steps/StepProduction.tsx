@@ -5,6 +5,7 @@ import { WizardField } from '../ui/WizardField'
 import { WizardWorkerSelect } from '../production/WizardWorkerSelect'
 import { MachinePicker } from '../production/MachinePicker'
 import { PriorityPicker } from '../production/PriorityPicker'
+import { DesignSplit } from '../production/DesignSplit'
 import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
 
 /**
@@ -14,7 +15,7 @@ import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
  * optional except the dates, so the step has to read as a short list of
  * questions a person can skip, not as a form that must be completed.
  */
-export const StepProduction: WizardStepComponent = ({ state, patch, errors, showErrors }) => {
+export const StepProduction: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
   const { settings } = useSettings()
 
   const deadlineError = showErrors ? fieldErrors(errors, 'deadline')[0]?.message ?? null : null
@@ -40,6 +41,12 @@ export const StepProduction: WizardStepComponent = ({ state, patch, errors, show
           help="Kes töö disainib. Võib olla sama inimene või jääda määramata."
           value={state.designer}
           onChange={designer => patch({ designer })}
+        />
+
+        <DesignSplit
+          state={state}
+          patch={patch}
+          toothTypes={rules.toothTypes}
         />
 
         <WizardField

@@ -55,6 +55,8 @@ export interface WizardOdontogramProps {
   onToggleTooth: (fdi: number) => void
   /** Mark a tooth as sitting on an implant. Omit and the mode is absent. */
   onToggleImplant?: (fdi: number) => void
+  /** Mark a tooth as designed by the designer rather than the technician. */
+  onToggleDesign?: (fdi: number) => void
   /** Colour key drawn as pills over the field. */
   legend?: ToothLegendEntry[]
   /** FDI → arch-level work type that covers it. These teeth are NOT painted
@@ -65,7 +67,8 @@ export interface WizardOdontogramProps {
 }
 
 export function WizardOdontogram({
-  items, activeType, colorMap, onToggleTooth, onToggleImplant, legend = [], reservedByArch, disabled,
+  items, activeType, colorMap, onToggleTooth, onToggleImplant, onToggleDesign,
+  legend = [], reservedByArch, disabled,
 }: WizardOdontogramProps) {
   // Why refused, in Estonian, for the aria-live region. Cleared on any accepted
   // click so it never lingers as a stale accusation.
@@ -161,6 +164,7 @@ export function WizardOdontogram({
             colorMap={colorMap}
             onToggleTooth={handleToggle}
             onToggleImplant={onToggleImplant}
+            onToggleDesign={onToggleDesign}
             disabled={disabled}
           />
         </div>

@@ -186,7 +186,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   }
 
   function clearAll() {
-    patch({ selectedTeeth: {}, implantsByType: {} })
+    patch({ selectedTeeth: {}, implantsByType: {}, designByType: {} })
   }
 
   /**

@@ -115,6 +115,16 @@ export interface NewJobState {
    * whether there is titanium under it.
    */
   implantsByType: Record<string, number[]>
+  /**
+   * Which of a work TYPE's teeth the DESIGNER did, when not all of them.
+   *
+   * Same shape as `selectedTeeth`, always a subset. A missing or empty entry
+   * means the designer did the lot, which is what every job before this meant
+   * and what most jobs still are. Exists because the technician can now design
+   * part of the work himself — the AI does not do third molars — and the
+   * designer was being paid for those teeth too.
+   */
+  designByType: Record<string, number[]>
   /** VITA code ('A2') or free text. One default for every selected tooth. */
   defaultShade: string | null
   /** Köndivärv — the prepared stump's shade (VITA ND1–ND9 or free text). */
@@ -234,6 +244,7 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     abutmentByType: {},
     abutmentByTooth: {},
     implantsByType: {},
+    designByType: {},
     defaultShade: null,
     dieShade: null,
     glaze: null,

@@ -19,7 +19,7 @@
  * nothing else, so typing 25 here never moves anybody's wages — see sql/057.
  */
 import type { Job } from '../types/job'
-import { jobWorkItems, workItemDesigner, implantCount } from '../types/job'
+import { jobWorkItems, workItemDesigner, implantCount, designTeeth, designIsPartial } from '../types/job'
 import type { WorkerRate } from './earnings'
 import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
@@ -156,13 +156,18 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     if (!dId) continue
     const dRates = rates.filter(r => r.profile_id === dId)
     const dRush = rushOf(dId)
-    const tc = toothCount(item.hambad)
+    // What they DESIGNED, not what the item holds. See WorkItem.disain_hambad:
+    // the technician can design part of an item himself, and this line used to
+    // bill the designer for those teeth too.
+    const tc = toothCount(designTeeth(item))
     const rate = pickRateFor(dRates, item.too, on, workTypes, 'disain')
     if (!rate) continue
     const amt = (rate.kind === 'hammas' ? tc * rate.amount : rate.kind === 'too' ? rate.amount : 0) * dRush
     if (amt > 0) {
       designLines.push({
-        label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €${rushTag(dRush)}`,
+        label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €${rushTag(dRush)}`
+          // Without this a designer paid for 1 of 2 teeth reads as a mistake.
+          + (designIsPartial(item) ? ` (${tc}/${toothCount(item.hambad)} hammast)` : ''),
         amount: amt,
       })
     }
@@ -175,7 +180,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
       if (!r.additive || (r.applies_to ?? 'too') !== 'disain') continue
       const covered = coveredBy(r, theirs)
       if (covered.length === 0) continue
-      const tc = covered.reduce((s, i) => s + toothCount(i.hambad), 0)
+      const tc = covered.reduce((s, i) => s + toothCount(designTeeth(i)), 0)
       const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * dRush
       if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €${rushTag(dRush)}`, amount: amt })
     }

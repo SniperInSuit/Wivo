@@ -697,6 +697,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
           <div className="space-y-3 sticky top-0">
             <label className="label text-slate-400">Töötüüp ja hambad</label>
             <WorkItemsField
+              jobDesignedBy={form.designed_by ?? jobDesignedBy}
               value={form.work_items}
               onChange={items => set('work_items', items)}
               activeId={activeWorkItemId}

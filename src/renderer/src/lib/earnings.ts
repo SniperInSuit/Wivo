@@ -22,7 +22,7 @@
  *   single job, so they are computed from logged hours and from the period.
  */
 import type { Job, Revision, WorkItem } from '../types/job'
-import { jobWorkItems, jobPeriodDate, workItemDesigner } from '../types/job'
+import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
@@ -184,7 +184,11 @@ const payItemsOf = (job: Job): PayItem[] =>
 const designPayItemsOf = (job: Job, profileId: string): PayItem[] =>
   jobWorkItems(job)
     .filter(i => workItemDesigner(i, job.designed_by) === profileId)
-    .map(i => ({ too: i.too, hambad: i.hambad }))
+    // The teeth they DESIGNED, not the teeth the item has. A technician who
+    // designs the easy unit himself and hands over the third molar was paying
+    // the designer for both — see WorkItem.disain_hambad. An item with nothing
+    // marked returns all of them, so a whole-item design is unchanged.
+    .map(i => ({ too: i.too, hambad: designTeeth(i) }))
 
 /**
  * The share of a job's price that belongs to a subset of its items.
@@ -196,11 +200,15 @@ const designPayItemsOf = (job: Job, profileId: string): PayItem[] =>
  * changes.
  */
 function priceShare(all: PayItem[], subset: PayItem[]): number {
-  if (subset.length >= all.length) return 1
   if (subset.length === 0) return 0
   const total = all.reduce((s, i) => s + toothCount(i.hambad), 0)
-  if (total === 0) return subset.length / all.length
-  return subset.reduce((s, i) => s + toothCount(i.hambad), 0) / total
+  // No teeth anywhere — appliances, models. Count items instead.
+  if (total === 0) return Math.min(1, subset.length / all.length)
+  // TEETH decide, never the item count. The old shortcut returned 1 as soon as
+  // the subset had as many ITEMS as the whole job, which was safe while a
+  // subset was always whole items. It is not: a designer can now hold one tooth
+  // of a two-tooth item, and that shortcut handed them the entire design price.
+  return Math.min(1, subset.reduce((s, i) => s + toothCount(i.hambad), 0) / total)
 }
 
 /** The items on a revision, falling back to the job's own when it names none. */
@@ -222,7 +230,8 @@ function revisionDesignItems(rev: Revision, job: Job, profileId: string): PayIte
   if (Array.isArray(items) && items.length > 0) {
     return items
       .filter((i: WorkItem) => workItemDesigner(i, fallback) === profileId)
-      .map((i: WorkItem) => ({ too: i.too, hambad: i.hambad }))
+      // Same rule as the job: a remake can also be part self-designed.
+      .map((i: WorkItem) => ({ too: i.too, hambad: designTeeth(i) }))
   }
   return fallback === profileId ? revisionPayItems(rev, job) : []
 }

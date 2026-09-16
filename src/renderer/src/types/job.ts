@@ -156,6 +156,65 @@ export interface WorkItem {
    * and `undefined` drops out of the JSON while `null` survives it.
    */
   designed_by?: string | null
+  /**
+   * Which of this item's teeth the DESIGNER actually designed. FDI,
+   * comma-separated, always a subset of `hambad`.
+   *
+   * Design was per ITEM, so naming a designer paid them for every tooth in it.
+   * That is wrong the moment a technician can design part of the work himself:
+   * SprintRay's AI does not do third molars, so a two-crown item is routinely
+   * one tooth the technician designed and one the designer did — and the
+   * designer was paid for both.
+   *
+   * Absent = all of the item's teeth, which is what every item written before
+   * this field meant, so nothing about an existing job moves. "The designer did
+   * none of them" is not expressed here — that is an item with no designer.
+   */
+  disain_hambad?: string
+}
+
+/**
+ * The teeth this item's designer is paid for: the marked subset, else all of
+ * them.
+ *
+ * Filtered against `hambad` rather than trusted — deselecting a tooth must not
+ * leave design pay behind it, invisible on the job and still on the payslip.
+ * Falls back to the whole item when the subset would be empty, because an empty
+ * answer here means "nobody said", not "designed nothing".
+ */
+export const designTeeth = (
+  item: Pick<WorkItem, 'disain_hambad' | 'hambad'>
+): string => {
+  const marked = (item.disain_hambad ?? '').split(',').map(t => t.trim()).filter(Boolean)
+  if (marked.length === 0) return item.hambad ?? ''
+  const own = (item.hambad ?? '').split(',').map(t => t.trim()).filter(Boolean)
+  const kept = own.filter(t => marked.includes(t))
+  return kept.length > 0 ? kept.join(',') : (item.hambad ?? '')
+}
+
+/** True when the designer did only part of the item — for a "2/4" style note. */
+export const designIsPartial = (
+  item: Pick<WorkItem, 'disain_hambad' | 'hambad'>
+): boolean => {
+  const own = (item.hambad ?? '').split(',').filter(t => t.trim()).length
+  const mine = designTeeth(item).split(',').filter(t => t.trim()).length
+  return own > 0 && mine > 0 && mine < own
+}
+
+/** Toggle one tooth in the designer's set, returning the new value or undefined. */
+export const toggleDesignTooth = (
+  item: Pick<WorkItem, 'disain_hambad' | 'hambad'>, tooth: string | number
+): string | undefined => {
+  const t = String(tooth).trim()
+  const own = (item.hambad ?? '').split(',').map(x => x.trim()).filter(Boolean)
+  if (!own.includes(t)) return item.disain_hambad
+  const cur = designTeeth(item).split(',').map(x => x.trim()).filter(Boolean)
+  const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t]
+  const sorted = own.filter(x => next.includes(x))
+  // Covering everything is the same as saying nothing, and storing it would
+  // freeze the set against a tooth added to the item later.
+  if (sorted.length === 0 || sorted.length === own.length) return undefined
+  return sorted.join(',')
 }
 
 /** Who designed one item: its own designer, else the job's. Null = nobody. */

@@ -1196,3 +1196,63 @@ describe('diagnoseEarnings — "Mudel" means two different things', () => {
     expect(earningsTotal(lines)).toBe(25)   // 1 hammas × 15 + mudel 10
   })
 })
+
+// ─── Part of an item designed by the technician himself ──────────────────────
+// SprintRay's AI cannot design a third molar, so a two-crown item is routinely
+// one tooth the technician did and one the designer did. Design was per ITEM,
+// so naming a designer paid them for both — the lab was paying twice for a
+// tooth nobody handed over.
+describe('design on only some of an item\u2019s teeth', () => {
+  const partial = (disain_hambad?: string) => job({
+    assigned_to: TECH,
+    designed_by: DESIGNER,
+    hind: 200,
+    work_items: [{ ...item('Kroon', '17,18'), ...(disain_hambad ? { disain_hambad } : {}) }],
+  })
+
+  const perTooth = [rate({ kind: 'hammas', amount: 5, applies_to: 'disain', profile_id: DESIGNER })]
+
+  // The compatibility guarantee. Nothing marked must pay exactly what it did.
+  it('pays for every tooth when nothing is marked', () => {
+    expect(earningsTotal(run(perTooth, [partial()], DESIGNER))).toBe(10)
+  })
+
+  it('pays for one tooth when only one was handed over', () => {
+    expect(earningsTotal(run(perTooth, [partial('18')], DESIGNER))).toBe(5)
+  })
+
+  // A percentage design rule is priced off the JOB, so the share has to drop
+  // too — otherwise the per-tooth case is fixed and the percentage case still
+  // pays the designer for work the technician did.
+  it('drops the percentage share to the teeth actually designed', () => {
+    const pct = [rate({ kind: 'protsent', amount: 50, applies_to: 'disain', profile_id: DESIGNER })]
+    expect(earningsTotal(run(pct, [partial()], DESIGNER))).toBe(100)     // 50% of 200
+    expect(earningsTotal(run(pct, [partial('18')], DESIGNER))).toBe(50)  // half the teeth
+  })
+
+  // The trap this change had to defuse: priceShare returned 1 as soon as the
+  // subset had as many ITEMS as the job, which a partial item always does.
+  it('does not hand over the whole price just because the item count matches', () => {
+    const pct = [rate({ kind: 'protsent', amount: 100, applies_to: 'disain', profile_id: DESIGNER })]
+    expect(earningsTotal(run(pct, [partial('18')], DESIGNER))).toBeLessThan(200)
+  })
+
+  // A mark left behind on a tooth that was later removed from the item would
+  // otherwise keep paying, invisibly.
+  it('ignores a mark on a tooth the item no longer has', () => {
+    const j = job({
+      assigned_to: TECH, designed_by: DESIGNER,
+      work_items: [{ ...item('Kroon', '17,18'), disain_hambad: '26' }],
+    })
+    // Nothing of the mark survives, so it reads as "nobody said": all teeth.
+    expect(earningsTotal(run(perTooth, [j], DESIGNER))).toBe(10)
+  })
+
+  it('leaves the technician\u2019s own production pay alone', () => {
+    const rates = [
+      rate({ kind: 'hammas', amount: 7, profile_id: TECH }),
+      ...perTooth,
+    ]
+    expect(earningsTotal(run(rates, [partial('18')], TECH))).toBe(14)   // both teeth made
+  })
+})

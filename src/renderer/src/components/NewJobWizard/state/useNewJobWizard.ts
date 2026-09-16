@@ -124,6 +124,9 @@ function sanitize(
   merged.implantsByType = (merged.implantsByType && typeof merged.implantsByType === 'object')
     ? merged.implantsByType
     : {}
+  merged.designByType = (merged.designByType && typeof merged.designByType === 'object')
+    ? merged.designByType
+    : {}
   merged.pricing = { ...base.pricing, ...(merged.pricing ?? {}) }
   // A draft is never resumed mid-insert.
   merged.status = 'draft'

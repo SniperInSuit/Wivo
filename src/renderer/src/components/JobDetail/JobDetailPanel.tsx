@@ -28,7 +28,7 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { DELIVERY_LABEL } from '../../types/customer'
 import { useMarkJobsPaid, usePayments, useInvoices } from '../../hooks/useInvoices'
 import { useWorkerRates } from '../../hooks/useWorkerPay'
-import { toggleImplantTooth } from '../../types/job'
+import { toggleImplantTooth, toggleDesignTooth } from '../../types/job'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { jobMaterialDetail } from '../../lib/finance'
 import { usesCapsules } from '@shared/pricing/priceBook'
@@ -1374,6 +1374,21 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                           ),
                         }))
                       })()}
+                      // Only when this item HAS a designer — with nobody named
+                      // there is nothing to split, and the technician did all
+                      // of it by definition.
+                      onToggleDesign={(() => {
+                        const it = form.work_items.find(i => i.id === activeWorkItemId)
+                        if (!it || !workItemDesigner(it, form.designed_by)) return undefined
+                        return (tooth: number) => setForm(f => ({
+                          ...f,
+                          work_items: f.work_items.map(item =>
+                            item.id === activeWorkItemId
+                              ? { ...item, disain_hambad: toggleDesignTooth(item, tooth) }
+                              : item
+                          ),
+                        }))
+                      })()}
                       onToggleTooth={tooth => {
                         if (!activeWorkItemId) return
                         const s = String(tooth)
@@ -1757,6 +1772,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               <div className="space-y-3 sticky top-0">
                 <label className="label">Töö tüüp ja hambad</label>
                 <WorkItemsField
+                  jobDesignedBy={form.designed_by}
                   value={form.work_items}
                   onChange={items => {
                     setForm(f => ({ ...f, work_items: items, too: items[0]?.too ?? '' }))

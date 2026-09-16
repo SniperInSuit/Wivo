@@ -3,7 +3,7 @@ import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Tras
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision, WorkItem } from '../../types/job'
-import { jobWorkItems, abutmentSummary, jobImplantTeeth } from '../../types/job'
+import { jobWorkItems, abutmentSummary, jobImplantTeeth, designTeeth, designIsPartial } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePatients } from '../../hooks/usePatients'
 import { usePayments, useDeletePayment, useInvoices } from '../../hooks/useInvoices'
@@ -565,6 +565,18 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
             <span className="text-sm font-semibold text-ink">{item.too}</span>
             {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">sild</span>}
+            {/* Who designed how much. A part-designed item pays the designer
+                less, and without this the smaller figure on the cost side has
+                nothing on the job to explain it. */}
+            {designIsPartial(item) && (
+              <span
+                className="text-[9px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium"
+                title={`Disainija tegi hambad ${designTeeth(item)}; ülejäänud tegi tehnik ise`}
+              >
+                disain {designTeeth(item).split(',').filter(t => t.trim()).length}/
+                {item.hambad.split(',').filter(t => t.trim()).length}
+              </span>
+            )}
             {item.materjal && (
               <span className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[120px]">{item.materjal}</span>
             )}

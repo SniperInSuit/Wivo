@@ -20,7 +20,7 @@
 import { useState } from 'react'
 import { ChevronUp, Plus } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
-import { toggleImplantTooth } from '../../types/job'
+import { toggleImplantTooth, toggleDesignTooth, workItemDesigner } from '../../types/job'
 import { useWorkTypes } from '../../stores/useSettings'
 import { workTypeRules } from '@shared/wizard'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -29,6 +29,12 @@ import { AbutmentField } from './AbutmentField'
 import { workTypeImage } from '../../lib/workTypeImages'
 
 export interface WorkItemsFieldProps {
+  /**
+   * The job's designer, for items that inherit rather than name their own.
+   * Only decides whether the chart offers "Disainija hambad" — with nobody
+   * named there is nothing to split.
+   */
+  jobDesignedBy?: string | null
   value: WorkItem[]
   onChange: (items: WorkItem[]) => void
   /** Which item the odontogram's clicks land on. Null = clicks do nothing. */
@@ -71,7 +77,7 @@ export function WorkItemsField({
   value, onChange, activeId, onActiveChange,
   showTypePicker = true, showOdontogram = true,
   looseTeeth, onLooseTeethChange, disabled,
-  dark = false, typeColumns = 3,
+  dark = false, typeColumns = 3, jobDesignedBy,
 }: WorkItemsFieldProps) {
   const wt = useWorkTypes()
   // Only to LABEL a per-item designer, never to pick one — that field is set on
@@ -375,6 +381,15 @@ export function WorkItemsField({
                 return (tooth: number) => onChange(value.map(item =>
                   item.id === activeId
                     ? { ...item, implantaadid: toggleImplantTooth(item, tooth) }
+                    : item
+                ))
+              })()}
+              onToggleDesign={(() => {
+                const it = value.find(i => i.id === activeId)
+                if (!it || !workItemDesigner(it, jobDesignedBy)) return undefined
+                return (tooth: number) => onChange(value.map(item =>
+                  item.id === activeId
+                    ? { ...item, disain_hambad: toggleDesignTooth(item, tooth) }
                     : item
                 ))
               })()}
