@@ -110,10 +110,17 @@ app.whenReady().then(async () => {
     try {
       const cwd = app.getAppPath()
       execSync('git fetch origin main --quiet', { cwd, timeout: 10_000, stdio: 'ignore' })
-      const local = execSync('git rev-parse HEAD', { cwd, encoding: 'utf-8' }).trim()
-      const remote = execSync('git rev-parse origin/main', { cwd, encoding: 'utf-8' }).trim()
-      return local !== remote
+      // How many commits origin/main has that HEAD does not. NOT `local !==
+      // remote`: that was true whenever the two differed AT ALL, so an
+      // unpushed commit of your own announced "a newer version is available"
+      // — when the newer version was you. Being AHEAD is not an update.
+      const behind = execSync('git rev-list --count HEAD..origin/main', {
+        cwd, encoding: 'utf-8', timeout: 10_000,
+      }).trim()
+      return Number(behind) > 0
     } catch {
+      // No git, no remote, no network, a detached HEAD — none of these are a
+      // finding worth interrupting anybody over.
       return false
     }
   })

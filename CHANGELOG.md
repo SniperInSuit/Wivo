@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.90.3] — 2026-10-23
+
+**„Uus versioon saadaval" tuli ette ka siis, kui olid ise kõige värskem**
+
+Arendusrežiimi kontroll võrdles lihtsalt kahte commit-räsi:
+
+```ts
+return local !== remote
+```
+
+See on tõene alati, kui need kaks **üldse erinevad** — ka siis, kui sul on oma
+push'imata commit. Ehk: üks enda tehtud muudatus ja rakendus teatas, et saadaval
+on uuem versioon. Uuem olid sina.
+
+Nüüd loetakse, mitu commitit on `origin/main`-il, mida sul ei ole:
+
+```ts
+git rev-list --count HEAD..origin/main
+```
+
+**Ees olemine ei ole uuendus.** Null tähendab, et tõmmata ei ole midagi, ja
+teadet ei tule.
+
+Puudutab ainult arendusrežiimi — päris auto-uuendaja võrdleb versiooninumbreid
+`latest.yml`-ist ega olnud sellest kunagi puudutatud.
+
 ## [1.90.2] — 2026-10-23
 
 **Püsiv allalaadimislink kodulehe jaoks**
