@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.86.0 · 14.09.2026 · haru `main`**
+**Seis: v1.91.0 · 23.10.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -116,7 +116,8 @@ visiidiks.
 |---|---|
 | **Veebibroneeringu juhend** | `docs/veebibroneering.md` |
 | Vidina paigaldus | `web/embed/README.md` |
-| Maksegraafiku + postkasti plaan | `~/.claude/plans/aga-kui-klient-maksab-spicy-hippo.md` |
+| **v2.0 ulatus ja hinnang** | **`docs/v2.md`** |
+| 3D hambakaardi täisplaan | `~/.claude/plans/aga-kui-klient-maksab-spicy-hippo.md` |
 | Onboarding'u audit | `docs/onboarding-audit.md` |
 | Finantsnäitajate sõnastik | `docs/finance-metrics.md` |
 | Edge-funktsiooni deploy | `supabase/functions/README.md` |
@@ -124,7 +125,29 @@ visiidiks.
 
 ---
 
-## Järgmine samm — kolm valikut
+## 🚀 v2.0 — suur uuendus
+
+**Kogu ulatus ja tehniline hinnang: [`docs/v2.md`](docs/v2.md).**
+
+Omaniku sõnastatud: 3D hambakaart · selgem „Lisa töö" funnel · spidomeetri-tüüpi
+seadistatavad statistikanäidikud · teema, kus kasutaja määrab iga värvi ·
+**suhtlus ja grupivestlused**, kus töid saab märgendada ja arutada (praegu käib
+see WhatsAppis, eraldi igaühega).
+
+Soovitatav järjekord ja **kaks eeldust, mida ei tohi vahele jätta**, on selles
+failis. Lühidalt: **RLS ei jõusta praegu õigusi** ja vestlusega kasvab see päris
+probleemiks.
+
+**Kohe alustatav, ei blokeeri miski:** 3D **Faas 0** — `Props` liides välja,
+puhas tuletus ühte kohta, `ToothPicker` ümbris, peegeldus `ui_prefs`-i. Null
+visuaalset muutust.
+
+**Ootab omanikku:** üks anonüümne `.glb` kaar, hambad eraldi objektidena
+(`tooth_18`…`tooth_38`), hammustus 2–4 mm avatud.
+
+---
+
+## Järgmine samm — kolm valikut *(v2.0 eelsed, endiselt lahtised)*
 
 ### 1. Raamatupidamise pakett *(kõrgeim äriline väärtus)*
 
