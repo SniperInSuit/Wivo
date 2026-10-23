@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.90.1] — 2026-10-23
+
+**„Muuda" lehel on nüüd sama makse nupp, mis vaatamise lehel**
+
+Vaatamise lehel seisab **„Märgi makstuks"**. Muutmise lehel oli samal kohal
+märkeruudu-moodi nupp sildiga **„Maksmata"** — ja administraator ei leidnud,
+kuhu vajutada, kuniks talle näidati.
+
+Kaks viga ühes nupus:
+- **Nägi välja nagu märkeruut** (tikk sees), aga klikk avas hoopis dialoogi
+- **Silt nimetas olukorda, mitte tegevust.** „Maksmata" ütleb, kuidas asjad on;
+  nupp peab ütlema, mida ta teeb
+
+Nüüd on maksmata tööl **„Märgi makstuks"** (või „Lisa makse", kui raha on juba
+osaliselt laekunud) — sama sõnastus ja sama käitumine, mis vaatamise lehel.
+Makstud tööl on roheline „Makstud" märge ja selle kõrval väike „võta tagasi".
+
+Ka teade „Uus **kood** saadaval" → „Uus **versioon** saadaval". See oli
+arendaja sõnavara, mis jõudis kasutaja ekraanile.
+
 ## [1.90.0] — 2026-10-23
 
 **Wivo uuendab end ise — vaikselt, nagu iga teine tarkvara**

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2, ChevronDown, ChevronUp
+  X, Trash2, Euro, Check, Calendar, Save, Loader2, Cpu, Calculator, Pencil, Zap, UserRound, Building2, ChevronDown, ChevronUp, Banknote
 } from 'lucide-react'
 import type { Job, JobInput, StageKey, Revision } from '../../types/job'
 import { MATERIAL_SHADES, jobWorkItems, workItemDesigner } from '../../types/job'
@@ -397,27 +397,38 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 
       <div className="flex flex-col">
         <label className="label">Makstud</label>
-        <button
-          type="button"
-          onClick={() => {
-            // Turning it ON asks for the method; turning it OFF is just a
-            // correction and needs nothing.
-            if (form.makstud) { set('makstud', false); set('makse_kuupaev', '') }
-            else onRequestMarkPaid?.()
-          }}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-150 ${
-            form.makstud
-              ? 'bg-green-50 border-green-400 text-green-700'
-              : 'bg-bg-sidebar border-ink-faint/30 text-ink-muted hover:border-ink-faint/60'
-          }`}
-        >
-          <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-            form.makstud ? 'bg-green-500 border-green-500' : 'border-ink-faint'
-          }`}>
-            {form.makstud && <Check size={10} className="text-white" />}
-          </span>
-          {form.makstud ? 'Makstud' : 'Maksmata'}
-        </button>
+        {/* An ACTION when unpaid, a STATE when paid — the same shape as the read
+            view, and for a reason that cost a real person real time: this used
+            to render a tick-box labelled "Maksmata" in both states. It looked
+            like something to tick, but clicking it opens the payment dialog,
+            and the label named the situation rather than the thing the button
+            does. The administrator could not find where to press. */}
+        {form.makstud ? (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 bg-green-50 border-green-400 text-green-700 text-sm font-medium">
+              <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <Check size={10} className="text-white" />
+              </span>
+              Makstud
+            </span>
+            <button
+              type="button"
+              onClick={() => { set('makstud', false); set('makse_kuupaev', '') }}
+              className="text-[11px] text-ink-faint hover:text-red-500"
+            >
+              võta tagasi
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onRequestMarkPaid?.()}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-accent/40 bg-accent/5 text-accent text-sm font-semibold hover:bg-accent/10 transition-colors"
+          >
+            <Banknote size={14} />
+            {paidSoFar > 0 ? 'Lisa makse' : 'Märgi makstuks'}
+          </button>
+        )}
         {/* A job can be unpaid by the flag and still have money against it. */}
         {paidSoFar > 0 && !form.makstud && (
           <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">

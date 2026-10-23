@@ -74,14 +74,14 @@ export function UpdateBanner() {
           {!prodShow && devShow && (
             <>
               <p className="text-xs font-semibold text-ink">
-                {dev.pullDone ? 'Kood uuendatud' : 'Uus kood saadaval'}
+                {dev.pullDone ? 'Uuendus tõmmatud' : 'Uus versioon saadaval'}
               </p>
               <p className="text-[11px] text-ink-muted mt-0.5">
                 {dev.pullDone
                   ? 'Taaskäivita rakendus.'
                   : dev.diskAvailable
-                    ? `Kettal on ${dev.diskAvailable}, töötab ${running}.`
-                    : 'origin/main on ees.'}
+                    ? `Saadaval ${dev.diskAvailable}, töötab ${running}.`
+                    : 'Uuem versioon on saadaval.'}
               </p>
               <button
                 type="button"
