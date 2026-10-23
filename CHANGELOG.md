@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.90.2] — 2026-10-23
+
+**Püsiv allalaadimislink kodulehe jaoks**
+
+Igal release'il on nüüd lisaks versiooniga failile ka **muutumatu nimega
+koopia**, nii et kodulehe nupp võib osutada ühele aadressile igavesti:
+
+```
+https://github.com/SniperInSuit/Wivo/releases/latest/download/Wivo-Setup.exe
+```
+
+**Koopia, mitte ümbernimetamine — ja see on oluline.** electron-updater ehitab
+EELMISE versiooni blockmap'i URL-i nii, et asendab failinimes uue
+versiooninumbri vanaga (`Provider.getBlockMapFiles`). Kui failinimest versioon
+ära võtta, ei tee see asendus midagi, „vana" blockmap osutab uuele, ja
+**delta-uuendused lakkavad vaikselt töötamast** — iga uuendus muutuks täiemahuliseks
+~90 MB tõmbeks. `latest.yml` osutab versioonilisele failile ega näe seda
+koopiat, nii et uuendaja jääb puutumata.
+
+Hind: üks lisakoopia installerist release'i kohta. Seda tasub teada.
+
 ## [1.90.1] — 2026-10-23
 
 **„Muuda" lehel on nüüd sama makse nupp, mis vaatamise lehel**

@@ -107,3 +107,34 @@ jobs:
           Write-Host "::error::Release'i ei leitud sildiga v$version ega $version"
           gh release list --repo $repo --limit 10
           exit 1
+
+      # A SECOND copy under a name that never changes, so a website can link to
+      # one URL forever:
+      #   https://github.com/<repo>/releases/latest/download/Wivo-Setup.exe
+      #
+      # A copy rather than a rename, and this is load-bearing. electron-updater
+      # builds the PREVIOUS version's blockmap URL by string-replacing the new
+      # version inside the filename with the old one
+      # (Provider.getBlockMapFiles). Take the version out of the name and that
+      # replace does nothing, the "old" blockmap resolves to the new one, and
+      # differential updates quietly stop working — every update becomes a full
+      # ~90 MB fetch. `latest.yml` points at the versioned file and never sees
+      # this alias, so the updater is untouched.
+      #
+      # Costs one extra copy of the installer per release. That is the price of
+      # a permanent download link, and it is worth saying out loud.
+      - name: Stable download link
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $src = "dist\Wivo-Setup-$version.exe"
+          if (-not (Test-Path $src)) {
+            Write-Host "::warning::$src puudub — püsilinki ei uuendatud"
+            Get-ChildItem dist -Filter *.exe | ForEach-Object { Write-Host $_.Name }
+            exit 0
+          }
+          Copy-Item $src "dist\Wivo-Setup.exe" -Force
+          gh release upload "v$version" "dist\Wivo-Setup.exe" --clobber --repo "${{ github.repository }}"
