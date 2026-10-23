@@ -335,7 +335,10 @@ function AppContent() {
               jobs={searchedJobs}
               searchActive={search.trim().length > 0}
               loading={isLoading}
-              onJobClick={openEdit}
+              // A remake on the rail opens ITS tab, not the original's — the
+              // row you clicked is the one you wanted to look at.
+              onJobClick={(job, revId) =>
+                revId ? openEditWithRevision(job, revId) : openEdit(job)}
               onNewJob={openNew}
               onNavigate={setView}
             />

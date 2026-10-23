@@ -9,6 +9,7 @@ import { VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/visit'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, useWorkTypes, useVisitTypes } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
+import { deadlinesOn, type Deadline } from '../../lib/deadlines'
 
 // Rail hours come from Seaded → Kalender; they used to be constants here.
 
@@ -20,13 +21,15 @@ interface DayTimelineProps {
   day: Date
   onDayChange: (d: Date) => void
   now: Date
-  onJobClick: (job: Job) => void
+  onJobClick: (job: Job, revisionId?: string) => void
   onOpenCalendar: () => void
 }
 
 // A slot is one point on the rail. Two kinds share it:
 //
-//   'job'   — a DEADLINE (valmis_aeg): when work is due off the bench.
+//   'job'   — a DEADLINE: when work is due off the bench. Jobs AND remakes —
+//             a revision carries its own date and its own stage, and used to
+//             be missing here entirely.
 //   'visit' — an APPOINTMENT (visits.algus): when a person is in the chair.
 //
 // They are deliberately not merged into one list of "events". A deadline that
@@ -41,6 +44,8 @@ interface Slot {
   label: string        // HH:mm
   arst: string
   jobs: Job[]
+  /** The deadlines in this slot — a job's own, or a remake's. */
+  rows: Deadline[]
   visit?: Visit
   overdue: boolean     // job only: past its deadline and not in the done stage
   done: boolean        // every job in the slot is finished
@@ -75,20 +80,18 @@ export function DayTimeline({
 
   const slots = useMemo<Slot[]>(() => {
     const map = new Map<string, Slot>()
-    for (const j of jobs) {
-      if (!j.valmis_aeg) continue
-      const d = parseISO(j.valmis_aeg)
-      if (!isValid(d) || !isSameDay(d, day)) continue
+    for (const row of deadlinesOn(jobs, day)) {
+      const d = parseISO(row.at)
       const minutes = d.getHours() * 60 + d.getMinutes()
       const label = format(d, 'HH:mm')
-      const arst = `${j.patsient} · ${j.too ?? 'Määramata'}`
-      const key = `job|${label}|${j.id}`
-      const slot = map.get(key) ?? {
-        key, kind: 'job' as const, hex: wt.hex(j.too), minutes, label, arst,
-        jobs: [], overdue: false, done: false,
+      const arst = `${row.job.patsient} · ${row.label}`
+      const slot = map.get(row.key) ?? {
+        key: row.key, kind: 'job' as const, hex: wt.hex(row.too), minutes, label, arst,
+        jobs: [], rows: [], overdue: false, done: false,
       }
-      slot.jobs.push(j)
-      map.set(key, slot)
+      slot.jobs.push(row.job)
+      slot.rows.push(row)
+      map.set(row.key, slot)
     }
 
     // One node per visit, never grouped: two people in the chair at 10:00 is a
@@ -105,6 +108,7 @@ export function DayTimeline({
         label,
         arst: v.patsient || 'Nimeta',
         jobs: [],
+        rows: [],
         visit: v,
         overdue: false,
         done: v.staatus === 'toimunud' || v.staatus === 'tuhistatud',
@@ -114,10 +118,13 @@ export function DayTimeline({
     return [...map.values()]
       .map(s => s.kind === 'visit' ? s : {
         ...s,
-        done: s.jobs.every(j => j.status === doneStageKey),
+        // The ROW's status, never the job's: a finished job can carry a remake
+        // that is still on the bench, and reading job.status would draw it as
+        // done on the day it is actually due.
+        done: s.rows.every(r => r.status === doneStageKey),
         overdue: s.minutes < now.getHours() * 60 + now.getMinutes()
           && isSameDay(day, now)
-          && s.jobs.some(j => j.status !== doneStageKey)
+          && s.rows.some(r => r.status !== doneStageKey)
       })
       .sort((a, b) => a.minutes - b.minutes)
   }, [jobs, visits, day, doctorOf, doneStageKey, now, wt, vt])
@@ -232,7 +239,9 @@ export function DayTimeline({
                   <button
                     onMouseEnter={() => setOpenKey(s.key)}
                     onMouseLeave={() => setOpenKey(k => (k === s.key ? null : k))}
-                    onClick={() => s.kind === 'visit' ? onOpenCalendar() : s.jobs[0] && onJobClick(s.jobs[0])}
+                    onClick={() => s.kind === 'visit'
+                      ? onOpenCalendar()
+                      : s.rows[0] && onJobClick(s.rows[0].job, s.rows[0].rev?.id)}
                     className={`absolute -translate-x-1/2 w-[150px] text-left rounded-xl border border-l-4 pl-2 pr-2.5 py-1.5 transition-all hover:shadow-card ${
                       s.overdue
                         ? 'bg-red-50'
@@ -306,29 +315,30 @@ export function DayTimeline({
 
                     {openKey === s.key && s.kind === 'job' && (
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-[230px] card p-2.5 space-y-1.5 block text-left z-40">
-                        {s.jobs.map(j => (
-                          <span key={j.id} className="block">
+                        {s.rows.map(r => (
+                          <span key={r.key} className="block">
                             <span className="flex items-center gap-1 text-[11px] font-medium text-ink">
                               <User size={9} className="text-ink-faint" />
-                              {j.patsient}
+                              {r.job.patsient}
                             </span>
                             <span className="flex items-center gap-1.5 pl-3.5">
                               <span className="text-[10px] text-ink-muted truncate">
-                                {j.too ?? 'Määramata töö'}
+                                {r.label}
                               </span>
                               <span
                                 className="text-[9px] font-medium rounded-full px-1.5 flex-shrink-0"
                                 // Live stage colour + label, so a recoloured or
-                                // renamed stage reads correctly here too
-                                style={stageChipStyle(stageMap[j.status]?.hex ?? '#A8B4BE')}
+                                // renamed stage reads correctly here too. The
+                                // ROW's stage — a remake has its own.
+                                style={stageChipStyle(stageMap[r.status]?.hex ?? '#A8B4BE')}
                               >
-                                {stageMap[j.status]?.label ?? j.status}
+                                {stageMap[r.status]?.label ?? r.status}
                               </span>
                             </span>
                           </span>
                         ))}
                         <span className="block text-[10px] text-ink-faint pt-0.5 border-t border-ink-faint/15">
-                          Klõpsa, et avada esimene töö
+                          {s.rows[0]?.rev ? 'Klõpsa, et avada muudatus' : 'Klõpsa, et avada esimene töö'}
                         </span>
                       </span>
                     )}

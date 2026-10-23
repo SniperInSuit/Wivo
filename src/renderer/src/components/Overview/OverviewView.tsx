@@ -17,6 +17,7 @@ import { useVisits } from '../../hooks/useVisits'
 import { useSettings } from '../../stores/useSettings'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState, jobsPaymentTotals } from '../../lib/jobPayments'
+import { openDeadlines } from '../../lib/deadlines'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
@@ -34,7 +35,7 @@ interface OverviewViewProps {
   /** True while the global search box has text in it. */
   searchActive?: boolean
   loading: boolean
-  onJobClick: (job: Job) => void
+  onJobClick: (job: Job, revisionId?: string) => void
   onNewJob: () => void
   onNavigate: (v: ViewMode) => void
 }
@@ -107,16 +108,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
     const teethOf = (list: Job[]) =>
       list.reduce((n, j) => n + toothCount(j.hambad) + revTeeth(j), 0)
 
-    const dueToday = jobs.filter(j => {
-      if (!j.valmis_aeg || j.status === doneStageKey) return false
-      const d = parseISO(j.valmis_aeg)
-      return isValid(d) && isSameDay(d, now)
-    })
-    const overdue = jobs.filter(j => {
-      if (!j.valmis_aeg || j.status === doneStageKey) return false
-      const d = parseISO(j.valmis_aeg)
-      return isValid(d) && isBefore(d, now) && !isSameDay(d, now)
-    })
+    // Remakes too, through the same function the rail reads — the panel used to
+    // say "Täna tähtajaga töid ei ole" while the timeline beside it drew two.
+    const { dueToday, overdue } = openDeadlines(jobs, now, doneStageKey)
     // Through jobsPaymentTotals — the same function the patient page and the
     // job list read. The card used to sum the FULL list price of every job whose
     // legacy `makstud` flag was false, which meant a job with 6800 € owed and
@@ -317,17 +311,18 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
             <p className="text-sm text-ink-muted">Täna tähtajaga töid ei ole.</p>
           ) : (
             <ul className="space-y-2.5">
-              {[...stats.overdue, ...stats.dueToday].slice(0, 4).map(j => {
-                const d = j.valmis_aeg ? parseISO(j.valmis_aeg) : null
-                const late = stats.overdue.includes(j)
+              {[...stats.overdue, ...stats.dueToday].slice(0, 4).map(row => {
+                const j = row.job
+                const d = parseISO(row.at)
+                const late = stats.overdue.includes(row)
                 return (
-                  <li key={j.id}>
+                  <li key={row.key}>
                     <button
-                      onClick={() => onJobClick(j)}
+                      onClick={() => onJobClick(j, row.rev?.id)}
                       className="w-full text-left flex items-start gap-2 hover:bg-bg-sidebar rounded-lg -mx-1.5 px-1.5 py-1 transition-colors"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink truncate">{j.too ?? 'Määramata töö'}</p>
+                        <p className="text-sm font-medium text-ink truncate">{row.label}</p>
                         <p className="text-[11px] text-ink-muted truncate">
                           {j.patsient}{j.materjal && ` · ${j.materjal}`}
                         </p>
@@ -335,9 +330,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
                       <div className="flex-shrink-0 text-right space-y-0.5">
                         <span
                           className="text-[10px] font-medium rounded-full px-1.5 py-0.5 inline-block"
-                          style={stageChipStyle(stageMap[j.status]?.hex ?? '#A8B4BE')}
+                          style={stageChipStyle(stageMap[row.status]?.hex ?? '#A8B4BE')}
                         >
-                          {stageMap[j.status]?.label ?? j.status}
+                          {stageMap[row.status]?.label ?? row.status}
                         </span>
                         <p className={`text-[11px] font-semibold tabular-nums ${late ? 'text-red-600' : 'text-ink'}`}>
                           {d && isValid(d) ? format(d, 'HH:mm') : '—'}

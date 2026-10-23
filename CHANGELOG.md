@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.89.0] — 2026-10-23
+
+**Ülevaade näitab ka muudatuste tähtaegu**
+
+Ajajoon ja „Täna tähtsad tööd" lugesid ainult töö enda tähtaega (`valmis_aeg`).
+Muudatusel on oma `deadline` ja oma etapp, nii et täna kella ühene ümbertegemine
+oli laual, palgaarvestuses ja kuludes — ja puudus ainsalt ekraanilt, mille töö
+on öelda, mis täna ees ootab. Paneel ütles „Täna tähtajaga töid ei ole", samal
+ajal kui ajajoon tema kõrval joonistas kaks.
+
+- **Ajajoonel on nüüd ka muudatused**, sildiga „Muudatus 2: Sild"
+- **„Tähtaeg täna" number ja paneel** loevad samuti muudatusi
+- **Etapi märge tuleb muudatuse enda etapist**, mitte töö omast: valmis töö võib
+  kanda ümbertegemist, mis on alles värvimisel, ja töö etapi lugemine oleks
+  joonistanud selle valmis olevaks just sel päeval, kui ta tähtaeg on
+- **Klõps avab muudatuse enda vahelehe**, mitte originaali
+- **Muudatus ilma oma tähtajata ei päri töö oma** — ümbertegemine lepiti kokku
+  ilma kuupäevata, ja selle väljamõtlemine paneks töö päevale, mida keegi ei
+  lubanud
+
+`jobDeadlines()` / `deadlinesOn()` / `openDeadlines()` on üks arvutus
+`lib/deadlines.ts`-s, mida mõlemad ekraanid loevad. Need kaks teineteisega
+vastuollu minemas on halvem kui kumbki eraldi eksimas — täpselt see juhtuski.
+
+10 uut testi.
+
 ## [1.88.1] — 2026-09-16
 
 **Valmis töö, millel ei ole teostajat, on nüüd nähtav**
