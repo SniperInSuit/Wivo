@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.90.4] — 2026-10-23
+
+**Parandus enne testimist: käivituskontroll võis taustal allalaadimise kinni panna**
+
+`wireUpdater()` paneb `autoDownload = true`. Käivituse paigaldusvoog paneb ta
+`false` peale, et ise allalaadimist juhtida ja päris 90 MB tõmbest loobuda.
+**Loobumisel jäi ta `false` peale terveks sessiooniks** — taustakontroll oleks
+uuendusi leidnud ja mitte ühtegi alla laadinud, ilma et miski oleks öelnud,
+miks.
+
+- `autoDownload` taastatakse igal lõpetamisel, mis ei paigalda
+- Sündmuste kuulajad eemaldatakse samuti — muidu reageeriks loobunud
+  käivituskatse edasi sessiooni enda allalaadimistele
+
+Leitud koodi ülevaatamisel enne esimest päris testi, mitte testist.
+
 ## [1.90.3] — 2026-10-23
 
 **„Uus versioon saadaval" tuli ette ka siis, kui olid ise kõige värskem**

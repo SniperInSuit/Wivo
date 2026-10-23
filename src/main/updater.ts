@@ -278,19 +278,11 @@ export async function installPendingAtLaunch(): Promise<boolean> {
 
 function runInstall(from: string, to: string): Promise<boolean> {
   return new Promise<boolean>(resolve => {
-    let settled = false
-    const finish = (v: boolean): void => {
-      if (settled) return
-      settled = true
-      resolve(v)
-    }
-
     const onProgress = (): void => {
       // A real transfer, not a cache hit. Abandon the launch install and let it
       // finish in the background — the next launch is then instant. This is
       // what guarantees a launch is never stuck behind 90 MB.
       log('INFO', 'real download at launch, deferring to next start')
-      autoUpdater.removeListener('download-progress', onProgress)
       finish(false)
     }
     const onDownloaded = (): void => {
@@ -320,6 +312,26 @@ function runInstall(from: string, to: string): Promise<boolean> {
     const onError = (err: Error): void => {
       log('ERROR', 'updater error at launch', err)
       finish(false)
+    }
+
+    let settled = false
+    const finish = (v: boolean): void => {
+      if (settled) return
+      settled = true
+      // Hand the session back exactly as `wireUpdater` left it.
+      //
+      // This path turns autoDownload OFF so it can drive the download itself
+      // and abandon a real transfer. Without restoring it, a launch that
+      // bailed left the flag false for the WHOLE session: the background
+      // checks would keep finding updates and never fetch one, and nothing
+      // would say why.
+      if (!v) autoUpdater.autoDownload = true
+      // These were registered for this one attempt. Leaving them on would let
+      // a launch that gave up keep reacting to the session's own downloads.
+      autoUpdater.removeListener('download-progress', onProgress)
+      autoUpdater.removeListener('update-downloaded', onDownloaded)
+      autoUpdater.removeListener('error', onError)
+      resolve(v)
     }
 
     // Registered BEFORE any call — see fact 3.
