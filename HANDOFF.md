@@ -269,10 +269,20 @@ Each file ends with a verification query. Run them.
 
 ## Licensing — what you have to do
 
-`LICENCE_PUBLIC_KEY` in `src/main/license.ts` is **set**, so this build enforces
-licensing. `license-private.pem` is in the repo root, gitignored, mode 600.
-**Back it up.** Losing it means every key you have issued stops verifying the
-moment you ship a build with a different public key.
+⚠ **`LICENCE_PUBLIC_KEY` in `src/main/license.ts` is EMPTY, so this build
+enforces NOTHING.** `licensingEnforced()` returns false and every check
+short-circuits at `license.ts:39`. "Labor" and "Labor+" are functionally
+identical, and seats are displayed but never counted.
+
+This note previously claimed the opposite. It was wrong, and wrong in the
+dangerous direction: somebody could ship believing the product was protected.
+Corrected 23.10.2026. See `docs/v2.md` for what a real licence system needs —
+the short version is that enforcement belongs on the SERVER, because an
+`if (licenceValid)` inside an unpackable asar is a speed bump, not a lock.
+
+When you do generate a key: `license-private.pem` goes in the repo root,
+gitignored, mode 600. **Back it up.** Losing it means every key you have issued
+stops verifying the moment you ship a build with a different public key.
 
 Issue a key:
 ```
