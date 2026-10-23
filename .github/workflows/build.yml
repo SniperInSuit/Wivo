@@ -15,6 +15,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          # HEAD~1 is needed to tell "the version changed" from "a comment
+          # changed" — see the version gate below.
+          fetch-depth: 2
 
       - uses: actions/setup-node@v5
         with:
@@ -43,7 +47,31 @@ jobs:
       - name: Build Electron app
         run: npm run build
 
+      # Publish ONLY when package.json's version actually changed.
+      #
+      # This workflow runs on every push to main, and until now that was
+      # harmless: nobody downloaded automatically. With silent auto-update it
+      # is not — every typo fix would become a release, and every release is a
+      # fetch on every machine in the lab, including the designer's, in another
+      # building, on whatever connection they have. The BUILD still runs on
+      # every push; it is the only compile check there is.
+      - name: Has the version changed?
+        id: ver
+        shell: pwsh
+        run: |
+          $now = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $prev = ''
+          try { $prev = (git show HEAD~1:package.json | ConvertFrom-Json).version } catch { }
+          Write-Host "eelmine='$prev' praegune='$now'"
+          # No previous commit to compare against (first push, shallow clone)
+          # publishes rather than skipping: a missed release is worse than one
+          # extra.
+          $changed = ($prev -eq '') -or ($prev -ne $now)
+          "changed=$($changed.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          "version=$now" >> $env:GITHUB_OUTPUT
+
       - name: Package for Windows
+        if: steps.ver.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -61,11 +89,12 @@ jobs:
       # without saying what DOES exist is a dead end, and this step has no
       # other way to be read from the summary page.
       - name: Publish release
+        if: steps.ver.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $version = "${{ steps.ver.outputs.version }}"
           $repo = "${{ github.repository }}"
           foreach ($tag in @("v$version", $version)) {
             gh release view $tag --repo $repo *> $null

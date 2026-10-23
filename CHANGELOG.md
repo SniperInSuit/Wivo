@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.90.0] — 2026-10-23
+
+**Wivo uuendab end ise — vaikselt, nagu iga teine tarkvara**
+
+Labor kasvas: disainija on teises majas, assistent lisandub. Käsitsi `.exe`
+viimine ei skaleeru, ja ühe jagatud andmebaasiga on vana klient päris risk —
+veerg, mida ta ei tunne, on töö ajal lõhkev viga.
+
+Voog on nüüd: **taustal alla → järgmisel käivitamisel väike aken → avaneb uue
+versioonina.** Küsimusi ei küsita, installeri viisardit ei tule.
+
+- **`src/main/updater.ts`** — kogu loogika ühes kohas koos nende
+  electron-updateri faktidega, millel ta püsib
+- **Väike splash-aken** (`src/renderer/updater.html`) — omaette Vite'i sisend,
+  mitte marsruut rakenduses: see peab joonistuma sekundi murdosaga ajal, kui
+  rakendust ennast kettal asendatakse
+- **Teade on nüüd uudis, mitte küsimus** — „Lae alla ja uuenda" nupp kadus,
+  sest allalaadimine ei ole enam kasutaja otsustada
+- **Seaded → Litsents → „Kontrolli uuendusi"** — toehelistamise jaoks
+- **Ühe-instantsi lukk** — ilma selleta võib teine aken käivituda samal ajal,
+  kui installer `Wivo.exe`-d asendab
+
+**Parandatud vead, mis olid juba sees:**
+- **`quitAndInstall(false, true)`** — `isForceRunAfter` on arvesse võetud
+  **ainult siis, kui `isSilent` on `true`**. Üks lipp tegi kaks viga: näitas
+  installeri akent **ja** ei käivitanud rakendust pärast. Nüüd `(true, true)`
+- **Uuendaja viga ei jõudnud kunagi kasutajani** — `console.error` pakendatud
+  Windowsi rakenduses ei lähe kuhugi. Nüüd `userData/updater.log` ja teade
+- **`useAppVersion` oli monteeritud kahes kohas**, kumbki oma taimeritega ja
+  oma `ipcRenderer.on`-iga, mida **ei saanud kunagi eemaldada** — preload ei
+  pakkunud `off`-i. Nüüd üks `UpdateProvider` ja iga kuulaja tagastab lahtiütluse
+- **CI avaldas release'i iga commiti peale.** Vaikse allalaadimisega oleks iga
+  kirjavea parandus ~90 MB tõmme igale masinale. Nüüd väravastatud versiooni
+  muutusega; build ise jääb iga push'i peale
+
+**Kordusluku kaitse:** `userData/update-state.json` loeb katseid. Katkine
+versioon loobub kolme käivituse järel ise, selle asemel et igavesti taaskäivitada.
+
+**Reegel, mis ületab kõik muu:** uuendus ei tohi kunagi takistada töötamist.
+Võrk maas, timeout, rikutud fail, ketas täis — iga tee lõpeb sellega, et Wivo
+avaneb olemasoleva versiooniga, vaikselt. 6 s eelarve, siis avatakse.
+
+⚠ **Üks käsitsi uuendus on veel vaja.** Väljas olev 1.89.0 on ehitatud
+`autoDownload = false`-iga ja seda ei saa tagantjärele vaikseks teha. Sellele
+versioonile tuleb minna olemasoleva teate „Lae alla ja uuenda" kaudu — **edasi
+on kõik automaatne.**
+
+Testimisjuhend: `Testing.md` → „Auto-uuenduse suitsutest", kolm astet.
+Allkirjastamata build tähendab endiselt SmartScreeni hoiatust iga uue masina
+**esimesel** paigaldusel; uuendused ise on vaiksed.
+
 ## [1.89.0] — 2026-10-23
 
 **Ülevaade näitab ka muudatuste tähtaegu**

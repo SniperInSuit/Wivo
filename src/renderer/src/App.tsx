@@ -30,6 +30,7 @@ import { AuthGuard } from './components/Auth/AuthGuard'
 import { ClinicSettingsSync } from './components/ClinicSettingsSync'
 import { UiPrefsSync } from './components/UiPrefsSync'
 import { UpdateBanner } from './components/UpdateBanner'
+import { UpdateProvider } from './providers/UpdateProvider'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
 
@@ -460,9 +461,14 @@ export default function App() {
                 local edits back. Inside AuthGuard because it needs the clinic. */}
             <ClinicSettingsSync />
             <UiPrefsSync />
-            <AppContent />
-            {/* Corner toast when a newer version is on disk. */}
-            <UpdateBanner />
+            {/* ONE subscription to the updater for the whole app. The sidebar
+                footer and the toast both read from here; two separate mounts
+                used to mean two sets of polls and two IPC listeners that could
+                never be removed. */}
+            <UpdateProvider>
+              <AppContent />
+              <UpdateBanner />
+            </UpdateProvider>
           </PipelineProvider>
         </AuthGuard>
       </AuthProvider>

@@ -16,6 +16,19 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {
+    // TWO entries. `updater.html` is the splash shown while the app is being
+    // replaced on disk — see its own comment for why it is not a route in the
+    // main bundle. After changing this, confirm `out/renderer/updater.html`
+    // actually exists; a splash that 404s is a frozen white box at the one
+    // moment it must not be.
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/renderer/index.html'),
+          updater: resolve('src/renderer/updater.html')
+        }
+      }
+    },
     // Lets the renderer show the app version (sidebar footer) in both dev and
     // a packaged build — nothing else exposes it to the UI.
     define: {

@@ -184,8 +184,23 @@ look arbitrary until the day someone undoes it.
   it as "the app's version" — use `useAppVersion().running`, which reads
   package.json through the preload bridge on every check. The stale constant sent
   debugging down the wrong path twice; that is why the sidebar no longer uses it.
-- The update toast compares the version captured at boot against the file on
-  disk. It is NOT an auto-updater — nothing is downloaded.
+- **Auto-update is real.** Production: electron-updater against GitHub Releases,
+  `autoDownload` on, staged into `%LOCALAPPDATA%\wivo-updater\pending\`, and
+  installed at the NEXT launch behind a small splash — never on quit
+  (`autoInstallOnAppQuit` is off, and it would not fire for a file staged in an
+  earlier session anyway). All of it is in `src/main/updater.ts`, with the
+  electron-updater facts it depends on written at the top.
+  - `userData/update-state.json` is the handoff between sessions and carries the
+    attempt counter; three failed launches abandon the update rather than loop.
+  - `userData/updater.log` is where to look FIRST. `console.error` in a packaged
+    Windows app goes nowhere, which is why this file exists.
+  - `quitAndInstall(isSilent, isForceRunAfter)` — the second argument is ignored
+    unless the first is `true`. It must be `(true, true)`.
+  - Never set `win.publisherName`: the build is unsigned, and that field would
+    make electron-updater verify a signature and reject every update.
+  - The DEVELOPMENT path (git fetch/pull) is a separate thing in
+    `useDevGitUpdate`. This note used to say the app had no auto-updater at all,
+    long after it had one, because the two lived in one file.
 - **No bare `vh`/`vw` inside `#root`.** The UI scale is a CSS `zoom`, so viewport
   units are measured unzoomed and painted scaled — they overflow. Use
   `.h-panel` / `.max-w-dialog`, or divide by `--ui-scale`.

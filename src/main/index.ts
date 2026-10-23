@@ -3,7 +3,10 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { execSync } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { autoUpdater } from 'electron-updater'
+import {
+  wireUpdater, registerUpdaterIpc, installPendingAtLaunch,
+  setMainWindow, closeSplash, isInstalling,
+} from './updater'
 import { currentLicence, installLicence, licensingEnforced } from './license'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
@@ -24,8 +27,14 @@ function createWindow(): void {
     }
   })
 
+  setMainWindow(mainWindow)
+  mainWindow.on('closed', () => setMainWindow(null))
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    // Only NOW. `window-all-closed` quits the app, so destroying the splash
+    // while it is the only window would exit instead of opening Wivo.
+    closeSplash()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -62,7 +71,26 @@ function readDiskVersion(): string {
   }
 }
 
-app.whenReady().then(() => {
+/**
+ * One Wivo at a time.
+ *
+ * Without this a second instance can be launched while the NSIS installer is
+ * replacing Wivo.exe — the file is locked, the install fails, and the update
+ * loop burns an attempt for a reason nobody can see from the outside.
+ */
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  const win = BrowserWindow.getAllWindows().find(w => !w.isDestroyed())
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  }
+})
+
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.wivo.dental')
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
@@ -101,44 +129,23 @@ app.whenReady().then(() => {
     }
   })
 
-  // ── Auto-updater (GitHub Releases) ─────────────────────────────────────
-  // In dev mode, skip auto-update — use git-based check instead.
-  // In production (packaged), check GitHub Releases for new versions.
-  if (!is.dev) {
-    autoUpdater.autoDownload = false  // ask user first
-    autoUpdater.autoInstallOnAppQuit = true
-
-    autoUpdater.on('update-available', (info) => {
-      const win = BrowserWindow.getAllWindows()[0]
-      if (win) win.webContents.send('wivo:update-available', info.version)
-    })
-
-    autoUpdater.on('update-downloaded', () => {
-      const win = BrowserWindow.getAllWindows()[0]
-      if (win) win.webContents.send('wivo:update-downloaded')
-    })
-
-    autoUpdater.on('error', (err) => {
-      console.error('Auto-updater error:', err.message)
-    })
-
-    // Check for updates every 5 minutes
-    setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 5 * 60_000)
-    // And on startup (after a short delay)
-    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 10_000)
-  }
-
-  ipcMain.handle('wivo:download-update', () => {
-    autoUpdater.downloadUpdate().catch(() => {})
-  })
-
-  ipcMain.handle('wivo:install-update', () => {
-    autoUpdater.quitAndInstall(false, true)
-  })
+  // ── Auto-update ────────────────────────────────────────────────────────
+  // All of it lives in ./updater.ts, including WHY it is shaped this way.
+  // Short version: download quietly during the session, install at the next
+  // launch behind a small window, and never let any of that stop the app
+  // opening.
+  registerUpdaterIpc()
+  wireUpdater()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // A staged update installs here, before any main window exists. It resolves
+  // false for every outcome except "I am installing and the app is going away"
+  // — offline, timeout, nothing staged, a real download that would have made
+  // the user wait. All of those just open Wivo.
+  if (await installPendingAtLaunch()) return
 
   createWindow()
 
@@ -148,6 +155,9 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // quitAndInstall closes every window and then quits by itself. Quitting here
+  // as well races the installer it just spawned.
+  if (isInstalling()) return
   if (process.platform !== 'darwin') {
     app.quit()
   }

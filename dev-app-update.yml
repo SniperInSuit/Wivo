@@ -1,0 +1,19 @@
+# Feed for a NON-PACKAGED run, used only when WIVO_UPDATER_DEV=1.
+#
+# electron-updater reads this instead of the app-update.yml that
+# electron-builder bakes into a real install, which is what lets the whole
+# update flow be exercised from `npm run dev`.
+#
+# `updaterCacheDirName` is deliberately DIFFERENT from production's
+# `wivo-updater`, so test downloads land in their own folder and can never be
+# mistaken for a staged real update:
+#   %LOCALAPPDATA%\wivo-updater-dev\pending\
+#
+# Point `provider: generic` at a local static server to test against a version
+# you control without publishing anything:
+#   provider: generic
+#   url: http://127.0.0.1:8080
+provider: github
+owner: SniperInSuit
+repo: Wivo
+updaterCacheDirName: wivo-updater-dev

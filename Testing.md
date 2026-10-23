@@ -41,3 +41,64 @@ Known gaps, so you don't report them as faults: no refunds or credit notes (your
 For feedback, the most useful format is: which step, what you expected, what happened — screenshots for anything visual. If something throws, the message text matters, since a 42501 is a permissions problem and a PGRST is a schema problem and they need different fixes.
 
 Start with steps 1 and 3. If the settings banner is orange or the invoice number comes out wrong, send that immediately and stop — both would mean something structural I should fix before you spend time on the rest.
+---
+
+## Auto-uuenduse suitsutest
+
+Jooksuta see iga kord, kui `electron`, `electron-updater` või `electron-builder`
+versiooni tõstad. Kolm astet; ainult kolmas tõestab, et funktsioon töötab.
+
+### 1. Ainult UI, ilma võrguta
+
+```powershell
+npm run build
+```
+Ava `out/renderer/updater.html` brauseris. Peab näitama „Uuendan Wivot…",
+liikuvat riba ja „Kontrollin uuendust". Silla puudumine on lubatud — aken ei
+tohi viskuda, vaid näitab staatilist teksti.
+
+**Kontrolli ka, et fail üldse tekkis** — `out/renderer/updater.html`. Teine
+Vite'i sisend on vaikne koht, kus asjad ära kaovad, ja puuduv splash on valge
+kast täpselt sel hetkel, kui ta ei tohi olla.
+
+### 2. Päris uuendaja, pakendamata
+
+```powershell
+$env:WIVO_UPDATER_DEV=1; npm run dev
+```
+`dev-app-update.yml` suunab feed'i ja `updaterCacheDirName: wivo-updater-dev`
+hoiab testiprahi päris vahemälust eemal.
+
+Jälgi `%APPDATA%\Wivo\updater.log`. Peab nägema `checking-for-update` →
+`update-available` → `download-progress`. Fail maandub kausta
+`%LOCALAPPDATA%\wivo-updater-dev\pending\`, marker tekib
+`%APPDATA%\Wivo\update-state.json`.
+
+**Paigaldust siin ei toimu** — pakendamata jooksul peatub voog sammu võrra
+varem ja logi ütleb `would install … (unpackaged run, stopping)`. See on
+tahtlik: `quitAndInstall` paigaldaks päriselt arendaja masinale.
+
+Kordusluku test: kirjuta `update-state.json` käsitsi
+`{"version":"99.9.9","stagedAt":"","attempts":2}` → järgmine käivitus teeb ühe
+katse, siis marker kaob ja rakendus avaneb tavaliselt.
+
+### 3. Päris masinal, kahe versiooniga *(ainus tõestus)*
+
+1. Paigalda päris `.exe`-ga vanem versioon. Kontrolli:
+   `%LOCALAPPDATA%\Programs\Wivo\` (kasutajapõhine, `perMachine: false`)
+2. Jäta app lahti, avalda uuem versioon, vajuta **Seaded → Litsents →
+   Kontrolli uuendusi**
+3. Peab tulema nurgateade „Uuendus on valmis" ja fail
+   `%LOCALAPPDATA%\wivo-updater\pending\`-sse
+4. **Sulge app. Kontrolli, et sulgemisel EI paigaldata** — Task Manageris ei
+   tohi olla `Wivo Setup`, Programs and Features näitab vana versiooni
+5. Ava Start-menüüst → väike aken ≤1 s, „Paigaldan uuendust…", aknad kaovad,
+   **Wivo avaneb ise uue versioonina**
+6. Sidebar näitab uut versiooni, `update-state.json` on kadunud
+7. Ava veel kord → akent ei tohi tulla
+
+**Tõrketest, ilma milleta see ei ole testitud:**
+- Lülita võrk välja, marker paigas → app peab avanema **≤ 6 s**, vanana, ilma
+  ühegi dialoogita
+- Käivita kaks korda kiiresti järjest → teine instants peab kohe väljuma ja
+  esimese akna fookusesse tooma

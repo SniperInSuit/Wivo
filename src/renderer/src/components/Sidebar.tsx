@@ -7,7 +7,7 @@ import wivoLogo from '../assets/Wivo Logo.png'
 import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
 import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
-import { useAppVersion } from '../hooks/useAppVersion'
+import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
 
 interface SidebarProps {
@@ -42,7 +42,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
   const { role } = useAuth()
   const { can } = usePermissions()
-  const { running } = useAppVersion()
+  const running = useRunningVersion()
   const newRequests = useNewRequestCount()
   const wide = settings.ribaLaiendatud
 

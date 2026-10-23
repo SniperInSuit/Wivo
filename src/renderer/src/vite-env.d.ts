@@ -18,9 +18,16 @@ interface Window {
     relaunch: () => Promise<void>
     checkRemoteUpdate: () => Promise<boolean>
     gitPull: () => Promise<string | null>
-    downloadUpdate: () => Promise<void>
-    installUpdate: () => Promise<void>
-    onUpdateAvailable: (cb: (version: string) => void) => void
-    onUpdateDownloaded: (cb: () => void) => void
+    // Auto-update. One channel, and every listener hands back its remover —
+    // see the note in src/preload/index.ts about the leak this replaced.
+    updateState: () => Promise<import('../../types/update').UpdateState>
+    onUpdateState: (
+      cb: (s: import('../../types/update').UpdateState) => void
+    ) => () => void
+    installNow: () => Promise<void>
+    checkNow: () => Promise<void>
+    onSplashState: (
+      cb: (s: import('../../types/update').UpdaterSplashState) => void
+    ) => () => void
   }
 }

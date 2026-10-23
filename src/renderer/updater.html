@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="et">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      The updater splash. Deliberately NOT part of the app bundle.
+
+      This window exists to paint within a fraction of a second while the app it
+      belongs to is being replaced on disk. Mounting React, framer-motion and
+      recharts to draw a progress bar would make the one window that must always
+      work depend on the largest thing in the build.
+
+      Everything is inline for the same reason: no imports, no chunks, nothing
+      that can 404 mid-update.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>Wivo uuendab</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        width: 100vw; height: 100vh;
+        display: flex; flex-direction: column; justify-content: center;
+        gap: 10px; padding: 0 26px;
+        background: #f7f9fa; color: #1b2733;
+        font: 500 13px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif;
+        -webkit-user-select: none; user-select: none;
+        /* The whole window drags, because a frameless box that cannot be moved
+           is a support call. The version line opts out so it stays readable. */
+        -webkit-app-region: drag;
+      }
+      h1 { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+      .sub { font-size: 12px; color: #5b6b7c; min-height: 17px; }
+      .bar {
+        height: 4px; border-radius: 999px; background: #dfe6ec; overflow: hidden;
+      }
+      .fill {
+        height: 100%; width: 0%; border-radius: 999px; background: #0ab6c4;
+        transition: width 180ms linear;
+      }
+      /* No percentage to show — a cache hit reports none — so the bar says
+         "working" instead of lying about 0%. */
+      .fill.indeterminate {
+        width: 35%;
+        animation: slide 1.1s ease-in-out infinite;
+      }
+      @keyframes slide {
+        0%   { margin-left: -35%; }
+        100% { margin-left: 100%; }
+      }
+      .ver {
+        font-size: 11px; color: #8597a8;
+        font-variant-numeric: tabular-nums;
+        -webkit-app-region: no-drag;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Uuendan Wivot…</h1>
+    <div class="bar"><div class="fill indeterminate" id="fill"></div></div>
+    <p class="sub" id="sub">Kontrollin uuendust</p>
+    <p class="ver" id="ver"></p>
+
+    <script>
+      (function () {
+        var title = document.getElementById('title')
+        var sub = document.getElementById('sub')
+        var fill = document.getElementById('fill')
+        var ver = document.getElementById('ver')
+
+        var COPY = {
+          checking:   ['Uuendan Wivot…',      'Kontrollin uuendust'],
+          downloading:['Uuendan Wivot…',      'Laadin alla…'],
+          installing: ['Paigaldan uuendust…', 'Ära sulge arvutit. Wivo avaneb ise.'],
+          failed:     ['Jätkan praeguse versiooniga', '']
+        }
+
+        function render(s) {
+          var c = COPY[s.stage] || COPY.checking
+          title.textContent = c[0]
+          if (s.stage === 'downloading' && typeof s.percent === 'number') {
+            sub.textContent = c[1] + ' ' + s.percent + '%'
+            fill.className = 'fill'
+            fill.style.width = s.percent + '%'
+          } else {
+            sub.textContent = c[1]
+            fill.className = 'fill indeterminate'
+          }
+          ver.textContent = s.from && s.to ? 'Versioon ' + s.from + ' → ' + s.to : ''
+        }
+
+        // No bridge means this window was opened outside Electron (only
+        // possible in dev). Show the static copy rather than throwing.
+        if (window.wivo && window.wivo.onSplashState) {
+          window.wivo.onSplashState(render)
+        }
+      })()
+    </script>
+  </body>
+</html>
