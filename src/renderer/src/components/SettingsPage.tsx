@@ -1256,8 +1256,8 @@ export function SettingsPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="px-6 py-6 space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-ink">Seaded</h1>
-          <p className="text-sm text-ink-muted">
+          <h1 className="text-xl font-bold text-page-ink">Seaded</h1>
+          <p className="text-sm text-page-muted">
             Halda oma töökoja andmeid, eelistusi ja süsteemi seadeid.
           </p>
         </div>

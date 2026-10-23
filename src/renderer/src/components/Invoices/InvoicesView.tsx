@@ -120,7 +120,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
       <div className="flex-1 min-w-0 overflow-y-auto px-6 py-5 space-y-5">
         {/* ── Header ── */}
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-ink">Arved</h1>
+          <h1 className="text-xl font-bold text-page-ink">Arved</h1>
           <div className="relative ml-auto">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
             <input

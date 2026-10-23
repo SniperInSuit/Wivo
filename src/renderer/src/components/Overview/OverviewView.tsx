@@ -203,10 +203,14 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       {/* ─── Greeting ─────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink">
+          {/* page-ink, not ink: this sits on the page surface, which is navy
+              in Navy Cloud and light in Cloudy Navy — `ink` is the text colour
+              for the INSIDE of a card and is the opposite of what is needed
+              here in both dark themes. */}
+          <h1 className="text-xl font-bold text-page-ink">
             {greeting(now.getHours())}{name ? `, ${name}` : ''}!
           </h1>
-          <p className="text-sm text-ink-muted first-letter:uppercase">
+          <p className="text-sm text-page-muted first-letter:uppercase">
             {format(now, 'EEEE, d. MMMM yyyy', { locale: et })}
           </p>
         </div>

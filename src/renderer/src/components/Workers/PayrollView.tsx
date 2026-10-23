@@ -281,7 +281,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-xl font-bold text-ink flex items-center gap-2">
+        <h1 className="text-xl font-bold text-page-ink flex items-center gap-2">
           <Wallet size={18} className="text-accent" /> Töötasud
         </h1>
 

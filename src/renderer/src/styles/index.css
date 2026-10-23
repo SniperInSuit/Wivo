@@ -53,6 +53,13 @@
   /* The logo's navy plate — see .chip-active */
   --c-chip-plate: 13 28 56;
 
+  /* Text sitting DIRECTLY on the page background, not inside a card.
+     `ink` cannot serve here: a theme with light cards on a dark page needs a
+     dark ink and a light page text, and there is no single value that is both.
+     Page titles were rendering near-black on navy at about 1.1:1. */
+  --c-page-ink: 14 17 22;
+  --c-page-ink-muted: 99 115 129;
+
   --app-bg: rgb(247 249 250);
   --card-blur: none;
 }
@@ -87,6 +94,13 @@
   --c-chrome-faint: 120 140 170;
 
   --c-chip-plate: 13 28 56;
+
+  /* The page is navy, so text on it is light — the same family as `nav` and
+     `chrome`, which already sit on this surface. This is the bug that made
+     every page title unreadable: they used `ink`, which is dark here BY
+     DESIGN because the cards are light. */
+  --c-page-ink: 255 255 255;
+  --c-page-ink-muted: 200 215 235;
 
   /* Flat navy matching the sidebar — no gradient, one solid surface. */
   --app-bg: rgb(12 24 48);
@@ -123,6 +137,12 @@
   --c-chrome-text: 30 41 59;
   --c-chrome-muted: 92 110 133;
   --c-chrome-faint: 140 155 175;
+
+  /* The exact mirror of Navy Cloud: here the CARDS are dark, so `ink` is
+     near-white — and a page title using it was white on a light page. Same
+     bug, opposite direction, and it was there before anybody reported it. */
+  --c-page-ink: 20 29 48;
+  --c-page-ink-muted: 92 110 133;
 
   --app-bg:
     radial-gradient(900px 500px at 18% 8%, rgba(255, 255, 255, 0.85), transparent 62%),

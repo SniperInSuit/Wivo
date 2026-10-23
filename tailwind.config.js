@@ -18,6 +18,13 @@ export default {
           card: 'rgb(var(--c-bg-card) / <alpha-value>)',
           sidebar: 'rgb(var(--c-bg-sidebar) / <alpha-value>)'
         },
+        // Text on the PAGE background. Separate from `ink`, which is the text
+        // inside a card — a theme with light cards on a dark page needs those
+        // two to be opposites, and no single token can be both.
+        page: {
+          ink:   'rgb(var(--c-page-ink) / <alpha-value>)',
+          muted: 'rgb(var(--c-page-ink-muted) / <alpha-value>)'
+        },
         ink: {
           DEFAULT: 'rgb(var(--c-ink) / <alpha-value>)',
           soft: 'rgb(var(--c-ink-soft) / <alpha-value>)',

@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.91.0] — 2026-10-23
+
+**Lehtede pealkirjad on tumedatel teemadel loetavad**
+
+Navy Cloud teemal olid lehtede pealkirjad peaaegu nähtamatud. **Kontrast oli
+1,06 : 1** — loetavuse piir on 4,5 : 1.
+
+Ma eksisin esimeses oletuses: arvasin, et kuskil on kõvakodeeritud must värv.
+Ei olnud. `src/renderer/src` sisaldab **null** vastet `text-black` või
+`text-slate-900` mustritele; rakendus on korralikult tokeniseeritud.
+
+Päris põhjus oli **puuduv mõiste**. Navy Cloud hoiab `--c-ink` tumedana
+**meelega**, sest tema kaardid on heledad. Aga lehtede pealkirjad ei istu
+kaardis — nad on otse navy taustal. Tokenit „tekst lehe taustal" ei olnud
+olemas.
+
+- Uus pere **`--c-page-ink` / `--c-page-ink-muted`**, igas kolmes teemas
+  taustaga kontrastne
+- Lehtede pealkirjad viie vaates läksid selle peale; **kaartide sees olev tekst
+  jäi `text-ink` peale**, sest seal oli ta kogu aeg õige
+
+**Cloudy Navy oli sama viga peegelpildis — ja veel hullem.** Seal on kaardid
+tumedad, `--c-ink` seega peaaegu valge, ja pealkirjad olid valge-valgel:
+**1,02 : 1**. Seda ei olnud keegi üles andnud.
+
+| | Enne | Pärast |
+|---|---|---|
+| Navy Cloud | 1,06 : 1 | 17,66 : 1 |
+| Cloudy Navy | 1,02 : 1 | 15,77 : 1 |
+| Hele | 17,91 : 1 | muutumata |
+
+Sisselogimise ja kliiniku seadistuse ekraanid jäid puutumata — kontrollisin ja
+need on `bg-bg-card` sees, kus `text-ink` on õige vastus.
+
 ## [1.90.4] — 2026-10-23
 
 **Parandus enne testimist: käivituskontroll võis taustal allalaadimise kinni panna**

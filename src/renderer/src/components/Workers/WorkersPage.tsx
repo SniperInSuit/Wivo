@@ -366,10 +366,10 @@ export function WorkersPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="px-6 py-6 space-y-5 max-w-4xl">
         <div>
-          <h1 className="text-xl font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl font-bold text-page-ink flex items-center gap-2">
             <Users size={20} /> Meeskond
           </h1>
-          <p className="text-sm text-ink-muted">
+          <p className="text-sm text-page-muted">
             Halda töötajaid ja nende õigusi.
           </p>
         </div>
