@@ -1328,6 +1328,25 @@ function PayoutDeleteButton({ paid, onDelete }: { paid: boolean; onDelete: () =>
 function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate[] }) {
   const save = useSaveWorkerRate()
   const remove = useDeleteWorkerRate()
+  // The amount, editable in place. Before this the only way to correct a rate
+  // was delete-and-retype the whole rule, which is why a wrong one could sit
+  // there for months: nobody deletes a working rule to change one number.
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+
+  function startEdit(r: WorkerRate): void {
+    setEditing(r.id)
+    setDraft(String(Number(r.amount)))
+  }
+
+  async function commitEdit(r: WorkerRate): Promise<void> {
+    const v = parseFloat(draft.replace(',', '.'))
+    setEditing(null)
+    // Anything unparseable or negative is a typo, not an instruction. An
+    // unchanged value is not worth a write — or an `updated_at` bump.
+    if (!Number.isFinite(v) || v < 0 || v === Number(r.amount)) return
+    await save.mutateAsync({ ...r, amount: v })
+  }
   const wt = useWorkTypes()
 
   const [kind, setKind] = useState<RateKind>('hammas')
@@ -1400,9 +1419,31 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             {r.label?.trim()
               ? <span className="font-semibold text-ink">{r.label.trim()}</span>
               : <span className="font-medium text-ink">{RATE_KIND_LABEL[r.kind]}</span>}
-            <span className="tabular-nums font-semibold text-accent">
-              {Number(r.amount).toFixed(2)} {RATE_KIND_SUFFIX[r.kind]}
-            </span>
+            {editing === r.id ? (
+              <span className="flex items-center gap-1">
+                <input
+                  type="number" min="0" step="0.01" autoFocus
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  onBlur={() => void commitEdit(r)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); void commitEdit(r) }
+                    if (e.key === 'Escape') { e.preventDefault(); setEditing(null) }
+                  }}
+                  className="input py-0.5 px-1.5 text-xs w-20 text-right tabular-nums"
+                />
+                <span className="text-[10px] text-ink-faint">{RATE_KIND_SUFFIX[r.kind]}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEdit(r)}
+                title="Muuda summat"
+                className="tabular-nums font-semibold text-accent hover:underline decoration-dotted underline-offset-2"
+              >
+                {Number(r.amount).toFixed(2)} {RATE_KIND_SUFFIX[r.kind]}
+              </button>
+            )}
             {r.additive && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
                 lisandub

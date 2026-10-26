@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.91.1] — 2026-10-26
+
+**Tasureegli summat saab nüüd muuta, mitte ainult kustutada**
+
+Reeglite real oli ainult prügikast. Ühe numbri parandamiseks tuli kogu reegel
+kustutada ja uuesti kirjutada — koos tüübi, skoobi, tööliikide ja märgetega.
+
+**Seepärast võis vale reegel seal kuude kaupa seista.** Keegi ei kustuta
+töötavat reeglit selleks, et üht numbrit muuta.
+
+Nüüd on summa real klikitav: klikk → sisestusväli → Enter salvestab, Escape
+loobub. Uuendamise mutatsioon (`useSaveWorkerRate`) oskas `id`-ga uuendamist
+juba ammu — puudus ainult nupp.
+
+Parsimatu või negatiivne väärtus on kirjaviga, mitte korraldus: muutust ei
+salvestata. Muutumatut väärtust samuti ei kirjutata üle.
+
 ## [1.91.0] — 2026-10-23
 
 **Lehtede pealkirjad on tumedatel teemadel loetavad**
