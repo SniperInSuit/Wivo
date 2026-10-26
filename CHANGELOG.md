@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.92.0] — 2026-10-26
+
+**Tabelis saab nüüd muudatuste järgi filtreerida**
+
+Uus filter: **Kõik muudatused · On muudatusi · Muudatus ilma põhjuseta**.
+Viimase kõrval on **arv** — mitu tööd ootab veel vastust.
+
+Põhjus, miks see vaja oli: põhjus on see, mis eristab „meie viga" ja „patsient
+mõtles ümber", ja **just see otsustab, kas ümbertegemise eest üldse makstakse**.
+Ilma võimaluseta tühje üles leida jäävad nad tühjaks, ja iga muudatuste number
+Statistikas maandub vaikselt „Määramata" alla.
+
+- Filter ilmub ainult siis, kui muudatustega töid üldse on
+- Loendur käib **kõigi vaates olevate tööde** pealt, mitte filtreeritud hulga —
+  muidu muudaks filtri valimine just seda numbrit, mida ta reklaamis
+- Põhjust loetakse `revisionReasons()` kaudu, mitte toorelt veerust: põhjus
+  võib olla `reasons[]`-is või pre-1.24 `reason` stringis, ja ühe lugemine
+  nimetaks pooled vastatud muudatused tühjaks
+
 ## [1.91.1] — 2026-10-26
 
 **Tasureegli summat saab nüüd muuta, mitte ainult kustutada**

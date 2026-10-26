@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes, Download, HandCoins, Wallet } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search, Edit2, Check, Trash2, X as XIcon, Eye, Euro, Zap, CalendarDays, Shapes, Download, HandCoins, Wallet, Repeat } from 'lucide-react'
 import {
   format, isPast, parseISO,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, isWithinInterval
 } from 'date-fns'
 import type { Job, StageKey } from '../../types/job'
+import { revisionReasons } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { MarkPaidDialog, type PaidDetails } from '../JobDetail/MarkPaidDialog'
@@ -42,6 +43,23 @@ const PAY_OPTIONS: { key: PayFilter; label: string }[] = [
   { key: 'partial',  label: 'Osaliselt makstud' },
   { key: 'overdue',  label: 'Üle tähtaja' },
   { key: 'settled',  label: 'Makstud' },
+]
+
+/**
+ * Work with remakes, and — the one that prompted this — remakes with NO reason
+ * recorded.
+ *
+ * A reason is what separates "our mistake" from "the patient changed their
+ * mind", and that distinction decides whether anybody gets paid for the redo.
+ * Without a way to FIND the blank ones they stay blank, and every revision
+ * figure in Statistika quietly lands under "Määramata".
+ */
+type RevFilter = 'all' | 'any' | 'noreason'
+
+const REV_OPTIONS: { key: RevFilter; label: string }[] = [
+  { key: 'all',      label: 'Kõik muudatused' },
+  { key: 'any',      label: 'On muudatusi' },
+  { key: 'noreason', label: 'Muudatus ilma põhjuseta' },
 ]
 
 const PERIOD_OPTIONS: { key: PeriodFilter; label: string }[] = [
@@ -96,6 +114,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   // the other three. Empty set means no filter.
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set())
   const [payFilter, setPayFilter] = useState<PayFilter>('all')
+  const [revFilter, setRevFilter] = useState<RevFilter>('all')
   // A debtor KEY from lib/debtors — 'klient:<id>' or 'patsient:<name>' — not a
   // name. Two patients can share a name; a key cannot collide with the other.
   const [debtorFilter, setDebtorFilter] = useState<Set<string>>(new Set())
@@ -132,6 +151,21 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     return m
   }, [debt])
 
+  // Counted over every job in view, not the filtered set — the label has to
+  // say how many are unanswered in total, or picking the filter would change
+  // the number it was advertising.
+  const revStats = useMemo(() => {
+    let withRevisions = 0
+    let noReason = 0
+    for (const j of jobs) {
+      const revs = j.revisions ?? []
+      if (revs.length === 0) continue
+      withRevisions++
+      if (revs.some(r => revisionReasons(r).length === 0)) noReason++
+    }
+    return { withRevisions, noReason }
+  }, [jobs])
+
   const filtered = useMemo(() => {
     let result = [...jobs]
     if (search.trim()) {
@@ -159,6 +193,16 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       return !!d && debtorFilter.has(d.key)
     })
     if (workTypeFilter.size) result = result.filter(j => workTypeFilter.has(wt.resolve(j.too).nimi))
+    if (revFilter !== 'all') {
+      result = result.filter(j => {
+        const revs = j.revisions ?? []
+        if (revFilter === 'any') return revs.length > 0
+        // Through revisionReasons, never the raw column: a reason can live in
+        // `reasons[]` or in the pre-1.24 `reason` string, and reading one of
+        // them would call half the answered ones blank.
+        return revs.some(r => revisionReasons(r).length === 0)
+      })
+    }
     if (periodFilter !== 'all') {
       const now = new Date()
       let start: Date, end: Date
@@ -191,7 +235,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       })
     }
     return result
-  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, payFilter, debtorFilter,
+  }, [jobs, search, stageFilter, periodFilter, workTypeFilter, payFilter, revFilter, debtorFilter,
       debtorOfJob, allPayments, allInvoices, sortKey, sortDir, stages, wt])
 
   // The work types actually on screen, grouped the way Seaded defines them, with
@@ -241,7 +285,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   )
 
   const hasFilters = stageFilter !== 'all' || periodFilter !== 'all' || workTypeFilter.size > 0
-    || payFilter !== 'all' || debtorFilter.size > 0 || !!search.trim()
+    || payFilter !== 'all' || debtorFilter.size > 0 || revFilter !== 'all' || !!search.trim()
 
   function clearFilters() {
     setStageFilter('all')
@@ -249,6 +293,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     setWorkTypeFilter(new Set())
     setPayFilter('all')
     setDebtorFilter(new Set())
+    setRevFilter('all')
     onSearchChange('')
   }
 
@@ -422,6 +467,20 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           options={PAY_OPTIONS}
           onChange={setPayFilter}
         />
+
+        {/* Only when there is something to filter — an empty menu is a button
+            that does nothing. The blank-reason count is in the label, because
+            "how many are still unanswered" is the actual question. */}
+        {revStats.withRevisions > 0 && (
+          <SelectMenu
+            icon={Repeat}
+            value={revFilter}
+            options={REV_OPTIONS.map(o => o.key === 'noreason' && revStats.noReason > 0
+              ? { ...o, label: `${o.label} · ${revStats.noReason}` }
+              : o)}
+            onChange={setRevFilter}
+          />
+        )}
 
         {/* The debtor list. Only appears when somebody owes something — an empty
             menu is a button that does nothing. The amount is IN the option
