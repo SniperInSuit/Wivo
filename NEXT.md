@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.91.0 · 23.10.2026 · haru `main`**
+**Seis: v1.97.0 · 27.10.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 685 rohelist, 0 punast
+npm test        # 804 rohelist, 0 punast
 npm run build
 ```
 
@@ -37,6 +37,54 @@ migratsioon avastati ühe ekraani kaupa.
 ⚠ Pärast veeru lisamist jooksuta **eraldi päringuna**
 `notify pgrst, 'reload schema';` — PostgREST hoiab skeemi vahemälus. See on koht,
 kus „jooksutasin ju ära" kõige sagedamini tõeks osutub ja ikka ei tööta.
+
+---
+
+## ✅ 3D hambakaart on olemas (Faas 1a)
+
+Lüliti **2D / 3D** on hambakaardi kohal igal neljal kutsumiskohal, sealhulgas
+uue töö wizardis. 2D jääb **vaikimisi** — 14 hamba valimine on seal kiirem.
+
+| Mis | Kus |
+|---|---|
+| Mudel | `resources/teeth.glb` — 33 objekti (`tooth_11`…`tooth_48` + `gingiva`) |
+| Päritolu | `resources/teeth.glb.SOURCE.md` — ostetud TurboSquidist, Standard License |
+| Teisendaja | `scripts/teeth-to-glb.mjs` — OBJ+TGA → GLB, **ilma uue sõltuvuseta** |
+| 3D vaade | `src/renderer/src/components/teeth/Odontogram3D.tsx` |
+| Puhas loogika | `odontogram3dCore.ts` (15 testi) · `toothInteraction.ts` (13 testi) |
+| Lüliti ja langusteed | `ToothPicker.tsx` |
+
+### Otsused, mille juurde ei pea tagasi tulema
+
+- **Patsiendi skanne ei pane.** MDR. 3D on idealiseeritud kaart, mitte diagnoos
+- **Mudel tuleb IPC kaudu, mitte `fetch`-iga.** Renderer laetakse `loadFile`-iga,
+  ehk päritolu on `file://`, ja Chromium keeldub seal `fetch`-ist. `GLTFLoader`
+  kasutab fetch'i — töötaks arenduses ja kukuks igas paigalduses. Seetõttu
+  `ipcMain.handle('wivo:teeth-model')` → `GLTFLoader.parse()`
+- **`three` on `React.lazy` taga.** ~650 KB JS-i ei parsita nende jaoks, kes 3D-d
+  ei ava
+- **Renderdab nõudmisel, mitte `requestAnimationFrame` silmuses.** Seepärast on
+  OrbitControls'i damping väljas — sujuv hääbumine nõuaks pidevat silmust, ja
+  paneel lahti terve päev tähendaks üht tuuma tööl
+- **Hambalt alustatud lohistamine märgib, tühjalt kohalt pöörab.** Otsus
+  langetatakse `pointerdown`-i kiirest (`decideGesture`), nii et märkimine ja
+  pööramine ei võitle kunagi
+- **Klikireeglid elavad `toothInteraction.ts`-is ja neid loevad MÕLEMAD vaated.**
+  Need reeglid otsustavad raha — kaks lahku läinud koopiat ei paistaks katkise
+  kaardina, vaid seletamatu palgana
+- **WebGL puudu või mudel puudu → vaikne langus 2D peale, eelistust EI
+  salvestata.** Eelistuse ülekirjutamine masina nimel tähendaks, et sama arvuti
+  pärast draiveriuuendust ei paku 3D-d enam kunagi
+
+### 🟡 3D — mis veel ootab
+
+- **Faas 1b:** lohistades mitme hamba märkimine 3D-s, implantaadid, disainija
+  hambad, peegeldus
+- **Faas 1c:** varjud, teemareaktiivsus, eestikeelne tekstiülevaatus
+- **Pakendatud NSIS-paigaldusest testimata.** `npm run dev` **ei suuda** ülalkirjeldatud
+  `file://` klassi vigu näidata — see on ainus värav, mis seda püüab
+- Nähtav ige lõikeserv küljelt vaadates; tekstuurid 512 px peale annaks 4,0 MB →
+  ~1,7 MB. Mõlemad on kosmeetika, kummalgi pole kiiret
 
 ---
 
@@ -87,7 +135,14 @@ visiidiks.
 2. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
    Ilma võtmeteta jäetakse tasu vahele ja taotlus tuleb ikka kohale
 3. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
-4. **`git push`**
+4. **Kontrolli, kas 2D ja 3D näitavad sama hammast samal pool.** Ava töö, märgi
+   2D-s üks **ülemine parem** hammas (nt 16), lülita 3D peale. Mudel on
+   peegelsümmeetriline, ehk „õige" ja „peegeldatud" näevad 3D-s täpselt
+   ühesugused välja — absoluutset tõde seal ei ole. Ainus, mis loeb, on et 3D
+   ütleks sama, mis 2D. **Kui on peegelpildis:** keera
+   `PLUS_X_IS_PATIENT_LEFT` `scripts/teeth-to-glb.mjs`-is ümber ja genereeri
+   `resources/teeth.glb` uuesti
+5. **`git push`** — 6 commiti ootab
 
 ---
 
@@ -138,12 +193,8 @@ Soovitatav järjekord ja **kaks eeldust, mida ei tohi vahele jätta**, on selles
 failis. Lühidalt: **RLS ei jõusta praegu õigusi** ja vestlusega kasvab see päris
 probleemiks.
 
-**Kohe alustatav, ei blokeeri miski:** 3D **Faas 0** — `Props` liides välja,
-puhas tuletus ühte kohta, `ToothPicker` ümbris, peegeldus `ui_prefs`-i. Null
-visuaalset muutust.
-
-**Ootab omanikku:** üks anonüümne `.glb` kaar, hambad eraldi objektidena
-(`tooth_18`…`tooth_38`), hammustus 2–4 mm avatud.
+**3D hambakaart on Faas 1a-ni tehtud** — vt ülalpool. Mudelit enam ei oodata.
+Järgmised 3D sammud (1b, 1c) on kosmeetika ja mugavus, mitte blokeerijad.
 
 ---
 
