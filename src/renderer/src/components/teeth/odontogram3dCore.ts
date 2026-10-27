@@ -67,16 +67,21 @@ export const VIEW_LABELS: readonly { view: ViewName; label: string }[] = [
 /**
  * The camera offset for a preset, scaled so a model of `span` fits the frame.
  *
- * `fovDeg` is the vertical field of view. The 1.7 is headroom: at exactly the
- * fitted distance the model touches all four edges, which reads as cramped and
- * clips the moment anybody orbits.
+ * `fovDeg` is the vertical field of view, and `span` is the model's LARGEST
+ * dimension rather than its height — the model turns, so the fit has to hold
+ * for every angle, not just the one it starts at.
+ *
+ * The 1.25 is headroom. It was 1.7, which is right for a square viewport and
+ * much too far for the wide, short panel this actually sits in: fitting the
+ * widest dimension against the VERTICAL field of view already overshoots, and
+ * the extra margin on top left the jaw floating in the middle of the frame.
  */
 export function viewOffset(
   view: ViewName,
   span: number,
   fovDeg: number,
 ): [number, number, number] {
-  const dist = (span / 2) / Math.tan((fovDeg * Math.PI) / 360) * 1.7
+  const dist = (span / 2) / Math.tan((fovDeg * Math.PI) / 360) * 1.25
   const [x, y, z] = CAMERA_VIEWS[view]
   const len = Math.hypot(x, y, z) || 1
   return [(x / len) * dist, (y / len) * dist, (z / len) * dist]

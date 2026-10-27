@@ -135,9 +135,12 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     scene.add(key, rim)
 
     const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enablePan = false     // a centred model only ever gets lost by panning
-    controls.enableDamping = false // see note 2 in the header
-    controls.enabled = false       // until a press lands on empty space
+    controls.enablePan = false      // a centred model only ever gets lost by panning
+    controls.enableDamping = false  // see note 2 in the header
+    controls.zoomSpeed = 0.8
+    // Rotation is the only thing gated, and it is gated BEFORE OrbitControls
+    // sees the press — see `onDownCapture`. Zoom stays on permanently: the
+    // wheel never competes with marking a tooth.
 
     const render = (): void => { if (!disposed) renderer.render(scene, camera) }
     renderRef.current = render
@@ -167,6 +170,11 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       controls.target.copy(box.getCenter(new THREE.Vector3()))
       const size = box.getSize(new THREE.Vector3())
       span = Math.max(size.x, size.y, size.z)
+      // Scaled off the model rather than hardcoded, so a rebuild from a
+      // different bite cannot leave the wheel able to fly through the palate
+      // or push the jaw out of sight.
+      controls.minDistance = span * 0.55
+      controls.maxDistance = span * 4
 
       fitRef.current = (view: ViewName): void => {
         const [x, y, z] = viewOffset(view, span, FOV)
@@ -204,21 +212,34 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       return (hit?.object as THREE.Mesh | undefined) ?? null
     }
 
+    let orbiting = false
+
     const onMove = (e: PointerEvent): void => {
-      if (controls.enabled) return  // mid-orbit: the number would only chase the cursor
+      if (orbiting) return  // mid-turn: the number would only chase the cursor
       const mesh = pick(e)
       const fdi = mesh ? parseToothName(mesh.name) : null
       const r = host.getBoundingClientRect()
       setHover(fdi === null ? null : { fdi, x: e.clientX - r.left, y: e.clientY - r.top })
     }
 
-    const onDown = (e: PointerEvent): void => {
+    /**
+     * Routes the press, in the CAPTURE phase on the host element.
+     *
+     * The phase is the whole trick. OrbitControls listens on the canvas, and it
+     * registered first, so a listener added to the canvas afterwards — capture
+     * flag or not — still runs second: at the target, listeners fire in
+     * registration order. OrbitControls would see the old value of
+     * `enableRotate` every time, and a gate flipped afterwards would already be
+     * too late. Capturing on the PARENT is ordered by the DOM itself.
+     */
+    const onDownCapture = (e: PointerEvent): void => {
       const mesh = pick(e)
       const gesture = decideGesture(mesh !== null, e.button !== 0)
-      // The ray decides, so marking and orbiting can never fight: a drag that
+      // The ray decides, so marking and turning can never fight: a drag that
       // began on a tooth never spins the model out from under it.
-      controls.enabled = gesture === 'orbit'
-      if (gesture === 'orbit' || !mesh) return
+      controls.enableRotate = gesture === 'orbit'
+      orbiting = gesture === 'orbit'
+      if (gesture === 'orbit' || !mesh) { setHover(null); return }
       const fdi = parseToothName(mesh.name)
       if (fdi === null) return
       const ctx = live.current
@@ -230,12 +251,12 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       }
     }
 
-    const onUp = (): void => { controls.enabled = false }
+    const onUp = (): void => { orbiting = false }
     const onLeave = (): void => setHover(null)
 
     const el = renderer.domElement
     el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerdown', onDown)
+    host.addEventListener('pointerdown', onDownCapture, true)
     el.addEventListener('pointerleave', onLeave)
     window.addEventListener('pointerup', onUp)
 
@@ -243,7 +264,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       disposed = true
       ro.disconnect()
       el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerdown', onDown)
+      host.removeEventListener('pointerdown', onDownCapture, true)
       el.removeEventListener('pointerleave', onLeave)
       window.removeEventListener('pointerup', onUp)
       controls.removeEventListener('change', render)
@@ -264,7 +285,11 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
   const { items, colorMap, activeItemId } = props
   useEffect(() => {
     const teeth = teethRef.current
-    if (teeth.size === 0) return
+    // `loading` is in the dependency list for one reason: the model arrives
+    // asynchronously. On the first pass there are no meshes yet and this bails
+    // out — and without something to re-run it once they exist, teeth already
+    // chosen on the 2D chart came up unmarked and had to be picked again.
+    if (loading || teeth.size === 0) return
     const state = deriveOdontogramState(items, colorMap)
     const white = new THREE.Color(0xffffff)
 
@@ -289,7 +314,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       mat.transparent = mat.opacity < 1
     }
     renderRef.current()
-  }, [items, colorMap, activeItemId])
+  }, [items, colorMap, activeItemId, loading])
 
   // ── Hover highlight, outside React's render path ───────────────────────────
   const litRef = useRef<THREE.MeshStandardMaterial | null>(null)
@@ -320,7 +345,12 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
 
   return (
     <div className="space-y-2">
-      <div ref={hostRef} className="relative h-[340px] w-full overflow-hidden rounded-xl bg-bg-sidebar">
+      {/* `bg-ink/5` rather than `bg-bg-sidebar`: that token is documented as
+          the recessed surface for inputs and stays LIGHT in every theme, which
+          put a near-white slab in the middle of a dark card. A tint of the ink
+          colour recesses correctly whichever way round the theme runs, and the
+          canvas itself is transparent so this is what shows through. */}
+      <div ref={hostRef} className="relative h-[340px] w-full overflow-hidden rounded-xl bg-ink/5">
         {loading && (
           <div className="absolute inset-0 grid place-items-center text-sm text-ink-muted">
             Laen mudelit…
