@@ -14,7 +14,7 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ```bash
 npm ci
-npm test        # 804 rohelist, 0 punast
+npm test        # 810 rohelist, 0 punast
 npm run build
 ```
 
@@ -76,10 +76,28 @@ uue töö wizardis. 2D jääb **vaikimisi** — 14 hamba valimine on seal kiirem
   salvestata.** Eelistuse ülekirjutamine masina nimel tähendaks, et sama arvuti
   pärast draiveriuuendust ei paku 3D-d enam kunagi
 
+### Faas 1b on tehtud — ja peegeldust 3D-s EI ole
+
+Lohistades mitme hamba valimine, implantaadid ja disainija hambad töötavad.
+
+**Peegeldust 3D-s ei tule, ja see on otsus, mitte puuduv funktsioon.** 2D-l on
+„Arsti vaade / Patsiendi vaade", sest lame joonis ei oma vaatepunkti — keegi
+peab ütlema, kummas otsas on patsiendi parem. Ruumis olev mudel omab seda juba,
+ja seda muudetakse mudelit pöörates.
+
+Geomeetria peegeldamine ehitaks lõualuu, mida ei ole olemas, ja iga hammas
+kannaks endiselt õiget FDI numbrit vales kohas. **See on ainus vale kaart, mida
+vaadates ei märka.** Küsimusele „kummal pool ma olen?" vastavad nüüd kaks silti
+(**Parem / Vasak**), mis on kinnitatud mudeli enda külgedele ja vahetavad
+pööramisel kohta, sest nad ON need küljed.
+
+Kumb külg on patsiendi parem, **mõõdetakse mudelist** (`patientRightSign`), mitte
+kirjutatud konstandina. Põhjus: teisendaja `PLUS_X_IS_PATIENT_LEFT` lipu
+ümberkeeramine annab faili, mis näeb välja täpselt sama ja on teistpidi. Kui
+lipp kunagi ümber keeratakse, järgnevad sildid ise.
+
 ### 🟡 3D — mis veel ootab
 
-- **Faas 1b:** lohistades mitme hamba märkimine 3D-s, implantaadid, disainija
-  hambad, peegeldus
 - **Faas 1c:** varjud, teemareaktiivsus, eestikeelne tekstiülevaatus
 - **Pakendatud NSIS-paigaldusest testimata.** `npm run dev` **ei suuda** ülalkirjeldatud
   `file://` klassi vigu näidata — see on ainus värav, mis seda püüab
@@ -210,6 +228,23 @@ Mõte ei ole raamatupidamine ise — see on Meriti territoorium. Mõte on
 **„raamatupidajale valmis pakett"**: lukustatud periood, müügireskontro,
 käibemaksu kokkuvõte määrade kaupa, laekumised, kulupool. Andmed on olemas,
 puudub koondamine ja eksport.
+
+**Omaniku sõnastus (27.10.2026):** „saab mingi kokkuvõtvaid faile luua ja alla
+laadida, et ette kanda ja saata maksuametile". Ehk **väljund on fail**, mitte
+ekraan. Statistika leht juba näitab numbreid — see ei lahendanud midagi, sest
+numbrit ei saa edasi saata.
+
+Sellest järeldub kolm asja, mis tuleb enne esimest rida paika panna:
+
+1. **Periood tuleb lukustada.** Kui eksporditud fail on juba raamatupidajale
+   saadetud ja keegi muudab tagantjärele ühe töö hinda, lahkneb Wivo sellest,
+   mis on esitatud. Eksport peab jäädvustama seisu, mitte päringu
+2. **Käibemaks määrade kaupa, mitte kokku.** Üks summa ei ole deklareeritav
+3. **Kaks juba teadaolevat võlga satuvad otse sellesse faili:**
+   `periodMetrics` „käive" liidab muudatuste hinnad juurde, ja `kulu_yle`
+   ülekirjutus ei kajastu kuluridades. Praegu on need ekraaninumbrite
+   ebatäpsused. **Eksporditud failis on need valeandmed maksuametile** — need
+   tuleb lahendada enne eksporti, mitte pärast
 
 ### 2. Müügiblokeerijad *(enne kui Wivot kellelegi müüa)*
 

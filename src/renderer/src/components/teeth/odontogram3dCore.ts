@@ -116,3 +116,31 @@ export function webglAvailable(): boolean {
     return false
   }
 }
+
+/**
+ * Which way along X the patient's RIGHT side lies, read off the model itself.
+ *
+ * ── Why this is measured and not written down ───────────────────────────────
+ * The converter has a `PLUS_X_IS_PATIENT_LEFT` flag, and the model is mirror
+ * symmetric, so flipping it produces a file that looks identical and is
+ * labelled the other way round. If that flag is ever flipped and the model
+ * regenerated, a constant here would silently become a lie — and the lie would
+ * read as a correct chart with the sides swapped, which is the one error nobody
+ * spots by looking.
+ *
+ * Tooth 16 is an upper RIGHT molar by definition of the FDI scheme. Asking the
+ * mesh where it actually sits cannot drift from the file it is describing.
+ */
+export function patientRightSign(xOfUpperRight: number, xOfCentre: number): 1 | -1 {
+  return xOfUpperRight < xOfCentre ? -1 : 1
+}
+
+/**
+ * FDI numbers to look for when measuring the sides, best first.
+ *
+ * A model may be missing teeth — a wisdom tooth most of all — so this walks
+ * outwards from the first molar toward the midline rather than depending on any
+ * single tooth being present. All of them are in the patient's upper right
+ * quadrant, so any one of them answers the question.
+ */
+export const RIGHT_SIDE_PROBES: readonly number[] = [16, 15, 14, 13, 17, 12, 11, 18]

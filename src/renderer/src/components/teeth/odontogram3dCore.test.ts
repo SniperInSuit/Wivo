@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseToothName, viewOffset, decideGesture, CAMERA_VIEWS, VIEW_LABELS,
+  patientRightSign, RIGHT_SIDE_PROBES,
 } from './odontogram3dCore'
 
 describe('parseToothName', () => {
@@ -105,5 +106,43 @@ describe('decideGesture', () => {
     // The escape hatch for a mouth so full of teeth there is no empty space
     // left to grab.
     expect(decideGesture(true, true)).toBe('orbit')
+  })
+})
+
+describe('patientRightSign', () => {
+  it('reads the patient right as -X when tooth 16 sits left of centre', () => {
+    expect(patientRightSign(-2.1, 0)).toBe(-1)
+  })
+
+  it('reads it as +X when tooth 16 sits right of centre', () => {
+    expect(patientRightSign(2.1, 0)).toBe(1)
+  })
+
+  it('does not assume the model is centred on the origin', () => {
+    // The box centre is whatever the exporter produced, not necessarily 0.
+    expect(patientRightSign(8.9, 11)).toBe(-1)
+    expect(patientRightSign(13.1, 11)).toBe(1)
+  })
+
+  it('answers the mirrored model the other way round', () => {
+    // The whole reason this is measured: flipping the converter's mirror flag
+    // produces a file that looks identical and IS the other way round. If this
+    // ever stops following the measurement, the chart shows the correct FDI
+    // numbers on the wrong sides — the one error nobody catches by looking.
+    const upright = patientRightSign(-2.1, 0)
+    const mirrored = patientRightSign(2.1, 0)
+    expect(mirrored).toBe(-upright)
+  })
+
+  it('probes only teeth in the upper right quadrant', () => {
+    // A probe from any other quadrant would answer the opposite question.
+    for (const fdi of RIGHT_SIDE_PROBES) {
+      expect(Math.floor(fdi / 10)).toBe(1)
+    }
+  })
+
+  it('has a probe for every tooth of that quadrant, so gaps cannot blind it', () => {
+    expect([...RIGHT_SIDE_PROBES].sort((a, b) => a - b))
+      .toEqual([11, 12, 13, 14, 15, 16, 17, 18])
   })
 })

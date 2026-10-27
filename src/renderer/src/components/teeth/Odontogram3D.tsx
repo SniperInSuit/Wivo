@@ -32,7 +32,19 @@
  * No keyboard grid. The 2D chart is one click away, is the default, and is
  * already fully keyboard-operable — a third tooth grid (the wizard has one,
  * keyed by type name rather than item) would be a third place for the same
- * idea to drift. Dragging across teeth to mark several is Faas 1b.
+ * idea to drift.
+ *
+ * NO MIRROR TOGGLE. The 2D chart has one ("Arsti vaade" / "Patsiendi vaade")
+ * because a flat drawing of an arch has no viewpoint of its own: somebody has
+ * to say which end is the patient's right. A model in space already has one,
+ * and you change it by turning the model — which is the entire point of it.
+ *
+ * Mirroring the geometry instead would build a jaw that does not exist, and
+ * every tooth would still carry its correct FDI number while sitting on the
+ * wrong side. That is the one kind of wrong chart nobody catches by looking at
+ * it. So the question the toggle answers — "which side am I looking at?" — is
+ * answered where it is actually asked: two labels pinned to the model's own
+ * sides, which swap as you turn it, because they are the sides.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -40,8 +52,16 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { deriveOdontogramState } from './odontogramState'
-import { decideToothClick, type MarkMode } from './toothInteraction'
-import { parseToothName, viewOffset, decideGesture, VIEW_LABELS, type ViewName } from './odontogram3dCore'
+import { decideToothClick, decideDragPaint, ownsTooth, type MarkMode } from './toothInteraction'
+import {
+  parseToothName,
+  viewOffset,
+  decideGesture,
+  patientRightSign,
+  RIGHT_SIDE_PROBES,
+  VIEW_LABELS,
+  type ViewName,
+} from './odontogram3dCore'
 import type { ToothPickerProps } from './toothPickerProps'
 
 const FOV = 38
@@ -152,6 +172,11 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
   const teethRef = useRef(new Map<number, THREE.Mesh>())
   const renderRef = useRef<() => void>(() => {})
   const fitRef = useRef<(v: ViewName) => void>(() => {})
+  // Positioned by the renderer, not by React. They move on every frame of a
+  // turn, and routing that through state would re-render the whole panel —
+  // including all 32 materials — for two pieces of text.
+  const rightRef = useRef<HTMLSpanElement>(null)
+  const leftRef = useRef<HTMLSpanElement>(null)
 
   // ── Scene, built once ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -197,7 +222,31 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     // sees the press — see `onDownCapture`. Zoom stays on permanently: the
     // wheel never competes with marking a tooth.
 
-    const render = (): void => { if (!disposed) renderer.render(scene, camera) }
+    /**
+     * Where the two side labels are anchored IN THE MODEL.
+     *
+     * Empty until the model has loaded, and empty for good if the model turns
+     * out to have no upper-right tooth to measure against — a label guessed
+     * from a constant would be worse than no label, because it would look
+     * exactly as authoritative while being wrong.
+     */
+    let sides: { el: React.RefObject<HTMLSpanElement>; at: THREE.Vector3 }[] = []
+
+    const render = (): void => {
+      if (disposed) return
+      renderer.render(scene, camera)
+      for (const { el, at } of sides) {
+        const node = el.current
+        if (!node) continue
+        const v = at.clone().project(camera)
+        // Percentages, so this needs no knowledge of the canvas size and
+        // cannot go stale between a resize and the next frame.
+        node.style.left = `${(v.x * 0.5 + 0.5) * 100}%`
+        node.style.top = `${(-v.y * 0.5 + 0.5) * 100}%`
+        // `z >= 1` is behind the camera — at close zoom one side can be.
+        node.style.opacity = v.z < 1 ? '1' : '0'
+      }
+    }
     renderRef.current = render
     controls.addEventListener('change', render)
 
@@ -222,8 +271,24 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       scene.add(root)
 
       const box = new THREE.Box3().setFromObject(root)
-      controls.target.copy(box.getCenter(new THREE.Vector3()))
+      const centre = box.getCenter(new THREE.Vector3())
+      controls.target.copy(centre)
       const size = box.getSize(new THREE.Vector3())
+
+      // Which way is the patient's right — measured, not assumed. See
+      // `patientRightSign`: the converter's mirror flag produces a file that
+      // looks identical either way, so only the model can answer this.
+      const probe = RIGHT_SIDE_PROBES
+        .map(fdi => teethRef.current.get(fdi))
+        .find((m): m is THREE.Mesh => m !== undefined)
+      if (probe) {
+        const probeAt = new THREE.Box3().setFromObject(probe).getCenter(new THREE.Vector3())
+        const dx = size.x * 0.56 * patientRightSign(probeAt.x, centre.x)
+        sides = [
+          { el: rightRef, at: new THREE.Vector3(centre.x + dx, centre.y, centre.z) },
+          { el: leftRef, at: new THREE.Vector3(centre.x - dx, centre.y, centre.z) },
+        ]
+      }
       span = Math.max(size.x, size.y, size.z)
       // Scaled off the model rather than hardcoded, so a rebuild from a
       // different bite cannot leave the wheel able to fly through the palate
@@ -270,10 +335,38 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     let orbiting = false
     const clearHover = (): void => { setHoverFdi(null); setHoverPos(null) }
 
+    /**
+     * The drag-paint pair, held as plain locals rather than refs.
+     *
+     * `painting` is the DIRECTION the drag committed to on the way down, so a
+     * drag that began on an unselected tooth only ever adds, and one that began
+     * on a selected tooth only ever removes. Without it, crossing a tooth you
+     * already own would toggle it off mid-sweep and the selection would come
+     * out as whatever the cursor's exact path happened to be.
+     *
+     * `done` is what this drag has already acted on. A pointer can report many
+     * moves over the same tooth, and each one would otherwise flip it again.
+     */
+    let painting: 'add' | 'remove' | null = null
+    const done = new Set<number>()
+
     const onMove = (e: PointerEvent): void => {
       if (orbiting) return  // mid-turn: the number would only chase the cursor
       const mesh = pick(e)
       const fdi = mesh ? parseToothName(mesh.name) : null
+
+      if (fdi !== null && painting !== null && !done.has(fdi)) {
+        const ctx = live.current
+        const state = deriveOdontogramState(ctx.items, ctx.colorMap)
+        // `decideDragPaint` never marks — see its own note. A dragged implant
+        // or design mark is the easiest kind of mistake not to notice, and both
+        // of them move money.
+        if (decideDragPaint(fdi, { ...ctx, owners: state.owners }, painting) === 'toggle') {
+          done.add(fdi)
+          ctx.onToggleTooth(fdi)
+        }
+      }
+
       if (fdi === null) { clearHover(); return }
       const r = host.getBoundingClientRect()
       setHoverFdi(fdi)
@@ -303,13 +396,26 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       const ctx = live.current
       const state = deriveOdontogramState(ctx.items, ctx.colorMap)
       switch (decideToothClick(fdi, { ...ctx, owners: state.owners })) {
-        case 'toggle': ctx.onToggleTooth(fdi); break
+        case 'toggle':
+          painting = ownsTooth(state.owners, fdi, ctx.activeItemId) ? 'remove' : 'add'
+          done.clear()
+          done.add(fdi)
+          // Keeps the moves coming if the cursor slips off the canvas
+          // mid-sweep — otherwise the sweep just stops, with half the teeth
+          // marked and nothing saying why. Released on `pointerup`.
+          renderer.domElement.setPointerCapture(e.pointerId)
+          ctx.onToggleTooth(fdi)
+          break
         case 'implant': ctx.onToggleImplant?.(fdi); break
         case 'design': ctx.onToggleDesign?.(fdi); break
       }
     }
 
-    const onUp = (): void => { orbiting = false }
+    const onUp = (): void => {
+      orbiting = false
+      painting = null
+      done.clear()
+    }
     const onLeave = (): void => clearHover()
 
     const el = renderer.domElement
@@ -379,6 +485,14 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
             Laen mudelit…
           </div>
         )}
+        {/* The patient's own left and right, pinned to the model's sides.
+            They swap places when you turn it, because they ARE the sides —
+            this is what the 2D chart's mirror toggle is for, answered by the
+            thing itself instead of by a setting. `opacity` starts at 0 so they
+            do not flash in the top-left corner before the first frame. */}
+        <SideLabel innerRef={rightRef}>Parem</SideLabel>
+        <SideLabel innerRef={leftRef}>Vasak</SideLabel>
+
         {hoverPos && hoverLabel && (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[150%] rounded-md border border-ink-faint/30 bg-bg-card px-2 py-0.5 text-xs font-bold text-ink shadow-card"
@@ -425,14 +539,33 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
         </div>
       </div>
 
-      {markMode && (
-        <p className="text-xs text-ink-muted">
-          {markMode === 'implant'
-            ? 'Klõpsa hambal, mis on implantaadil. Märkida saab ainult selle tööosa hambaid.'
-            : 'Klõpsa hambal, mille tegi disainija. Märkida saab ainult selle tööosa hambaid.'}
-        </p>
-      )}
+      {/* Always something here, because none of these gestures is guessable
+          from looking at the picture. The marking modes say that a mark is
+          refused outside this item's own teeth BEFORE the click that gets
+          refused, so a click that does nothing is never a mystery. */}
+      <p className="text-xs text-ink-muted">
+        {markMode === 'implant'
+          ? 'Klõpsa hambal, mis on implantaadil. Märkida saab ainult selle tööosa hambaid.'
+          : markMode === 'design'
+            ? 'Klõpsa hambal, mille tegi disainija. Märkida saab ainult selle tööosa hambaid.'
+            : 'Lohista üle hammaste, et valida mitu korraga. Tühjalt kohalt lohistades pöörab mudelit, rullik suumib.'}
+      </p>
     </div>
+  )
+}
+
+function SideLabel({ innerRef, children }: {
+  innerRef: React.RefObject<HTMLSpanElement>
+  children: React.ReactNode
+}) {
+  return (
+    <span
+      ref={innerRef}
+      aria-hidden
+      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 select-none text-[10px] font-bold uppercase tracking-wider text-ink-muted/70 opacity-0"
+    >
+      {children}
+    </span>
   )
 }
 
