@@ -75,6 +75,57 @@ function sharedModel(): Promise<THREE.Group | null> {
   return cached
 }
 
+// ── Painting ─────────────────────────────────────────────────────────────────
+
+const WHITE = new THREE.Color(0xffffff)
+
+/**
+ * Sets a tooth's whole appearance from the state, every time.
+ *
+ * ── Why this computes rather than restores ───────────────────────────────────
+ * Hover used to be a second pass that brightened a material on the way in and
+ * tried to put it back on the way out. Putting it back needs to know what
+ * "back" was, and the test it used — "did this tooth have no emissive colour?"
+ * — was asked AFTER the highlight had already set one, so it never matched.
+ * Every tooth the cursor touched stayed lit for good.
+ *
+ * Deriving the finished look from the state in one place removes the question.
+ * There is nothing to restore because nothing is ever half-applied, and a tooth
+ * looks the same whether it was hovered once or thirty times.
+ */
+function paintTooth(
+  mesh: THREE.Mesh,
+  fdi: number,
+  state: ReturnType<typeof deriveOdontogramState>,
+  activeItemId: string | null,
+  hovered: boolean,
+): void {
+  const mat = mesh.material as THREE.MeshStandardMaterial
+  const key = String(fdi)
+  const owner = state.owners.get(key)
+
+  if (owner) mat.color.set(owner.color).lerp(WHITE, TINT_MIX)
+  else mat.color.copy(WHITE)
+
+  // A tooth can carry both marks. Implant wins the glow because it is the
+  // costlier fact; the hover label still names both.
+  const mark = state.implants.has(key) ? MARK_IMPLANT
+    : state.designed.has(key) ? MARK_DESIGN
+      : null
+
+  // Hover lifts the INTENSITY and only borrows the colour when there is no
+  // mark to show — colour is how the marks are told apart.
+  mat.emissive.setHex(mark ?? (hovered ? 0xffffff : 0x000000))
+  mat.emissiveIntensity = mark === null
+    ? (hovered ? 0.22 : 0)
+    : (hovered ? 0.55 : 0.3)
+
+  // Teeth belonging to another item on the same job are dimmed, not hidden:
+  // they are still real work, just not what is being edited.
+  mat.opacity = owner && activeItemId && owner.itemId !== activeItemId ? 0.55 : 1
+  mat.transparent = mat.opacity < 1
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export interface Odontogram3DProps extends ToothPickerProps {
@@ -85,7 +136,11 @@ export interface Odontogram3DProps extends ToothPickerProps {
 export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [markMode, setMarkMode] = useState<MarkMode | null>(null)
-  const [hover, setHover] = useState<{ fdi: number; x: number; y: number } | null>(null)
+  // Split deliberately. The POSITION changes on every mouse move; the TOOTH
+  // only when the cursor crosses onto a different one. Held as one object,
+  // every pixel of movement produced a new value and repainted all 32 teeth.
+  const [hoverFdi, setHoverFdi] = useState<number | null>(null)
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Handlers live inside a `useEffect` that runs ONCE, so they would otherwise
@@ -213,13 +268,16 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     }
 
     let orbiting = false
+    const clearHover = (): void => { setHoverFdi(null); setHoverPos(null) }
 
     const onMove = (e: PointerEvent): void => {
       if (orbiting) return  // mid-turn: the number would only chase the cursor
       const mesh = pick(e)
       const fdi = mesh ? parseToothName(mesh.name) : null
+      if (fdi === null) { clearHover(); return }
       const r = host.getBoundingClientRect()
-      setHover(fdi === null ? null : { fdi, x: e.clientX - r.left, y: e.clientY - r.top })
+      setHoverFdi(fdi)
+      setHoverPos({ x: e.clientX - r.left, y: e.clientY - r.top })
     }
 
     /**
@@ -239,7 +297,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       // began on a tooth never spins the model out from under it.
       controls.enableRotate = gesture === 'orbit'
       orbiting = gesture === 'orbit'
-      if (gesture === 'orbit' || !mesh) { setHover(null); return }
+      if (gesture === 'orbit' || !mesh) { clearHover(); return }
       const fdi = parseToothName(mesh.name)
       if (fdi === null) return
       const ctx = live.current
@@ -252,7 +310,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     }
 
     const onUp = (): void => { orbiting = false }
-    const onLeave = (): void => setHover(null)
+    const onLeave = (): void => clearHover()
 
     const el = renderer.domElement
     el.addEventListener('pointermove', onMove)
@@ -281,7 +339,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     }
   }, [onUnavailable])
 
-  // ── Colours, re-applied whenever the job changes ───────────────────────────
+  // ── One paint pass, for the job AND the hover ──────────────────────────────
   const { items, colorMap, activeItemId } = props
   useEffect(() => {
     const teeth = teethRef.current
@@ -291,56 +349,21 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
     // chosen on the 2D chart came up unmarked and had to be picked again.
     if (loading || teeth.size === 0) return
     const state = deriveOdontogramState(items, colorMap)
-    const white = new THREE.Color(0xffffff)
-
     for (const [fdi, mesh] of teeth) {
-      const mat = mesh.material as THREE.MeshStandardMaterial
-      const key = String(fdi)
-      const owner = state.owners.get(key)
-
-      if (owner) mat.color.set(owner.color).lerp(white, TINT_MIX)
-      else mat.color.copy(white)
-
-      // A tooth can carry both marks. Implant wins the glow because it is the
-      // costlier fact; the hover label still names both.
-      const implant = state.implants.has(key)
-      const design = state.designed.has(key)
-      mat.emissive.setHex(implant ? MARK_IMPLANT : design ? MARK_DESIGN : 0x000000)
-      mat.emissiveIntensity = implant || design ? 0.3 : 0
-
-      // Teeth belonging to another item on the same job are dimmed, not
-      // hidden: they are still real work, just not what is being edited.
-      mat.opacity = owner && activeItemId && owner.itemId !== activeItemId ? 0.55 : 1
-      mat.transparent = mat.opacity < 1
+      paintTooth(mesh, fdi, state, activeItemId, fdi === hoverFdi)
     }
     renderRef.current()
-  }, [items, colorMap, activeItemId, loading])
-
-  // ── Hover highlight, outside React's render path ───────────────────────────
-  const litRef = useRef<THREE.MeshStandardMaterial | null>(null)
-  useEffect(() => {
-    if (litRef.current) {
-      litRef.current.emissiveIntensity = litRef.current.emissive.getHex() === 0 ? 0 : 0.3
-      litRef.current = null
-    }
-    const mesh = hover ? teethRef.current.get(hover.fdi) : null
-    if (mesh) {
-      const mat = mesh.material as THREE.MeshStandardMaterial
-      // Lighten by INTENSITY, never by colour — colour is carrying the marks.
-      if (mat.emissive.getHex() === 0) mat.emissive.setHex(0xffffff)
-      mat.emissiveIntensity = 0.22
-      litRef.current = mat
-    }
-    renderRef.current()
-  }, [hover])
+  }, [items, colorMap, activeItemId, loading, hoverFdi])
 
   const setView = useCallback((v: ViewName) => fitRef.current(v), [])
 
   const state = deriveOdontogramState(items, colorMap)
-  const hoverLabel = hover && [
-    String(hover.fdi),
-    state.implants.has(String(hover.fdi)) ? 'implantaat' : null,
-    state.designed.has(String(hover.fdi)) ? 'disainija' : null,
+  const hoverKey = hoverFdi === null ? null : String(hoverFdi)
+  // The label names BOTH marks even though the glow can only show one.
+  const hoverLabel = hoverKey && [
+    hoverKey,
+    state.implants.has(hoverKey) ? 'implantaat' : null,
+    state.designed.has(hoverKey) ? 'disainija' : null,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -356,10 +379,10 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
             Laen mudelit…
           </div>
         )}
-        {hover && (
+        {hoverPos && hoverLabel && (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[150%] rounded-md border border-ink-faint/30 bg-bg-card px-2 py-0.5 text-xs font-bold text-ink shadow-card"
-            style={{ left: hover.x, top: hover.y }}
+            style={{ left: hoverPos.x, top: hoverPos.y }}
           >
             {hoverLabel}
           </div>
