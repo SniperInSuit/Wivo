@@ -48,9 +48,14 @@ const machineCanDraw3d = (): boolean => (probed ??= webglAvailable())
 
 export interface ToothPickerWrapperProps extends ToothPickerProps {
   /**
-   * Set false where a second renderer would not fit — a narrow wizard column,
-   * say. Reversible, and it keeps that decision at the call site rather than
-   * inside the chart.
+   * Set false where a second renderer would not fit.
+   *
+   * Nothing sets it today. The wizard was the expected case and turned out not
+   * to be one: it had the room, and what actually stood in the way was its
+   * `[&_button]` block repainting the chart's own chrome, which is fixed at the
+   * source rather than worked around here. Kept as the seam for the next
+   * cramped call site, because the alternative is each of them inventing its
+   * own way to opt out.
    */
   allow3d?: boolean
 }
@@ -101,9 +106,14 @@ function ViewButton({ active, onClick, children }: {
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      // Marks this as the chart's OWN chrome. The wizard sizes every button
+      // inside the picker up to its 44px floor from the outside, which is right
+      // — but it also paints them white, and that rule outranks the active
+      // state here. `data-chrome` is how it tells the two apart.
+      data-chrome="chart"
       className={[
         'btn-ghost border px-2.5 text-xs',
-        active ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25',
+        active ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25 bg-bg-card',
       ].join(' ')}
     >
       {children}

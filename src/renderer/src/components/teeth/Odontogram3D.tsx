@@ -395,7 +395,10 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
             key={view}
             type="button"
             onClick={() => setView(view)}
-            className="btn-ghost border border-ink-faint/25 text-xs"
+            // See the note on ToothPicker's ViewButton: the wizard paints every
+            // button inside the picker white, and that rule outranks ours.
+            data-chrome="chart"
+            className="btn-ghost border border-ink-faint/25 bg-bg-card text-xs"
           >
             {label}
           </button>
@@ -443,9 +446,10 @@ function ModeButton({ active, onClick, children }: {
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      data-chrome="chart"
       className={[
         'btn-ghost border text-xs',
-        active ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25',
+        active ? 'border-accent bg-accent/10 text-accent' : 'border-ink-faint/25 bg-bg-card',
       ].join(' ')}
     >
       {children}

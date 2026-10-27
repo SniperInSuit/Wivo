@@ -148,7 +148,14 @@ export function WizardOdontogram({
           className={
             'mx-auto w-full ' +
             '[&_button]:min-h-[44px] [&_button]:px-3 [&_button]:text-base ' +
-            '[&_button]:text-slate-600 [&_button]:rounded-xl [&_button]:bg-white/80 ' +
+            '[&_button]:rounded-xl ' +
+            // SIZING applies to everything — 44px is right for every control in
+            // this wizard. The two COLOUR rules skip the chart's own chrome.
+            // They compile to `.wrapper button`, which outranks a single class,
+            // so without the exclusion the active 2D/3D button and the active
+            // marking mode both lose their highlight and go white like the rest.
+            '[&_button:not([data-chrome])]:text-slate-600 ' +
+            '[&_button:not([data-chrome])]:bg-white/80 ' +
             // ONE arbitrary variant carrying the pseudo-class, not
             // `[&_button]:focus-visible:…` — that compiles to
             // `.wrapper:focus-visible button`, which puts the ring on the
@@ -159,13 +166,6 @@ export function WizardOdontogram({
           style={{ maxWidth: 600 }}
         >
           <ToothPicker
-            // No 3D here. The `[&_button]` block above sizes the picker's own
-            // chrome from the outside, and it cannot tell a 2D/3D toggle from a
-            // camera preset — every button in a 3D view would come out 44px
-            // tall on a white pill, inside a column capped at 600px. The wizard
-            // is also the one place somebody is working fast through a known
-            // sequence, which is the worst moment to offer a slower chart.
-            allow3d={false}
             items={items}
             activeItemId={activeItem?.id ?? null}
             colorMap={colorMap}
