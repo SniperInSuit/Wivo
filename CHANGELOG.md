@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.93.0] — 2026-10-27
+
+**Protees jõuab nüüd ka sinu nimekirja**
+
+`Proteez` oli vaikeväärtustes **juba olemas** koos kõige juurdekuuluvaga —
+ARCH-režiim (küsib lõualuu, mitte üksikuid hambaid), kaare-ikoon,
+`Denture.png`. Ta lihtsalt ei olnud **sinu** salvestatud nimekirjas, täpselt
+nagu Implantaadisild varem.
+
+- **Külvaja on üldistatud.** `seedImplantBridge` → `seedMissingTypes`, mis
+  kannab nimekirja tüüpe. Järgmine lisandus on **üks rida** `SEEDED_TYPES`-is,
+  mitte teine samasugune funktsioon
+- **`implantsildEemaldatud` (üks lipp) → `eemaldatudTuubid` (nimekiri).** Vana
+  lipp kantakse ühe korra üle: kes kustutas Implantaadisilla v1.86 all, ei saa
+  teda nüüd tagasi
+- Proteez istub **Allon4 kõrvale**, teise terve-lõualuu töö juurde
+
+**Kontrollitud, mitte oletatud.** Jooksutasin resolveerimise enne-pärast läbi:
+iga muutus on varem **tundmatu** sisend, mis nüüd lahendub õigesti —
+`Proteez`, `denture`, ja boonusena ka `Täisproteez` ja `Osaproteez`. Mitte ükski
+olemasolev tüüp ei liikunud.
+
+Kõik muu oli juba paigas ja sai üle vaadatud: võluri arch-režiim (sama tee mis
+All-on-X), `ToothGlyph` kaare-ikoon, ja pildikaardistus `'proteez' → 'denture'`,
+mis leiab `Denture.png` üle mõlema globitud kausta.
+
+9 uut testi, sh see, et kustutatud tüüp **ei kasva tagasi**.
+
 ## [1.92.0] — 2026-10-26
 
 **Tabelis saab nüüd muudatuste järgi filtreerida**

@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import { MATERIAL_OPTIONS, MACHINE_OPTIONS } from '../types/job'
 import {
-  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType, seedImplantBridge, claimsImplantBridge,
+  DEFAULT_WORK_TYPES, UNKNOWN_WORK_TYPE, resolveWorkType, seedMissingTypes, seededTypeOf,
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
 import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
@@ -173,7 +173,16 @@ export interface WivoSettings {
    * appeared. A removed-flag makes the seed idempotent: run it on every list
    * that arrives, from wherever, and let one explicit deletion end it.
    */
-  implantsildEemaldatud: boolean
+  /**
+   * Seeded work types the lab has DELETED, by name.
+   *
+   * A list, not a flag per type: every future addition is then one line in
+   * SEEDED_TYPES and nothing here. Phrased as "removed" rather than "added"
+   * because the clinic row replaces `tooTuubid` wholesale and arrives AFTER
+   * the local read — an added-flag was set while reading localStorage, the
+   * sync then wiped the seeded type, and the flag said the job was done.
+   */
+  eemaldatudTuubid: string[]
   // ─── Kalender ──────────────────────────────────────────────────────────────
   // Every one of these replaced a constant hardcoded in a component, which meant
   // the app assumed one particular lab's working day and pricing.
@@ -283,7 +292,7 @@ function defaultSettings(): WivoSettings {
     visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
     avalikudTeenused: [],
     tooVarvidParandatud: true,
-    implantsildEemaldatud: false,
+    eemaldatudTuubid: [],
     ajajoonAlgus: 7,
     ajajoonLopp: 19,
     nadalAlgus: 9,
@@ -432,6 +441,14 @@ function loadSettings(): WivoSettings {
     if (!raw) return defaultSettings()
     const stored = JSON.parse(raw) as Partial<WivoSettings>
     const def = defaultSettings()
+    // `implantsildEemaldatud` was a single boolean for one type. Carry it over
+    // once: somebody who deleted Implantaadisild under 1.86 must not get it
+    // back now that the mechanism handles several types.
+    const removedTypes = Array.isArray(stored.eemaldatudTuubid)
+      ? stored.eemaldatudTuubid.filter((n): n is string => typeof n === 'string')
+      : (stored as { implantsildEemaldatud?: boolean }).implantsildEemaldatud
+        ? ['Implantaadisild']
+        : []
     // Merge: stored values win, but new materials not in storage get the default 15€.
     // This is also why STORAGE_KEY is NOT bumped for additive fields like
     // kasutajaNimi — a bump would wipe every material price the user has entered.
@@ -457,7 +474,7 @@ function loadSettings(): WivoSettings {
           workTypeList(stored.tooTuubid, def.tooTuubid, !stored.tooVarvidParandatud),
           (stored as { tooHinnad?: unknown }).tooHinnad
         )
-        return stored.implantsildEemaldatud ? base : seedImplantBridge(base)
+        return seedMissingTypes(base, removedTypes)
       })(),
       // An empty stored list is a deliberate "I deleted them all", so only a
       // MISSING key falls back to the defaults.
@@ -475,7 +492,7 @@ function loadSettings(): WivoSettings {
       // would be right by luck rather than by design.
       epost: { ...def.epost, ...(stored.epost as Partial<MailSettings> | undefined ?? {}) },
       tooVarvidParandatud: true,
-      implantsildEemaldatud: !!stored.implantsildEemaldatud,
+      eemaldatudTuubid: removedTypes,
       ajajoonAlgus: stored.ajajoonAlgus ?? 7,
       ajajoonLopp: stored.ajajoonLopp ?? 19,
       nadalAlgus: stored.nadalAlgus ?? 9,
@@ -582,7 +599,7 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
       ? {
           tooTuubid: (() => {
             const list = workTypeList(row.work_types, prev.tooTuubid, false)
-            return prev.implantsildEemaldatud ? list : seedImplantBridge(list)
+            return seedMissingTypes(list, prev.eemaldatudTuubid)
           })(),
         }
       : {}),
@@ -806,9 +823,14 @@ export function useSettings() {
       tooTuubid: prev.tooTuubid.filter(t => t.nimi !== nimi),
       // Deleting the seeded type is what ends the seeding. Without this it
       // would be back on the next sync, and there would be no way to refuse it.
-      implantsildEemaldatud: prev.implantsildEemaldatud || claimsImplantBridge(
-        prev.tooTuubid.find(t => t.nimi === nimi)
-      ),
+      // Deleting a seeded type is what stops it coming back. Without this it
+      // would return on the next sync and could never be refused.
+      eemaldatudTuubid: (() => {
+        const seeded = seededTypeOf(prev.tooTuubid.find(t => t.nimi === nimi))
+        return seeded && !prev.eemaldatudTuubid.includes(seeded)
+          ? [...prev.eemaldatudTuubid, seeded]
+          : prev.eemaldatudTuubid
+      })(),
     }), ['work_types'])
   }, [setSettings])
 

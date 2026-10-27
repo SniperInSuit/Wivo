@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_WORK_TYPES, resolveWorkType, seedImplantBridge, claimsImplantBridge,
+  DEFAULT_WORK_TYPES, resolveWorkType, seedMissingTypes, seededTypeOf,
   type WorkType,
 } from './workTypes'
 import { workTypeRules } from '../wizard/workTypeRules'
@@ -71,79 +71,92 @@ describe('Implantaadisild — rules', () => {
   })
 })
 
-describe('seedImplantBridge — reaching a list that predates the type', () => {
+describe('seedMissingTypes — reaching a list that predates a type', () => {
   const wt = (nimi: string, match?: string[]): WorkType =>
     ({ nimi, hex: '#000', ...(match ? { match } : {}) })
+  const names = (l: WorkType[]): string[] => l.map(t => t.nimi)
+  /** Where a name landed, so a test can assert position without listing the lot. */
+  const at = (l: WorkType[], nimi: string): number => names(l).indexOf(nimi)
 
-  it('inserts it right after Implantkroon, where the buttons expect it', () => {
-    const out = seedImplantBridge([wt('Implantkroon'), wt('Kroon'), wt('Sild')])
-    expect(out.map(t => t.nimi)).toEqual(['Implantkroon', 'Implantaadisild', 'Kroon', 'Sild'])
+  it('puts the implant bridge right after the implant crown', () => {
+    const out = seedMissingTypes([wt('Implantkroon'), wt('Kroon'), wt('Sild')])
+    expect(at(out, 'Implantaadisild')).toBe(at(out, 'Implantkroon') + 1)
   })
 
   // A real lab's list says "Implantaadi kroon". Matching the literal
-  // "implantkroon" missed it and put the new type last, where the wizard hides
+  // "implantkroon" missed it and put the new type LAST, where the wizard hides
   // it behind "Näita rohkem" and it reads as never having been added.
-  it('finds a renamed implant crown to sit beside', () => {
-    const out = seedImplantBridge([wt('Kroon'), wt('Implantaadi kroon'), wt('Sild')])
-    expect(out.map(t => t.nimi)).toEqual(['Kroon', 'Implantaadi kroon', 'Implantaadisild', 'Sild'])
+  it('finds a renamed neighbour to sit beside', () => {
+    const out = seedMissingTypes([wt('Kroon'), wt('Implantaadi kroon'), wt('Sild')])
+    expect(at(out, 'Implantaadisild')).toBe(at(out, 'Implantaadi kroon') + 1)
   })
 
-  // Running it twice must change nothing: it runs on the local list AND again
-  // on the clinic row, and those arrive in an order nobody controls.
+  it('puts the denture beside the other whole-arch work', () => {
+    const out = seedMissingTypes([wt('Kroon'), wt('Allon4'), wt('Sild')])
+    expect(at(out, 'Proteez')).toBe(at(out, 'Allon4') + 1)
+  })
+
+  it('appends when there is no neighbour to sit beside', () => {
+    const out = seedMissingTypes([wt('Kroon')])
+    expect(names(out)).toContain('Implantaadisild')
+    expect(names(out)).toContain('Proteez')
+  })
+
+  // It runs on the local list AND again on the clinic row, and those arrive in
+  // an order nobody controls.
   it('is idempotent', () => {
-    const once = seedImplantBridge([wt('Implantkroon'), wt('Sild')])
-    expect(seedImplantBridge(once)).toEqual(once)
+    const once = seedMissingTypes([wt('Implantkroon'), wt('Allon4')])
+    expect(seedMissingTypes(once)).toEqual(once)
   })
 
-  it('appends when there is no Implantkroon to sit beside', () => {
-    const out = seedImplantBridge([wt('Kroon')])
-    expect(out.map(t => t.nimi)).toEqual(['Kroon', 'Implantaadisild'])
-  })
-
-  // A lab that already has this work under its own name gets nothing added —
-  // two entries for one kind of work is worse than the wrong label.
   it('leaves a list that already has one alone', () => {
-    const own = [wt('Implantkroon'), wt('Implantsild')]
-    expect(seedImplantBridge(own)).toEqual(own)
-    const synonym = [wt('Meie sild', ['implantsild'])]
-    expect(seedImplantBridge(synonym)).toEqual(synonym)
+    const own = seedMissingTypes([wt('Implantkroon'), wt('Implantsild'), wt('Allon4')])
+    expect(own.filter(t => seededTypeOf(t) === 'Implantaadisild')).toHaveLength(1)
+    const synonym = seedMissingTypes([wt('Meie kate', ['denture']), wt('Kroon')])
+    expect(names(synonym)).not.toContain('Proteez')
+  })
+
+  // The whole point of tracking removals: a type somebody deleted on purpose
+  // must not grow back on the next sync.
+  it('never puts back a type the lab deleted', () => {
+    const out = seedMissingTypes([wt('Kroon')], ['Proteez'])
+    expect(names(out)).not.toContain('Proteez')
+    expect(names(out)).toContain('Implantaadisild')
   })
 
   it('does not match on the plain Sild that every list already has', () => {
-    const out = seedImplantBridge([wt('Sild')])
-    expect(out.map(t => t.nimi)).toContain('Implantaadisild')
+    expect(names(seedMissingTypes([wt('Sild')]))).toContain('Implantaadisild')
   })
 
   // It builds a new array and copies the seed, so the shared DEFAULT list can
   // never be mutated through the list this hands back.
   it('does not hand out the module-level default object', () => {
-    const out = seedImplantBridge([wt('Kroon')])
-    const added = out.find(t => t.nimi === 'Implantaadisild')!
-    added.hex = '#FFFFFF'
-    expect(DEFAULT_WORK_TYPES.find(t => t.nimi === 'Implantaadisild')!.hex).toBe('#D946EF')
+    const out = seedMissingTypes([wt('Kroon')])
+    out.find(t => t.nimi === 'Proteez')!.hex = '#FFFFFF'
+    expect(DEFAULT_WORK_TYPES.find(t => t.nimi === 'Proteez')!.hex).toBe('#F43F5E')
   })
 })
 
-describe('claimsImplantBridge — what counts as "the lab already has one"', () => {
+describe('seededTypeOf — which seeded type an entry IS', () => {
   const wt = (nimi: string, match?: string[]): WorkType =>
     ({ nimi, hex: '#000', ...(match ? { match } : {}) })
 
   it('recognises the seeded type and its synonyms', () => {
-    expect(claimsImplantBridge(wt('Implantaadisild'))).toBe(true)
-    expect(claimsImplantBridge(wt('Implantsild'))).toBe(true)
-    expect(claimsImplantBridge(wt('Meie oma', ['implant bridge']))).toBe(true)
+    expect(seededTypeOf(wt('Implantaadisild'))).toBe('Implantaadisild')
+    expect(seededTypeOf(wt('Implantsild'))).toBe('Implantaadisild')
+    expect(seededTypeOf(wt('Meie oma', ['implant bridge']))).toBe('Implantaadisild')
   })
 
   // The two neighbours it must never be confused with, or deleting one of them
   // would silently stop the other from ever being offered.
   it('does not claim a plain bridge or an implant crown', () => {
-    expect(claimsImplantBridge(wt('Sild'))).toBe(false)
-    expect(claimsImplantBridge(wt('Implantkroon'))).toBe(false)
-    expect(claimsImplantBridge(wt('Implantaadi kroon'))).toBe(false)
+    expect(seededTypeOf(wt('Sild'))).toBeNull()
+    expect(seededTypeOf(wt('Implantkroon'))).toBeNull()
+    expect(seededTypeOf(wt('Implantaadi kroon'))).toBeNull()
   })
 
   it('survives nothing', () => {
-    expect(claimsImplantBridge(null)).toBe(false)
-    expect(claimsImplantBridge(undefined)).toBe(false)
+    expect(seededTypeOf(null)).toBeNull()
+    expect(seededTypeOf(undefined)).toBeNull()
   })
 })

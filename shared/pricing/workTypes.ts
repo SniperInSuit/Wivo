@@ -117,42 +117,64 @@ export const DEFAULT_WORK_TYPES: WorkType[] = [
 export const UNKNOWN_WORK_TYPE: WorkType = { nimi: 'Muu / määramata', hex: '#94A3B8' }
 
 /**
- * Puts "Implantaadisild" into a work-type list written before the type existed.
+ * Work types that are seeded into a list written before they existed.
  *
  * `tooTuubid` is the LAB's list, not ours: adding to DEFAULT_WORK_TYPES only
- * reaches a fresh install, and telling somebody to press "Taasta vaikeväärtused"
- * would take their prices and colours with it.
+ * reaches a fresh install, and telling somebody to press "Taasta
+ * vaikeväärtused" would take their prices and colours with it.
  *
- * Runs ONCE, gated by the caller on a stored flag. Without that gate this is a
- * type that grows back on every reload, and a lab that deleted it on purpose
- * would have to delete it forever.
- *
- * Skipped when the list already answers to the name or any of its synonyms — a
- * lab that called it "Implantsild" keeps theirs instead of getting a near
- * duplicate beside it. Inserted after Implantkroon rather than appended,
- * because the order of this list is the order of the buttons on the job form.
+ * `after` says which neighbour the new type should sit beside, as a pattern
+ * rather than a literal — one lab calls the implant crown "Implantaadi kroon".
+ * Getting this wrong is not harmless: an appended type lands at the END of the
+ * list, where the wizard hides it behind "Näita rohkem" and it reads as never
+ * having been added at all.
  */
-export function claimsImplantBridge(t: WorkType | null | undefined): boolean {
-  if (!t) return false
-  const seed = DEFAULT_WORK_TYPES.find(x => x.nimi === 'Implantaadisild')
-  if (!seed) return false
-  const claims = [seed.nimi, ...(seed.match ?? [])].map(x => x.toLowerCase())
-  return [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+const SEEDED_TYPES: { nimi: string; after: RegExp }[] = [
+  { nimi: 'Implantaadisild', after: /implant.*kroon|implant.*crown/i },
+  // Beside the other whole-arch work. `workTypeRules` already classifies it as
+  // arch-mode through ARCH_WORDS, so it asks for a jaw rather than teeth.
+  { nimi: 'Proteez', after: /allon|all-on|all on/i },
+]
+
+/** Every name and synonym a seeded type answers to. */
+const claimsOf = (nimi: string): string[] => {
+  const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === nimi)
+  return seed ? [seed.nimi, ...(seed.match ?? [])].map(x => x.toLowerCase()) : []
 }
 
-export function seedImplantBridge(list: WorkType[]): WorkType[] {
-  const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === 'Implantaadisild')
-  if (!seed) return list
-  if (list.some(claimsImplantBridge)) return list
-  // Next to the implant crown, whatever the lab calls it — one lab's is
-  // "Implantaadi kroon". An exact-literal search missed that and appended the
-  // type to the end of the list, where the wizard hides it behind "Näita
-  // rohkem" and it reads as missing.
-  const at = list.findIndex(t =>
-    [t.nimi, ...(t.match ?? [])].some(tok => /implant.*kroon|implant.*crown/i.test(tok))
-  )
-  const copy: WorkType = { ...seed }
-  return at < 0 ? [...list, copy] : [...list.slice(0, at + 1), copy, ...list.slice(at + 1)]
+/** Which seeded type this entry IS, if any — for "the lab deleted it" tracking. */
+export function seededTypeOf(t: WorkType | null | undefined): string | null {
+  if (!t) return null
+  const tokens = [t.nimi, ...(t.match ?? [])].map(x => x.toLowerCase())
+  return SEEDED_TYPES.find(s => claimsOf(s.nimi).some(c => tokens.includes(c)))?.nimi ?? null
+}
+
+/**
+ * Adds any seeded type the list does not already have.
+ *
+ * `removed` is the names the lab has deleted on purpose; those are never put
+ * back. Without that, a type somebody removed would grow back on every sync and
+ * there would be no way to refuse it.
+ *
+ * Idempotent on purpose — it runs on the local list AND again on the clinic
+ * row, and those arrive in an order nobody controls.
+ */
+export function seedMissingTypes(list: WorkType[], removed: string[] = []): WorkType[] {
+  let out = list
+  for (const { nimi, after } of SEEDED_TYPES) {
+    if (removed.includes(nimi)) continue
+    const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === nimi)
+    if (!seed) continue
+    const claims = claimsOf(nimi)
+    const present = out.some(t =>
+      [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+    )
+    if (present) continue
+    const at = out.findIndex(t => [t.nimi, ...(t.match ?? [])].some(tok => after.test(tok)))
+    const copy: WorkType = { ...seed }
+    out = at < 0 ? [...out, copy] : [...out.slice(0, at + 1), copy, ...out.slice(at + 1)]
+  }
+  return out
 }
 
 // Colour picks offered when adding or recolouring a type. Mostly the pipeline
