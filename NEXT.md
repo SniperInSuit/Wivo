@@ -1,12 +1,37 @@
 # Mis edasi
 
-**Seis: v1.97.0 · 27.10.2026 · haru `main`**
+**Seis: v1.98.1 · 27.10.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
 
 `HANDOFF.md` on arendaja püsireeglid ("ära kunagi tee X"). See fail on
 hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
+
+---
+
+## 📌 Kus pooleli jäi — 27.10.2026, tööpäeva lõpp
+
+**Töölaud on puhas.** Kõik commititud, miski ei ole pooleli jäetud, ükski fail
+ei oota lõpetamist. Ainus asi, mida masin ootab, on `git push`.
+
+Täna valmis: 3D hambakaart **Faas 1a + 1b** — mudel, kaart, lüliti kõigil neljal
+kutsumiskohal (sh uue töö wizardis), hover, kaameranupud, implantaadid,
+disainija hambad, lohistades valimine, külgede sildid. Vt
+**„✅ 3D hambakaart on olemas"** allpool.
+
+**Järgmine samm on kokku lepitud: raamatupidamise pakett.** Omanik sõnastas
+selle 27.10 ümber ja see muutis ulatust — vt
+**„1. Raamatupidamise pakett"** allpool. Alustamise järjekord on seal ka
+põhjendatud, aga lühidalt:
+
+> **Mitte ekspordist.** Kaks teadaolevat võlga (`periodMetrics` käive liidab
+> muudatuste hinnad juurde; `kulu_yle` ei kajastu kuluridades) on praegu
+> ekraaninumbrite ebatäpsused. Allalaaditavas failis, mis läheb maksuametini,
+> on need **valeandmed**. Need kaks tulevad enne faili, mitte pärast.
+
+3D-st on järel ainult **Faas 1c** (varjud, teemad, tekstid) — kosmeetika, ei
+blokeeri midagi. Peegeldust 3D-s **ei tule**, see on otsus ja põhjus on kirjas.
 
 ---
 
@@ -153,14 +178,15 @@ visiidiks.
 2. **Montonio konto verifitseerimine.** Kuni selleni `MONTONIO_ENV="sandbox"`.
    Ilma võtmeteta jäetakse tasu vahele ja taotlus tuleb ikka kohale
 3. **Vidin Frameri lehele** — `build-embed.mjs`, siis kleepida Embed komponenti
-4. **Kontrolli, kas 2D ja 3D näitavad sama hammast samal pool.** Ava töö, märgi
-   2D-s üks **ülemine parem** hammas (nt 16), lülita 3D peale. Mudel on
-   peegelsümmeetriline, ehk „õige" ja „peegeldatud" näevad 3D-s täpselt
-   ühesugused välja — absoluutset tõde seal ei ole. Ainus, mis loeb, on et 3D
-   ütleks sama, mis 2D. **Kui on peegelpildis:** keera
-   `PLUS_X_IS_PATIENT_LEFT` `scripts/teeth-to-glb.mjs`-is ümber ja genereeri
-   `resources/teeth.glb` uuesti
-5. **`git push`** — 6 commiti ootab
+4. **3D pakendatud paigaldusest.** Omanik kinnitas 27.10, et **arenduses töötab
+   kõik nii nagu peab** — valik kandub 2D ↔ 3D vahel, küljed klapivad. See
+   **ei kata** mudeli laadimist: `npm run dev` jookseb `http://localhost`
+   päritolult, paigaldus `file://` pealt, ja kogu `fetch`-i klassi vead
+   ilmuvad ainult teises. Ehita NSIS, paigalda, ava 3D kaart.
+   **Kui mudel ei lae:** vaata `readTeethModel`
+   [`src/main/index.ts`](src/main/index.ts)-s ja `extraResources`
+   `package.json`-is — mitte kordagi `GLTFLoader.load()`
+5. **`git push`** — 9 commiti ootab
 
 ---
 
