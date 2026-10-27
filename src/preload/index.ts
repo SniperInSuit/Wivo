@@ -23,6 +23,19 @@ const subscribe = <T,>(channel: string, cb: (value: T) => void): (() => void) =>
 
 const wivoAPI = {
   getVersion: (): Promise<string> => ipcRenderer.invoke('wivo:version'),
+  /**
+   * The 3D tooth model's bytes, or null when it is not installed.
+   *
+   * IPC hands back a Uint8Array that VIEWS a larger pooled buffer, so passing
+   * `.buffer` straight to GLTFLoader would hand it megabytes of unrelated
+   * memory starting at the wrong offset. The slice is the whole reason this
+   * wrapper exists rather than a bare `invoke`.
+   */
+  getTeethModel: async (): Promise<ArrayBuffer | null> => {
+    const bytes = (await ipcRenderer.invoke('wivo:teeth-model')) as Uint8Array | null
+    if (!bytes) return null
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+  },
   relaunch: (): Promise<void> => ipcRenderer.invoke('wivo:relaunch'),
   // Development only: compares the repo against origin/main and pulls. Nothing
   // to do with the real updater — see HANDOFF.md.

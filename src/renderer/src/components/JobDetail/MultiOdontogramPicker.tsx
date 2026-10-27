@@ -19,6 +19,10 @@ function legacyMirror(): boolean {
   try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
 }
 import { deriveOdontogramState, pairKey } from '../teeth/odontogramState'
+import {
+  decideToothClick, decideDragPaint, ownsTooth,
+  type ClickContext, type MarkMode,
+} from '../teeth/toothInteraction'
 
 // ─── FDI numbering ──────────────────────────────────────────────────────────
 const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -36,8 +40,6 @@ const X_NUDGE = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]
 const ROTATIONS = [-18, -14, -10, -6, -3, -1, 0, 0, 0, 0, 1, 3, 6, 10, 14, 18]
 
 // ─── Component ──────────────────────────────────────────────────────────────
-/** Which of the two marking modes the chart is in. null = picking teeth. */
-type MarkMode = 'implant' | 'design'
 
 export function MultiOdontogramPicker({
   items, activeItemId, colorMap, onToggleTooth, onToggleImplant, onToggleDesign, disabled,
@@ -86,37 +88,31 @@ export function MultiOdontogramPicker({
     return () => window.removeEventListener('mouseup', stopPaint)
   }, [])
 
+  // The rules themselves live in teeth/toothInteraction.ts, because the 3D
+  // chart has to obey exactly the same ones and they decide what gets billed
+  // and who gets paid. This component is left with the DRAWING consequences:
+  // which direction a drag is going, and which teeth it has already visited.
+  const clickCtx = (): ClickContext => ({
+    owners: toothOwner, activeItemId, markMode, disabled,
+  })
+
   function handlePointerDown(num: number) {
-    if (disabled || !activeItemId) return
-    const s = String(num)
-    const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
-    if (markMode) {
-      // Only a tooth this item already has. A mark on a tooth nobody is making
-      // is not a fact about this job — an implant under a unit that does not
-      // exist, or design pay for a tooth nobody designed.
-      if (isOwned) {
-        if (markMode === 'implant') onToggleImplant?.(num)
-        else onToggleDesign?.(num)
-      }
-      return
+    switch (decideToothClick(num, clickCtx())) {
+      case 'none': return
+      case 'implant': onToggleImplant?.(num); return
+      case 'design': onToggleDesign?.(num); return
     }
-    paintingRef.current = isOwned ? 'remove' : 'add'
+    // Only a plain toggle starts a drag. A mark never paints — see the rules.
+    paintingRef.current = ownsTooth(toothOwner, num, activeItemId) ? 'remove' : 'add'
     paintedRef.current = new Set([num])
     onToggleTooth(num)
   }
 
   function handlePointerEnter(num: number) {
-    // No drag-painting while marking: both marks move money — hardware on the
-    // invoice, or a tooth onto somebody's payslip — and a dragged mistake is
-    // the easiest kind to not notice.
-    if (markMode) return
-    if (!paintingRef.current || disabled || !activeItemId) return
     if (paintedRef.current.has(num)) return
+    if (decideDragPaint(num, clickCtx(), paintingRef.current) !== 'toggle') return
     paintedRef.current.add(num)
-    const s = String(num)
-    const isOwned = toothOwner.has(s) && toothOwner.get(s)!.itemId === activeItemId
-    if (paintingRef.current === 'add' && !isOwned) onToggleTooth(num)
-    if (paintingRef.current === 'remove' && isOwned) onToggleTooth(num)
+    onToggleTooth(num)
   }
 
   const order = (arr: number[]) => mirror ? [...arr].reverse() : arr

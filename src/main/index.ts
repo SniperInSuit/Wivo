@@ -72,6 +72,30 @@ function readDiskVersion(): string {
 }
 
 /**
+ * The 3D tooth model's bytes, read HERE rather than by the renderer.
+ *
+ * The renderer is loaded with `loadFile`, so its origin is `file://`, and
+ * Chromium refuses `fetch()` on non-http schemes. `GLTFLoader.load()` is built
+ * on fetch — it would work in development, where the renderer is served from
+ * http://localhost, and fail in every packaged install. That is the worst shape
+ * a bug can have, so the bytes come across IPC and the renderer uses
+ * `GLTFLoader.parse()`, which behaves identically in both.
+ *
+ * A missing file is not an error worth crashing over: the renderer answers
+ * `null` by staying on the 2D chart.
+ */
+function readTeethModel(): Buffer | null {
+  const file = is.dev
+    ? join(app.getAppPath(), 'resources', 'teeth.glb')
+    : join(process.resourcesPath, 'teeth.glb')
+  try {
+    return readFileSync(file)
+  } catch {
+    return null
+  }
+}
+
+/**
  * One Wivo at a time.
  *
  * Without this a second instance can be launched while the NSIS installer is
@@ -94,6 +118,7 @@ app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.wivo.dental')
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
+  ipcMain.handle('wivo:teeth-model', () => readTeethModel())
 
   // Licence lives in the main process — see license.ts for why.
   ipcMain.handle('wivo:license-status', () => currentLicence())

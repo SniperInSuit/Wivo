@@ -1,6 +1,6 @@
 {
   "name": "wivo",
-  "version": "1.95.0",
+  "version": "1.96.0",
   "description": "SprintRay Dental Production Tracker",
   "author": "Wivo",
   "main": "out/main/index.js",
@@ -23,7 +23,8 @@
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "three": "0.169.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
@@ -32,6 +33,7 @@
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.7",
     "@types/react-dom": "^18.3.0",
+    "@types/three": "0.169.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "electron": "^32.0.1",
@@ -56,6 +58,10 @@
       {
         "from": ".env",
         "to": ".env"
+      },
+      {
+        "from": "resources/teeth.glb",
+        "to": "teeth.glb"
       }
     ],
     "publish": {

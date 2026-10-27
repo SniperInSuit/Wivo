@@ -159,6 +159,13 @@ export function WizardOdontogram({
           style={{ maxWidth: 600 }}
         >
           <ToothPicker
+            // No 3D here. The `[&_button]` block above sizes the picker's own
+            // chrome from the outside, and it cannot tell a 2D/3D toggle from a
+            // camera preset — every button in a 3D view would come out 44px
+            // tall on a white pill, inside a column capped at 600px. The wizard
+            // is also the one place somebody is working fast through a known
+            // sequence, which is the worst moment to offer a slower chart.
+            allow3d={false}
             items={items}
             activeItemId={activeItem?.id ?? null}
             colorMap={colorMap}

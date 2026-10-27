@@ -18,6 +18,10 @@ interface Window {
     relaunch: () => Promise<void>
     checkRemoteUpdate: () => Promise<boolean>
     gitPull: () => Promise<string | null>
+    // The 3D tooth model's bytes, or null when it is not installed. Read in
+    // the main process because Chromium refuses fetch() on file:// — see
+    // readTeethModel in src/main/index.ts.
+    getTeethModel: () => Promise<ArrayBuffer | null>
     // Auto-update. One channel, and every listener hands back its remover —
     // see the note in src/preload/index.ts about the leak this replaced.
     updateState: () => Promise<import('../../types/update').UpdateState>
