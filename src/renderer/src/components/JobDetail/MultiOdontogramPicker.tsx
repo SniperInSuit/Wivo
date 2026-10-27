@@ -11,7 +11,14 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FlipHorizontal2, Trash2, Bolt, PenTool } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
-import { implantTeeth, designTeeth } from '../../types/job'
+import type { ToothPickerProps } from '../teeth/toothPickerProps'
+import { useOdontogramMirror, setOdontogramMirror } from '../../stores/useUiPrefs'
+
+/** The pre-1.94 machine-global choice. Read once, never written. */
+function legacyMirror(): boolean {
+  try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
+}
+import { deriveOdontogramState, pairKey } from '../teeth/odontogramState'
 
 // ─── FDI numbering ──────────────────────────────────────────────────────────
 const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28]
@@ -28,114 +35,40 @@ const X_NUDGE = [4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]
 // Slight rotation to follow the arch curve
 const ROTATIONS = [-18, -14, -10, -6, -3, -1, 0, 0, 0, 0, 1, 3, 6, 10, 14, 18]
 
-// ─── Color helpers ──────────────────────────────────────────────────────────
-function shiftHex(hex: string, index: number): string {
-  if (index === 0) return hex
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const shift = index * 25
-  return `#${Math.min(255, Math.max(0, r + (index % 2 === 0 ? shift : -shift))).toString(16).padStart(2, '0')}${Math.min(255, Math.max(0, g + (index % 2 === 1 ? shift : -shift / 2))).toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-}
-
 // ─── Component ──────────────────────────────────────────────────────────────
-interface Props {
-  items: WorkItem[]
-  activeItemId: string | null
-  colorMap: Record<string, string>
-  onToggleTooth: (tooth: number) => void
-  /**
-   * Mark a tooth as sitting on an implant. Omit and the whole implant mode is
-   * absent — which is how every work type that has no implants keeps a map with
-   * one job: picking teeth.
-   */
-  onToggleImplant?: (tooth: number) => void
-  /**
-   * Mark a tooth as designed by the DESIGNER rather than by the technician.
-   * Omit and the mode is absent — which is every item with no designer, and
-   * every lab where one person designs the whole thing.
-   */
-  onToggleDesign?: (tooth: number) => void
-  disabled?: boolean
-}
-
 /** Which of the two marking modes the chart is in. null = picking teeth. */
 type MarkMode = 'implant' | 'design'
 
 export function MultiOdontogramPicker({
   items, activeItemId, colorMap, onToggleTooth, onToggleImplant, onToggleDesign, disabled,
-}: Props) {
+}: ToothPickerProps) {
   // A marking mode retargets the SAME click. A second chart, or a modifier key,
   // would both be worse: one doubles the drawing, the other is invisible.
   const [markMode, setMarkMode] = useState<MarkMode | null>(null)
-  const [mirror, setMirror] = useState(() => {
-    try { return localStorage.getItem('wivo_odonto_mirror') === '1' } catch { return false }
-  })
+  // Per USER now, not per machine. `wivo_odonto_mirror` was machine-global,
+  // which is wrong the moment two people share a PC — or one person uses two.
+  // The legacy key is still READ once, so nobody's existing choice flips on
+  // the upgrade; it is never written again.
+  const storedMirror = useOdontogramMirror()
+  const mirror = storedMirror ?? legacyMirror()
 
   const toggleMirror = useCallback(() => {
-    setMirror(prev => {
-      const next = !prev
-      try { localStorage.setItem('wivo_odonto_mirror', next ? '1' : '0') } catch {}
-      return next
-    })
-  }, [])
+    setOdontogramMirror(!mirror)
+  }, [mirror])
 
-  // ── Ownership map ─────────────────────────────────────────────────────────
-  const perTypeTotal = new Map<string, number>()
-  for (const i of items) perTypeTotal.set(i.too, (perTypeTotal.get(i.too) ?? 0) + 1)
+  // ONE derivation, shared with whatever else draws this chart — see
+  // teeth/odontogramState.ts for why it does not live here any more.
+  const { owners: toothOwner, implants: implantSet, designed: designSet, legend, totalTeeth, bridgePairs } =
+    deriveOdontogramState(items, colorMap)
 
-  const toothOwner = new Map<string, { itemId: string; color: string; num: number; showNum: boolean }>()
-  const seen = new Map<string, number>()
-  for (const item of items) {
-    const idx = seen.get(item.too) ?? 0
-    seen.set(item.too, idx + 1)
-    const color = shiftHex(colorMap[item.too] ?? '#94A3B8', idx)
-    const showNum = (perTypeTotal.get(item.too) ?? 1) > 1
-    for (const t of item.hambad.split(',')) {
-      const s = t.trim()
-      if (s) toothOwner.set(s, { itemId: item.id, color, num: idx + 1, showNum })
-    }
-  }
-
-  const implantSet = new Set<string>()
-  for (const item of items) for (const t of implantTeeth(item)) implantSet.add(t)
-
-  // Teeth the DESIGNER did. Only meaningful where the item says something: an
-  // item with nothing marked is designed whole, and marking every tooth on the
-  // chart would be noise on the overwhelmingly common case.
-  const designSet = new Set<string>()
-  for (const item of items) {
-    if (!item.disain_hambad) continue
-    for (const t of designTeeth(item).split(',')) if (t.trim()) designSet.add(t.trim())
-  }
-
-  // ── Legend data ───────────────────────────────────────────────────────────
-  type LegendItem = { too: string; color: string; count: number }
-  const legendMap = new Map<string, LegendItem>()
-  for (const item of items) {
-    const existing = legendMap.get(item.too)
-    const count = item.hambad.split(',').filter(t => t.trim()).length
-    if (existing) { existing.count += count }
-    else { legendMap.set(item.too, { too: item.too, color: colorMap[item.too] ?? '#94A3B8', count }) }
-  }
-  const legend = [...legendMap.values()]
-  const totalTeeth = toothOwner.size
-
-  // Which tooth has a bridge connection to its RIGHT neighbor in display order
+  /** The bridge bar drawn to this tooth's right-hand neighbour in display order. */
   function bridgeToRight(num: number, archNums: number[]): string | null {
     const displayOrder = order(archNums)
     const idx = displayOrder.indexOf(num)
     if (idx < 0 || idx >= displayOrder.length - 1) return null
-    const nextNum = displayOrder[idx + 1]
-    // Both must belong to the same bridge item
-    for (const item of items) {
-      if (!item.bridge) continue
-      const teeth = new Set(item.hambad.split(',').map(t => t.trim()))
-      if (teeth.has(String(num)) && teeth.has(String(nextNum))) {
-        return colorMap[item.too] ?? '#94A3B8'
-      }
-    }
-    return null
+    // The pair is direction-free in the data; mirroring only changes which of
+    // the two is drawn on the left.
+    return bridgePairs.get(pairKey(String(num), String(displayOrder[idx + 1]))) ?? null
   }
 
   // ── Drag-to-paint ──────────────────────────────────────────────────────────

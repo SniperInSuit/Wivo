@@ -7,7 +7,7 @@ import type { Job, JobInput, StageKey, Revision } from '../../types/job'
 import { MATERIAL_SHADES, jobWorkItems, workItemDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { stageChipStyle } from '../../config/pipeline'
-import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { ToothPicker } from '../teeth/ToothPicker'
 import { ShadePicker } from './ShadePicker'
 import { RevisionBlock } from './RevisionBlock'
 import { WorkItemsField } from './WorkItemsField'
@@ -1366,7 +1366,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 {/* Shared odontogram for all work items (hidden in fullscreen — shown in center column) */}
                 {!isFullscreen && form.work_items.length > 0 && (
                   <div className="bg-bg-sidebar rounded-xl p-3">
-                    <MultiOdontogramPicker
+                    <ToothPicker
                       items={form.work_items}
                       activeItemId={activeWorkItemId}
                       colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}

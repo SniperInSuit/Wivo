@@ -24,7 +24,7 @@ import { toggleImplantTooth, toggleDesignTooth, workItemDesigner } from '../../t
 import { useWorkTypes } from '../../stores/useSettings'
 import { workTypeRules } from '@shared/wizard'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
-import { MultiOdontogramPicker } from './MultiOdontogramPicker'
+import { ToothPicker } from '../teeth/ToothPicker'
 import { AbutmentField } from './AbutmentField'
 import { workTypeImage } from '../../lib/workTypeImages'
 
@@ -370,7 +370,7 @@ export function WorkItemsField({
       {showOdontogram && (
         <div className={`${c.surface} rounded-xl p-3`}>
           {value.length > 0 ? (
-            <MultiOdontogramPicker
+            <ToothPicker
               items={value}
               activeItemId={activeId}
               colorMap={colorMap}
@@ -399,7 +399,7 @@ export function WorkItemsField({
             // No work item yet. The revision still lets teeth be marked on their
             // own; the job page passes no handler and simply shows nothing.
             onLooseTeethChange && (
-              <MultiOdontogramPicker
+              <ToothPicker
                 items={[{ id: '__loose__', too: 'Hambad', hambad: looseTeeth ?? '' }]}
                 activeItemId="__loose__"
                 colorMap={{ Hambad: '#0AB6C4' }}

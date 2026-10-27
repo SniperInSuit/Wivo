@@ -69,6 +69,21 @@ export interface DashboardPrefs {
   sizes?: Record<string, [number, number]>
 }
 
+export interface OdontogramPrefs {
+  /**
+   * Which chart to draw. Typed as a plain string, NOT a union, and this is
+   * deliberate — see `normaliseOdontogram` below.
+   */
+  view?: string
+  /**
+   * Patient view vs dentist view. Moved off the machine-global
+   * `wivo_odonto_mirror` localStorage key: which way round somebody reads an
+   * arch is a property of the PERSON, and one of them works in another
+   * building.
+   */
+  mirror?: boolean
+}
+
 export interface UiPrefs {
   v: number
   /**
@@ -78,6 +93,7 @@ export interface UiPrefs {
    * every load.
    */
   dashboard?: DashboardPrefs
+  odontogram?: OdontogramPrefs
   /** Anything a newer version stored. Carried through untouched. */
   [key: string]: unknown
 }
@@ -144,6 +160,12 @@ export function normaliseUiPrefs(raw: unknown): UiPrefs {
 
   // Spread first, so keys belonging to a newer version survive the round trip.
   const out: UiPrefs = { ...raw, v: typeof raw.v === 'number' ? raw.v : UI_PREFS_VERSION }
+
+  // BEFORE the dashboard branch: that one returns early in three places, and
+  // handling the odontogram after any of them would silently drop it.
+  const od = normaliseOdontogram(raw.odontogram)
+  if (od) out.odontogram = od
+  else delete out.odontogram
 
   const d = raw.dashboard
   if (!isObject(d)) {
@@ -216,4 +238,34 @@ export function reorderPreserving(
 /** Replace the dashboard slice, leaving every other key alone. */
 export function withDashboard(prefs: UiPrefs, dashboard: DashboardPrefs): UiPrefs {
   return { ...prefs, v: UI_PREFS_VERSION, dashboard }
+}
+
+export function withOdontogram(prefs: UiPrefs, odontogram: OdontogramPrefs): UiPrefs {
+  return { ...prefs, v: UI_PREFS_VERSION, odontogram }
+}
+
+/**
+ * Keeps whatever is stored, including a `view` this build has never heard of.
+ *
+ * The subtlety the dashboard never had to face: `view` is an ENUM. Validating
+ * it against the values this build knows and overwriting anything else would
+ * DESTROY a future build's `view: 'webgpu'` on the next write — which is the
+ * exact data-loss this file exists to prevent, one level down. An unknown
+ * VALUE is not the same thing as an unknown KEY.
+ *
+ * So: store the union, and let the consumer narrow to the intersection.
+ */
+function normaliseOdontogram(d: unknown): OdontogramPrefs | undefined {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return undefined
+  const { view, mirror, ...rest } = d as Record<string, unknown>
+  return {
+    // Unknown keys survive untouched — that is the whole rule of this file.
+    ...rest,
+    // `view` is an ENUM and a future build's value is plausible, so any string
+    // round-trips. `mirror` is a boolean and always will be: a string there is
+    // junk, not a value from the future, and keeping it would hand the caller
+    // something it has to guard against twice.
+    ...(typeof view === 'string' ? { view } : {}),
+    ...(typeof mirror === 'boolean' ? { mirror } : {}),
+  }
 }

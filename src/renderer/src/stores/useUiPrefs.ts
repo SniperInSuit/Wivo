@@ -20,7 +20,7 @@
 import { useSyncExternalStore } from 'react'
 import {
   normaliseUiPrefs, withDashboard, reorderPreserving, clampSize,
-  type UiPrefs, type DashboardPrefs,
+  type UiPrefs, type DashboardPrefs, withOdontogram,
 } from '../lib/uiPrefs'
 
 const cacheKey = (userId: string): string => `wivo_ui_prefs_v1:${userId}`
@@ -113,6 +113,38 @@ function commit(next: UiPrefs): void {
 export function useDashboardPrefs(): DashboardPrefs | null {
   const prefs = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   return prefs.dashboard ?? null
+}
+
+/**
+ * Which chart to draw, narrowed to what THIS build can render.
+ *
+ * The store keeps whatever was written — a newer version's value survives a
+ * round trip untouched (see `normaliseOdontogram`). This is the "render the
+ * intersection" half: anything we cannot draw falls back to the 2D chart
+ * rather than to a blank panel.
+ */
+export function useOdontogramView(): 'flat' | '3d' {
+  const prefs = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return prefs.odontogram?.view === '3d' ? '3d' : 'flat'
+}
+
+/**
+ * Patient view vs dentist view.
+ *
+ * `null` means never chosen — the caller applies its own default and does NOT
+ * write one back. Two machines seeding a default would race.
+ */
+export function useOdontogramMirror(): boolean | null {
+  const prefs = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return typeof prefs.odontogram?.mirror === 'boolean' ? prefs.odontogram.mirror : null
+}
+
+export function setOdontogramView(view: 'flat' | '3d'): void {
+  commit(withOdontogram(snapshot, { ...snapshot.odontogram, view }))
+}
+
+export function setOdontogramMirror(mirror: boolean): void {
+  commit(withOdontogram(snapshot, { ...snapshot.odontogram, mirror }))
 }
 
 export function useUiPrefs(): UiPrefs {

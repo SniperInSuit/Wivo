@@ -39,7 +39,7 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronUp, Keyboard } from 'lucide-react'
 import { FDI_LOWER, FDI_UPPER, hambadToTeeth } from '@shared/wizard'
 import type { WorkItem } from '@/types/job'
-import { MultiOdontogramPicker } from '@/components/JobDetail/MultiOdontogramPicker'
+import { ToothPicker } from '@/components/teeth/ToothPicker'
 import { FOCUS_RING, WIZARD_BLUSH, WIZARD_FALLBACK_HEX } from '../wizardTheme'
 import { teethCountLabel } from './WorkTypeTabs'
 import type { ToothLegendEntry } from './ToothControls'
@@ -158,7 +158,7 @@ export function WizardOdontogram({
           }
           style={{ maxWidth: 600 }}
         >
-          <MultiOdontogramPicker
+          <ToothPicker
             items={items}
             activeItemId={activeItem?.id ?? null}
             colorMap={colorMap}

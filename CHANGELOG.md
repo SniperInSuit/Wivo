@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.94.0] — 2026-10-27
+
+**3D ettevalmistus — null uut pikslit, aga 3D on nüüd lisamine, mitte ümbertegemine**
+
+Kinnitatud plaani Faas 0. Rakendus näeb täpselt samasugune välja; muutus on see,
+et teine renderdaja saab nüüd juurde tulla ilma nelja faili puutumata.
+
+- **`teeth/odontogramState.ts`** — „kes omab hammast 16, mis värvi, kas naabriga
+  on sild" on nüüd **üks puhas funktsioon**, mitte 2D kaardi sees arvutatud.
+  Kaks renderdajat, kes seda eraldi tuletaksid, oleksid kaks teostust reeglist,
+  mis ei tohi kunagi lahku minna — kaart ütleks üht ja mudel teist, samal tööl
+- **`teeth/toothPickerProps.ts`** — leping omaette failis. Ta teenib kahte
+  teostust ja ei tohi elada ühe sees
+- **`teeth/ToothPicker.tsx`** — ümbris, mis praegu renderdab ainult 2D. Kõik
+  neli kutsumiskohta käivad nüüd temast läbi
+- **Peegeldus on kasutajapõhine.** `wivo_odonto_mirror` oli masinapõhine, mis
+  on vale niipea, kui kaks inimest jagavad arvutit — või üks inimene kasutab
+  kahte. Vana võti **loetakse ühe korra**, et kellegi valik uuendusel ei
+  hüppaks, ja ei kirjutata enam kunagi
+
+**Kaks viga, mille leidsin ehitamise ajal:**
+
+**`archIndex` on indeks oma kaare sees** — 16 ja 46 annavad mõlemad 2. Minu
+esimene sillaarvutus oleks need kokku paarinud ja joonistanud riba läbi suu
+keskel. Nüüd grupeeritakse kõigepealt kaare kaupa; test katab selle otse.
+
+**`normaliseUiPrefs` väljub kolmes kohas varakult** — uue lõigu käsitlemine
+pärast neid oleks ta vaikselt ära kaotanud, kui töölaua seaded on katki.
+
+Ja üks ebakõla, mille test minu enda teostuses tabas: `view` on **enum**, kus
+tuleviku väärtus on usutav ja peab läbi minema; `mirror` on **boolean** ja
+„jah" ei ole sealt kunagi tuleviku väärtus, vaid praht. Esimene säilib, teine
+visatakse ära.
+
+24 uut testi.
+
 ## [1.93.0] — 2026-10-27
 
 **Protees jõuab nüüd ka sinu nimekirja**

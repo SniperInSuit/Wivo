@@ -9,8 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   normaliseUiPrefs, knownPanels, reorderPreserving, withDashboard, clampSize,
-  MAX_PANELS, UI_PREFS_VERSION, GRID_COLS, MAX_PANEL_ROWS,
-} from './uiPrefs'
+  MAX_PANELS, UI_PREFS_VERSION, GRID_COLS, MAX_PANEL_ROWS, withOdontogram } from './uiPrefs'
 
 const KNOWN = new Set(['a', 'b', 'c', 'd'])
 
@@ -162,5 +161,52 @@ describe('paneelide suurused', () => {
       preset: null, panels: ['a'], sizes: { a: [2, 2] },
     })
     expect(normaliseUiPrefs(JSON.parse(JSON.stringify(saved)))).toEqual(saved)
+  })
+})
+
+// ─── Odontogram slice ────────────────────────────────────────────────────────
+describe('normaliseUiPrefs — odontogram', () => {
+  it('keeps a stored view and mirror', () => {
+    const out = normaliseUiPrefs({ v: 1, odontogram: { view: '3d', mirror: true } })
+    expect(out.odontogram).toEqual({ view: '3d', mirror: true })
+  })
+
+  // The subtlety the dashboard never had to face: `view` is an ENUM, and
+  // validating it against the values THIS build knows would destroy a newer
+  // build's value on the next write. An unknown VALUE is not an unknown KEY.
+  it('round-trips a view this build has never heard of', () => {
+    const out = normaliseUiPrefs({ v: 1, odontogram: { view: 'webgpu' } })
+    expect(out.odontogram?.view).toBe('webgpu')
+  })
+
+  it('carries unknown keys inside the slice', () => {
+    const out = normaliseUiPrefs({ v: 1, odontogram: { view: '3d', tulevik: 42 } })
+    expect((out.odontogram as Record<string, unknown>).tulevik).toBe(42)
+  })
+
+  it('treats a junk slice as absent, which is the only recoverable answer', () => {
+    expect(normaliseUiPrefs({ v: 1, odontogram: 'päris' }).odontogram).toBeUndefined()
+    expect(normaliseUiPrefs({ v: 1, odontogram: [] }).odontogram).toBeUndefined()
+  })
+
+  it('drops a non-boolean mirror but keeps the rest of the slice', () => {
+    const out = normaliseUiPrefs({ v: 1, odontogram: { view: '3d', mirror: 'jah' } })
+    expect(out.odontogram?.view).toBe('3d')
+    expect(out.odontogram?.mirror).not.toBe('jah')
+  })
+
+  // The dashboard branch returns early in three places. Handling the
+  // odontogram after any of them would silently drop it.
+  it('survives a junk dashboard alongside it', () => {
+    const out = normaliseUiPrefs({ v: 1, dashboard: 'katki', odontogram: { view: '3d' } })
+    expect(out.dashboard).toBeUndefined()
+    expect(out.odontogram?.view).toBe('3d')
+  })
+
+  it('withOdontogram leaves the dashboard untouched', () => {
+    const base = normaliseUiPrefs({ v: 1, dashboard: { preset: 'juht', panels: ['a'] } })
+    const out = withOdontogram(base, { view: '3d' })
+    expect(out.dashboard?.panels).toEqual(['a'])
+    expect(out.odontogram?.view).toBe('3d')
   })
 })
