@@ -453,6 +453,43 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     )
   },
 
+  // Ranked by COUNT. `stats.byWorkType` arrives sorted by revenue, which
+  // answers a different question — the most valuable type and the most common
+  // one are routinely not the same, and a lab asking "what do we make" is not
+  // asking "what pays". Sorted on a COPY: the array is memoised inside the
+  // aggregator and sorting it in place would reorder it for every other panel.
+  'toot.tooliigid': ctx => {
+    const rows = [...ctx.stats.byWorkType].filter(t => t.count > 0).sort((a, b) => b.count - a.count)
+    const top = rows[0]?.count ?? 0
+    return (
+      <Block title="Mida kõige rohkem teeme" sub="Tööde arv liigi kaupa, perioodil">
+        <ShareBars rows={rows.map(t => ({
+          label: t.name,
+          // Both numbers, because neither answers it alone: a denture is one
+          // job and fourteen teeth, a single crown is one of each.
+          value: `${t.count} tööd · ${t.teeth} hammast`,
+          share: share(t.count, top),
+          color: ctx.wt.hex(t.name),
+        }))} />
+      </Block>
+    )
+  },
+
+  'toot.tooliigid_hambad': ctx => {
+    const rows = [...ctx.stats.byWorkType].filter(t => t.teeth > 0).sort((a, b) => b.teeth - a.teeth)
+    const top = rows[0]?.teeth ?? 0
+    return (
+      <Block title="Hambad töö liigi järgi" sub="Sama periood, hammaste kaupa">
+        <ShareBars rows={rows.map(t => ({
+          label: t.name,
+          value: `${t.teeth} hammast · ${t.count} tööd`,
+          share: share(t.teeth, top),
+          color: ctx.wt.hex(t.name),
+        }))} />
+      </Block>
+    )
+  },
+
   'toot.materjalid': ctx => (
     <Block title="Tööd materjali järgi">
       {ctx.stats.materialStats.length === 0 ? <Empty>Materjale ei ole märgitud.</Empty> : (

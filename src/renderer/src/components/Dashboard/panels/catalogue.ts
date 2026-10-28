@@ -201,6 +201,14 @@ export const PANEL_CATALOGUE = [
     hint: 'Kaks põhjust ühel muudatusel loevad mõlemad — ribade summa ületab muudatuste arvu',
   },
   {
+    id: 'toot.tooliigid', title: 'Mida kõige rohkem teeme', group: 'tootmine', defaultSize: [2, 2],
+    hint: 'Töö liigid tehtud tööde arvu järgi, koos hammaste arvuga — mitte käibe järgi',
+  },
+  {
+    id: 'toot.tooliigid_hambad', title: 'Hambad töö liigi järgi', group: 'tootmine', defaultSize: [2, 2],
+    hint: 'Sama järjestus hammaste, mitte tööde kaupa — üks proteez ei ole üks kroon',
+  },
+  {
     id: 'toot.materjalid', title: 'Tööd materjali järgi', group: 'tootmine', defaultSize: [2, 2],
     hint: 'Arv materjali kohta',
   },

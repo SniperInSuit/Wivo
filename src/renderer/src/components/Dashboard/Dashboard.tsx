@@ -498,8 +498,14 @@ export function Dashboard({ jobs }: DashboardProps) {
             <p className="text-sm font-semibold text-ink mb-0.5">Top patsiendid (hambad)</p>
             <p className="text-xs text-ink-faint mb-3">Originaal + muudatuste hambad patsiendi kaupa</p>
             {stats.topPatients.length > 0 ? (
+              // An explicit height, like every other chart on this page.
+              // `height="100%"` measures the PARENT, and the parent is
+              // `flex-1` inside a card whose own height comes from its
+              // content — so there is nothing to measure, the container gets
+              // 0 and draws nothing. The card then collapses to its heading
+              // and reads as "no data" while the data is right there.
               <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={Math.max(160, stats.topPatients.length * 30)}>
                 <BarChart
                   data={stats.topPatients}
                   layout="vertical"
@@ -526,8 +532,9 @@ export function Dashboard({ jobs }: DashboardProps) {
             <p className="text-sm font-semibold text-ink mb-0.5">Tööd töötüübi järgi</p>
             <p className="text-xs text-ink-faint mb-3">Tööde arv töö liigi kaupa (originaal + muudatused)</p>
             {stats.workByType.length > 0 ? (
+              // Same fix as the card beside it — see the note there.
               <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={Math.max(160, stats.workByType.length * 30)}>
                 <BarChart
                   data={stats.workByType}
                   layout="vertical"
