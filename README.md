@@ -18,49 +18,18 @@ and accessible from anywhere.
 1. Log in to [app.supabase.com](https://app.supabase.com) and create a new project.
 2. Note your **Project URL** and **anon/public API key** from
    *Project Settings → API*.
-3. Open the **SQL Editor** and run the SQL below to create the `jobs` table.
+3. Open the **SQL Editor** and run [`sql/000_jobs.sql`](sql/000_jobs.sql), then
+   every file in [`sql/`](sql/) in numerical order.
 
-```sql
--- jobs table
-create table jobs (
-  id            uuid primary key default gen_random_uuid(),
-  status        text not null default 'disain',
-  kuupaev       date not null default current_date,
-  patsient      text not null,
-  too           text,
-  materjal      text,
-  varv          text,
-  hambad        text,
-  valmis_aeg    timestamptz,
-  muudatused    text,
-  rev_hambad    text,
-  rev_varv      text,
-  uus_valmis    timestamptz,
-  hind          numeric(10,2),
-  makstud       boolean not null default false,
-  makse_kuupaev date,
-  created_at    timestamptz default now(),
-  updated_at    timestamptz default now()
-);
-
--- Auto-update updated_at on every row change
-create or replace function set_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-create trigger jobs_updated_at
-  before update on jobs
-  for each row execute procedure set_updated_at();
-
--- Enable Row Level Security (open policy for single-user MVP)
-alter table jobs enable row level security;
-create policy "Allow all for anon" on jobs
-  for all using (true) with check (true);
-```
+   > The SQL used to be written out here, and that copy is the reason this
+   > section changed. It was the 2024 single-table MVP; the app moved on, the
+   > snippet did not, and five columns every job insert writes — `masina`,
+   > `print_id`, `kiirtoo`, `disain_hind`, `revisions` — ended up created in no
+   > file at all. A fresh database could not store a single job.
+   >
+   > `sql/000_jobs.sql` is now the one definition, and `sql/jobsColumns.test.ts`
+   > fails the build if a field in `types/job.ts` is not created by some
+   > migration. Please do not paste a copy back into this file.
 
 4. (Optional) Enable **Realtime** for the `jobs` table under
    *Database → Replication → Tables* to get live updates in Phase 2.

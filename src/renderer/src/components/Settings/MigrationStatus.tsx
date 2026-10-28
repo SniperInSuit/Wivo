@@ -50,6 +50,10 @@ const PROBES: Probe[] = [
     rpc: { fn: 'has_perm', args: { perm: 'jobs.read' } },
     mis: 'Õiguste linnukesed kehtivad ka serveris — ilma selleta näeb iga '
       + 'töötaja REST API kaudu kõike, ka siis kui linnuke on maas' },
+  { fail: 'sql/000_jobs.sql', table: 'jobs', column: 'revisions',
+    mis: 'Tööde tabel ise. `revisions` oli enne seda faili loodud MITTE KUSAGIL — '
+      + 'olemasolevas baasis on ta käsitsi lisatud, värskes puuduks ja ükski töö '
+      + 'ei salvestuks' },
   { fail: 'sql/063_job_material_units.sql', table: 'jobs', column: 'materjali_yhikud',
     mis: 'Mitu kapslit töö päriselt võttis (kapslihind materjalidel)' },
   { fail: 'sql/062_visit_requests_realtime.sql', table: 'visit_requests', column: 'id',

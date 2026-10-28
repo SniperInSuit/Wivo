@@ -15,13 +15,20 @@ found nothing is named so the claim can be re-checked.
 | # | Checkpoint | Status | Evidence | Note |
 |---|---|---|---|---|
 | A1 | Scripted stand-up of a fresh instance | ❌ | no provisioning script in `scripts/` (only `make-license.mjs`, `import-csv.mjs`) | Purely manual; steps listed below |
-| A2 | Migrations runnable fresh → working schema | ❌ **blocker** | `grep "create table.*jobs" sql/` → no match | **No migration creates the `jobs` table.** It exists only as a snippet in `README.md`, and that snippet is the 2024 single-table MVP |
-| A3 | …and even with the README snippet | ❌ **blocker** | see A2 detail below | 5 columns the app writes on every insert are created **nowhere** |
+| A2 | Migrations runnable fresh → working schema | ✅ **fixed v1.104.0** | `grep "create table.*jobs" sql/` → no match | **No migration creates the `jobs` table.** It exists only as a snippet in `README.md`, and that snippet is the 2024 single-table MVP |
+| A3 | …and even with the README snippet | ✅ **fixed v1.104.0** | see A2 detail below | 5 columns the app writes on every insert are created **nowhere** |
 | A4 | RLS initialised per new clinic | ✅ | `sql/016_clinic_rls.sql`, `my_clinic_id()` | Policies are table-level and scope on `my_clinic_id()`, so a new clinic needs no per-tenant RLS work |
 | A5 | anon key only, no service-role | ✅ | `grep -rn "service_role" src/` → only comments in `WorkersPage.tsx` explaining its deliberate absence | Confirmed |
 | A6 | First-run / setup state | ✅ | `Auth/ClinicSetupWizard.tsx`, `AuthContext.needsClinicSetup` | App does **not** assume a pre-seeded DB: a signed-up user with no clinic gets the wizard |
 
-**A2/A3 in detail — the concrete blocker.** Migrations create 16 tables
+**A2/A3 — FIXED in v1.104.0.** `sql/000_jobs.sql` creates the table and all
+five orphan columns, and runs before `sql/001`. It is idempotent, so running it
+on the existing database is a no-op that also repairs drift. `sql/jobsColumns.test.ts`
+now fails the build if a field in `types/job.ts` is created by no migration, so
+the next one cannot be discovered in production. The README snippet is gone —
+it was the stale copy that caused this.
+
+**The original finding, kept because it explains the shape of the bug.** Migrations create 16 tables
 (`clinics`, `profiles`, `patients`, `invoices`, `visits`, `worker_*`, …) but
 never `jobs`. Reconstructing from `README.md` + `sql/001–045` still leaves these
 `jobs` columns uncreated, verified by
