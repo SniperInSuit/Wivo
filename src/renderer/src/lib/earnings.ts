@@ -1334,3 +1334,97 @@ export function owedAcrossPeriods(
     .reduce((s, p) => s + Number(p.total), 0)
   return round2(outstanding + open)
 }
+
+// ── Reworking what was already paid ──────────────────────────────────────────
+
+/** One frozen revision line, as it was actually paid. */
+export interface PaidRevisionLine {
+  payoutId: string
+  period: string      // 'yyyy-MM' of the payout's period start
+  description: string
+  kind: string
+  qty: number
+  rate: number
+  amount: number
+}
+
+/** Everything paid at one rate, for one kind of unit. */
+export interface PaidRevisionGroup {
+  kind: string
+  rate: number
+  qty: number
+  paid: number
+  lines: PaidRevisionLine[]
+}
+
+/**
+ * Revision work that is already frozen into a payout, grouped by what it was
+ * paid at.
+ *
+ * ── Why this reads payouts and not jobs ─────────────────────────────────────
+ * A rate that was wrong when the money went out stays wrong in the payout, and
+ * that is deliberate: a payout is frozen so that editing a rule later cannot
+ * restate what somebody was already paid. Recomputing the jobs under today's
+ * rules would produce the number that SHOULD have been paid and say nothing
+ * about what was. The gap between the two is the whole question here, and only
+ * the payout knows one half of it.
+ *
+ * ── Why it groups by kind as well as rate ───────────────────────────────────
+ * `qty` is not one unit. It holds teeth on a per-tooth line and jobs on a
+ * per-job line, so adding them would produce a count of nothing and multiplying
+ * that by a per-tooth rate would be worse — a confident, wrong number, which is
+ * the only kind that gets invoiced.
+ *
+ * `until` is exclusive and matches on the payout's period start, so the month
+ * being worked in is never half-counted.
+ */
+export function paidRevisionGroups(
+  payouts: {
+    profile_id: string
+    period_start: string
+    lines: { id?: string; revision_id: string | null; kind: string; description: string; qty: number; rate: number; amount: number }[]
+  }[],
+  profileId: string,
+  until?: string,
+): PaidRevisionGroup[] {
+  const groups = new Map<string, PaidRevisionGroup>()
+  for (const p of payouts) {
+    if (p.profile_id !== profileId) continue
+    if (until && p.period_start >= until) continue
+    for (const l of p.lines) {
+      // The revision id is the signal, not the description. Descriptions are
+      // generated text and an additive rule's label is the user's own words.
+      if (!l.revision_id) continue
+      const key = `${l.kind}|${l.rate}`
+      const g = groups.get(key) ?? { kind: l.kind, rate: Number(l.rate), qty: 0, paid: 0, lines: [] }
+      g.qty = round2(g.qty + Number(l.qty))
+      g.paid = round2(g.paid + Number(l.amount))
+      g.lines.push({
+        payoutId: p.period_start,
+        period: p.period_start.slice(0, 7),
+        description: l.description,
+        kind: l.kind,
+        qty: Number(l.qty),
+        rate: Number(l.rate),
+        amount: Number(l.amount),
+      })
+      groups.set(key, g)
+    }
+  }
+  return [...groups.values()].sort((a, b) => a.rate - b.rate || a.kind.localeCompare(b.kind))
+}
+
+/**
+ * What this group would have come to at `correctRate`, and the shortfall.
+ *
+ * Never negative by accident: if the corrected rate is LOWER the difference is
+ * negative and says so, because an overpayment is a real answer and silently
+ * clamping it to zero would hide it.
+ */
+export function revaluationOf(group: PaidRevisionGroup, correctRate: number): {
+  should: number
+  difference: number
+} {
+  const should = round2(group.qty * correctRate)
+  return { should, difference: round2(should - group.paid) }
+}

@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import type { Job, Revision, WorkItem } from '../types/job'
 import type { WorkType } from '../config/workTypes'
 import {
-  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs, backlogPeriods, owedAcrossPeriods,
+  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs, backlogPeriods, owedAcrossPeriods, paidRevisionGroups, revaluationOf,
   grossFromNet, grossOf, payslipFromGross,
   type WorkerRate, type RateKind, type RateScope, type PayrollTaxRates,
 } from './earnings'
@@ -1450,5 +1450,80 @@ describe('owedAcrossPeriods', () => {
 
   it('does not accumulate float dust', () => {
     expect(owedAcrossPeriods(0.1, [payout({ total: 0.2 })], TECH)).toBe(0.3)
+  })
+})
+
+describe('paidRevisionGroups — what revisions were actually paid at', () => {
+  const line = (over: Partial<{ revision_id: string | null; kind: string; qty: number; rate: number; amount: number; description: string }> = {}) => ({
+    revision_id: 'rev-1', kind: 'hammas', qty: 6, rate: 7.5, amount: 45,
+    description: 'Muudatus #1: Kroon · Helve Pärna', ...over,
+  })
+  const payout = (over: Partial<{ profile_id: string; period_start: string }> = {}, lines = [line()]) =>
+    ({ profile_id: TECH, period_start: '2026-09-01', lines, ...over })
+
+  it('groups the frozen lines by the rate they were paid at', () => {
+    const got = paidRevisionGroups([payout({}, [line(), line({ qty: 4, amount: 30 })])], TECH)
+    expect(got).toHaveLength(1)
+    expect(got[0].rate).toBe(7.5)
+    expect(got[0].qty).toBe(10)
+    expect(got[0].paid).toBe(75)
+  })
+
+  it('REFUSES to mix per-tooth and per-job lines into one group', () => {
+    // `qty` holds teeth on one and jobs on the other. Added together it counts
+    // nothing, and multiplying that by a per-tooth rate would invoice it.
+    const got = paidRevisionGroups(
+      [payout({}, [line(), line({ kind: 'too', qty: 1, rate: 7.5, amount: 7.5 })])], TECH)
+    expect(got).toHaveLength(2)
+    expect(got.map(g => g.kind).sort()).toEqual(['hammas', 'too'])
+  })
+
+  it('keeps two different rates apart', () => {
+    const got = paidRevisionGroups(
+      [payout({}, [line(), line({ rate: 15, amount: 90 })])], TECH)
+    expect(got.map(g => g.rate)).toEqual([7.5, 15])
+  })
+
+  it('REFUSES anything that is not a revision line', () => {
+    expect(paidRevisionGroups([payout({}, [line({ revision_id: null })])], TECH)).toEqual([])
+  })
+
+  it('REFUSES another person\'s payouts', () => {
+    expect(paidRevisionGroups([payout({ profile_id: DESIGNER })], TECH)).toEqual([])
+  })
+
+  it('stops BEFORE the month given, so the current month is never half-counted', () => {
+    const payouts = [payout({ period_start: '2026-09-01' }), payout({ period_start: '2026-10-01' })]
+    expect(paidRevisionGroups(payouts, TECH, '2026-10-01')[0].qty).toBe(6)
+    expect(paidRevisionGroups(payouts, TECH)[0].qty).toBe(12)
+  })
+
+  it('carries each line, so the claim can show its working', () => {
+    const got = paidRevisionGroups([payout({ period_start: '2026-08-01' })], TECH)
+    expect(got[0].lines).toHaveLength(1)
+    expect(got[0].lines[0].period).toBe('2026-08')
+    expect(got[0].lines[0].description).toContain('Muudatus')
+  })
+})
+
+describe('revaluationOf', () => {
+  const group = (qty: number, rate: number, paid: number) =>
+    ({ kind: 'hammas', rate, qty, paid, lines: [] })
+
+  it('gives the shortfall when the rate was too low', () => {
+    // The case this was built for: 7.50 €/tooth paid, 15 € agreed.
+    expect(revaluationOf(group(48, 7.5, 360), 15)).toEqual({ should: 720, difference: 360 })
+  })
+
+  it('reports an OVERPAYMENT as negative rather than hiding it', () => {
+    expect(revaluationOf(group(10, 15, 150), 7.5).difference).toBe(-75)
+  })
+
+  it('is zero when the rate was right all along', () => {
+    expect(revaluationOf(group(10, 15, 150), 15).difference).toBe(0)
+  })
+
+  it('rounds to cents instead of trailing float dust into an invoice', () => {
+    expect(revaluationOf(group(3, 0.1, 0.3), 0.2)).toEqual({ should: 0.6, difference: 0.3 })
   })
 })

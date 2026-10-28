@@ -26,10 +26,10 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods, owedAcrossPeriods,
+  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods, owedAcrossPeriods, paidRevisionGroups, revaluationOf,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
-  type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue, type BacklogPeriod,
+  type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue, type BacklogPeriod, type PaidRevisionGroup,
 } from '../../lib/earnings'
 import { useQueryClient } from '@tanstack/react-query'
 import { updateProfile, type Engagement, type PayBasis } from '../../lib/supabase'
@@ -195,6 +195,10 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     // See `owedAcrossPeriods` — the one figure on this screen that is not
     // about the month on screen.
     const owed = owedAcrossPeriods(outstanding, payouts, w.id)
+    // Bounded at the month on screen: rates were corrected going forward, so
+    // everything from here on is already right, and half-counting the current
+    // month would put lines in the claim that nobody disputes.
+    const revalue = paidRevisionGroups(payouts, w.id, period.start)
     return {
       worker: w,
       lines,
@@ -204,6 +208,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       otherOpen,
       otherOpenTotal,
       owed,
+      revalue,
       // The month's earning, paid or not. This is what the summary tiles, the
       // employer tax and the clinic's total cost are computed from: those are
       // facts about the PERIOD, and paying someone does not make the month
@@ -561,7 +566,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
           <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
         </div>
-      ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, otherOpen, otherOpenTotal, owed, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
+      ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, otherOpen, otherOpenTotal, owed, revalue, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
         // `periood` is work belonging to another month and `makstud` is settled
         // business. Neither is an open item, and neither belongs in a count
@@ -786,6 +791,12 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                     </div>
                   )}
                 </section>
+
+                {/* A one-off audit, not part of the monthly flow — folded shut
+                    and below the lists somebody actually came here for. */}
+                {isOwner && revalue.length > 0 && (
+                  <RevaluePanel groups={revalue} workerName={nameOf(worker.id)} />
+                )}
 
                 {/* Confirmed elsewhere, still owed. Directly above this
                     month's own payouts, because after settling a backlog this
@@ -1099,6 +1110,137 @@ function BacklogPanel({
               </button>
             </div>
           )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Recalculating revisions that were already paid at the wrong rate.
+ *
+ * ── Why it does not fix anything ────────────────────────────────────────────
+ * A payout is frozen on purpose: changing a rule afterwards must not restate
+ * what somebody was already paid, or every past month becomes editable and no
+ * figure in this app can be trusted again. So this answers the question and
+ * leaves the record alone. What comes out is a number to settle BETWEEN people
+ * — invoiced, or added as a line to a future payout — and the trail of how it
+ * was arrived at, as a CSV.
+ *
+ * ── Why the correct rate is typed in and not inferred ───────────────────────
+ * The obvious move is to reprice each line under today's rules. But a rule
+ * carries `active_from`, so "today's rules" may legitimately answer with the
+ * old rate for an old month — and whether the fix was made by editing the rule
+ * or by dating a new one is not knowable from here. Guessing wrong produces a
+ * confident number that gets invoiced. The person who changed the rate knows
+ * what it should have been; the app does the arithmetic.
+ */
+function RevaluePanel({ groups, workerName }: {
+  groups: PaidRevisionGroup[]
+  workerName: string
+}) {
+  const [open, setOpen] = useState(false)
+  // Keyed by kind|rate, and EMPTY means "unchanged" rather than 0 — a blank box
+  // that silently meant zero would show the whole payment as an overpayment.
+  const [corrected, setCorrected] = useState<Record<string, string>>({})
+
+  const rows = groups.map(g => {
+    const key = `${g.kind}|${g.rate}`
+    const typed = corrected[key]
+    const rate = typed === undefined || typed.trim() === ''
+      ? g.rate
+      : Number(typed.replace(',', '.'))
+    const valid = Number.isFinite(rate)
+    return { g, key, typed: typed ?? '', ...revaluationOf(g, valid ? rate : g.rate), valid }
+  })
+  const totalDiff = rows.reduce((s, r) => s + r.difference, 0)
+
+  return (
+    <section className="rounded-xl border border-ink-faint/25 p-3">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-2 text-left">
+        {open ? <ChevronDown size={14} className="text-ink-muted" /> : <ChevronRight size={14} className="text-ink-muted" />}
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Varem makstud muudatused — ümberarvutus
+        </span>
+        <span className="ml-auto text-xs text-ink-muted">
+          {groups.length} {groups.length === 1 ? 'määr' : 'määra'}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-ink-muted">
+            Muudatused, mis on juba välja makstud, rühmitatud selle järgi, mida nende
+            eest tegelikult maksti. Sisesta õige määr ja vaata vahet. <strong>Midagi
+            ei muudeta</strong> — kinnitatud väljamakse jääb puutumata, see on ainult
+            arvutus.
+          </p>
+
+          {rows.map(r => (
+            <div key={r.key} className="rounded-lg border border-ink-faint/20 p-2.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="font-semibold text-ink tabular-nums">
+                  {r.g.rate.toFixed(2)} {RATE_KIND_SUFFIX[r.g.kind as RateKind] ?? r.g.kind}
+                </span>
+                <span className="text-ink-muted tabular-nums">
+                  {r.g.qty} × · {r.g.lines.length} rida
+                </span>
+                <span className="text-ink-muted tabular-nums">
+                  makstud {r.g.paid.toFixed(2)} €
+                </span>
+                <label className="ml-auto flex items-center gap-1.5">
+                  <span className="text-ink-muted">Õige määr</span>
+                  <input
+                    value={r.typed}
+                    onChange={e => setCorrected(c => ({ ...c, [r.key]: e.target.value }))}
+                    placeholder={r.g.rate.toFixed(2)}
+                    inputMode="decimal"
+                    className="input w-24 text-right tabular-nums"
+                  />
+                </label>
+              </div>
+              {r.difference !== 0 && (
+                <p className="mt-1.5 text-xs tabular-nums text-ink">
+                  Peaks olema <strong>{r.should.toFixed(2)} €</strong> —{' '}
+                  <span className={r.difference > 0 ? 'font-bold text-orange-600' : 'font-bold text-emerald-600'}>
+                    {r.difference > 0 ? 'maksmata ' : 'ülemakstud '}
+                    {Math.abs(r.difference).toFixed(2)} €
+                  </span>
+                </p>
+              )}
+              {!r.valid && (
+                <p className="mt-1.5 text-xs text-red-600">
+                  See ei ole number — vahe arvutamata.
+                </p>
+              )}
+            </div>
+          ))}
+
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-ink-faint/15 pt-2">
+            <button
+              onClick={() => exportCsv(
+                `muudatuste-umberarvutus-${workerName}`,
+                rows.flatMap(r => r.g.lines.map(l => ({ ...l, correctRate: r.should / (r.g.qty || 1) }))),
+                [
+                  { header: 'Kuu', value: l => l.period },
+                  { header: 'Kirjeldus', value: l => l.description },
+                  { header: 'Kogus', value: l => l.qty },
+                  { header: 'Makstud määr', value: l => l.rate.toFixed(2) },
+                  { header: 'Makstud summa', value: l => l.amount.toFixed(2) },
+                  { header: 'Õige määr', value: l => l.correctRate.toFixed(2) },
+                  { header: 'Peaks olema', value: l => (l.qty * l.correctRate).toFixed(2) },
+                  { header: 'Vahe', value: l => (l.qty * l.correctRate - l.amount).toFixed(2) },
+                ],
+              )}
+              className="btn-ghost mr-auto border border-ink-faint/25 text-xs"
+            >
+              <Download size={13} /> Laadi alla read
+            </button>
+            <span className="text-xs text-ink-muted">Kokku taotleda</span>
+            <span className="text-base font-bold tabular-nums text-ink">
+              {totalDiff.toFixed(2)} €
+            </span>
+          </div>
         </div>
       )}
     </section>
