@@ -1222,3 +1222,89 @@ export function grossOf(
 ): number {
   return mode === 'neto' ? grossFromNet(amount, rates, worker) : round2(Number(amount) || 0)
 }
+
+// ── Arrears ──────────────────────────────────────────────────────────────────
+
+/** One earlier month that still owes this person something. */
+export interface BacklogPeriod {
+  /** 'yyyy-MM' — what the heading says. */
+  month: string
+  periodStart: string
+  periodEnd: string
+  lines: EarningLine[]
+  total: number
+}
+
+/** Last day of 'yyyy-MM', as 'yyyy-MM-dd'. */
+function monthEnd(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  // Day 0 of the NEXT month is the last day of this one, leap years included.
+  return `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`
+}
+
+/**
+ * Everything earlier months still owe this person, grouped BY MONTH.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ * Nothing was ever lost: a job finished in August sits in August's unbilled
+ * list, and August's screen has always shown it. But a payout is confirmed from
+ * the month you happen to have open, so work nobody opened August to confirm
+ * stays owed indefinitely, and the only hint is a grey line on another screen
+ * saying some work "belongs to another period".
+ *
+ * ── Why it is grouped and not flattened ─────────────────────────────────────
+ * The obvious shape is one list of old lines, swept into the current month's
+ * payout. That would be wrong in the books: a payout carries the period it
+ * belongs to, and the whole app reads that — the month's cost, the employer
+ * tax, the clinic total. Dropping August's work into October's payout makes
+ * October cost more than October did and August cost less than August did, and
+ * both numbers are then wrong for good, because a confirmed payout is frozen.
+ *
+ * So the settling is one action and the RECORDS land where the work happened:
+ * one payout per month, each with its own period. August is settled in October
+ * and still reads as August's cost.
+ *
+ * ── Why the monthly salary is included ──────────────────────────────────────
+ * It is tempting to leave `kuu` lines out, on the grounds that an unpaid salary
+ * is a different kind of problem from a forgotten job. But each month is
+ * computed with its own bounds, so the line is the same one August's own screen
+ * shows — and a backlog whose total disagrees with the month it names is worse
+ * than a backlog that includes something you did not expect.
+ *
+ * Double payment is not a risk here: `alreadyPaid` is keyed per line across
+ * EVERY payout this person has, not per period, so a line frozen anywhere is
+ * gone from here too.
+ */
+export function backlogPeriods(ctx: EarningsContext): BacklogPeriod[] {
+  const { jobs, hours, profileId, periodStart } = ctx
+  const cutoff = periodStart.slice(0, 7)
+
+  // Only months the data actually contains. Walking a calendar backwards would
+  // mean choosing how far back to look, and the oldest debt is exactly the one
+  // a cutoff would hide.
+  const months = new Set<string>()
+  for (const j of jobs) {
+    // This person's work only. A month where somebody ELSE has unpaid jobs
+    // would otherwise be costed in full for every worker on the screen, and
+    // then dropped again for having produced no lines — the same answer,
+    // arrived at by doing all the work first.
+    if (j.assigned_to !== profileId && !jobDesigners(j).includes(profileId)) continue
+    const m = jobPeriodDate(j).slice(0, 7)
+    if (m && m < cutoff) months.add(m)
+  }
+  for (const h of hours) {
+    if (h.profile_id !== profileId) continue
+    const m = (h.work_date ?? '').slice(0, 7)
+    if (m && m < cutoff) months.add(m)
+  }
+
+  const out: BacklogPeriod[] = []
+  for (const month of [...months].sort().reverse()) {
+    const start = `${month}-01`
+    const end = monthEnd(month)
+    const lines = calculateEarnings({ ...ctx, periodStart: start, periodEnd: end })
+    if (lines.length === 0) continue
+    out.push({ month, periodStart: start, periodEnd: end, lines, total: earningsTotal(lines) })
+  }
+  return out
+}

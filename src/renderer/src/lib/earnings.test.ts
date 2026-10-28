@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import type { Job, Revision, WorkItem } from '../types/job'
 import type { WorkType } from '../config/workTypes'
 import {
-  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs,
+  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs, backlogPeriods,
   grossFromNet, grossOf, payslipFromGross,
   type WorkerRate, type RateKind, type RateScope, type PayrollTaxRates,
 } from './earnings'
@@ -1297,5 +1297,123 @@ describe('unassignedFinishedJobs', () => {
   it('ignores a job finished in another month', () => {
     const j = done({ assigned_to: null, designed_by: null, valmis_kuupaev: '2026-08-16' })
     expect(unassignedFinishedJobs(ctx([j]))).toEqual([])
+  })
+})
+
+describe('backlogPeriods — what earlier months still owe', () => {
+  const crowns = (valmis: string) => job({
+    too: 'Kroon', hambad: '11,12', valmis_kuupaev: valmis, kuupaev: valmis,
+  })
+  const back = (jobs: Job[], alreadyPaid = new Set<string>()) => backlogPeriods({
+    profileId: TECH,
+    rates: [rate({ kind: 'hammas', amount: 15 })],
+    jobs, hours: [], types: TYPES,
+    periodStart: '2026-10-01', periodEnd: '2026-10-31',
+    doneStageKey: DONE,
+    alreadyPaid,
+  })
+
+  it('finds a month nobody ever confirmed a payout for', () => {
+    const got = back([crowns('2026-08-10')])
+    expect(got).toHaveLength(1)
+    expect(got[0].month).toBe('2026-08')
+    expect(got[0].total).toBe(30)
+  })
+
+  it('groups by month rather than returning one flat list', () => {
+    // The grouping is the whole point: settling creates one payout per month,
+    // so that each month's cost stays in that month's books.
+    const got = back([crowns('2026-07-05'), crowns('2026-08-10'), crowns('2026-08-20')])
+    expect(got.map(p => p.month)).toEqual(['2026-08', '2026-07'])
+    expect(got[0].lines).toHaveLength(2)
+    expect(got[1].lines).toHaveLength(1)
+  })
+
+  it('bounds each group to its own month', () => {
+    const got = back([crowns('2026-08-31'), crowns('2026-09-01')])
+    expect(got.find(p => p.month === '2026-08')!.periodEnd).toBe('2026-08-31')
+    expect(got.find(p => p.month === '2026-09')!.periodEnd).toBe('2026-09-30')
+  })
+
+  it('ends February on the 28th and a leap February on the 29th', () => {
+    expect(back([crowns('2026-02-10')])[0].periodEnd).toBe('2026-02-28')
+    expect(back([crowns('2024-02-10')])[0].periodEnd).toBe('2024-02-29')
+  })
+
+  it('REFUSES to include the month on screen, or anything after it', () => {
+    // Otherwise the current month would be offered twice — once in its own
+    // list and once here — and ticking both would pay it twice.
+    expect(back([crowns('2026-10-10'), crowns('2026-11-05')])).toEqual([])
+  })
+
+  it('REFUSES a line already frozen into any payout', () => {
+    const j = crowns('2026-08-10')
+    expect(back([j])).toHaveLength(1)
+    expect(back([j], new Set([`job:${j.id}`]))).toEqual([])
+  })
+
+  it('REFUSES work that never reached the done stage', () => {
+    expect(back([job({ status: 'disain', too: 'Kroon', hambad: '11', valmis_kuupaev: null })]))
+      .toEqual([])
+  })
+
+  it('leaves out months that produce no lines at all', () => {
+    // A job with no matching rule puts its month in the candidate set but
+    // yields nothing — an empty "2026-08 · 0,00 €" card would read as a debt.
+    const got = backlogPeriods({
+      profileId: TECH,
+      rates: [rate({ kind: 'hammas', amount: 15, work_type: 'Sild' })],
+      jobs: [crowns('2026-08-10')], hours: [], types: TYPES,
+      periodStart: '2026-10-01', periodEnd: '2026-10-31',
+      doneStageKey: DONE,
+    })
+    expect(got).toEqual([])
+  })
+
+  it('returns the newest month first', () => {
+    const got = back([crowns('2026-05-02'), crowns('2026-09-02'), crowns('2026-07-02')])
+    expect(got.map(p => p.month)).toEqual(['2026-09', '2026-07', '2026-05'])
+  })
+
+  it('reads the same fallback dates the month screens do', () => {
+    // No completion date: `jobPeriodDate` falls back to the deadline, then to
+    // the arrival date. The backlog must land the job in the SAME month that
+    // month's own screen puts it in, or the two disagree about one job.
+    const got = back([job({
+      too: 'Kroon', hambad: '11,12',
+      valmis_kuupaev: null, valmis_aeg: '2026-06-15', kuupaev: '2026-04-02',
+    })])
+    expect(got.map(p => p.month)).toEqual(['2026-06'])
+  })
+})
+
+describe('backlogPeriods only looks at this person\'s own months', () => {
+  const ctx = (jobs: Job[], profileId: string, rates: WorkerRate[]) => backlogPeriods({
+    profileId, rates, jobs, hours: [], types: TYPES,
+    periodStart: '2026-10-01', periodEnd: '2026-10-31', doneStageKey: DONE,
+  })
+
+  it('ignores a month where only somebody else has unpaid work', () => {
+    const got = ctx(
+      [job({ too: 'Kroon', hambad: '11', valmis_kuupaev: '2026-08-10', assigned_to: 'muu' })],
+      TECH, [rate({ kind: 'hammas', amount: 15 })],
+    )
+    expect(got).toEqual([])
+  })
+
+  it('still finds a month where this person only DESIGNED', () => {
+    // The narrowing must not drop designers: a job can be built by one person
+    // and designed by another, and the designer is owed for it just the same.
+    const got = ctx(
+      [job({
+        too: 'Kroon', hambad: '11,12', valmis_kuupaev: '2026-08-10',
+        assigned_to: 'muu', designed_by: DESIGNER,
+      })],
+      DESIGNER,
+      [rate({ kind: 'hammas', amount: 10, profile_id: DESIGNER, applies_to: 'disain' })],
+    )
+    expect(got).toHaveLength(1)
+    expect(got[0].month).toBe('2026-08')
+    expect(got[0].total).toBe(20)
   })
 })

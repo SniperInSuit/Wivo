@@ -26,10 +26,10 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  unassignedFinishedJobs, grossOf, payslipFromGross,
+  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
-  type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue,
+  type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue, type BacklogPeriod,
 } from '../../lib/earnings'
 import { useQueryClient } from '@tanstack/react-query'
 import { updateProfile, type Engagement, type PayBasis } from '../../lib/supabase'
@@ -158,6 +158,19 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     const periodPayouts = payouts.filter(
       p => p.profile_id === w.id && p.period_start === period.start
     )
+    // What EARLIER months still owe. Computed on the current month's screen
+    // because that is the one anybody opens — the whole failure this answers is
+    // that nobody opens August again. See `backlogPeriods`.
+    const backlog = backlogPeriods({
+      profileId: w.id,
+      rates, jobs, hours,
+      types: wt.types,
+      periodStart: period.start,
+      periodEnd: period.end,
+      doneStageKey,
+      alreadyPaid,
+      rushMultiplier: w.kiirtoo_kordaja ?? 1,
+    })
     // What is still owed for this period. `calculateEarnings` drops every line
     // already frozen into a payout, so this is the UNPAID half and nothing else.
     const outstanding = earningsTotal(lines)
@@ -167,6 +180,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     return {
       worker: w,
       lines,
+      backlog,
       outstanding,
       paid,
       // The month's earning, paid or not. This is what the summary tiles, the
@@ -250,6 +264,43 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       })
       setExcluded(new Set())
     } catch (err) { setActionError(describeError(err)) }
+  }
+
+  /**
+   * Settles earlier months — ONE payout per month, not one big one.
+   *
+   * The button is in the current month because that is where somebody is
+   * standing, but each month's work is frozen against its own period. See
+   * `backlogPeriods`: a payout carries the period it belongs to and the whole
+   * app reads it, so sweeping August into October would make October cost more
+   * than October did, permanently, because a confirmed payout is frozen.
+   *
+   * Sequential and not `Promise.all`: if the third month fails, the first two
+   * are already real and the error names which month stopped. Fired together,
+   * a partial failure would leave an unknown subset confirmed.
+   */
+  async function payOutBacklog(profileId: string, backlog: BacklogPeriod[]) {
+    setActionError(null)
+    let done = 0
+    try {
+      for (const p of backlog) {
+        const included = p.lines.filter(l => !excluded.has(l.key))
+        if (included.length === 0) continue
+        await createPayout.mutateAsync({
+          profile_id: profileId,
+          period_start: p.periodStart,
+          period_end: p.periodEnd,
+          lines: included,
+        })
+        done++
+      }
+      if (done === 0) setActionError('Kõik vanad read on välja jäetud — pole midagi kinnitada.')
+      else setExcluded(new Set())
+    } catch (err) {
+      setActionError(
+        `${describeError(err)}${done > 0 ? ` (${done} kuud jõudsid kinnituda)` : ''}`
+      )
+    }
   }
 
   // Deleting a payout returns its lines to the unpaid pool — `paidKeysFrom`
@@ -489,7 +540,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
           <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
         </div>
-      ) : perWorker.map(({ worker, lines, total, gross, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
+      ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
         // `periood` is work belonging to another month and `makstud` is settled
         // business. Neither is an open item, and neither belongs in a count
@@ -608,6 +659,21 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                     issues={issues}
                     jobs={jobs}
                     onOpenJob={onOpenJob}
+                    onGoToMonth={m => setMonthOffset(monthsBetween(period.start, m))}
+                  />
+                )}
+
+                {/* Above the current month's list on purpose. This is the part
+                    nobody knew about — the current month is already on screen
+                    every time somebody opens this page. */}
+                {backlog.length > 0 && (
+                  <BacklogPanel
+                    backlog={backlog}
+                    excluded={excluded}
+                    isOwner={isOwner}
+                    busy={createPayout.isPending}
+                    onToggleLine={toggleLine}
+                    onSettle={() => payOutBacklog(worker.id, backlog)}
                     onGoToMonth={m => setMonthOffset(monthsBetween(period.start, m))}
                   />
                 )}
@@ -848,6 +914,130 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
  * Whole months from the period currently on screen to `month` ('yyyy-MM'),
  * as an offset from TODAY — which is what `monthOffset` counts.
  */
+/**
+ * What earlier months still owe, and the one button that settles them.
+ *
+ * ── Why it is folded shut ───────────────────────────────────────────────────
+ * It can be a year of months. Open, it would push the month you actually came
+ * here for off the screen — and this is a backlog, not today's work. The
+ * heading carries the two numbers that decide whether it is worth opening.
+ *
+ * ── Why each month keeps its own total and its own link ─────────────────────
+ * Settling creates one payout per month (see `payOutBacklog`), so the months
+ * are the unit the records are kept in. Showing one merged total would describe
+ * a payout that is never created, and the first question after confirming —
+ * "why are there three rows?" — would have no answer on this screen.
+ */
+function BacklogPanel({
+  backlog, excluded, isOwner, busy, onToggleLine, onSettle, onGoToMonth,
+}: {
+  backlog: BacklogPeriod[]
+  excluded: Set<string>
+  isOwner: boolean
+  busy: boolean
+  onToggleLine: (key: string) => void
+  onSettle: () => void
+  onGoToMonth: (month: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const included = backlog.flatMap(p => p.lines).filter(l => !excluded.has(l.key))
+  const total = earningsTotal(included)
+
+  return (
+    <section className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        {open ? <ChevronDown size={14} className="text-ink-muted" /> : <ChevronRight size={14} className="text-ink-muted" />}
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Varasemast arveldamata
+        </span>
+        <span className="text-xs text-ink-muted">
+          {backlog.length} {backlog.length === 1 ? 'kuu' : 'kuud'}
+        </span>
+        <span className="ml-auto text-sm font-bold tabular-nums text-ink">{total.toFixed(2)} €</span>
+      </button>
+
+      {!open && (
+        <p className="mt-1 pl-6 text-xs text-ink-muted">
+          Valmis tööd, mille eest ei ole kunagi väljamakset kinnitatud. Ava, et näha.
+        </p>
+      )}
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {backlog.map(p => (
+            <div key={p.month}>
+              <div className="mb-1 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onGoToMonth(p.month)}
+                  className="text-xs font-semibold text-accent hover:underline"
+                  title="Ava see kuu"
+                >
+                  {p.month}
+                </button>
+                <span className="text-[11px] text-ink-faint">{p.lines.length} rida</span>
+                <span className="ml-auto text-xs font-semibold tabular-nums text-ink">
+                  {p.total.toFixed(2)} €
+                </span>
+              </div>
+              {p.lines.map(l => {
+                const off = excluded.has(l.key)
+                return (
+                  <div
+                    key={l.key}
+                    className={`flex items-center gap-2 border-b border-ink-faint/10 py-1 text-xs last:border-0 ${off ? 'opacity-40' : ''}`}
+                  >
+                    {isOwner && (
+                      <input
+                        type="checkbox"
+                        checked={!off}
+                        onChange={() => onToggleLine(l.key)}
+                        className="flex-shrink-0 accent-accent"
+                        title={off ? 'Kaasa väljamaksesse' : 'Jäta sellest väljamaksest välja'}
+                      />
+                    )}
+                    <span className="w-20 flex-shrink-0 tabular-nums text-ink-faint">{fmtDate(l.earned_on)}</span>
+                    <span className={`min-w-0 flex-1 truncate text-ink ${off ? 'line-through' : ''}`}>
+                      {l.description}
+                    </span>
+                    <span className="w-20 flex-shrink-0 text-right font-semibold tabular-nums text-ink">
+                      {l.amount.toFixed(2)} €
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+
+          {isOwner && (
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+              {/* Said before the click, not after. Somebody settling from
+                  October will otherwise look for the money in October. */}
+              <span className="mr-auto text-[11px] text-ink-muted">
+                Iga kuu kohta tekib eraldi väljamakse selle kuu alla — nii jääb
+                iga kuu kulu sinna, kus töö tehti.
+              </span>
+              <span className="text-sm font-bold tabular-nums text-ink">{total.toFixed(2)} €</span>
+              <button
+                onClick={onSettle}
+                disabled={busy || included.length === 0}
+                className="btn-primary disabled:opacity-50"
+              >
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                Arvelda vanad kuud ({included.length})
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function monthsBetween(_periodStart: string, month: string): number {
   const target = parseISO(`${month}-01`)
   if (!isValid(target)) return 0
