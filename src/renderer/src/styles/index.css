@@ -177,15 +177,29 @@
   /* ─── UI scale (Seaded → Kasutajaliides → Teksti suurus) ──────────────────
      `zoom` scales every length — including the hard pixel text sizes the app
      uses in ~200 places, which a font-size scale would miss entirely.
-     The width/height division cancels the zoom on the shell itself: at 125%,
-     #root is laid out at 80% of the viewport and painted 1.25× larger, so it
-     still covers exactly one viewport and never grows scrollbars.
-     Anything sized in vh/vw INSIDE this element must divide by --ui-scale the
-     same way — see .max-h-panel / .max-w-dialog below. */
+
+     #root carries NO width/height compensation, and that is the fix for a real
+     bug: it used to divide both by --ui-scale, which left a band of empty
+     window below the app at every size but 100%.
+
+     The two kinds of length behave differently inside a zoomed element, and
+     this is measured in Electron 32 / Chromium 128, not assumed. Viewport
+     984 × 735, zoom 1.25:
+
+       width: 100%                 → 984   percentages already account for zoom
+       width: calc(100% / 1.25)    → 787   so dividing applies it TWICE
+       width: 100vw                → 1230  viewport units do not
+       width: calc(100vw / 1.25)   → 984
+
+     So a percentage needs nothing, and vh/vw inside #root must still divide —
+     see .h-panel / .max-w-dialog below, which are correct as they stand and
+     are deliberately NOT written the same way as this rule.
+
+     `zoom` was standardised in Chromium 128, which is the version Electron 32
+     carries; the old division was right under the behaviour that preceded it.
+     The height/width themselves come from the `html, body, #root` rule above. */
   #root {
     zoom: var(--ui-scale, 1);
-    width: calc(100% / var(--ui-scale, 1));
-    height: calc(100% / var(--ui-scale, 1));
   }
 
   /* Custom scrollbar */
@@ -207,7 +221,11 @@
 @layer components {
   /* Viewport-relative sizes for elements inside the zoomed #root. A bare 70vh
      would be measured against the unzoomed viewport and then painted 1.25×
-     larger, so a panel sized at 70vh would spill past the window at 125%. */
+     larger, so a panel sized at 70vh would spill past the window at 125%.
+
+     Verified, not assumed — see the measurements on #root above. These two
+     divisions are RIGHT. #root looks inconsistent with them on purpose: it is
+     sized by a percentage, and percentages already account for zoom. */
   .h-panel {
     height: calc(70vh / var(--ui-scale, 1));
   }
