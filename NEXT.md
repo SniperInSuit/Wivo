@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.98.1 · 27.10.2026 · haru `main`**
+**Seis: v1.107.0 · 28.10.2026 · haru `main`**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -10,28 +10,46 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ---
 
-## 📌 Kus pooleli jäi — 27.10.2026, tööpäeva lõpp
+## 📌 Kus pooleli jäi — 28.10.2026
 
-**Töölaud on puhas.** Kõik commititud, miski ei ole pooleli jäetud, ükski fail
-ei oota lõpetamist. Ainus asi, mida masin ootab, on `git push`.
+**Töölaud on puhas.** Kõik commititud, miski ei ole pooleli. Masin ootab ainult
+`git push`-i.
 
-Täna valmis: 3D hambakaart **Faas 1a + 1b** — mudel, kaart, lüliti kõigil neljal
-kutsumiskohal (sh uue töö wizardis), hover, kaameranupud, implantaadid,
-disainija hambad, lohistades valimine, külgede sildid. Vt
-**„✅ 3D hambakaart on olemas"** allpool.
+### v2.0 seis (vt `docs/v2.md` täisulatuse jaoks)
 
-**Järgmine samm on kokku lepitud: raamatupidamise pakett.** Omanik sõnastas
-selle 27.10 ümber ja see muutis ulatust — vt
-**„1. Raamatupidamise pakett"** allpool. Alustamise järjekord on seal ka
-põhjendatud, aga lühidalt:
+| # | Asi | Seis |
+|---|---|---|
+| 1 | RLS õiguste jõustamine | ✅ `sql/064`, jooksutatud ja kinnitatud |
+| 2 | 3D Faas 0 | ✅ |
+| 3 | Teema redaktor | ✅ v1.102.0, ilma migratsioonita |
+| 4 | Statistika näidikud | ✅ v1.103.0, 12 mõõdikut |
+| 5 | 3D Faas 1 | ✅ 1a + 1b. **1c** (varjud, teemad, tekstid) järel — kosmeetika |
+| 6 | **Vestlus** | ❌ suurim järelejäänud asi. **Vajab GDPR-i otsuseid enne koodi** |
+| 7 | „Lisa töö" funnel | ⏸ **omanik lükkas edasi 28.10** — praegune on piisav, vaatab peale litsentsi, kas üldse vaja |
+| 8 | **Litsentsisüsteem** | ❌ viimane enne väljalaset |
 
-> **Mitte ekspordist.** Kaks teadaolevat võlga (`periodMetrics` käive liidab
-> muudatuste hinnad juurde; `kulu_yle` ei kajastu kuluridades) on praegu
-> ekraaninumbrite ebatäpsused. Allalaaditavas failis, mis läheb maksuametini,
-> on need **valeandmed**. Need kaks tulevad enne faili, mitte pärast.
+### Mis veel väljaspool v2.0 nimekirja
 
-3D-st on järel ainult **Faas 1c** (varjud, teemad, tekstid) — kosmeetika, ei
-blokeeri midagi. Peegeldust 3D-s **ei tule**, see on otsus ja põhjus on kirjas.
+- ✅ **Värskest andmebaasist saab nüüd Wivo püsti panna** (`sql/000_jobs.sql`,
+  v1.104.0). See oli suurim müügiblokeerija — suurem kui litsents
+- ✅ **`Wivo Logo.png` 2,09 MB → 64 KB** (v1.107.0). Originaal on `brand/`
+- ❌ **Raamatupidamise pakett** — ainus konkreetne maksevalmiduse signaal.
+  Vt „1. Raamatupidamise pakett" allpool
+
+> **Kui raamatupidamist alustada, siis mitte ekspordist.** Kaks teadaolevat
+> võlga (`periodMetrics` käive liidab muudatuste hinnad juurde; `kulu_yle` ei
+> kajastu kuluridades) on praegu ekraaninumbrite ebatäpsused. Allalaaditavas
+> failis, mis läheb maksuametini, on need **valeandmed**.
+
+### Üks teadaolev ebatäpsus, mis jäi lahtiseks
+
+`stats.byWorkType` ja vana Tootmine-saki töötüüpide kaardid loevad **töö
+tasemel** (`job.too`, `job.hambad`). Segatöö — kroonid + sild — läheb tervenisti
+esimese liigi alla. Summad klapivad, nimed on valed.
+
+Uus `lib/unitsByType.ts` (v1.106.0) teeb seda **õigesti, tööosade kaupa**, ja
+paneel „Ühikuid töö liigi järgi" kasutab teda. Vana loogika jäi puutumata, sest
+tema parandamine muudab numbreid mitmel ekraanil korraga ja väärib oma commiti.
 
 ---
 
@@ -39,7 +57,7 @@ blokeeri midagi. Peegeldust 3D-s **ei tule**, see on otsus ja põhjus on kirjas.
 
 ```bash
 npm ci
-npm test        # 810 rohelist, 0 punast
+npm test        # 936 rohelist, 0 punast
 npm run build
 ```
 
@@ -186,7 +204,10 @@ visiidiks.
    **Kui mudel ei lae:** vaata `readTeethModel`
    [`src/main/index.ts`](src/main/index.ts)-s ja `extraResources`
    `package.json`-is — mitte kordagi `GLTFLoader.load()`
-5. **`git push`** — 9 commiti ootab
+5. **Jooksuta `sql/000_jobs.sql`.** Ta peab olema **täielik no-op** — kõik on
+   `if not exists`. Kui ta midagi lisab, on su baas triivinud ja sa said just
+   teada, mis puudu oli
+6. **`git push`**
 
 ---
 
