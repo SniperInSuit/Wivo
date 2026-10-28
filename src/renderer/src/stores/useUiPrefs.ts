@@ -20,7 +20,7 @@
 import { useSyncExternalStore } from 'react'
 import {
   normaliseUiPrefs, withDashboard, reorderPreserving, clampSize,
-  type UiPrefs, type DashboardPrefs, withOdontogram,
+  type UiPrefs, type DashboardPrefs, type GaugeBoundsPrefs, withOdontogram,
 } from '../lib/uiPrefs'
 
 const cacheKey = (userId: string): string => `wivo_ui_prefs_v1:${userId}`
@@ -152,10 +152,23 @@ export function useUiPrefs(): UiPrefs {
 }
 
 /** Replace the visible list. `preset` records where it came from, nothing more. */
+/**
+ * The stored dashboard with some fields replaced — SPREAD, never rebuilt.
+ *
+ * Every writer below used to list the fields it wanted to keep, which is the
+ * exact trap lib/uiPrefs.ts opens with: a field added later is dropped by every
+ * writer that has not been updated, and nothing says so. `gauges` was the one
+ * that would have found out — move a panel once and your gauge bounds are gone.
+ */
+function dash(patch: Partial<DashboardPrefs>): DashboardPrefs {
+  const d = snapshot.dashboard
+  return { preset: d?.preset ?? null, panels: d?.panels ?? [], ...d, ...patch }
+}
+
 export function setDashboardPanels(panels: string[], preset: string | null): void {
   // Sizes survive a preset change on purpose: a panel you had made full width
   // should still be full width when it comes back in another view.
-  commit(withDashboard(snapshot, { preset, panels, sizes: snapshot.dashboard?.sizes }))
+  commit(withDashboard(snapshot, dash({ preset, panels })))
 }
 
 /**
@@ -165,11 +178,7 @@ export function setDashboardPanels(panels: string[], preset: string | null): voi
 export function reorderDashboard(nextKnownOrder: string[], known: ReadonlySet<string>): void {
   const stored = snapshot.dashboard?.panels ?? []
   const merged = reorderPreserving(stored, nextKnownOrder, known)
-  commit(withDashboard(snapshot, {
-    preset: snapshot.dashboard?.preset ?? null,
-    panels: merged,
-    sizes: snapshot.dashboard?.sizes,
-  }))
+  commit(withDashboard(snapshot, dash({ panels: merged })))
 }
 
 /** Hand-editing the list means it is no longer the preset it came from. */
@@ -180,7 +189,7 @@ export function addPanel(id: string, after?: string): void {
   const panels = at >= 0
     ? [...stored.slice(0, at + 1), id, ...stored.slice(at + 1)]
     : [...stored, id]
-  commit(withDashboard(snapshot, { preset: null, panels, sizes: snapshot.dashboard?.sizes }))
+  commit(withDashboard(snapshot, dash({ preset: null, panels })))
 }
 
 export function removePanel(id: string): void {
@@ -188,9 +197,7 @@ export function removePanel(id: string): void {
   if (!stored.includes(id)) return
   // The size is kept, not deleted: adding the panel back should not silently
   // reset a width its owner chose.
-  commit(withDashboard(snapshot, {
-    preset: null, panels: stored.filter(p => p !== id), sizes: snapshot.dashboard?.sizes,
-  }))
+  commit(withDashboard(snapshot, dash({ preset: null, panels: stored.filter(p => p !== id) })))
 }
 
 /**
@@ -201,10 +208,29 @@ export function removePanel(id: string): void {
  * stays. Moving or removing one is a different question and does clear it.
  */
 export function setPanelSize(id: string, w: number, h: number): void {
-  const d = snapshot.dashboard
-  const panels = d?.panels ?? []
-  const sizes = { ...(d?.sizes ?? {}), [id]: clampSize(w, h) }
-  commit(withDashboard(snapshot, { preset: d?.preset ?? null, panels, sizes }))
+  const sizes = { ...(snapshot.dashboard?.sizes ?? {}), [id]: clampSize(w, h) }
+  commit(withDashboard(snapshot, dash({ sizes })))
+}
+
+/**
+ * One gauge's bounds. Like `setPanelSize`, this is not a hand edit in the
+ * "no longer the preset" sense: the preset chose which panels you see, and
+ * where you set the target on one of them is a different question.
+ *
+ * A field set to `undefined` is REMOVED rather than stored, so "no target"
+ * stays distinguishable from "target 0" — the first draws no line and no
+ * colour, the second is a goal you have reached whenever you are above zero.
+ */
+export function setGaugeBounds(id: string, patch: GaugeBoundsPrefs): void {
+  const current = snapshot.dashboard?.gauges?.[id] ?? {}
+  const merged: GaugeBoundsPrefs = { ...current, ...patch }
+  for (const k of Object.keys(merged) as (keyof GaugeBoundsPrefs)[]) {
+    if (merged[k] === undefined || !Number.isFinite(merged[k])) delete merged[k]
+  }
+  const gauges = { ...(snapshot.dashboard?.gauges ?? {}) }
+  if (Object.keys(merged).length === 0) delete gauges[id]
+  else gauges[id] = merged
+  commit(withDashboard(snapshot, dash({ gauges })))
 }
 
 /** Back to "never customised" — the role default applies again. */

@@ -67,6 +67,24 @@ export interface DashboardPrefs {
    * client had to preserve fields inside it too.
    */
   sizes?: Record<string, [number, number]>
+  /**
+   * Per-gauge bounds, keyed by panel id — the same shape as `sizes`, and for
+   * the same reason: `panels` stays a plain list of ids, so an older client's
+   * only job is to keep an unknown id in its place rather than to preserve
+   * fields inside it.
+   *
+   * Absent for a gauge means the metric's own default range. That is a real
+   * state, not a missing one: a dial is readable before anybody sets a target,
+   * and the target is what the colour needs, not the arc.
+   */
+  gauges?: Record<string, GaugeBoundsPrefs>
+}
+
+/** Stored bounds for one gauge. Every field optional — see `gauges`. */
+export interface GaugeBoundsPrefs {
+  min?: number
+  max?: number
+  target?: number
 }
 
 export interface OdontogramPrefs {
@@ -151,6 +169,33 @@ function cleanSizes(raw: unknown): Record<string, [number, number]> | undefined 
 }
 
 /**
+ * Gauge bounds, keyed by panel id.
+ *
+ * A field that is not a finite number is DROPPED rather than defaulted: a
+ * missing bound means "use the metric's default", and writing 0 in its place
+ * would pin an arc to zero and look deliberate. NaN and Infinity are what a
+ * half-typed number produces, so this is the normal path, not the hostile one.
+ */
+function cleanGauges(raw: unknown): Record<string, GaugeBoundsPrefs> | undefined {
+  if (!isObject(raw)) return undefined
+  const out: Record<string, GaugeBoundsPrefs> = {}
+  let n = 0
+  for (const [id, value] of Object.entries(raw)) {
+    if (n >= MAX_PANELS) break
+    if (!isObject(value)) continue
+    const one: GaugeBoundsPrefs = {}
+    for (const field of ['min', 'max', 'target'] as const) {
+      const v = value[field]
+      if (typeof v === 'number' && Number.isFinite(v)) one[field] = v
+    }
+    if (Object.keys(one).length === 0) continue
+    out[id] = one
+    n++
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+/**
  * Anything → a shape this app can work with, losing as little as possible.
  * Never throws: this reads a value that may have been written by a newer
  * version, a corrupted localStorage entry, or nothing at all.
@@ -183,6 +228,7 @@ export function normaliseUiPrefs(raw: unknown): UiPrefs {
   }
 
   const sizes = cleanSizes(d.sizes)
+  const gauges = cleanGauges(d.gauges)
   out.dashboard = {
     ...d,
     preset: typeof d.preset === 'string' ? d.preset : null,
@@ -190,8 +236,10 @@ export function normaliseUiPrefs(raw: unknown): UiPrefs {
     // Written only when there is something to write, so an untouched dashboard
     // does not carry an empty object around forever.
     ...(sizes ? { sizes } : {}),
+    ...(gauges ? { gauges } : {}),
   }
   if (!sizes) delete (out.dashboard as { sizes?: unknown }).sizes
+  if (!gauges) delete (out.dashboard as { gauges?: unknown }).gauges
   return out
 }
 

@@ -15,8 +15,9 @@
  */
 import type { PermissionKey } from '../../../hooks/usePermissions'
 import type { PanelNeed } from '../useStatsContext'
+import { GAUGE_METRICS, gaugePanelId } from './metrics'
 
-export type PanelGroup = 'raha' | 'yhik' | 'tootmine' | 'inimesed' | 'lobus'
+export type PanelGroup = 'raha' | 'yhik' | 'tootmine' | 'inimesed' | 'lobus' | 'naidik'
 
 export const PANEL_GROUP_LABEL: Record<PanelGroup, string> = {
   raha:     'Raha ja kasum',
@@ -27,6 +28,10 @@ export const PANEL_GROUP_LABEL: Record<PanelGroup, string> = {
   // lab, and a dashboard that can only answer the ones an accountant asks is a
   // dashboard nobody opens on a Friday.
   lobus:    'Lõbus teada',
+  // Generated from GAUGE_METRICS rather than written out below — see
+  // GAUGE_PANEL_METAS. The same number as a tile elsewhere, asked a different
+  // question: not "what is it" but "is it where it should be".
+  naidik:   'Näidikud',
 }
 
 /**
@@ -358,13 +363,45 @@ export const PANEL_CATALOGUE = [
   },
 ] as const satisfies readonly PanelMeta[]
 
+/**
+ * Ids of the hand-written panels only.
+ *
+ * Kept narrow on purpose: `PANEL_RENDER` is typed `Record<PanelId, …>`, so a
+ * panel added above without a renderer is a compile error. Gauges are drawn by
+ * one renderer for all of them and are resolved separately — widening this
+ * type to include them would throw that check away for the sixty-one panels
+ * that still need it.
+ */
 export type PanelId = (typeof PANEL_CATALOGUE)[number]['id']
 
+/**
+ * One panel per gauge metric, generated.
+ *
+ * `[1, 2]` because a dial needs height more than width: the arc, the number
+ * under it and the target line do not fit in a single row, and a gauge squashed
+ * to one row renders as a number with a decoration around it.
+ */
+export const GAUGE_PANEL_METAS: PanelMeta[] = GAUGE_METRICS.map(m => ({
+  id: gaugePanelId(m.key),
+  title: `Näidik: ${m.label}`,
+  hint: m.hint,
+  group: 'naidik',
+  defaultSize: [1, 2],
+  perm: m.perm,
+  needs: m.needs,
+}))
+
+/** Everything the picker can offer and the grid can draw. */
+export const ALL_PANELS: PanelMeta[] = [
+  ...(PANEL_CATALOGUE as readonly PanelMeta[]),
+  ...GAUGE_PANEL_METAS,
+]
+
 export const PANEL_BY_ID: Record<string, PanelMeta> = Object.fromEntries(
-  PANEL_CATALOGUE.map(p => [p.id, p as PanelMeta]),
+  ALL_PANELS.map(p => [p.id, p]),
 )
 
-export const KNOWN_PANEL_IDS: ReadonlySet<string> = new Set(PANEL_CATALOGUE.map(p => p.id))
+export const KNOWN_PANEL_IDS: ReadonlySet<string> = new Set(ALL_PANELS.map(p => p.id))
 
 /** Catalogue order, grouped, for the picker. */
-export const PANEL_GROUPS: PanelGroup[] = ['raha', 'yhik', 'tootmine', 'inimesed', 'lobus']
+export const PANEL_GROUPS: PanelGroup[] = ['raha', 'yhik', 'tootmine', 'inimesed', 'lobus', 'naidik']

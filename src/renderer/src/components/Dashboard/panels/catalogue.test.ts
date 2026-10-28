@@ -8,12 +8,26 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  PANEL_CATALOGUE, PANEL_BY_ID, KNOWN_PANEL_IDS, PANEL_GROUP_LABEL, type PanelMeta,
+  PANEL_CATALOGUE, ALL_PANELS, PANEL_BY_ID, KNOWN_PANEL_IDS, PANEL_GROUP_LABEL,
+  type PanelMeta,
 } from './catalogue'
 import { PRESETS } from './presets'
+import { GAUGE_METRICS, gaugePanelId, metricOfPanel } from './metrics'
 import { RETIRED_PANEL_IDS } from '../../../lib/uiPrefs'
 
-const ALL: readonly PanelMeta[] = PANEL_CATALOGUE
+/**
+ * The generated gauge panels too, not just the hand-written ones.
+ *
+ * Every rule below applies to them for the same reasons — and one of them
+ * matters more for a gauge than for anything else: the permission check. A
+ * gauge is a metric the user PICKS, so "Näidik: Kasum" is one click away from
+ * any dashboard, and a generator that forgot to carry `perm` across would put
+ * the profit on screen for everybody who can open Statistika.
+ */
+const ALL: readonly PanelMeta[] = ALL_PANELS
+
+// Referenced so the hand-written list cannot quietly become unused here.
+const HANDWRITTEN: readonly PanelMeta[] = PANEL_CATALOGUE
 
 describe('paneelide kataloog', () => {
   it('has unique ids', () => {
@@ -80,5 +94,36 @@ describe('paneelide kataloog', () => {
       expect(KNOWN_PANEL_IDS.has(from), `${from} is retired but still in the catalogue`).toBe(false)
       if (to !== null) expect(KNOWN_PANEL_IDS.has(to), `${from} → ${to}`).toBe(true)
     }
+  })
+})
+
+describe('näidikud kataloogis', () => {
+  const gauges = ALL.filter(p => p.group === 'naidik')
+
+  it('generates one panel per metric', () => {
+    expect(gauges.length).toBe(GAUGE_METRICS.length)
+  })
+
+  it('is additive — every hand-written panel is still there', () => {
+    for (const p of HANDWRITTEN) expect(KNOWN_PANEL_IDS.has(p.id), p.id).toBe(true)
+  })
+
+  it('carries each metric\'s permission onto its panel', () => {
+    // The check that keeps a one-click gauge from showing profit to everyone.
+    for (const m of GAUGE_METRICS) {
+      expect(PANEL_BY_ID[gaugePanelId(m.key)].perm, m.key).toBe(m.perm)
+    }
+  })
+
+  it('carries each metric\'s data needs too', () => {
+    // `needs` is what decides whether the expensive aggregators run at all. A
+    // gauge without them reads an all-zero context and shows a confident 0.00.
+    for (const m of GAUGE_METRICS) {
+      expect(PANEL_BY_ID[gaugePanelId(m.key)].needs, m.key).toBe(m.needs)
+    }
+  })
+
+  it('does not collide with a hand-written id', () => {
+    for (const p of HANDWRITTEN) expect(metricOfPanel(p.id), p.id).toBeNull()
   })
 })

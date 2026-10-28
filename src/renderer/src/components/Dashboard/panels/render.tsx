@@ -20,6 +20,8 @@ import { StatTile } from '../../ui/StatTile'
 import { CHART_COLORS, TOOLTIP_STYLE, NAME_AXIS_WIDTH, truncateName } from '../chartTheme'
 import { unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../../lib/periodMetrics'
 import { debtBuckets } from '../../../lib/debtors'
+import { Gauge } from './Gauge'
+import { metricOfPanel } from './metrics'
 import type { PanelCtx } from '../useStatsContext'
 import type { PanelId } from './catalogue'
 
@@ -877,4 +879,23 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 /** Percentage of a total, guarding the zero denominator this app has shipped before. */
 function share(part: number, total: number): number {
   return total > 0 ? (part / total) * 100 : 0
+}
+
+/**
+ * The renderer for a panel id, gauges included.
+ *
+ * `PANEL_RENDER` stays a `Record<PanelId, …>` so that a hand-written panel
+ * without a renderer is still a compile error. Gauges cannot be in it — there
+ * is one renderer for all of them and their ids are generated — so they are
+ * resolved here instead of widening that type and losing the check for the
+ * sixty-one panels that still need it.
+ *
+ * Null for an id this build does not know, which is a normal state: the prefs
+ * store keeps ids from newer versions on purpose. The grid filters those out
+ * before it gets here; this is the second lock on the same door.
+ */
+export function panelRenderer(id: string): PanelRender | null {
+  const metric = metricOfPanel(id)
+  if (metric) return ctx => <Gauge metric={metric} panelId={id} ctx={ctx} />
+  return PANEL_RENDER[id as PanelId] ?? null
 }

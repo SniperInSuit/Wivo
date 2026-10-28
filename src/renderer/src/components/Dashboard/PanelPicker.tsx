@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react'
 import { Reorder, useDragControls } from 'framer-motion'
 import { GripVertical, X, Plus, Check, Search, RotateCcw } from 'lucide-react'
 import {
-  PANEL_CATALOGUE, PANEL_BY_ID, PANEL_GROUPS, PANEL_GROUP_LABEL,
+  ALL_PANELS, PANEL_BY_ID, PANEL_GROUPS, PANEL_GROUP_LABEL,
   type PanelMeta,
 } from './panels/catalogue'
 import { PRESETS } from './panels/presets'
@@ -42,7 +42,7 @@ export function PanelPicker({
   // Panels this person cannot see are absent, not greyed out. A disabled
   // "Kasum" row is an invitation to ask why it is disabled.
   const available = useMemo(
-    () => PANEL_CATALOGUE.filter(p => isPanelVisible(p as PanelMeta, visibility)),
+    () => ALL_PANELS.filter(p => isPanelVisible(p, visibility)),
     [visibility],
   )
 

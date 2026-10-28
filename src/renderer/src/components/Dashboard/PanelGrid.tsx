@@ -24,7 +24,7 @@ import { Component, useRef, useState, type ErrorInfo, type ReactNode } from 'rea
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, GripVertical, X, Maximize2 } from 'lucide-react'
 import { PANEL_BY_ID, type PanelMeta } from './panels/catalogue'
-import { PANEL_RENDER } from './panels/render'
+import { panelRenderer } from './panels/render'
 import { GRID_COLS, MAX_PANEL_ROWS } from '../../lib/uiPrefs'
 import type { PanelCtx, PanelNeed } from './useStatsContext'
 import type { PermissionKey } from '../../hooks/usePermissions'
@@ -428,7 +428,7 @@ export function PanelGrid({ panels, ctx, sizes, editing, onMove, onResize, onRem
                 onDragEnd={finish}
               >
                 <PanelBoundary title={p.title}>
-                  {PANEL_RENDER[p.id as keyof typeof PANEL_RENDER](ctx)}
+                  {panelRenderer(p.id)?.(ctx) ?? null}
                 </PanelBoundary>
                 {editing && (
                   <PanelChrome

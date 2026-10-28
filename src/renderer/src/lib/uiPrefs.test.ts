@@ -210,3 +210,56 @@ describe('normaliseUiPrefs — odontogram', () => {
     expect(out.odontogram?.view).toBe('3d')
   })
 })
+
+describe('gauge bounds survive the round trip', () => {
+  const withGauges = (gauges: unknown) => normaliseUiPrefs({
+    v: 1, dashboard: { preset: null, panels: ['naidik:kasum'], gauges },
+  }).dashboard
+
+  it('keeps the bounds somebody set', () => {
+    expect(withGauges({ 'naidik:kasum': { min: 0, max: 5000, target: 3000 } })?.gauges)
+      .toEqual({ 'naidik:kasum': { min: 0, max: 5000, target: 3000 } })
+  })
+
+  it('keeps a partial set — a target alone is a normal state', () => {
+    expect(withGauges({ 'naidik:kasum': { target: 3000 } })?.gauges)
+      .toEqual({ 'naidik:kasum': { target: 3000 } })
+  })
+
+  it('DROPS a non-finite bound rather than defaulting it to zero', () => {
+    // NaN is what a half-typed number produces. Storing 0 in its place would
+    // pin the arc to zero and look deliberate.
+    expect(withGauges({ 'naidik:kasum': { min: Number.NaN, max: 5000 } })?.gauges)
+      .toEqual({ 'naidik:kasum': { max: 5000 } })
+  })
+
+  it('DROPS a bound that is not a number at all', () => {
+    expect(withGauges({ 'naidik:kasum': { max: '5000' } })?.gauges).toBeUndefined()
+  })
+
+  it('omits the key entirely when there is nothing to store', () => {
+    // So an untouched dashboard does not carry an empty object forever.
+    expect(withGauges({})?.gauges).toBeUndefined()
+    expect(withGauges(undefined)?.gauges).toBeUndefined()
+  })
+
+  it('keeps bounds for a gauge this build has never heard of', () => {
+    // Same rule as panel ids: store the union. A newer version's metric must
+    // not lose its target because an older bench machine opened the page.
+    expect(withGauges({ 'naidik:tulevik': { target: 9 } })?.gauges)
+      .toEqual({ 'naidik:tulevik': { target: 9 } })
+  })
+
+  it('does not disturb sizes', () => {
+    const got = normaliseUiPrefs({
+      v: 1,
+      dashboard: {
+        preset: null, panels: ['naidik:kasum'],
+        sizes: { 'naidik:kasum': [2, 2] },
+        gauges: { 'naidik:kasum': { target: 10 } },
+      },
+    }).dashboard
+    expect(got?.sizes).toEqual({ 'naidik:kasum': [2, 2] })
+    expect(got?.gauges).toEqual({ 'naidik:kasum': { target: 10 } })
+  })
+})
