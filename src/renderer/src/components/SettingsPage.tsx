@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database
 } from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
+import { ThemeEditor } from './Settings/ThemeEditor'
 import { overheadsMonthly } from '@shared/pricing/priceBook'
 import type { OverheadPeriood } from '@shared/pricing/priceBook'
 import type { ThemeKey } from '../stores/useSettings'
@@ -1426,7 +1427,17 @@ export function SettingsPage() {
             <h3 className="text-sm font-semibold text-ink">Teema</h3>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {THEMES.map(t => (
+            {THEMES.map(t => {
+              // The custom tile shows the person's OWN colours. A fixed swatch
+              // on this one would be the only tile in the row that lies about
+              // what picking it does.
+              const preview = t.key === 'oma' && settings.omaTeema
+                ? {
+                  bg: settings.omaTeema['app-bg'] ?? t.preview.bg,
+                  card: settings.omaTeema['bg-card'] ?? t.preview.card,
+                }
+                : t.preview
+              return (
               <button
                 key={t.key}
                 type="button"
@@ -1438,10 +1449,10 @@ export function SettingsPage() {
                 }`}
               >
                 {/* Live-ish preview: page background with a card floating on it */}
-                <span className="block h-16 relative" style={{ background: t.preview.bg }}>
+                <span className="block h-16 relative" style={{ background: preview.bg }}>
                   <span
                     className="absolute left-2 top-2 right-6 bottom-5 rounded-md"
-                    style={{ background: t.preview.card, boxShadow: '0 1px 4px rgba(0,0,0,.18)' }}
+                    style={{ background: preview.card, boxShadow: '0 1px 4px rgba(0,0,0,.18)' }}
                   />
                 </span>
                 <span className="block px-2.5 py-2">
@@ -1449,10 +1460,16 @@ export function SettingsPage() {
                   <span className="block text-[10px] text-ink-muted leading-tight">{t.hint}</span>
                 </span>
               </button>
-            ))}
+              )
+            })}
           </div>
         </section>
           )}
+
+          {/* The editor for the last of those tiles. Its own section rather
+              than a popup inside the tile: picking colours means looking at the
+              app while you do it, and a dialog covering the app defeats that. */}
+          {activeGroup === 'kasutajaliides' && <ThemeEditor />}
 
           {/* Text size */}
           {activeGroup === 'kasutajaliides' && (

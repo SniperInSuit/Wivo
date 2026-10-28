@@ -5,6 +5,7 @@ import {
   workTypeHexIn, workTypeLabelIn, workTypesPresentIn, type WorkType, type PriceMode
 } from '../config/workTypes'
 import { DEFAULT_VISIT_TYPES, visitTypeHexIn, type VisitType } from '../config/visitTypes'
+import { customThemeCss, normaliseCustomTheme, type CustomTheme } from '../lib/customTheme'
 import { emptyPublicService, slugify, type PublicService } from '@shared/portal/publicService'
 import {
   CLINIC_COLUMNS, COLUMN_OF, toRow as toClinicRow,
@@ -31,7 +32,13 @@ import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } fr
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
 
-export type ThemeKey = 'hele' | 'navy-cloud' | 'cloudy-navy'
+// Up here with STORAGE_KEY, not beside `applyTheme` where it is used.
+// `applyTheme` is called at module scope to get the theme right before the
+// first paint; function declarations hoist and `const` does not, so declaring
+// this next to the function puts it in the temporal dead zone at that call.
+const CUSTOM_STYLE_ID = 'wivo-oma-teema'
+
+export type ThemeKey = 'hele' | 'navy-cloud' | 'cloudy-navy' | 'oma'
 
 export interface ThemeOption {
   key: ThemeKey
@@ -66,7 +73,16 @@ export const THEMES: ThemeOption[] = [
       bg: 'linear-gradient(135deg,#f4f8fc 0%,#e6edf6 45%,#cfdae9 78%,#b9c8dc 100%)',
       card: '#16233F'
     }
-  }
+  },
+  {
+    key: 'oma',
+    label: 'Oma',
+    hint: 'Sinu värvid',
+    // No fixed swatch: this one's preview is whatever the person has made, so
+    // the settings page reads it off the saved theme instead. A hardcoded pair
+    // here would show somebody else's colours on their own theme.
+    preview: { bg: 'repeating-linear-gradient(45deg,#d4d4d8 0 6px,#f4f4f5 6px 12px)', card: '#ffffff' }
+  },
 ]
 
 // ─── Text size ────────────────────────────────────────────────────────────────
@@ -126,6 +142,13 @@ export interface WivoSettings {
   defaultMachine: string
   kasutajaNimi: string    // Sinu nimi — stamped as the author on patient notes
   teema: ThemeKey         // Teema — see THEMES / styles/index.css
+  /**
+   * The user's own colours, when `teema` is 'oma'. Absent until they make
+   * one, and KEPT when they switch back to a built-in theme — switching away
+   * to compare is the normal way to judge a colour, and discarding the work
+   * for it would be unforgivable.
+   */
+  omaTeema?: CustomTheme
   ribaLaiendatud: boolean // Külgriba laiendatud (sildid ikoonide kõrval) või kompaktne
   tekstiSuurus: number    // Teksti/kuva suurus, 1 = 100%
   paneeliSuund: 'side' | 'bottom' | 'fullscreen'  // Kuidas töö/visiidi paneel avaneb
@@ -270,6 +293,7 @@ function defaultSettings(): WivoSettings {
     defaultMachine: '',
     kasutajaNimi: '',
     teema: 'hele',
+    omaTeema: undefined,
     ribaLaiendatud: true,
     paneeliSuund: 'fullscreen' as const,
     tekstiSuurus: 1,
@@ -461,6 +485,9 @@ function loadSettings(): WivoSettings {
       defaultMachine: stored.defaultMachine ?? '',
       kasutajaNimi: stored.kasutajaNimi ?? '',
       teema: stored.teema ?? 'hele',
+      // Validated on the way IN, not only on the way out: this value is
+      // injected into a live stylesheet, and localStorage is editable.
+      omaTeema: normaliseCustomTheme(stored.omaTeema),
       ribaLaiendatud: stored.ribaLaiendatud ?? true,
       paneeliSuund: (['side', 'bottom', 'fullscreen'] as const).includes(stored.paneeliSuund as any) ? stored.paneeliSuund as 'side' | 'bottom' | 'fullscreen' : 'fullscreen',
       // Clamped: a corrupted value here would otherwise render the UI unusable
@@ -530,7 +557,7 @@ function loadSettings(): WivoSettings {
 // into Seaded while a patient page was open stamped notes as "Tundmatu" until
 // the component happened to remount. One shared snapshot, one subscriber list.
 let snapshot: WivoSettings = loadSettings()
-applyTheme(snapshot.teema)
+applyTheme(snapshot.teema, snapshot.omaTeema)
 applyTextScale(snapshot.tekstiSuurus)
 const listeners = new Set<() => void>()
 
@@ -550,8 +577,33 @@ export function getSettingsSnapshot(): WivoSettings {
 
 // The stylesheet keys off <html data-theme>, so applying is a one-liner. Done
 // here rather than in a component effect so the theme is right before first paint.
-function applyTheme(theme: ThemeKey) {
+//
+// A custom theme needs one more thing: its colours do not exist in the bundled
+// stylesheet, so they are injected as a <style> element. Injected from HERE for
+// the same reason the attribute is — a component effect runs after the first
+// paint, and the whole app would flash the default theme on every launch.
+//
+// The element is reused rather than recreated. Dropping and re-adding it on
+// every keystroke of the colour editor makes the browser recompute styles for
+// the whole document each time, which is visible as lag while dragging a
+// colour picker.
+function applyTheme(theme: ThemeKey, custom?: CustomTheme) {
   document.documentElement.dataset.theme = theme
+  const css = theme === 'oma' && custom ? customThemeCss(custom) : ''
+  // This module is imported by pure-logic modules (lib/finance, lib/jobCosts)
+  // whose tests run without a DOM beyond a `documentElement` stub. The line
+  // above is all such a host can do, and a custom theme is not a thing that
+  // exists there — so stop, rather than making every one of those suites
+  // depend on a full document.
+  if (typeof document.getElementById !== 'function') return
+  let el = document.getElementById(CUSTOM_STYLE_ID)
+  if (!css) { el?.remove(); return }
+  if (!el) {
+    el = document.createElement('style')
+    el.id = CUSTOM_STYLE_ID
+    document.head.appendChild(el)
+  }
+  if (el.textContent !== css) el.textContent = css
 }
 
 // Drives `#root { zoom: var(--ui-scale) }` in styles/index.css.
@@ -645,7 +697,7 @@ export function clinicSliceOf(s: WivoSettings = snapshot): Omit<ClinicSettingsRo
 
 function persistLocal(next: WivoSettings) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  applyTheme(next.teema)
+  applyTheme(next.teema, next.omaTeema)
   applyTextScale(next.tekstiSuurus)
   // New object identity every write — useSyncExternalStore compares by reference
   snapshot = next
@@ -722,6 +774,31 @@ export function useSettings() {
 
   const setTeema = useCallback((teema: ThemeKey) => {
     setSettings(prev => ({ ...prev, teema }))
+  }, [setSettings])
+
+  /**
+   * One token at a time, because that is how the editor is used.
+   *
+   * `undefined` clears a token, which is NOT the same as setting it to the base
+   * theme's colour: a cleared token follows the base theme afterwards, so
+   * switching the theme you started from keeps working. A copied value would
+   * freeze it at whatever it happened to be when you touched it.
+   */
+  const setOmaTeemaToken = useCallback((key: string, hex: string | undefined) => {
+    setSettings(prev => {
+      const next = { ...(prev.omaTeema ?? {}) }
+      if (hex === undefined) delete next[key]
+      else next[key] = hex
+      return { ...prev, omaTeema: normaliseCustomTheme(next) }
+    })
+  }, [setSettings])
+
+  /** Replaces the lot — used by "start from this theme" and by reset. */
+  const setOmaTeema = useCallback((theme: CustomTheme | undefined) => {
+    setSettings(prev => ({
+      ...prev,
+      omaTeema: theme === undefined ? undefined : normaliseCustomTheme(theme),
+    }))
   }, [setSettings])
 
   const toggleRiba = useCallback(() => {
@@ -992,7 +1069,7 @@ export function useSettings() {
 
   return {
     settings, save, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setKasutajaNimi,
-    setTeema, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setKapslimasinad, setPaneeliSuund,
+    setTeema, setOmaTeema, setOmaTeemaToken, toggleRiba, setNumber, setFlag, setTekstiSuurus, setFixedCosts, setLisateenused, setYldkulud, setKapslimasinad, setPaneeliSuund,
     addOption, removeOption, renameOption, resetOptions,
     setEpost,
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
