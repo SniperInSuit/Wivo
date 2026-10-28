@@ -35,6 +35,7 @@ import { useDashboardStats, type Period, type DateRange } from './useDashboardSt
 import { useCustomers } from '../../hooks/useCustomers'
 import { invoiceMetrics, type InvoiceMetrics } from '../../lib/invoiceMetrics'
 import { unitEconomics, type UnitEconomics } from '../../lib/unitEconomics'
+import { unitsByType, type UnitsByType } from '../../lib/unitsByType'
 import {
   turnaroundStats, onTimeStats, deliveryStats, weekdayLoad,
   type TurnaroundStats, type OnTimeStats, type DeliveryStats, type WeekdayLoad,
@@ -84,6 +85,15 @@ export interface PanelCtx {
   debt: DebtorStats
   /** All-time curiosities. Every one prints its own scope. */
   fun: FunFacts
+
+  /**
+   * Units made per work type, counted off the WORK ITEMS.
+   *
+   * Separate from `stats.byWorkType`, which buckets by the job-level `too` and
+   * `hambad` — on a case holding crowns and a bridge that files every tooth
+   * under the crown. See lib/unitsByType.
+   */
+  units: UnitsByType
 
   // ── Ambient
   settings: WivoSettings
@@ -150,6 +160,9 @@ export function useStatsContext(
     const d = jobPeriodDate(j)
     return d >= range.start && d <= range.end
   }), [jobs, range])
+
+  // Cheap — one pass over the period's jobs — so it is not behind a `need`.
+  const units = useMemo(() => unitsByType(jobsInPeriod, wt.label), [jobsInPeriod, wt])
 
   const fin = useMemo<FinanceStats>(() => {
     if (!wantsFinance) return EMPTY_FINANCE
@@ -267,6 +280,7 @@ export function useStatsContext(
     rangeLabel: period === 'all' ? 'kogu aeg' : `${range.start} – ${range.end}`,
     m,
     stats,
+    units,
     fin,
     finReady: wantsFinance,
     profit,

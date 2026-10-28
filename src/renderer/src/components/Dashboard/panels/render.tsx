@@ -475,17 +475,42 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     )
   },
 
+  // Reads `ctx.units`, NOT `stats.byWorkType`. The latter buckets by the
+  // job-level `too` and counts the job-level `hambad`, so a case holding
+  // crowns and a bridge files all of its teeth under the crown — see
+  // lib/unitsByType. For "how many crowns have we made" that is the whole
+  // question, answered wrong.
   'toot.tooliigid_hambad': ctx => {
-    const rows = [...ctx.stats.byWorkType].filter(t => t.teeth > 0).sort((a, b) => b.teeth - a.teeth)
+    const { rows, unplacedRedone } = ctx.units
     const top = rows[0]?.teeth ?? 0
     return (
-      <Block title="Hambad töö liigi järgi" sub="Sama periood, hammaste kaupa">
-        <ShareBars rows={rows.map(t => ({
-          label: t.name,
-          value: `${t.teeth} hammast · ${t.count} tööd`,
-          share: share(t.teeth, top),
-          color: ctx.wt.hex(t.name),
-        }))} />
+      <Block title="Ühikuid töö liigi järgi" sub="Hambaid tööosade kaupa, mitte tööde kaupa">
+        {rows.length === 0 ? <Empty>Andmeid ei ole.</Empty> : (
+          <>
+            <ShareBars rows={rows.map(t => ({
+              label: t.name,
+              // Items as well as teeth: a four-unit bridge is one item and four
+              // teeth, and which of those a lab calls "a unit" depends on what
+              // it is pricing.
+              value: `${t.teeth} hammast · ${t.items} tk`,
+              share: share(t.teeth, top),
+              color: ctx.wt.hex(t.name),
+            }))} />
+            {rows.some(t => t.redone > 0) && (
+              <p className="mt-2 text-[10px] text-ink-faint">
+                Ümbertehtud hambad ei ole siin sees:{' '}
+                {rows.filter(t => t.redone > 0).map(t => `${t.name} ${t.redone}`).join(' · ')}
+              </p>
+            )}
+            {unplacedRedone > 0 && (
+              // Reported rather than spread across the types — see unitsByType.
+              <p className="mt-1 text-[10px] text-ink-faint">
+                {unplacedRedone} ümbertehtud hammast ei saanud liigini siduda
+                (muudatus ei nimeta hambaid).
+              </p>
+            )}
+          </>
+        )}
       </Block>
     )
   },

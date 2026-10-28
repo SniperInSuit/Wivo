@@ -205,8 +205,8 @@ export const PANEL_CATALOGUE = [
     hint: 'Töö liigid tehtud tööde arvu järgi, koos hammaste arvuga — mitte käibe järgi',
   },
   {
-    id: 'toot.tooliigid_hambad', title: 'Hambad töö liigi järgi', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Sama järjestus hammaste, mitte tööde kaupa — üks proteez ei ole üks kroon',
+    id: 'toot.tooliigid_hambad', title: 'Ühikuid töö liigi järgi', group: 'tootmine', defaultSize: [2, 2],
+    hint: 'Mitu krooni, silda, proteezi on päriselt tehtud — loetud tööosade, mitte tööde kaupa',
   },
   {
     id: 'toot.materjalid', title: 'Tööd materjali järgi', group: 'tootmine', defaultSize: [2, 2],
