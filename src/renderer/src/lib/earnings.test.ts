@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import type { Job, Revision, WorkItem } from '../types/job'
 import type { WorkType } from '../config/workTypes'
 import {
-  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs, backlogPeriods,
+  calculateEarnings, diagnoseEarnings, earningsTotal, unassignedFinishedJobs, backlogPeriods, owedAcrossPeriods,
   grossFromNet, grossOf, payslipFromGross,
   type WorkerRate, type RateKind, type RateScope, type PayrollTaxRates,
 } from './earnings'
@@ -1415,5 +1415,40 @@ describe('backlogPeriods only looks at this person\'s own months', () => {
     expect(got).toHaveLength(1)
     expect(got[0].month).toBe('2026-08')
     expect(got[0].total).toBe(20)
+  })
+})
+
+describe('owedAcrossPeriods', () => {
+  const payout = (over: Partial<{ profile_id: string; status: string; total: number }> = {}) =>
+    ({ profile_id: TECH, status: 'kinnitatud', total: 100, ...over })
+
+  it('adds confirmed-but-unpaid payouts from ANY month to this month\'s unbilled work', () => {
+    // The case that sent somebody looking: settle August and September from
+    // October, and October's own figures no longer describe the bill.
+    expect(owedAcrossPeriods(255, [payout({ total: 70 }), payout({ total: 255 })], TECH))
+      .toBe(580)
+  })
+
+  it('REFUSES to count money that has already left the account', () => {
+    expect(owedAcrossPeriods(0, [payout({ status: 'makstud', total: 2640 })], TECH)).toBe(0)
+  })
+
+  it('REFUSES another person\'s payouts', () => {
+    expect(owedAcrossPeriods(0, [payout({ profile_id: DESIGNER })], TECH)).toBe(0)
+  })
+
+  it('is just the unbilled work when nothing is confirmed', () => {
+    expect(owedAcrossPeriods(325, [], TECH)).toBe(325)
+  })
+
+  it('reads a numeric string total, which is what the database returns', () => {
+    // `numeric(12,2)` comes back from PostgREST as a string; `+` on it would
+    // concatenate and the chip would read "25570".
+    expect(owedAcrossPeriods(255, [{ profile_id: TECH, status: 'kinnitatud', total: '70.00' }], TECH))
+      .toBe(325)
+  })
+
+  it('does not accumulate float dust', () => {
+    expect(owedAcrossPeriods(0.1, [payout({ total: 0.2 })], TECH)).toBe(0.3)
   })
 })

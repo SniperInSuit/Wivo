@@ -1308,3 +1308,29 @@ export function backlogPeriods(ctx: EarningsContext): BacklogPeriod[] {
   }
   return out
 }
+
+/**
+ * Everything one person is owed right now, across every period.
+ *
+ * ── Why this cannot be a per-month number ───────────────────────────────────
+ * The payroll screen is built a month at a time, which held while every payout
+ * was confirmed from the month it belonged to. Settling a backlog breaks that:
+ * the payouts land in August and September, and the person who just created
+ * them is standing in October. Every figure on that screen then describes
+ * October and none of them answers the only question being asked, which is what
+ * the whole bill now comes to.
+ *
+ * A payout that is confirmed but not `makstud` is money promised and not handed
+ * over — it counts, whatever month it is filed under. One that is `makstud` has
+ * left the account and does not.
+ */
+export function owedAcrossPeriods(
+  outstanding: number,
+  payouts: { profile_id: string; status: string; total: number | string }[],
+  profileId: string,
+): number {
+  const open = payouts
+    .filter(p => p.profile_id === profileId && p.status !== 'makstud')
+    .reduce((s, p) => s + Number(p.total), 0)
+  return round2(outstanding + open)
+}

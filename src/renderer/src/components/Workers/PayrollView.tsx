@@ -26,7 +26,7 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods,
+  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods, owedAcrossPeriods,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
   type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue, type BacklogPeriod,
@@ -177,12 +177,33 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     // The other half, which exists nowhere in `lines` and has to be read back
     // off the payouts themselves.
     const paid = periodPayouts.reduce((s, p) => s + Number(p.total), 0)
+    // Confirmed in some OTHER month and still not handed over.
+    //
+    // This screen was month-shaped all the way through, which was fine while
+    // every payout was confirmed from the month it belonged to. Settling a
+    // backlog breaks that assumption: the payouts land in August and September
+    // and the person standing in October — who just created them — had nowhere
+    // to see them, nowhere to see what they contained, and no way to find out
+    // what the whole bill now came to. The work disappeared from the screen at
+    // the exact moment it became a debt.
+    const otherOpen = payouts
+      .filter(p => p.profile_id === w.id
+        && p.period_start !== period.start
+        && p.status !== 'makstud')
+      .sort((a, b) => b.period_start.localeCompare(a.period_start))
+    const otherOpenTotal = otherOpen.reduce((s, p) => s + Number(p.total), 0)
+    // See `owedAcrossPeriods` — the one figure on this screen that is not
+    // about the month on screen.
+    const owed = owedAcrossPeriods(outstanding, payouts, w.id)
     return {
       worker: w,
       lines,
       backlog,
       outstanding,
       paid,
+      otherOpen,
+      otherOpenTotal,
+      owed,
       // The month's earning, paid or not. This is what the summary tiles, the
       // employer tax and the clinic's total cost are computed from: those are
       // facts about the PERIOD, and paying someone does not make the month
@@ -540,7 +561,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
           <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
         </div>
-      ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
+      ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, otherOpen, otherOpenTotal, owed, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
         // `periood` is work belonging to another month and `makstud` is settled
         // business. Neither is an open item, and neither belongs in a count
@@ -595,6 +616,18 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               {paid > 0 && outstanding > 0 && (
                 <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">
                   Maksmata {outstanding.toFixed(2)} €
+                </span>
+              )}
+              {/* Crosses periods, and says so, because every other number on
+                  this row is about the month on screen. Without it the only
+                  way to learn what the whole bill came to was to open each
+                  earlier month one at a time and add them up by hand. */}
+              {owed > 0 && Math.abs(owed - outstanding) > 0.005 && (
+                <span
+                  className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-orange-100 text-orange-700"
+                  title="Kõik, mis sellele inimesele praegu võlgu ollakse — selle kuu arvestamata töö pluss kõik kinnitatud, aga veel välja maksmata väljamaksed igast kuust"
+                >
+                  Maksmata kokku {owed.toFixed(2)} €
                 </span>
               )}
               {/* The headline is always the number that was AGREED — the one
@@ -753,6 +786,40 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                     </div>
                   )}
                 </section>
+
+                {/* Confirmed elsewhere, still owed. Directly above this
+                    month's own payouts, because after settling a backlog this
+                    is where the money went — and the backlog panel that listed
+                    those jobs is correctly gone, so this is the only thing left
+                    that can say what was in them. */}
+                {otherOpen.length > 0 && (
+                  <section>
+                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                      Muude kuude kinnitatud väljamaksed — veel maksmata
+                    </h4>
+                    <div className="space-y-1.5">
+                      {otherOpen.map(p => (
+                        <PayoutRow
+                          key={p.id}
+                          payout={p}
+                          isOwner={isOwner}
+                          periodLabel={monthLabel(p.period_start)}
+                          onMarkPaid={() => updatePayout.mutate({ id: p.id, status: 'makstud', paid_at: format(new Date(), 'yyyy-MM-dd') })}
+                          onUnmarkPaid={() => updatePayout.mutate({ id: p.id, status: 'kinnitatud', paid_at: null })}
+                          onDelete={() => removePayout(p.id)}
+                        />
+                      ))}
+                      <div className="flex items-center justify-end gap-3 pt-1">
+                        <span className="mr-auto text-[11px] text-ink-muted">
+                          Klõpsa real, et näha, millised tööd selle sees on.
+                        </span>
+                        <span className="text-sm font-bold tabular-nums text-ink">
+                          {otherOpenTotal.toFixed(2)} €
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 {/* Frozen payouts */}
                 {periodPayouts.length > 0 && (
@@ -1036,6 +1103,12 @@ function BacklogPanel({
       )}
     </section>
   )
+}
+
+/** 'august 2026' from a period start, or the raw value if it is not a date. */
+function monthLabel(periodStart: string): string {
+  const d = parseISO(periodStart)
+  return isValid(d) ? format(d, 'LLLL yyyy', { locale: et }) : periodStart
 }
 
 function monthsBetween(_periodStart: string, month: string): number {
@@ -1401,8 +1474,10 @@ function RushPicker({ profileId, value }: { profileId: string; value: number | n
 // ─── Payout delete ────────────────────────────────────────────────────────────
 // Two clicks, and a louder warning once the money is marked as paid — undoing a
 // Expandable payout row — shows lines (jobs) when expanded
-function PayoutRow({ payout: p, isOwner, onMarkPaid, onUnmarkPaid, onDelete }: {
+function PayoutRow({ payout: p, isOwner, periodLabel, onMarkPaid, onUnmarkPaid, onDelete }: {
   payout: WorkerPayout; isOwner: boolean
+  /** Set only where the row can be from a month other than the one on screen. */
+  periodLabel?: string
   onMarkPaid: () => void; onUnmarkPaid: () => void; onDelete: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1420,7 +1495,12 @@ function PayoutRow({ payout: p, isOwner, onMarkPaid, onUnmarkPaid, onDelete }: {
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </span>
         <div className="flex-1">
-          <p className="font-semibold text-ink tabular-nums">{Number(p.total).toFixed(2)} €</p>
+          <p className="font-semibold text-ink tabular-nums">
+            {Number(p.total).toFixed(2)} €
+            {periodLabel && (
+              <span className="ml-2 text-[11px] font-medium text-accent">{periodLabel}</span>
+            )}
+          </p>
           <p className="text-[11px] text-ink-faint">
             {p.lines.length} rida · {p.status === 'makstud'
               ? `makstud ${fmtDate(p.paid_at)}`
