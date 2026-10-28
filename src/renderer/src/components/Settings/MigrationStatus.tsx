@@ -27,6 +27,17 @@ interface Probe {
   table: string
   column: string
   mis: string
+  /**
+   * Probe by CALLING a function instead of selecting a column.
+   *
+   * A migration that only changes policies adds no column, so the comment below
+   * used to say such migrations cannot be seen from here and left them out.
+   * That is true of the policies — and not of the helper functions they are
+   * built on. 064 is the first one it matters for: if it has not been run, the
+   * permission checkboxes are decoration and the clinic has no idea, which is
+   * exactly the kind of silence this screen exists to break.
+   */
+  rpc?: { fn: string; args: Record<string, unknown> }
 }
 
 /**
@@ -35,6 +46,10 @@ interface Probe {
  * absent rather than guessed at.
  */
 const PROBES: Probe[] = [
+  { fail: 'sql/064_permission_rls.sql', table: 'rpc', column: 'has_perm',
+    rpc: { fn: 'has_perm', args: { perm: 'jobs.read' } },
+    mis: 'Õiguste linnukesed kehtivad ka serveris — ilma selleta näeb iga '
+      + 'töötaja REST API kaudu kõike, ka siis kui linnuke on maas' },
   { fail: 'sql/063_job_material_units.sql', table: 'jobs', column: 'materjali_yhikud',
     mis: 'Mitu kapslit töö päriselt võttis (kapslihind materjalidel)' },
   { fail: 'sql/062_visit_requests_realtime.sql', table: 'visit_requests', column: 'id',
@@ -77,13 +92,16 @@ export function MigrationStatus() {
     for (const p of PROBES) {
       const key = `${p.table}.${p.column}`
       try {
-        const { error } = await supabase.from(p.table).select(p.column).limit(0)
+        const { error } = p.rpc
+          ? await supabase.rpc(p.rpc.fn, p.rpc.args)
+          : await supabase.from(p.table).select(p.column).limit(0)
         if (!error) { next[key] = 'ok'; continue }
-        // PGRST204 / 42703 = no such column, 42P01 = no such table. Anything
-        // else is a different problem and must not read as "not run".
+        // PGRST204 / 42703 = no such column, 42P01 = no such table,
+        // PGRST202 / 42883 = no such function. Anything else is a different
+        // problem and must not read as "not run".
         const code = (error as { code?: string }).code ?? ''
         const msg = (error.message ?? '').toLowerCase()
-        next[key] = ['PGRST204', '42703', '42P01'].includes(code)
+        next[key] = ['PGRST204', '42703', '42P01', 'PGRST202', '42883'].includes(code)
           || msg.includes('could not find') || msg.includes('does not exist')
           ? 'missing'
           : 'unknown'

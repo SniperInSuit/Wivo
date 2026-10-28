@@ -160,3 +160,44 @@ describe('sql/ — üks veerg, üks liikmelisuse piirang', () => {
     expect(stale, 'drop nimetab piirangut, mida ükski migratsioon ei loo').toEqual([])
   })
 })
+
+/**
+ * A migration must never leave a table it touched with NO policy.
+ *
+ * RLS is deny-by-default. A table with RLS enabled and no policy is not
+ * "unrestricted" — it is invisible, to everybody, including the owner. So a
+ * `drop policy if exists` whose matching `create policy` was mistyped, renamed
+ * away or lost in an edit does not fail loudly: the migration runs clean, and
+ * the clinic opens Wivo the next morning to an empty board.
+ *
+ * `if exists` is the right tool for a re-runnable migration and it is also what
+ * makes this silent, exactly as with the constraint names above. Same shape of
+ * bug, far worse blast radius.
+ *
+ * ── Why per TABLE and not per policy name ───────────────────────────────────
+ * The stricter rule — every dropped name is recreated — fails on two files that
+ * are correct: 013 replaces the original per-table policies with one blanket
+ * `authenticated_all`, and 027 renames `*_write_owner` to `*_manage` while
+ * widening it. Renaming a policy is the normal way these evolve, and a test
+ * that cries about it would be turned off, taking the real check with it.
+ *
+ * What is never correct is taking the last policy off a table.
+ */
+describe('no migration leaves a table with RLS on and no policy', () => {
+  const DROP_POLICY = /drop\s+policy\s+if\s+exists\s+"[^"]+"\s+on\s+(?:public\.)?(\w+)/gi
+  const CREATE_POLICY = /create\s+policy\s+"[^"]+"\s+on\s+(?:public\.)?(\w+)/gi
+
+  const tablesIn = (sql: string, re: RegExp): Set<string> =>
+    new Set([...sql.matchAll(re)].map(m => m[1]))
+
+  for (const file of files) {
+    const sql = liveSql(file)
+    if (!/drop\s+policy/i.test(sql)) continue
+
+    it(`${file} leaves every table it touched with a policy`, () => {
+      const emptied = [...tablesIn(sql, DROP_POLICY)]
+        .filter(t => !tablesIn(sql, CREATE_POLICY).has(t))
+      expect(emptied).toEqual([])
+    })
+  }
+})
