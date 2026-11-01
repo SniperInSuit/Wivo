@@ -102,3 +102,12 @@ EU), one project of type Electron. Put the DSN in `.env` as both
 build contains no Sentry at all. In Sentry → Project settings → Security &
 Privacy, also turn on "Data scrubber" and "Prevent storing of IP addresses"
 as a second wall behind `shared/privacy/scrub.ts`.
+
+### Leak check against the TEST project (spec: release condition)
+Once 068–079 are applied on the test project: create two organisations
+there (a Tallinn copy and "Riga"), a Riga user, one Tallinn job that is NOT
+shared, then run
+`SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=… node scripts/leak-check.mjs`.
+It reads every table the migrations create and calls the partner RPCs and
+Storage as Riga; exit code 0 means nothing leaked. It refuses to run against
+the production URL.
