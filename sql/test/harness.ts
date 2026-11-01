@@ -174,3 +174,116 @@ export async function createTenant(db: PGlite, name: string): Promise<Tenant> {
   await db.query(`update public.profiles set clinic_id = $1, role = 'worker' where id = $2`, [clinicId, workerId])
   return { clinicId, ownerId, workerId }
 }
+
+// ── Generic rows, for leak tests over every table ───────────────────────────
+
+interface Col { name: string; type: string; nullable: boolean; hasDefault: boolean }
+interface Fk { column: string; refTable: string; refSchema: string; refColumn: string }
+
+async function columnsOf(db: PGlite, table: string): Promise<Col[]> {
+  const { rows } = await db.query<{ column_name: string; data_type: string; is_nullable: string; column_default: string | null; is_generated: string; is_identity: string }>(
+    `select column_name, data_type, is_nullable, column_default, is_generated, is_identity
+       from information_schema.columns where table_schema = 'public' and table_name = $1
+      order by ordinal_position`, [table])
+  return rows
+    .filter(r => r.is_generated === 'NEVER')
+    .map(r => ({
+      name: r.column_name, type: r.data_type, nullable: r.is_nullable === 'YES',
+      hasDefault: r.column_default !== null || r.is_identity === 'YES',
+    }))
+}
+
+async function fksOf(db: PGlite, table: string): Promise<Fk[]> {
+  const { rows } = await db.query<{ column: string; ref_table: string; ref_schema: string; ref_column: string }>(
+    `select a.attname as column, cf.relname as ref_table, nf.nspname as ref_schema, af.attname as ref_column
+       from pg_constraint c
+       join pg_class t on t.oid = c.conrelid join pg_namespace n on n.oid = t.relnamespace
+       join pg_class cf on cf.oid = c.confrelid join pg_namespace nf on nf.oid = cf.relnamespace
+       join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
+       join pg_attribute af on af.attrelid = c.confrelid and af.attnum = c.confkey[1]
+      where c.contype = 'f' and n.nspname = 'public' and t.relname = $1`, [table])
+  return rows.map(r => ({ column: r.column, refTable: r.ref_table, refSchema: r.ref_schema, refColumn: r.ref_column }))
+}
+
+/** The first value a CHECK constraint on this column allows, when it lists them. */
+async function allowedValue(db: PGlite, table: string, column: string): Promise<string | null> {
+  const { rows } = await db.query<{ def: string }>(
+    `select pg_get_constraintdef(c.oid) as def from pg_constraint c
+       join pg_class t on t.oid = c.conrelid join pg_namespace n on n.oid = t.relnamespace
+      where c.contype = 'c' and n.nspname = 'public' and t.relname = $1`, [table])
+  for (const { def } of rows) {
+    if (!new RegExp(`\\b${column}\\b`).test(def)) continue
+    const m = def.match(/'([^']*)'::/)
+    if (m) return m[1]
+    // Ranges render as `(col >= 11) AND (col <= 18)`: the lower bound is allowed.
+    const lo = def.match(new RegExp(`\\b${column} >= \\(?(-?\\d+)`))
+    if (lo) return lo[1]
+  }
+  return null
+}
+
+function sample(type: string): unknown {
+  if (/int|numeric|double|real/.test(type)) return 1
+  if (type === 'boolean') return false
+  if (type === 'uuid') return crypto.randomUUID()
+  if (/timestamp/.test(type)) return new Date().toISOString()
+  if (type === 'date') return new Date().toISOString().slice(0, 10)
+  if (/json/.test(type)) return '{}'
+  if (type === 'ARRAY') return '{}'
+  return `t${++seq}`
+}
+
+/**
+ * One row in `table` that belongs to `tenant`, made as the superuser.
+ *
+ * Fills only what must be filled — NOT NULL columns without a default, plus
+ * `clinic_id` / `org_id` always — and follows foreign keys by making the parent
+ * row for the same tenant first. Values come from the column's CHECK constraint
+ * when it lists allowed values. Returns the primary key of the new row.
+ */
+export async function makeRow(
+  db: PGlite, table: string, tenant: Tenant, depth = 0,
+): Promise<Record<string, unknown>> {
+  if (depth > 4) throw new Error(`makeRow: foreign keys too deep at ${table}`)
+  if (table === 'clinics') return { id: tenant.clinicId }
+  if (table === 'profiles') return { id: tenant.ownerId }
+  const cols = await columnsOf(db, table)
+  const fks = await fksOf(db, table)
+  const values: Record<string, unknown> = {}
+  for (const c of cols) {
+    const fk = fks.find(f => f.column === c.name)
+    const tenantCol = c.name === 'clinic_id' || c.name === 'org_id'
+    if (!tenantCol && (c.nullable || c.hasDefault)) continue
+    if (tenantCol) { values[c.name] = tenant.clinicId; continue }
+    if (fk) {
+      if (fk.refSchema === 'auth' || fk.refTable === 'profiles') values[c.name] = tenant.ownerId
+      else if (fk.refTable === 'clinics') values[c.name] = tenant.clinicId
+      else values[c.name] = (await makeRow(db, fk.refTable, tenant, depth + 1))[fk.refColumn]
+      continue
+    }
+    values[c.name] = (await allowedValue(db, table, c.name)) ?? sample(c.type)
+  }
+  const names = Object.keys(values)
+  const sql = names.length
+    ? `insert into public.${table} (${names.map(n => `"${n}"`).join(', ')}) values (${names.map((_, i) => `$${i + 1}`).join(', ')}) returning *`
+    : `insert into public.${table} default values returning *`
+  const { rows } = await db.query<Record<string, unknown>>(sql, Object.values(values))
+  return rows[0]
+}
+
+/** Primary-key columns of a table, for addressing one row. */
+export async function primaryKey(db: PGlite, table: string): Promise<string[]> {
+  const { rows } = await db.query<{ attname: string }>(
+    `select a.attname from pg_index i
+       join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+      where i.indrelid = ('public.' || $1)::regclass and i.indisprimary`, [table])
+  return rows.map(r => r.attname)
+}
+
+/** Every ordinary table in `public`. */
+export async function publicTables(db: PGlite): Promise<string[]> {
+  const { rows } = await db.query<{ relname: string }>(
+    `select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r', 'p') order by 1`)
+  return rows.map(r => r.relname)
+}

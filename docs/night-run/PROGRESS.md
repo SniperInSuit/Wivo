@@ -11,8 +11,9 @@ Status: `[x]` done · `[~]` partly done (see note) · `[ ]` not started ·
 - [ ] Chat feature: inventory, then finish or fix (`chat-inventory.md`)
 - [x] Migrations: a fresh database builds from `sql/` with no manual steps
       (PGlite replay test; two migrations still need a pasted key on a real
-      project, see phase0-report.md §1) — c30c703
-- [ ] RLS audit: every table has RLS; Security Advisor clean
+      project, see phase0-report.md §1) — 16874b3
+- [x] RLS audit: every table has RLS; Security Advisor clean (catalogue lints as
+      tests; 5 cross-tenant holes closed by sql/068; hosted advisor run → MORNING) — COMMIT_RLS
 - [ ] Five core protections: network restrictions + SSL, dashboard MFA, user MFA,
       leaked-password protection, no service-role key in the app
 - [ ] i18n foundation: English is the source language, existing Estonian moved

@@ -36,3 +36,44 @@ Findings:
   failed at load ("native WebSocket not found") because supabase-js needs a
   global WebSocket. A test-only stand-in (`vitest.setup.ts`) fixed it: 47 tests
   that never ran now run, 974 in total.
+
+## 2. RLS audit
+
+**Result: every table has RLS, and every cross-tenant hole found is closed by
+`sql/068_tenant_isolation.sql`.** Not yet applied to any real database (see
+MORNING.md).
+
+How: the policies were not just read, they were run. `sql/test/rlsTenantIsolation.test.ts`
+builds two tenants (Tallinn, Riga) on the migrated database and, for EVERY
+table in `public`, makes one Tallinn row and tries to read, update and delete
+it as a Riga owner, a Riga worker and anon. A table added later is covered
+automatically. `sql/test/securityAdvisor.test.ts` runs the Security Advisor's
+catalogue lints (all ERROR-level ones plus two lower) as a test.
+
+What was already right: all 23 tables had RLS and at least one policy, there
+are no views, every `SECURITY DEFINER` function pins `search_path`, and 22 of
+23 tables did not leak a row to the other tenant in the generic test.
+
+Holes found (each was a failing test first):
+
+| # | Hole | Severity on a shared project |
+|---|---|---|
+| 1 | `profiles_update_own` let a user change their own `role` and `clinic_id`. A worker could make themselves owner, or move into any clinic and read all of its jobs and patients. | Critical |
+| 2 | `clinic_read` let every signed-in user read every clinic: name, address, registry code, IBAN. | High (business data) |
+| 3 | jobs, patients, patient_teeth, visits, profiles: `or clinic_id is null` made orphan rows everybody's. `jobs_update` (and patients, visits) had no WITH CHECK, so a user could set their own row's clinic to null and publish it to every tenant. | High |
+| 4 | The "removed workers" list was every user with no clinic on the whole project, and any owner could pull such a user into their clinic. | Medium |
+| 5 | The clinic setup wizard claimed every orphan row for the new clinic. | High on a shared project, a no-op today |
+
+Also fixed: a new clinic's founder stayed `worker` in it (only the very first
+user on a database became owner), and three functions had no fixed
+`search_path` (advisor WARN).
+
+What 068 does to existing data: if the database has exactly one clinic (the
+current production database), rows with no clinic are given to it and
+previously removed workers are remembered as removed from it. With two or more
+clinics nothing is guessed; a NOTICE reports how many orphans remain.
+
+Not fixed tonight, noted: invoices, invoice lines, payments and customers are
+tenant-isolated but not permission-checked (any member of the clinic can write
+them). That is a within-tenant rule, not a leak, and changing it changes who
+can invoice. It belongs with the permission model, not with this audit.

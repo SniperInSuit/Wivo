@@ -69,14 +69,11 @@ export function ClinicSetupWizard() {
         .eq('id', user.id)
       if (profileErr) throw profileErr
 
-      // 3. Backfill existing data — assign all orphan rows to this clinic
-      await Promise.all([
-        supabase.from('jobs').update({ clinic_id: clinicId }).is('clinic_id', null),
-        supabase.from('patients').update({ clinic_id: clinicId }).is('clinic_id', null),
-        supabase.from('visits').update({ clinic_id: clinicId }).is('clinic_id', null),
-      ])
+      // There used to be a step 3 here that claimed every row with no clinic
+      // for the new one. On a shared database that hands one founder everybody's
+      // orphans; sql/068 adopts them once, and only when a single clinic exists.
 
-      // 4. Update local state
+      // 3. Update local state
       setClinic(clinic as Clinic)
       await refreshProfile()
     } catch (err: unknown) {
