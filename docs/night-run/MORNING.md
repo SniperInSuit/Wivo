@@ -21,6 +21,36 @@ select jobname, schedule from cron.job;                  -- wivo-send-notificati
 Not yet done by applying the SQL: the Vault secret for 077, deploying the
 e-mail function, Resend, TOTP — the sections below.
 
+### Run sql/083 now (production fixes from the review)
+Fixes things broken or exploitable on production today: **"Add worker" did
+nothing since 068** (the worker ended up on the clinic-setup screen; if you
+added anyone tonight, check `select full_name, clinic_id from profiles where
+clinic_id is null;` and link them again after 083), deleting a worker with
+audit rows failed, a worker could grant themselves rights through a second
+account, founding a clinic could fail on a name clash, a removed founder could
+rejoin as owner. Details: review-068-079.md.
+
+### Restore `jobs.updated_at` (the job-code backfill in 070 rewrote it)
+Numbering every job in 070 was an UPDATE, and the `jobs_updated_at` trigger
+stamped every job with the migration time. The app shows that time as the
+patient's "last modified" and as the date of legacy revisions. The old values
+are in last night's backup:
+1. All jobs touched by 070 share one exact timestamp:
+   `select updated_at, count(*) from jobs group by 1 order by 2 desc limit 3;`
+   — the top row (count ≈ all jobs) is the migration time, call it T.
+2. From the backup taken BEFORE you ran the migrations (Database → Backups,
+   or a restore into a throwaway project), export `select id, updated_at from jobs;`
+   as CSV and import it into production as a new table `jobs_updated_at_backup`.
+3. In the SQL editor:
+   ```sql
+   alter table jobs disable trigger jobs_updated_at;
+   update jobs j set updated_at = b.updated_at
+     from jobs_updated_at_backup b
+    where j.id = b.id and j.updated_at = 'T';   -- only rows nobody has edited since
+   alter table jobs enable trigger jobs_updated_at;
+   drop table jobs_updated_at_backup;
+   ```
+
 ### sql/068 (tenant isolation) — already applied
 Closes the cross-tenant holes in phase0-report.md §2. Check in the app: you can
 still log in, see jobs, add a worker, remove and restore a worker.
