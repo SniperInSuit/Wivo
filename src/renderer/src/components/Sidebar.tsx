@@ -10,6 +10,7 @@ import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
 import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
 import { usePartnerOrgs } from '../hooks/usePartners'
+import { BugReportButton } from './BugReportButton'
 import { t } from '@/lib/i18n'
 
 interface SidebarProps {
@@ -164,7 +165,8 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           {wide ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={16} />}
           {wide && t('sidebar.collapse')}
         </button>
-        <div className={`pb-2.5 ${wide ? 'px-4' : 'text-center'}`}>
+        <div className={`pb-2.5 space-y-1.5 ${wide ? 'px-4' : 'text-center flex flex-col items-center'}`}>
+          <BugReportButton screen={view} version={running} compact={!wide} />
           {/* The LIVE version, not the build-time constant — the constant goes
               stale in dev and reported a version the app was not running. */}
           <span className="text-[9px] text-nav-muted/70 font-mono">v{running}</span>

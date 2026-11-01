@@ -3042,6 +3042,17 @@ export const en = {
   'audit.upload': "Uploaded",
   'audit.download': "Downloaded",
   'audit.view': "Viewed",
+
+  // ── bugReport ─────────────────────────────────────────────────────────────
+  'bugReport.send': "Send",
+  'bugReport.cancel': "Cancel",
+  'bugReport.whatIsSent': "Also sent: Wivo {version}, your organisation, the screen ({screen}) and {errors} recent error messages, with e-mails, phone numbers and personal codes removed.",
+  'bugReport.screenshotWarning': "Only if you choose one. Check it shows no patient details first.",
+  'bugReport.attachScreenshot': "Attach a screenshot (optional)",
+  'bugReport.whatHappened': "What happened? What did you expect?",
+  'bugReport.thanks': "Sent. Thank you — Kevin gets it by e-mail.",
+  'bugReport.close': "Close",
+  'bugReport.reportABug': "Report a bug",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

@@ -3029,4 +3029,15 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'audit.download': "Alla laaditud",
   'audit.view': "Vaadatud",
 
+  // ── bugReport ─────────────────────────────────────────────────────────────
+  'bugReport.send': "Saada",
+  'bugReport.cancel': "Tühista",
+  'bugReport.whatIsSent': "Lisaks saadetakse: Wivo {version}, sinu organisatsioon, ekraan ({screen}) ja {errors} viimast veateadet, millest on eemaldatud e-postid, telefoninumbrid ja isikukoodid.",
+  'bugReport.screenshotWarning': "Ainult siis, kui ise valid. Vaata enne üle, et sellel pole patsiendi andmeid.",
+  'bugReport.attachScreenshot': "Lisa ekraanipilt (valikuline)",
+  'bugReport.whatHappened': "Mis juhtus? Mida sa ootasid?",
+  'bugReport.thanks': "Saadetud. Aitäh — Kevin saab selle e-kirjaga.",
+  'bugReport.close': "Sulge",
+  'bugReport.reportABug': "Teata veast",
+
 }

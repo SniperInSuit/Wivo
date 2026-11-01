@@ -85,3 +85,12 @@ not removed yet. JPEGs are cleaned; ask staff to send JPEG until HEIC is done.
 Acceptance test (spec): share a job with the Riga test org → bell badge in Riga
 within seconds, e-mail within a minute. APP_LINK: there is no web app yet; a
 link to the download page or the PWA (Phase 1b) is the honest choice for now.
+
+### Bug reports: apply sql/079, set BUG_REPORT_TO
+079 creates `bug_report` (no app user can read it — see it in the Table Editor
+or via the service role) and the private `bug-reports` bucket. Then
+`supabase secrets set BUG_REPORT_TO=<your address>` and redeploy
+`send-notifications` (it e-mails new bug reports every minute too).
+Test: sidebar → Report a bug → write something → Send → row in `bug_report`,
+e-mail within a minute. With a screenshot attached the e-mail says so; the
+image stays in the bucket.

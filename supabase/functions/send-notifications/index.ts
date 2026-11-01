@@ -12,8 +12,13 @@
  * extensionless imports, and an e-mail is content in the RECIPIENT's language
  * (their profile language, else their organisation's default).
  *
+ * Bug reports (sql/079) ride the same minute: each new one is e-mailed to
+ * BUG_REPORT_TO. A report has no patient fields; the recent errors were
+ * scrubbed on the user's machine; a screenshot is never attached to the
+ * e-mail — it stays in the private bucket, behind the service key.
+ *
  * Env: RESEND_API_KEY, NOTIFY_FROM (e.g. "Wivo <noreply@wivo.ee>"),
- *      APP_LINK (e.g. "https://app.wivo.ee/job/{id}").
+ *      APP_LINK (e.g. "https://app.wivo.ee/job/{id}"), BUG_REPORT_TO.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -67,8 +72,43 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const { error: markErr } = await db.rpc('mark_notifications_emailed', { p_ids: sent })
     if (markErr) return json(500, { ok: false, error: markErr.message, sent: sent.length })
   }
-  return json(200, { ok: true, dry, sent: sent.length, failed })
+
+  const bugs = await sendBugReports(dry, key, from)
+  return json(200, { ok: true, dry, sent: sent.length, failed, bugs })
 })
+
+interface BugReport {
+  id: string; org_name: string | null; app_version: string | null; screen: string | null
+  message: string; recent_errors: { at?: string; message?: string; stack?: string }[]
+  has_screenshot: boolean; created_at: string
+}
+
+async function sendBugReports(dry: boolean, key: string | undefined, from: string | undefined): Promise<{ sent: number; error?: string }> {
+  const to = Deno.env.get('BUG_REPORT_TO')
+  if (!to) return { sent: 0, error: 'BUG_REPORT_TO not set' }
+  const { data, error } = await db.rpc('pending_bug_reports', { p_limit: 50 })
+  if (error) return { sent: 0, error: error.message }
+  const done: string[] = []
+  for (const b of (data ?? []) as BugReport[]) {
+    const subject = `Wivo bug: ${b.org_name ?? '—'} · ${b.screen ?? '—'} · v${b.app_version ?? '?'}`
+    const errors = (b.recent_errors ?? []).map(e => `- ${e.at ?? ''} ${e.message ?? ''}\n${(e.stack ?? '').split('\n').slice(0, 4).join('\n')}`).join('\n')
+    const text = [
+      `Organisation: ${b.org_name ?? '—'}`, `Screen: ${b.screen ?? '—'}`, `Version: ${b.app_version ?? '—'}`,
+      `Reported: ${b.created_at}`, `Report id: ${b.id}`,
+      `Screenshot: ${b.has_screenshot ? 'yes, in the bug-reports bucket' : 'none'}`,
+      '', b.message, '', 'Recent errors:', errors || '(none)',
+    ].join('\n')
+    if (dry) { done.push(b.id); continue }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, text }),
+    })
+    if (res.ok) done.push(b.id)
+  }
+  if (!dry && done.length > 0) await db.rpc('mark_bug_reports_emailed', { p_ids: done })
+  return { sent: done.length }
+}
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })

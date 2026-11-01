@@ -57,10 +57,13 @@ describe('Security Advisor lints', () => {
          and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%')`)).toEqual([])
   })
 
-  it('rls_enabled_no_policy (INFO): no table is locked shut by having RLS and no policy', async () => {
+  it('rls_enabled_no_policy (INFO): only the platform tables are locked shut on purpose', async () => {
+    // Spec, "Platform (admin console only)": the clinics' app must not see
+    // these at all; only Edge Functions with the service key do.
     expect(await names(`
       select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
        where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-         and not exists (select 1 from pg_policy p where p.polrelid = c.oid)`)).toEqual([])
+         and not exists (select 1 from pg_policy p where p.polrelid = c.oid)
+       order by 1`)).toEqual(['bug_report'])
   })
 })

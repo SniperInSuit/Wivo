@@ -80,11 +80,14 @@ Other
       spec's open-question default (DECISIONS D6) — 3efa00f
 - [x] Technician pay shown large on the job (from the existing rule engine:
       the same calculateEarnings, asked "if this were done today"; RLS decides
-      who sees whose pay) — COMMIT_PAY
+      who sees whose pay) — 5a1f7d0
 - [x] MFA for all users (mandatory TOTP enrolment + code at sign-in; steps aside
       if the project has TOTP off; built early, DECISIONS D12) — 639b354
 
 Bug reports
-- [ ] "Report a bug" button → `bug_report` (no screenshot unless the user adds one)
-- [ ] `bug_report` row + e-mail to Kevin
+- [x] "Report a bug" button → `bug_report` (no screenshot unless the user adds one)
+      (sql/079: platform table, RLS with no policy — clinics file, nobody reads;
+      errors scrubbed of e-mails, phones and personal codes) — COMMIT_BUG
+- [x] `bug_report` row + e-mail to Kevin (same per-minute sender, to
+      BUG_REPORT_TO; deploying → MORNING) — COMMIT_BUG
 - [ ] Sentry in Electron with patient data filtered out
