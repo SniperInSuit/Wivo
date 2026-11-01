@@ -77,3 +77,24 @@ Not fixed tonight, noted: invoices, invoice lines, payments and customers are
 tenant-isolated but not permission-checked (any member of the clinic can write
 them). That is a within-tenant rule, not a leak, and changing it changes who
 can invoice. It belongs with the permission model, not with this audit.
+
+## 3. Five core protections
+
+| Protection | State | Who |
+|---|---|---|
+| No service-role key in the app | **Verified.** `.env` holds only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; the only JWT in the built bundle decodes to `role: anon`; `service_role` appears in `src/` only in a comment explaining why it must not be there. The key is used only inside Edge Functions (`supabase/functions`). | Done |
+| Network restrictions + SSL enforcement | Dashboard setting | Kevin (MORNING.md) |
+| Dashboard MFA | Dashboard / account setting | Kevin (MORNING.md) |
+| User MFA (TOTP) and leaked-password protection | Auth settings in the dashboard. The in-app enrolment for users is the Phase 1 item "MFA for all users". | Kevin (MORNING.md) |
+
+Note on network restrictions: they limit direct Postgres connections only.
+The app talks to PostgREST over HTTPS, so restricting the database to known IPs
+does not affect it. The IPs to allow are yours and, later, the Hetzner backup VM.
+
+## 4. Restore test with current data
+
+Needs the production backup and the test project, both outside what this run
+may touch. Exact steps are in MORNING.md. Today the restore is database-only:
+the app stores no files in Supabase Storage yet (no `storage.from(...)` anywhere,
+no buckets in `sql/`). Files join the restore test when Phase 1's `job_file`
+goes live.
