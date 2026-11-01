@@ -30,6 +30,18 @@ audit rows failed, a worker could grant themselves rights through a second
 account, founding a clinic could fail on a name clash, a removed founder could
 rejoin as owner. Details: review-068-079.md.
 
+### Run sql/085 (second review) after 084
+Tightens the "Add worker" window to 2 minutes and to owners who are in a clinic,
+fixes payroll permission scoping, thread history, job-code edge cases.
+Details: review-080-084.md. Then check that 083 switched off no grant you rely
+on — this should return no rows:
+```sql
+select p.full_name, wp.permission from worker_permissions wp
+  join profiles p on p.id = wp.profile_id where wp.clinic_id is distinct from p.clinic_id;
+```
+The CSV import never worked against the database (it sent no clinic); the new
+build fixes that.
+
 ### Run sql/084 before the first partnership
 Partner-side fixes from the same review (thread scoping, partner permissions,
 the 90-day read-only cap, and more — review-068-079.md). No partnership

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Upload, X, Check, AlertTriangle, Loader2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, getActiveClinicId } from '../lib/supabase'
 import { t } from '@/lib/i18n'
 
 // ─── Status mapping — covers Estonian sheet values ────────────────────────────
@@ -249,7 +249,9 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
     let inserted = 0
     for (let i = 0; i < parsedJobs.length; i += BATCH) {
       const batch = parsedJobs.slice(i, i + BATCH)
-      const { error } = await supabase.from('jobs').insert(batch)
+      // clinic_id: the jobs_insert policy (016/064) refuses a row without the
+      // caller's clinic, so an import without it never inserted anything.
+      const { error } = await supabase.from('jobs').insert(batch.map(row => ({ ...row, clinic_id: getActiveClinicId() })))
       if (error) { setErrMsg(error.message); setState('error'); return }
       inserted += batch.length
       setProgress(Math.round((inserted / parsedJobs.length) * 100))
