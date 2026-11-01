@@ -170,6 +170,9 @@ export interface ThreadMessage {
   created_at: string
   edited_at: string | null
   mine: boolean
+  file_id: string | null
+  file_name: string | null
+  file_type: string | null
 }
 
 /**
@@ -195,8 +198,8 @@ export function useJobThread(jobId: string | null) {
 export function usePostJobComment(jobId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ body, isQuestion }: { body: string; isQuestion: boolean }) => {
-      const { error } = await supabase.rpc('post_job_comment', { p_job: jobId, p_body: body, p_is_question: isQuestion })
+    mutationFn: async ({ body, isQuestion, fileId = null }: { body: string; isQuestion: boolean; fileId?: string | null }) => {
+      const { error } = await supabase.rpc('post_job_comment', { p_job: jobId, p_body: body, p_is_question: isQuestion, p_file: fileId })
       if (error) throw error
     },
     onSuccess: () => {

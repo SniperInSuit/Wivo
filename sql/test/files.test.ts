@@ -226,3 +226,23 @@ describe('export for the patient (sql/074)', () => {
     expect(await errorAs(db, { id: B.ownerId }, `select * from public.patient_export($1)`, [p.id])).toMatch(/not found/)
   })
 })
+
+describe('a file on a comment (sql/080)', () => {
+  it('a partner attaches its own design file to a question; both sides see it in the thread', async () => {
+    const f = await register({ id: B.workerId }, 'design')
+    await upload({ id: B.workerId }, f.storage_path)
+    await rowsAs(db, { id: B.workerId }, `select public.confirm_job_file($1)`, [f.id])
+    await rowsAs(db, { id: B.workerId }, `select public.post_job_comment($1, 'Is this margin right?', true, $2)`, [jobId, f.id])
+    const thread = await rowsAs<{ file_id: string; file_name: string }>(db, { id: A.ownerId }, `select * from public.job_thread($1)`, [jobId])
+    expect(thread.some(m => m.file_id === f.id && m.file_name === f.file_name)).toBe(true)
+  })
+
+  it('a file of another job cannot be attached', async () => {
+    const other = await makeRow(db, 'jobs', A)
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.job_file (job_id, org_id, type, sha256, size, file_name, storage_path)
+       values ($1, $2, 'photo', $3, 1, 'x.jpg', $4) returning id`, [other.id, A.clinicId, SHA, `${A.clinicId}/${other.id}/x`])
+    expect(await errorAs(db, { id: A.ownerId },
+      `select public.post_job_comment($1, 'see', false, $2)`, [jobId, rows[0].id])).toMatch(/not on this job/)
+  })
+})

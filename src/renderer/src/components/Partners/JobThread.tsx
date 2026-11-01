@@ -7,26 +7,47 @@
  */
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { HelpCircle, CheckCircle2, Send } from 'lucide-react'
+import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2 } from 'lucide-react'
 import { useJobThread, usePostJobComment, useResolveQuestion } from '@/hooks/usePartners'
 import { describeError } from '../Patients/errors'
+import { supabase } from '../../lib/supabase'
+import { enqueueUpload } from '../../lib/uploadQueue'
+import { guessFileType } from '../../lib/fileClean'
 import { t, dateLocale } from '@/lib/i18n'
 
-export function JobThread({ jobId, readOnly = false }: { jobId: string; readOnly?: boolean }) {
+export function JobThread({ jobId, readOnly = false, partner = false }: { jobId: string; readOnly?: boolean; partner?: boolean }) {
   const { data: messages = [], isLoading } = useJobThread(jobId)
   const post = usePostJobComment(jobId)
   const resolve = useResolveQuestion(jobId)
   const [body, setBody] = useState('')
   const [asQuestion, setAsQuestion] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A file for the comment: uploaded the normal way first (same rules — a
+  // partner adds design files only), then the comment points at it.
+  const [attachment, setAttachment] = useState<{ name: string; id: string | null } | null>(null)
+
+  function attach(file: File | undefined) {
+    if (!file) return
+    setAttachment({ name: file.name, id: null })
+    const type = partner ? 'design' : guessFileType(file.name)
+    enqueueUpload(jobId, file, type, null, id => setAttachment(a => (a ? { ...a, id } : a)))
+  }
+
+  async function open(fileId: string, name: string) {
+    const { data: path, error: err } = await supabase.rpc('request_file_download', { p_file: fileId })
+    if (err) { setError(describeError(err)); return }
+    const { data } = await supabase.storage.from('job-files').createSignedUrl(path as string, 60, { download: name })
+    if (data?.signedUrl) window.open(data.signedUrl)
+  }
 
   async function send() {
-    if (!body.trim()) return
+    if (!body.trim() && !attachment?.id) return
     setError(null)
     try {
-      await post.mutateAsync({ body, isQuestion: asQuestion })
+      await post.mutateAsync({ body, isQuestion: asQuestion, fileId: attachment?.id ?? null })
       setBody('')
       setAsQuestion(false)
+      setAttachment(null)
     } catch (e) {
       setError(describeError(e))
     }
@@ -56,6 +77,12 @@ export function JobThread({ jobId, readOnly = false }: { jobId: string; readOnly
                 <span className="ml-auto">{format(new Date(m.created_at), 'd MMM HH:mm', { locale: dateLocale })}</span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-ink">{m.body}</p>
+              {m.file_id && m.file_name && (
+                <button type="button" onClick={() => void open(m.file_id!, m.file_name!)}
+                  className="mt-1 flex items-center gap-1 text-xs font-mono text-accent hover:underline">
+                  <Paperclip size={11} aria-hidden="true" /> {m.file_name}
+                </button>
+              )}
               {m.is_question && !m.resolved_at && !readOnly && (
                 <button type="button" onClick={() => resolve.mutate(m.id)}
                   className="mt-1 text-xs font-semibold text-accent hover:underline">
@@ -73,11 +100,17 @@ export function JobThread({ jobId, readOnly = false }: { jobId: string; readOnly
             placeholder={t('partners.writeAComment')}
             className="input w-full resize-y" />
           <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1 text-xs text-ink-soft cursor-pointer" title={t('partners.attachFile')}>
+              {attachment && !attachment.id ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Paperclip size={12} aria-hidden="true" />}
+              <span className="truncate max-w-[140px]">{attachment?.name ?? t('partners.attachFile')}</span>
+              <input type="file" hidden onChange={e => { attach(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
             <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input type="checkbox" checked={asQuestion} onChange={e => setAsQuestion(e.target.checked)} />
               {t('partners.askAsQuestion')}
             </label>
-            <button type="button" onClick={send} disabled={!body.trim() || post.isPending}
+            <button type="button" onClick={send}
+              disabled={(!body.trim() && !attachment?.id) || (!!attachment && !attachment.id) || post.isPending}
               className="btn-primary ml-auto flex items-center gap-1.5 text-sm disabled:opacity-50">
               <Send size={14} aria-hidden="true" />
               {t('partners.send')}

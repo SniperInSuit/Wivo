@@ -31,6 +31,8 @@ export interface UploadTask {
   error?: string
   supersedes?: string | null
   file: File
+  /** Called with the stored file's id once it is confirmed (a comment attaching it waits for this). */
+  onStored?: (fileId: string) => void
 }
 
 let tasks: UploadTask[] = []
@@ -84,6 +86,7 @@ async function runOne(task: UploadTask): Promise<void> {
   await attachPreview(file.id, task.file.name, bytes)
   patch(task.id, { status: 'done', sent: bytes.length })
   onDone?.(task.jobId)
+  task.onStored?.(file.id)
 }
 
 /** Best effort: the file is already safely stored when this runs. */
@@ -118,10 +121,13 @@ async function pump(): Promise<void> {
   }
 }
 
-export function enqueueUpload(jobId: string, file: File, type: JobFileType, supersedes: string | null = null): void {
+export function enqueueUpload(
+  jobId: string, file: File, type: JobFileType, supersedes: string | null = null,
+  onStored?: (fileId: string) => void,
+): void {
   tasks.push({
     id: crypto.randomUUID(), jobId, type, name: file.name, size: file.size, sent: 0,
-    status: 'queued', supersedes, file,
+    status: 'queued', supersedes, file, onStored,
   })
   emit()
   void pump()

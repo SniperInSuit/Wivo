@@ -2841,6 +2841,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'publicServices.inclVat': "km-ga",
 
   // ── partners ──────────────────────────────────────────────────────────────
+  'partners.attachFile': "Lisa fail",
   'partners.endConfirm': "Lõpetada see partnerlus? Uusi töid jagada ei saa; juba jagatud tööd jäävad partnerile 90 päevaks ainult lugemiseks.",
   'partners.end': "Lõpeta",
   'partners.resume': "Jätka",

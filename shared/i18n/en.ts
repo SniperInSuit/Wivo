@@ -2855,6 +2855,7 @@ export const en = {
   'publicServices.inclVat': "incl. VAT",
 
   // ── partners ──────────────────────────────────────────────────────────────
+  'partners.attachFile': "Attach a file",
   'partners.endConfirm': "End this partnership? No new jobs can be shared; jobs already shared stay read-only for the partner for 90 days.",
   'partners.end': "End",
   'partners.resume': "Resume",

@@ -191,7 +191,7 @@ function PartnerJobPanel({ job, onClose }: { job: PartnerJob; onClose: () => voi
 
       <JobFiles jobId={job.job_id} partner />
 
-      <JobThread jobId={job.job_id} />
+      <JobThread jobId={job.job_id} partner />
     </aside>
   )
 }
