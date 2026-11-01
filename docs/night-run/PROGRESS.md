@@ -28,7 +28,7 @@ Status: `[x]` done · `[~]` partly done (see note) · `[ ]` not started ·
 Organisations and sharing
 - [x] `organization`, `org_member`, `partnership`, `job_share`; existing data
       becomes the Tallinn organisation (sql/070; `clinics` is the organisation,
-      DECISIONS D9; plus job codes D10, audit_log, stage_transition) — COMMIT_ORG
+      DECISIONS D9; plus job codes D10, audit_log, stage_transition) — 80db025
 - [ ] New-job form: assigning a stage to a partner creates a `job_share`; case
       type (lab work / referral); consent mark for referrals
 - [ ] `partner_job_view`, search, menu restriction on shared jobs
@@ -38,7 +38,7 @@ Organisations and sharing
 Creating a partnership
 - [~] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
       limit, both admins confirm, suspend/end, every step audited): database
-      and RPCs done and tested in sql/070 — COMMIT_ORG; Settings screen pending
+      and RPCs done and tested in sql/070 — 80db025; Settings screen pending
 
 Files
 - [ ] `job_file`, private bucket, TUS background upload, SHA-256, versions,
