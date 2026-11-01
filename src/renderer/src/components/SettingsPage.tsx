@@ -1256,6 +1256,17 @@ const LANGUAGES: { key: Lang; label: string }[] = [
 ]
 
 function LanguageSection() {
+  const auth = useAuth()
+  const isAdmin = auth.profile?.role === 'owner' || auth.profile?.org_role === 'admin'
+  const [orgLang, setOrgLang] = useState<Lang | undefined>(auth.clinic?.default_language)
+
+  // Saved to the PROFILE first, so the choice follows the person to any
+  // computer (LanguageSync applies it at sign-in); then this window reloads.
+  async function choose(next: Lang) {
+    if (auth.user) await supabase.from('profiles').update({ language: next }).eq('id', auth.user.id)
+    setLang(next)
+  }
+
   return (
     <section>
       <div className="flex items-center gap-2 mb-1">
@@ -1264,14 +1275,14 @@ function LanguageSection() {
         <h3 className="text-sm font-semibold text-ink">Keel · Language</h3>
       </div>
       <p className="text-xs text-ink-faint mb-3">
-        {t('settingsPage.appliesToThisComputerTheWindow')}
+        {t('settingsPage.yourOwnLanguage')}
       </p>
       <div className="flex flex-wrap gap-2">
         {LANGUAGES.map(l => (
           <button
             key={l.key}
             type="button"
-            onClick={() => setLang(l.key)}
+            onClick={() => void choose(l.key)}
             aria-pressed={lang === l.key}
             className={`px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all duration-100 ${
               lang === l.key
@@ -1283,6 +1294,21 @@ function LanguageSection() {
           </button>
         ))}
       </div>
+      {isAdmin && auth.clinic && (
+        <label className="mt-4 block text-xs text-ink-muted max-w-md">
+          {t('settingsPage.organisationDefaultLanguage')}
+          <select className="input mt-1 w-48" value={orgLang ?? 'et'}
+            onChange={async e => {
+              const next = e.target.value as Lang
+              setOrgLang(next)
+              const { error } = await supabase.from('clinics').update({ default_language: next }).eq('id', auth.clinic!.id)
+              if (error) setOrgLang(auth.clinic?.default_language)
+            }}>
+            {LANGUAGES.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
+          </select>
+          <span className="block mt-1">{t('settingsPage.organisationDefaultHelp')}</span>
+        </label>
+      )}
     </section>
   )
 }

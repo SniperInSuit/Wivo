@@ -84,3 +84,33 @@ export function weekdays(style: 'long' | 'short' | 'letter'): string[] {
   const prefix = style === 'long' ? 'common.weekdayLong' : style === 'short' ? 'common.weekdayShort' : 'common.weekdayLetter'
   return WEEK.map(d => t(`${prefix}${d}` as MessageKey))
 }
+
+export interface LanguageSources {
+  /** The user's own setting (profiles.language). */
+  profile: Lang | null | undefined
+  /** The organisation's default (clinics.default_language). */
+  organisation: Lang | null | undefined
+  /** What this window runs in now. */
+  current: Lang
+  /** Whether someone CHOSE the machine's language (a stored wivo_lang). */
+  chosenOnThisMachine: boolean
+}
+
+/**
+ * Which language a signed-in user should see, and whether their profile should
+ * learn it. Spec: "the language is a user setting; the organisation has a
+ * default".
+ *
+ * - Their own setting wins.
+ * - No setting yet, but someone picked a language on this machine (the
+ *   machine-wide switch before per-user settings existed): keep it, and save it
+ *   to their profile — switching them to the organisation default would undo a
+ *   choice they made.
+ * - Otherwise the organisation's default, else what is running.
+ */
+export function decideLanguage(s: LanguageSources): { lang: Lang; saveToProfile: boolean } {
+  if (s.profile && LANGS.includes(s.profile)) return { lang: s.profile, saveToProfile: false }
+  if (s.chosenOnThisMachine) return { lang: s.current, saveToProfile: true }
+  if (s.organisation && LANGS.includes(s.organisation)) return { lang: s.organisation, saveToProfile: false }
+  return { lang: s.current, saveToProfile: false }
+}

@@ -11,6 +11,7 @@ import { CalendarView, type CalendarMode, type CalendarScale } from './component
 import { CalendarTopControls } from './components/CalendarView/CalendarTopControls'
 import { PatientsView } from './components/Patients/PatientsView'
 import { UnsortedView } from './components/Unsorted/UnsortedView'
+import { LanguageSync } from './components/LanguageSync'
 import { PartnerJobsView } from './components/Partners/PartnerJobsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
@@ -472,6 +473,7 @@ export default function App() {
                 local edits back. Inside AuthGuard because it needs the clinic. */}
             <ClinicSettingsSync />
             <UiPrefsSync />
+            <LanguageSync />
             {/* ONE subscription to the updater for the whole app. The sidebar
                 footer and the toast both read from here; two separate mounts
                 used to mean two sets of polls and two IPC listeners that could

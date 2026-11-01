@@ -70,10 +70,14 @@ Communication and notifications
       the function + secrets → MORNING) — 443044f
 - [x] Audit log (sql/070 append-only table; every share, partner view,
       download, upload, export, partnership step and stage move — board moves
-      too — and every job opened; Seaded → Audit log for admins) — COMMIT_AUDIT
+      too — and every job opened; Seaded → Audit log for admins) — 137ac64
 
 Other
-- [ ] Languages: English primary, Russian for Riga, Estonian from existing
+- [~] Languages: English primary, Russian for Riga, Estonian from existing —
+      English source + complete Estonian (Phase 0); language is now a user
+      setting with an organisation default (follows the person); Russian is
+      wired and falls back to English, translation itself deferred per the
+      spec's open-question default (DECISIONS D6) — COMMIT_LANG
 - [ ] Technician pay shown large on the job (from the existing rule engine)
 - [x] MFA for all users (mandatory TOTP enrolment + code at sign-in; steps aside
       if the project has TOTP off; built early, DECISIONS D12) — 639b354

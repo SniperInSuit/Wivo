@@ -1918,6 +1918,9 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'settings.restartAndUpdate': "Taaskäivita ja uuenda",
 
   // ── settingsPage ──────────────────────────────────────────────────────────
+  'settingsPage.organisationDefaultHelp': "Liikmetele, kes pole ise keelt valinud.",
+  'settingsPage.organisationDefaultLanguage': "Organisatsiooni vaikekeel",
+  'settingsPage.yourOwnLanguage': "Sinu enda seade: see järgneb sulle igasse arvutisse. Vahetamisel laetakse aken uuesti.",
   'settingsPage.myPreferences': "Minu eelistused",
   'settingsPage.profile': "Profiil",
   'settingsPage.interface': "Kasutajaliides",
@@ -2019,7 +2022,6 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'settingsPage.bank': "Pank",
   'settingsPage.websiteID': "Veebilehe tunnus",
   'settingsPage.aShortNameTheWebsiteUses': "Lühike nimi, mille abil veebileht selle kliiniku hinnakirja küsib. Tühjaks jättes avalikku broneerimist ei ole. Ainult tähed, numbrid ja sidekriipsud — kirjapilt parandatakse automaatselt.",
-  'settingsPage.appliesToThisComputerTheWindow': "Kehtib sellel arvutil. Vahetamisel laetakse aken uuesti.",
   'settingsPage.settings': "Seaded",
   'settingsPage.manageYourWorkshopSDetailsPreferences': "Halda oma töökoja andmeid, eelistusi ja süsteemi seadeid.",
   'settingsPage.workingDayAndTimelines': "Tööpäev ja ajajooned",

@@ -13,7 +13,7 @@
 import { et, enGB, ru } from 'date-fns/locale'
 import { lang, LANG_KEY, type Lang } from '@shared/i18n'
 
-export { t, lang, weekdays, type Lang } from '@shared/i18n'
+export { t, lang, weekdays, decideLanguage, type Lang } from '@shared/i18n'
 
 /** For date-fns `format(…, { locale })`: month and weekday names follow the UI. */
 export const dateLocale = lang === 'en' ? enGB : lang === 'ru' ? ru : et
@@ -43,3 +43,12 @@ export function setLang(next: Lang): void {
 // Screen readers and the spellchecker go by this, not by the text. Guarded
 // because the tests import this file under Node, where there is no document.
 if (typeof document !== 'undefined') document.documentElement.lang = lang
+
+/** Whether someone picked this machine's language (rather than it being the default). */
+export function languageChosenHere(): boolean {
+  try {
+    return localStorage.getItem(LANG_KEY) !== null
+  } catch {
+    return false
+  }
+}

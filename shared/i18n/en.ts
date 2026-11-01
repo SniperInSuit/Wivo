@@ -1931,6 +1931,9 @@ export const en = {
   'settings.restartAndUpdate': "Restart and update",
 
   // ── settingsPage ──────────────────────────────────────────────────────────
+  'settingsPage.organisationDefaultHelp': "For members who have not chosen a language themselves.",
+  'settingsPage.organisationDefaultLanguage': "Organisation default",
+  'settingsPage.yourOwnLanguage': "Your own setting: it follows you to every computer. The window reloads when you switch.",
   'settingsPage.myPreferences': "My preferences",
   'settingsPage.profile': "Profile",
   'settingsPage.interface': "Interface",
@@ -2032,7 +2035,6 @@ export const en = {
   'settingsPage.bank': "Bank",
   'settingsPage.websiteID': "Website ID",
   'settingsPage.aShortNameTheWebsiteUses': "A short name the website uses to ask for this clinic’s price list. Left empty, there is no public booking. Letters, numbers and hyphens only — the spelling is corrected automatically.",
-  'settingsPage.appliesToThisComputerTheWindow': "Applies to this computer. The window reloads when you switch.",
   'settingsPage.settings': "Settings",
   'settingsPage.manageYourWorkshopSDetailsPreferences': "Manage your workshop’s details, preferences and system settings.",
   'settingsPage.workingDayAndTimelines': "Working day and timelines",
