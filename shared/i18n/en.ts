@@ -3016,6 +3016,27 @@ export const en = {
   'notifications.none': "Nothing new.",
   'notifications.markAllRead': "Mark all read",
   'notifications.notifications': "Notifications",
+
+  // ── audit ─────────────────────────────────────────────────────────────────
+  'audit.system': "System",
+  'audit.what': "What",
+  'audit.who': "Who",
+  'audit.when': "When",
+  'audit.empty': "Nothing logged yet.",
+  'audit.intro': "Who opened, downloaded, shared or moved what, and when — including your partners' actions on jobs you shared. Nobody can change or delete these rows.",
+  'audit.allActions': "All actions",
+  'audit.action': "Action",
+  'audit.auditLog': "Audit log",
+  'audit.files': ({ n }: Params) => `${n} ${n === 1 ? 'file' : 'files'}`,
+  'audit.question': "Question",
+  'audit.export': "Exported",
+  'audit.partnership': "Partnership",
+  'audit.stageMove': "Stage moved",
+  'audit.unshare': "Sharing ended",
+  'audit.share': "Shared",
+  'audit.upload': "Uploaded",
+  'audit.download': "Downloaded",
+  'audit.view': "Viewed",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

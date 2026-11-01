@@ -3003,4 +3003,25 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'notifications.markAllRead': "Märgi kõik loetuks",
   'notifications.notifications': "Teavitused",
 
+  // ── audit ─────────────────────────────────────────────────────────────────
+  'audit.system': "Süsteem",
+  'audit.what': "Mis",
+  'audit.who': "Kes",
+  'audit.when': "Millal",
+  'audit.empty': "Midagi pole veel logitud.",
+  'audit.intro': "Kes avas, laadis alla, jagas või liigutas mida ja millal — ka partnerite tegevused teie jagatud töödel. Neid ridu ei saa keegi muuta ega kustutada.",
+  'audit.allActions': "Kõik tegevused",
+  'audit.action': "Tegevus",
+  'audit.auditLog': "Auditilogi",
+  'audit.files': ({ n }: Params) => `${n} ${n === 1 ? 'fail' : 'faili'}`,
+  'audit.question': "Küsimus",
+  'audit.export': "Eksporditud",
+  'audit.partnership': "Partnerlus",
+  'audit.stageMove': "Etapp muudetud",
+  'audit.unshare': "Jagamine lõpetatud",
+  'audit.share': "Jagatud",
+  'audit.upload': "Üles laaditud",
+  'audit.download': "Alla laaditud",
+  'audit.view': "Vaadatud",
+
 }

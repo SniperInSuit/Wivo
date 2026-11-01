@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ArrowUpRight, Clock, Cpu, Euro, FileText, History, UserRound, Zap, Trash2, Plus, Copy, Printer, Pencil } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
+import { supabase } from '../../lib/supabase'
 import type { Job, Revision, WorkItem } from '../../types/job'
 import { jobWorkItems, abutmentSummary, jobImplantTeeth, designTeeth, designIsPartial } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
@@ -57,6 +58,9 @@ export function JobReadView({
   job, isBottom, activeRevisionId, onSelectVariant, onMarkPaid,
   onAddRevision, onDuplicate, highlightNoteId, onOpenPatient
 }: JobReadViewProps) {
+  // Opening a job is a `view` in the audit log (sql/078). Fire and forget:
+  // a failed log line must never stop someone reading their job.
+  useEffect(() => { void supabase.rpc('log_job_view', { p_job: job.id }).then(() => {}, () => {}) }, [job.id])
   const printRef = useRef<HTMLDivElement>(null)
   const { data: patients = [] } = usePatients()
   // Imported jobs still have patient_id = null, so fall back to the name — the

@@ -67,8 +67,10 @@ Communication and notifications
 - [x] Notifications: realtime badges, e-mail via Resend (code + link only)
       (sql/075–077; the other side only, never the actor; no patient data in a
       row; Edge Function send-notifications; per-user e-mail toggle; deploying
-      the function + secrets → MORNING) — COMMIT_NOTIF
-- [ ] Audit log
+      the function + secrets → MORNING) — 443044f
+- [x] Audit log (sql/070 append-only table; every share, partner view,
+      download, upload, export, partnership step and stage move — board moves
+      too — and every job opened; Seaded → Audit log for admins) — COMMIT_AUDIT
 
 Other
 - [ ] Languages: English primary, Russian for Riga, Estonian from existing
