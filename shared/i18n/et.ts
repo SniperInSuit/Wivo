@@ -2864,7 +2864,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'partners.partnershipsIntro': "Partnerlus laseb valitud töid teise kliinikuga jagada. Kood üksi ei anna midagi: mõlemad adminid kinnitavad tingimused, Wivo kinnitab, ja andmeid ei liigu enne, kui jagad konkreetse töö.",
   'partners.partnerships': "Partnerlused",
   'partners.tooManyCodes': "Liiga palju valesid koode. Proovi tunni aja pärast uuesti.",
-  'partners.needMfa': "Logi esmalt sisse kahefaktorilise autentimisega (Seaded → Profiil → Kahefaktoriline sisselogimine).",
+  'partners.needMfa': "Vaja on kahefaktorilist sisselogimist. Logi välja ja uuesti sisse koos autentimisrakenduse koodiga. Kui Wivo koodi ei küsinud, pole kahefaktoriline sisselogimine selles projektis veel sisse lülitatud.",
   'partners.statusEnded': "Lõpetatud",
   'partners.statusSuspended': "Peatatud",
   'partners.statusActive': "Aktiivne",
@@ -2925,5 +2925,15 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'partners.roleSupplier': "Tarnija",
   'partners.roleSurgery': "Kirurgia",
   'partners.roleDesign': "Disain",
+
+  // ── mfa ───────────────────────────────────────────────────────────────────
+  'mfa.confirm': "Kinnita",
+  'mfa.sixDigitCode': "6-kohaline kood",
+  'mfa.signOut': "Logi välja",
+  'mfa.enterCode': "Sisesta autentimisrakenduse 6-kohaline kood.",
+  'mfa.cannotScan': "Ei saa skaneerida? Sisesta rakendusse see võti:",
+  'mfa.qrAlt': "QR-kood autentimisrakenduse jaoks",
+  'mfa.enrollIntro': "Wivo nõuab kõigilt teist tegurit. Skaneeri see kood autentimisrakendusega (Google Authenticator, Microsoft Authenticator või paroolihaldur) ja sisesta selle näidatud 6-kohaline kood.",
+  'mfa.twoFactorSignIn': "Kahefaktoriline sisselogimine",
 
 }

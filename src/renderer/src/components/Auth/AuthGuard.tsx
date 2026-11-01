@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { LoginPage } from './LoginPage'
 import { ClinicSetupWizard } from './ClinicSetupWizard'
+import { MfaGate } from './MfaGate'
 import { Loader2 } from 'lucide-react'
 import wivoLogo from '../../assets/Wivo Logo.png'
 
@@ -25,9 +26,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return <LoginPage />
   }
 
-  if (needsClinicSetup) {
-    return <ClinicSetupWizard />
-  }
-
-  return <>{children}</>
+  // The second factor comes before anything else, the clinic setup included.
+  return <MfaGate>{needsClinicSetup ? <ClinicSetupWizard /> : children}</MfaGate>
 }

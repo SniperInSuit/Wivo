@@ -2878,7 +2878,7 @@ export const en = {
   'partners.partnershipsIntro': "A partnership lets you share chosen jobs with another clinic. A code alone grants nothing: both admins confirm the terms, Wivo approves, and no data moves until you share a specific job.",
   'partners.partnerships': "Partnerships",
   'partners.tooManyCodes': "Too many wrong codes. Try again in an hour.",
-  'partners.needMfa': "Sign in with two-factor authentication first (Settings → Profile → Two-factor sign-in).",
+  'partners.needMfa': "Two-factor sign-in is required. Sign out and in again with your authenticator code. If Wivo did not ask for a code, two-factor sign-in is not switched on for this project yet.",
   'partners.statusEnded': "Ended",
   'partners.statusSuspended': "Paused",
   'partners.statusActive': "Active",
@@ -2939,6 +2939,16 @@ export const en = {
   'partners.roleSupplier': "Supplier",
   'partners.roleSurgery': "Surgery",
   'partners.roleDesign': "Design",
+
+  // ── mfa ───────────────────────────────────────────────────────────────────
+  'mfa.confirm': "Confirm",
+  'mfa.sixDigitCode': "6-digit code",
+  'mfa.signOut': "Sign out",
+  'mfa.enterCode': "Enter the 6-digit code from your authenticator app.",
+  'mfa.cannotScan': "Cannot scan? Enter this key in the app instead:",
+  'mfa.qrAlt': "QR code for your authenticator app",
+  'mfa.enrollIntro': "Wivo requires a second factor for everyone. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator or your password manager), then enter the 6-digit code it shows.",
+  'mfa.twoFactorSignIn': "Two-factor sign-in",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

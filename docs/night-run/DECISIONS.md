@@ -120,3 +120,19 @@ inviter; requiring it of both is the conservative reading. Until users have MFA
 "Initially a Wivo admin also confirms" is `platform_approve_partnership(id)`,
 executable only by the service role / SQL editor (there is no admin console yet,
 Phase 3). Steps in MORNING.md.
+
+## D12. MFA built before Files, out of the spec's listed order
+
+The spec lists "MFA for all users" late in Phase 1, but the partnership steps
+(early in Phase 1) require an admin signed in with MFA. Without MFA in the app,
+no partnership could ever be created. So MFA was built right after the
+partnership screens.
+
+How "for all users" is enforced: after sign-in, a user with no authenticator
+must enrol one before the app opens; a user with one must enter a code
+(Supabase aal2). If the project does not have TOTP enabled yet, the app lets
+people in rather than locking everyone out, and says so. Turning TOTP on is in
+MORNING.md. Database-level enforcement on every table (a restrictive aal2
+policy) would lock out everyone who has not enrolled at the moment it is
+applied, so it is not in a migration tonight; partnership and admin RPCs
+already require aal2 in the database.

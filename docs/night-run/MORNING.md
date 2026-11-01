@@ -56,3 +56,12 @@ After 069. Your clinic gets a job-code prefix from its name (check
 before codes are printed anywhere) and every existing job gets a code in
 creation order. Approving a partnership as Wivo, until the admin console exists:
 `select platform_approve_partnership('<partnership id>');` in the SQL editor.
+
+### Two-factor sign-in (before anyone logs in to the new build)
+Turn on TOTP first: Authentication → Sign In / Providers → Multi-Factor → TOTP.
+With it on, every user is asked to scan a QR code at their next sign-in and
+cannot skip it; from then on each sign-in asks for the 6-digit code. With it
+off, the app lets people in without a second factor (and partnership steps
+refuse, because the database requires aal2 for them).
+Test: sign in → QR screen → scan with Google/Microsoft Authenticator → code →
+app opens. Sign out, sign in → only the code is asked.

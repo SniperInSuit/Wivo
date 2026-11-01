@@ -44,7 +44,7 @@ Organisations and sharing
 Creating a partnership
 - [x] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
       limit, both admins confirm, suspend/end, every step audited): database
-      and RPCs in sql/070 — 80db025; Seaded → Partnerships screen — COMMIT_PSET
+      and RPCs in sql/070 — 80db025; Seaded → Partnerships screen — 4aee9f9
 
 Files
 - [ ] `job_file`, private bucket, TUS background upload, SHA-256, versions,
@@ -64,7 +64,8 @@ Communication and notifications
 Other
 - [ ] Languages: English primary, Russian for Riga, Estonian from existing
 - [ ] Technician pay shown large on the job (from the existing rule engine)
-- [ ] MFA for all users
+- [x] MFA for all users (mandatory TOTP enrolment + code at sign-in; steps aside
+      if the project has TOTP off; built early, DECISIONS D12) — COMMIT_MFA
 
 Bug reports
 - [ ] "Report a bug" button → `bug_report` (no screenshot unless the user adds one)
