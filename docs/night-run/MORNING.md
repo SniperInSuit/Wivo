@@ -2,14 +2,30 @@
 
 ## Needs you
 
-### Apply sql/068 (tenant isolation) to the test project, then production
-Closes the cross-tenant holes in phase0-report.md §2. Run it in the SQL editor,
-then `notify pgrst, 'reload schema';`. Check after: you can still log in, see
-jobs, add a worker, remove and restore a worker.
+### First: the migrations you already applied
+You ran the SQL during the night (23:34). Three files were committed late:
+**080** (23:30), **081** (23:33) and **082** (23:35). If your run started
+before those, run them now, in order, each followed by
+`notify pgrst, 'reload schema';`. **082 matters most:** it repairs "Duplicate
+job" in the app you have installed today (with 070 live, a duplicate carried
+the original's job code and was refused).
 
-### Apply sql/069 (chat hardening) after 068
-Same procedure. Nothing uses the chat yet, so there is nothing to check in the
-app; `sql/test/chat.test.ts` is the check.
+Quick checks on the live database:
+```sql
+select name, code_prefix from clinics;                    -- your prefix; change it now if you want another
+select count(*) from jobs where clinic_id is null;       -- 0 (068 adopted orphans: one clinic exists)
+select count(*) from jobs where job_code is null;        -- 0 (070 numbered every job)
+select jobname, schedule from cron.job;                  -- wivo-send-notifications exists (077)
+```
+Not yet done by applying the SQL: the Vault secret for 077, deploying the
+e-mail function, Resend, TOTP — the sections below.
+
+### sql/068 (tenant isolation) — already applied
+Closes the cross-tenant holes in phase0-report.md §2. Check in the app: you can
+still log in, see jobs, add a worker, remove and restore a worker.
+
+### sql/069 (chat hardening) — already applied
+Nothing to check in the app; `sql/test/chat.test.ts` is the check.
 
 ### Five core protections (dashboard, ~15 min)
 Production project, then the test project:
@@ -50,8 +66,8 @@ Note: sql/052 and sql/056 schedule a cron call to the PRODUCTION function URL.
 After restoring, run `select cron.unschedule('wivo-send-invoices');` on the test
 project so it does not call production every hour.
 
-### Apply sql/070 (organisations, partnerships, job codes, audit log)
-After 069. Your clinic gets a job-code prefix from its name (check
+### sql/070 (organisations, partnerships, job codes, audit log) — already applied
+Your clinic gets a job-code prefix from its name (check
 `select name, code_prefix from clinics;` and change it now if you want another,
 before codes are printed anywhere) and every existing job gets a code in
 creation order. Approving a partnership as Wivo, until the admin console exists:
@@ -66,16 +82,16 @@ refuse, because the database requires aal2 for them).
 Test: sign in → QR screen → scan with Google/Microsoft Authenticator → code →
 app opens. Sign out, sign in → only the code is asked.
 
-### Apply sql/072 (job files) and check Storage
-Creates the private `job-files` bucket (500 MB per file) and its policies. After
+### sql/072 (job files) — already applied; check Storage
+Created the private `job-files` bucket (500 MB per file) and its policies. After
 applying: open a job → Files → add a photo → it uploads with a progress bar →
 Download opens it. In Storage the object sits at `<clinic id>/<job id>/<file id>`.
 GPS is removed from JPEG, HEIC (iPhone default), PNG and WebP photos before
 upload. HEIC photos get no thumbnail (Chromium cannot decode HEIC); they still
 upload and download normally.
 
-### Notifications: apply sql/075, 076, 077 and deploy the e-mail function
-1. Run 075 → 076 → 077 in order (077 needs pg_cron + pg_net, as 052 did).
+### Notifications: 075–077 applied; now the Vault secret and the e-mail function
+1. (077 needed pg_cron + pg_net; if it failed, enable them and run it again.)
 2. Vault, once per project (production and test each get their OWN URL):
    `select vault.create_secret('https://<project-ref>.functions.supabase.co', 'wivo_functions_url');`
 3. Resend: verify the sending domain, create an API key.
@@ -87,8 +103,8 @@ Acceptance test (spec): share a job with the Riga test org → bell badge in Rig
 within seconds, e-mail within a minute. APP_LINK: there is no web app yet; a
 link to the download page or the PWA (Phase 1b) is the honest choice for now.
 
-### Bug reports: apply sql/079, set BUG_REPORT_TO
-079 creates `bug_report` (no app user can read it — see it in the Table Editor
+### Bug reports: 079 applied; set BUG_REPORT_TO
+079 created `bug_report` (no app user can read it — see it in the Table Editor
 or via the service role) and the private `bug-reports` bucket. Then
 `supabase secrets set BUG_REPORT_TO=<your address>` and redeploy
 `send-notifications` (it e-mails new bug reports every minute too).
@@ -105,7 +121,7 @@ Privacy, also turn on "Data scrubber" and "Prevent storing of IP addresses"
 as a second wall behind `shared/privacy/scrub.ts`.
 
 ### Leak check against the TEST project (spec: release condition)
-Once 068–079 are applied on the test project: create two organisations
+Once 068–082 are applied on the test project: create two organisations
 there (a Tallinn copy and "Riga"), a Riga user, one Tallinn job that is NOT
 shared, then run
 `SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=… node scripts/leak-check.mjs`.
