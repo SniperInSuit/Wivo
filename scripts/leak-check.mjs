@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * The spec's "API self-check", against a REAL project (the test project —
- * never production): signed in as the Riga test user, call PostgREST and
+ * The spec's "API self-check", against a REAL project: signed in as the Riga
+ * test user, call PostgREST and
  * Storage directly for Tallinn's data. Every call must come back empty or
  * refused. Release condition: if this fails, there is no release.
  *
@@ -13,7 +13,11 @@
  *   SUPABASE_ANON_KEY=eyJ... \
  *   RIGA_EMAIL=riga-test@... RIGA_PASSWORD=... \
  *   TALLINN_ORG_ID=<uuid> TALLINN_JOB_ID=<an UNshared job> \
- *   node scripts/leak-check.mjs
+ *   node scripts/leak-check.mjs [--production]
+ *
+ * Read-only in effect: every write it tries is one that must be refused. On
+ * production it needs `--production`, so it is never pointed there by
+ * accident (DECISIONS.md D14: there is no permanent test project).
  *
  * Exit code 0 = nothing leaked. 1 = something did; each leak is printed.
  */
@@ -28,7 +32,10 @@ const env = name => {
   return v
 }
 const url = env('SUPABASE_URL')
-if (/wrtucsfmpbwekugzzzxw/.test(url)) { console.error('Refusing to run against the production project.'); process.exit(2) }
+if (/wrtucsfmpbwekugzzzxw/.test(url) && !process.argv.includes('--production')) {
+  console.error('This is the production project. Run again with --production if that is what you mean.')
+  process.exit(2)
+}
 
 const db = createClient(url, env('SUPABASE_ANON_KEY'), { auth: { persistSession: false } })
 const TALLINN = env('TALLINN_ORG_ID')

@@ -3,8 +3,8 @@
 ## Needs you
 
 ### First: the migrations you already applied
-You ran the SQL on **production** during the night (23:34). The test project
-does not have 068+ yet; the leak check below needs them there too. Three files were committed late:
+You ran the SQL on **production** during the night (23:34), including 082.
+There is no permanent test project, by your decision (DECISIONS.md D14). Three files were committed late:
 **080** (23:30), **081** (23:33) and **082** (23:35). If your run started
 before those, run them now, in order, each followed by
 `notify pgrst, 'reload schema';`. **082 matters most:** it repairs "Duplicate
@@ -49,7 +49,7 @@ should be only these Auth settings, which this list fixes.
 1. Dashboard (production) → Database → Backups → download the latest daily
    backup, or `pg_dump --no-owner --no-privileges "$PROD_URL" > prod.sql` from
    a trusted machine.
-2. Restore into the **test** project (never the other way): `psql "$TEST_URL" < prod.sql`.
+2. Restore into a throwaway project (never the other way): `psql "$TEST_URL" < prod.sql`.
 3. Row counts must match. Run this on both and compare:
    ```sql
    select table_name,
@@ -121,11 +121,18 @@ build contains no Sentry at all. In Sentry → Project settings → Security &
 Privacy, also turn on "Data scrubber" and "Prevent storing of IP addresses"
 as a second wall behind `shared/privacy/scrub.ts`.
 
-### Leak check against the TEST project (spec: release condition)
-Once 068–082 are applied on the test project: create two organisations
-there (a Tallinn copy and "Riga"), a Riga user, one Tallinn job that is NOT
-shared, then run
-`SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=… node scripts/leak-check.mjs`.
+### Leak check against production (spec: release condition)
+Needs a second organisation with a user in it — the real Riga organisation
+once it exists, or a test one with no patients. Then, with one Tallinn job
+that is NOT shared with it:
+`SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=… node scripts/leak-check.mjs --production`
 It reads every table the migrations create and calls the partner RPCs and
-Storage as Riga; exit code 0 means nothing leaked. It refuses to run against
-the production URL.
+Storage as that user; every write it tries must be refused. Exit code 0 means
+nothing leaked.
+
+### A throwaway project, for the restore test only
+`TEST_SERVICE_ROLE_KEY=<that project's service key> node scripts/fresh-schema.mjs > fresh.sql`
+gives one file that builds the whole schema (000 … newest) in a single paste
+into its SQL editor — the service key filled in for 052/056, and the invoice
+cron (which points at production) unscheduled at the end. It refuses the
+production key. Restore the backup into it, compare the counts, delete it.

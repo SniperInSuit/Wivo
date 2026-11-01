@@ -150,3 +150,16 @@ user, request bodies, `extra`, stack-frame variables, console and typed-input
 breadcrumbs are dropped; URLs lose their query strings (Supabase filters live
 there); text loses e-mails, phone numbers and personal codes. The bug report's
 "recent errors" use the same scrubber.
+
+## D14. No permanent test project (Kevin, 1 Nov 23:40)
+
+Kevin: "we just build on production". The spec's architecture table plans a
+separate test project; Kevin's call is not to keep one. What stands in for it:
+- every migration and RLS rule runs from an empty database on every
+  `npm test` (PGlite, D3) before anything is applied to production;
+- `scripts/leak-check.mjs --production` runs the API self-check against the
+  live stack as a Riga test user (read-only in effect: every write it tries
+  must be refused);
+- the Phase 0 restore test still needs a non-production target. A throwaway
+  project, built in one paste by `scripts/fresh-schema.mjs` and deleted
+  afterwards, is enough (MORNING.md).
