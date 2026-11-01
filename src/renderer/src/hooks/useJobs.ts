@@ -37,11 +37,21 @@ export function useJobs() {
 }
 
 // --- Create a new job ---
+/**
+ * Fields the DATABASE owns. `job_code` is numbered by a trigger (sql/070) and
+ * unique; a payload built by spreading an existing job — "Duplicate" does
+ * exactly that — would otherwise send the original's code and be refused.
+ */
+function withoutDbOwned<T extends object>(row: T): T {
+  const { job_code: _code, ...rest } = row as T & { job_code?: unknown }
+  return rest as T
+}
+
 export function useCreateJob() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: JobInput) => {
-      const { data, error } = await supabase.from('jobs').insert({ ...input, clinic_id: getActiveClinicId() }).select().single()
+      const { data, error } = await supabase.from('jobs').insert({ ...withoutDbOwned(input), clinic_id: getActiveClinicId() }).select().single()
       if (error) throw error
       return data as Job
     },
@@ -56,7 +66,7 @@ export function useUpdateJob() {
     mutationFn: async ({ id, ...patch }: Partial<Job> & { id: string }) => {
       const { data, error } = await supabase
         .from('jobs')
-        .update({ ...patch, updated_at: new Date().toISOString() })
+        .update({ ...withoutDbOwned(patch), updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single()
