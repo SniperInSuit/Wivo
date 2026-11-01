@@ -75,10 +75,10 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
   const input = useRef<HTMLInputElement>(null)
   const versionOf = useRef<string | null>(null)
 
-  useEffect(() => {
-    onUploadDone(done => qc.invalidateQueries({ queryKey: ['job_files', done] }))
-    return () => onUploadDone(null)
-  }, [qc])
+  useEffect(() => onUploadDone(done => {
+    qc.invalidateQueries({ queryKey: ['job_files', done] })
+    qc.invalidateQueries({ queryKey: ['job_previews', done] })
+  }), [qc])
 
   function add(list: FileList | null) {
     if (!list) return

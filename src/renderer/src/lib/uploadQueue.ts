@@ -41,9 +41,16 @@ const emit = () => { tasks = [...tasks]; listeners.forEach(l => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 const snapshot = () => tasks
 
-/** Called with the job id whenever one of its uploads completes. */
-let onDone: ((jobId: string) => void) | null = null
-export function onUploadDone(fn: ((jobId: string) => void) | null): void { onDone = fn }
+/**
+ * Told the job id whenever one of its uploads completes. A set, not one
+ * callback: two file panels can be open at once (side and bottom), and the
+ * second must not silence the first. Returns the unsubscribe.
+ */
+const doneListeners = new Set<(jobId: string) => void>()
+export function onUploadDone(fn: (jobId: string) => void): () => void {
+  doneListeners.add(fn)
+  return () => { doneListeners.delete(fn) }
+}
 
 const patch = (id: string, p: Partial<UploadTask>) => {
   const t = tasks.find(x => x.id === id)
@@ -85,7 +92,7 @@ async function runOne(task: UploadTask): Promise<void> {
   if (confirmError) throw confirmError
   await attachPreview(file.id, task.file.name, bytes)
   patch(task.id, { status: 'done', sent: bytes.length })
-  onDone?.(task.jobId)
+  doneListeners.forEach(l => l(task.jobId))
   task.onStored?.(file.id)
 }
 
