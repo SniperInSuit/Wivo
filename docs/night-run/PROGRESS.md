@@ -91,4 +91,4 @@ Bug reports
 - [x] `bug_report` row + e-mail to Kevin (same per-minute sender, to
       BUG_REPORT_TO; deploying → MORNING) — 0a117ef
 - [x] Sentry in Electron with patient data filtered out (both processes, only
-      with a DSN; shared/privacy/scrub.ts tested; EU region → MORNING) — COMMIT_SENTRY
+      with a DSN; shared/privacy/scrub.ts tested; EU region → MORNING) — 141b635
