@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { freshDb, createTenant, rowsAs, errorAs, type Tenant } from './harness'
+import { freshDb, createTenant, rowsAs, errorAs, grant, type Tenant } from './harness'
 
 let db: PGlite
 let A: Tenant
@@ -19,6 +19,8 @@ beforeAll(async () => {
   db = await freshDb()
   A = await createTenant(db, 'Tallinn')
   B = await createTenant(db, 'Riga')
+  // Partner staff act under THEIR organisation's permissions (sql/084).
+  await grant(db, B, B.workerId, ['jobs.read', 'jobs.write'])
   await db.query(`insert into public.partnership (org_a, org_b, status, roles) values ($1, $2, 'active', array['design'])`, [A.clinicId, B.clinicId])
   const { rows } = await db.query<{ id: string }>(
     `insert into public.jobs (clinic_id, patsient, status) values ($1, 'Mari Maasikas', 'disain') returning id`, [A.clinicId])

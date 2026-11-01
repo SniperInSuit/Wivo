@@ -120,11 +120,13 @@ function EnterCode({ onDone }: { onDone: () => void }) {
 
   async function accept() {
     setError(null)
-    const { error: err } = await supabase.rpc('accept_partnership_invite', {
+    const { data, error: err } = await supabase.rpc('accept_partnership_invite', {
       p_code: code, p_share_stock: shareStock, p_default_visibility: visibility,
       p_roles: roles, p_dpa_reference: dpa,
     })
     if (err) { setError(explain(err)); return }
+    // A wrong or used code returns nothing rather than an error (sql/084).
+    if (!data) { setError(t('partners.codeNotValid')); return }
     setDone(true)
     onDone()
   }

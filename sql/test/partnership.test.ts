@@ -107,8 +107,11 @@ describe('the whole flow (steps 3–7)', () => {
   it('a used code cannot be used again', async () => {
     const code = await invite()
     await rowsAs(db, admin(C), `select public.accept_partnership_invite($1, false, 'partial', '{}', 'DPA')`, [code])
-    expect(await errorAs(db, admin(B),
-      `select public.accept_partnership_invite($1, false, 'partial', '{}', 'DPA')`, [code])).toMatch(/not valid/)
+    // sql/084: a wrong or used code returns nothing (an error would roll back
+    // the attempt count and make guessing free).
+    const [r] = await rowsAs<{ id: string | null }>(db, admin(B),
+      `select public.accept_partnership_invite($1, false, 'partial', '{}', 'DPA') as id`, [code])
+    expect(r.id).toBeNull()
   })
 
   it('only the inviter confirms, and then Wivo still has to approve', async () => {
@@ -136,9 +139,9 @@ describe('the whole flow (steps 3–7)', () => {
     expect(await rowsAs(db, { id: C.ownerId }, `select 1 from public.partnership where id = $1`, [partnershipId])).toEqual([])
   })
 
-  it('either side pauses, resumes and ends it; the end sets a read-only window', async () => {
+  it('either side pauses and ends it; the pausing side resumes; the end sets a read-only window', async () => {
     expect(await errorAs(db, admin(B), `select public.set_partnership_status($1, 'suspended')`, [partnershipId])).toBeNull()
-    expect(await errorAs(db, admin(A), `select public.set_partnership_status($1, 'active')`, [partnershipId])).toBeNull()
+    expect(await errorAs(db, admin(B), `select public.set_partnership_status($1, 'active')`, [partnershipId])).toBeNull()
     expect(await errorAs(db, admin(A), `select public.set_partnership_status($1, 'ended', 30)`, [partnershipId])).toBeNull()
     const { rows } = await db.query<{ status: string; days: number }>(
       `select status, round(extract(epoch from readonly_until - ended_at) / 86400)::int as days from public.partnership where id = $1`, [partnershipId])

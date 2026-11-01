@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { freshDb, createTenant, rowsAs, errorAs, type Tenant } from './harness'
+import { freshDb, createTenant, rowsAs, errorAs, grant, type Tenant } from './harness'
 
 let db: PGlite
 let A: Tenant  // Tallinn — owns the jobs
@@ -40,6 +40,8 @@ beforeAll(async () => {
   A = await createTenant(db, 'Tallinn')
   B = await createTenant(db, 'Riga')
   C = await createTenant(db, 'Cesis')
+  // Partner staff act under THEIR organisation's permissions (sql/084).
+  await grant(db, B, B.workerId, ['jobs.read', 'jobs.write'])
   const { rows } = await db.query<{ id: string }>(
     `insert into public.partnership (org_a, org_b, status, roles, dpa_reference)
      values ($1, $2, 'active', array['design', 'surgery'], 'DPA') returning id`, [A.clinicId, B.clinicId])

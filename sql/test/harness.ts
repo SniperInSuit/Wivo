@@ -315,3 +315,13 @@ export async function publicTables(db: PGlite): Promise<string[]> {
       where n.nspname = 'public' and c.relkind in ('r', 'p') order by 1`)
   return rows.map(r => r.relname)
 }
+
+/** Grant permissions to a member, in their own clinic — as the owner would. */
+export async function grant(db: PGlite, t: Tenant, profileId: string, perms: string[]): Promise<void> {
+  for (const p of perms) {
+    await db.query(
+      `insert into public.worker_permissions (profile_id, clinic_id, permission) values ($1, $2, $3)
+       on conflict (profile_id, permission) do update set granted = true, clinic_id = excluded.clinic_id`,
+      [profileId, t.clinicId, p])
+  }
+}

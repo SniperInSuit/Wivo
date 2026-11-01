@@ -41,6 +41,13 @@ const OPEN: Record<Lang, string> = { en: 'Open in Wivo', et: 'Ava Wivos', ru: 'Ð
 interface Pending { id: string; email: string; job_id: string | null; job_code: string | null; kind: Kind; language: string }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Only the cron job (or Kevin with the service key) may run the sender. The
+  // platform's JWT check accepts the public anon key too, which would let
+  // anyone trigger sends â€” and two runs at once would send duplicates.
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  if (!serviceKey || req.headers.get('Authorization') !== `Bearer ${serviceKey}`) {
+    return json(401, { ok: false, error: 'service key required' })
+  }
   const dry = new URL(req.url).searchParams.get('dry') === '1'
   const key = Deno.env.get('RESEND_API_KEY')
   const from = Deno.env.get('NOTIFY_FROM')

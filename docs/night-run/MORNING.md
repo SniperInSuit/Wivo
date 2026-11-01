@@ -30,6 +30,19 @@ audit rows failed, a worker could grant themselves rights through a second
 account, founding a clinic could fail on a name clash, a removed founder could
 rejoin as owner. Details: review-068-079.md.
 
+### Run sql/084 before the first partnership
+Partner-side fixes from the same review (thread scoping, partner permissions,
+the 90-day read-only cap, and more — review-068-079.md). No partnership
+exists on production, so nothing in it was exploitable there yet; apply it
+before creating one. Note: partner staff now need `jobs.read` (to see shared
+jobs) and `jobs.write` (to move stages, add files) in THEIR organisation's
+Workers → permissions, like any other job.
+
+### Raise the Storage upload limit
+Storage → Settings → Upload file size limit: the project default is 50 MB,
+the `job-files` bucket allows 500 MB. Raise it to 500 MB or full-arch scans
+fail at 50 MB.
+
 ### Restore `jobs.updated_at` (the job-code backfill in 070 rewrote it)
 Numbering every job in 070 was an UPDATE, and the `jobs_updated_at` trigger
 stamped every job with the migration time. The app shows that time as the
