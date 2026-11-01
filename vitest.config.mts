@@ -12,6 +12,9 @@ import { defineConfig } from 'vitest/config'
  * against a file the app never loads.
  */
 export default defineConfig({
+  test: {
+    setupFiles: ['./vitest.setup.ts'],
+  },
   resolve: {
     alias: {
       '@renderer': resolve('src/renderer/src'),

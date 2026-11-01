@@ -27,6 +27,7 @@
     "three": "0.169.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
