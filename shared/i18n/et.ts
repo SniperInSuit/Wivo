@@ -2961,4 +2961,17 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'files.typePhoto': "Foto",
   'files.typeScan': "Skann",
 
+  // ── unsorted ──────────────────────────────────────────────────────────────
+  'unsorted.attach': "Lisa töö külge",
+  'unsorted.findJob': "Leia töö: kood või patsient",
+  'unsorted.change': "muuda",
+  'unsorted.dismiss': "Pole töö fail",
+  'unsorted.nothingWaiting': "Midagi ei oota.",
+  'unsorted.intro': "Skanneri ekspordikausta uued failid ilmuvad siia. Lisa iga fail oma töö külge: see puhastatakse, nimetatakse töö koodi järgi ja laaditakse üles. Originaal jääb kausta.",
+  'unsorted.chooseFolder': "Vali skanneri kaust",
+  'unsorted.changeFolder': "Muuda kausta",
+  'unsorted.noFolder': "Kausta pole valitud",
+  'unsorted.unsorted': "Sorteerimata",
+  'unsorted.desktopOnly': "Skanneri kaust töötab töölauarakenduses.",
+
 }

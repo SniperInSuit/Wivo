@@ -66,7 +66,20 @@ const wivoAPI = {
   licenseInstall: (token: string): Promise<unknown> =>
     ipcRenderer.invoke('wivo:license-install', token),
   licenseEnforced: (): Promise<boolean> => ipcRenderer.invoke('wivo:license-enforced'),
+
+  // ── Scanner export folder (src/main/watchFolder.ts) ──────────────────────
+  watchFolder: {
+    get: (): Promise<string | null> => ipcRenderer.invoke('wivo:watch-folder-get'),
+    choose: (): Promise<string | null> => ipcRenderer.invoke('wivo:watch-folder-choose'),
+    list: (): Promise<WatchedFile[]> => ipcRenderer.invoke('wivo:watch-folder-list'),
+    read: (path: string): Promise<Uint8Array> => ipcRenderer.invoke('wivo:watch-folder-read', path),
+    /** Attached to a job (jobId) or dismissed (null): it leaves Unsorted. */
+    handled: (key: string, jobId: string | null): Promise<void> => ipcRenderer.invoke('wivo:watch-folder-handled', key, jobId),
+    onChanged: (cb: () => void): (() => void) => subscribe<void>('wivo:watch-folder-changed', () => cb()),
+  },
 }
+
+interface WatchedFile { path: string; name: string; size: number; modifiedAt: number; key: string }
 
 export type WivoAPI = typeof wivoAPI
 

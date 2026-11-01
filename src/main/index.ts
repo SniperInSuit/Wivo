@@ -8,6 +8,7 @@ import {
   setMainWindow, closeSplash, isInstalling,
 } from './updater'
 import { currentLicence, installLicence, licensingEnforced } from './license'
+import { registerWatchFolder } from './watchFolder'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
 app.commandLine.appendSwitch('lang', 'et-EE')
@@ -118,6 +119,7 @@ app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.wivo.dental')
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
+  registerWatchFolder()
   ipcMain.handle('wivo:teeth-model', () => readTeethModel())
 
   // Licence lives in the main process — see license.ts for why.

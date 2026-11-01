@@ -10,6 +10,7 @@ import { Dashboard } from './components/Dashboard/Dashboard'
 import { CalendarView, type CalendarMode, type CalendarScale } from './components/CalendarView/CalendarView'
 import { CalendarTopControls } from './components/CalendarView/CalendarTopControls'
 import { PatientsView } from './components/Patients/PatientsView'
+import { UnsortedView } from './components/Unsorted/UnsortedView'
 import { PartnerJobsView } from './components/Partners/PartnerJobsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
@@ -401,6 +402,7 @@ function AppContent() {
           {view === 'settings' && <SettingsPage />}
           {view === 'workers' && <WorkersPage />}
           {view === 'partner' && <PartnerJobsView />}
+          {view === 'unsorted' && <UnsortedView />}
         </main>
       </div>
 

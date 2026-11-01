@@ -51,11 +51,12 @@ Files
       soft delete (sql/072; downloads only via an audited 2-minute grant; own
       TUS client with resume; Files section in both job panels) — 9c05bd8
 - [x] Previews: STL → PNG, photo thumbnails (made on the uploader's machine;
-      sql/073; viewing them is one audited grant per job) — COMMIT_PREV
+      sql/073; viewing them is one audited grant per job) — c20ef3b
 - [x] Client-side cleaning: DICOM header scrub, EXIF GPS removal, file name →
       job code (lib/fileClean.ts, tested on synthetic JPEG/DICOM; HEIC photos
       are not cleaned yet, see MORNING) — 9c05bd8
-- [ ] Folder watcher in Electron: scanner export folder → "Unsorted" → job
+- [x] Folder watcher in Electron: scanner export folder → "Unsorted" → job
+      (main reads only inside the chosen folder; same clean/upload path) — COMMIT_WATCH
 - [ ] Patient export: PDF + ZIP of their files, download logged
 
 Communication and notifications

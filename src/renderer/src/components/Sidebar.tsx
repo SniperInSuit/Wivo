@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake, FolderInput
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -110,6 +110,14 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
             )}
           </button>
         ))}
+
+        {/* Desktop only: the bridge to the scanner folder exists only there. */}
+        {window.wivo?.watchFolder && (
+          <button onClick={() => onViewChange('unsorted')} title={t('unsorted.unsorted')} className={itemClass(view === 'unsorted')}>
+            <FolderInput size={wide ? 15 : 17} className="flex-shrink-0" />
+            <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>{t('unsorted.unsorted')}</span>
+          </button>
+        )}
 
         {hasPartners && (
           <button onClick={() => onViewChange('partner')} title={t('partners.partnerJobs')} className={itemClass(view === 'partner')}>

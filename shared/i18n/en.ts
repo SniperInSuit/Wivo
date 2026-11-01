@@ -2974,6 +2974,19 @@ export const en = {
   'files.typeXray': "X-ray",
   'files.typePhoto': "Photo",
   'files.typeScan': "Scan",
+
+  // ── unsorted ──────────────────────────────────────────────────────────────
+  'unsorted.attach': "Attach",
+  'unsorted.findJob': "Find the job: code or patient",
+  'unsorted.change': "change",
+  'unsorted.dismiss': "Not a job file",
+  'unsorted.nothingWaiting': "Nothing waiting.",
+  'unsorted.intro': "New files in the scanner's export folder appear here. Attach each one to its job: it is cleaned, named after the job code and uploaded. The original stays in the folder.",
+  'unsorted.chooseFolder': "Choose the scanner folder",
+  'unsorted.changeFolder': "Change folder",
+  'unsorted.noFolder': "No folder chosen",
+  'unsorted.unsorted': "Unsorted",
+  'unsorted.desktopOnly': "The scanner folder works in the desktop app.",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

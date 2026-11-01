@@ -33,5 +33,14 @@ interface Window {
     onSplashState: (
       cb: (s: import('../../types/update').UpdaterSplashState) => void
     ) => () => void
+    // The scanner export folder — src/main/watchFolder.ts.
+    watchFolder?: {
+      get: () => Promise<string | null>
+      choose: () => Promise<string | null>
+      list: () => Promise<{ path: string; name: string; size: number; modifiedAt: number; key: string }[]>
+      read: (path: string) => Promise<Uint8Array>
+      handled: (key: string, jobId: string | null) => Promise<void>
+      onChanged: (cb: () => void) => () => void
+    }
   }
 }
