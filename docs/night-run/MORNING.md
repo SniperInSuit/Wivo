@@ -53,6 +53,10 @@ create policy "profiles_read" on public.profiles for select using (
   or (clinic_id is null and removed_from = public.my_clinic_id()));
 ```
 
+### Run sql/087 (revision stages)
+Revision stages move through the same gate as job stages: rules, audit,
+notifications, and a partner can hand over a revision in its stages.
+
 ### Run sql/084 before the first partnership
 Partner-side fixes from the same review (thread scoping, partner permissions,
 the 90-day read-only cap, and more — review-068-079.md). No partnership

@@ -114,6 +114,8 @@ export interface PartnerJob {
   patient_email: string | null
   open_questions: number
   shared_at: string
+  /** Sanitised: no prices, notes or staff (sql/084). */
+  revisions: { id: string; status?: string; deadline?: string; hambad?: string; reasons?: string[] }[]
 }
 
 export function usePartnerJobs(search: string) {
@@ -140,6 +142,18 @@ export async function openPartnerJob(jobId: string): Promise<PartnerJob | null> 
   const { data, error } = await supabase.rpc('open_partner_job', { p_job: jobId })
   if (error) throw error
   return ((data ?? []) as PartnerJob[])[0] ?? null
+}
+
+/** A revision's stage, through the same gate (sql/087). */
+export function useMoveRevisionStage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ jobId, revisionId, to }: { jobId: string; revisionId: string; to: string }) => {
+      const { error } = await supabase.rpc('move_revision_stage', { p_job: jobId, p_revision: revisionId, p_to: to })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['partner_jobs'] }),
+  })
 }
 
 /** The only way a partner moves a stage — and the board's "›" for everyone. */

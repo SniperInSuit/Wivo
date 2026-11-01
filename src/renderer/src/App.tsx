@@ -12,6 +12,7 @@ import { CalendarTopControls } from './components/CalendarView/CalendarTopContro
 import { PatientsView } from './components/Patients/PatientsView'
 import { UnsortedView } from './components/Unsorted/UnsortedView'
 import { LanguageSync } from './components/LanguageSync'
+import { supabase } from './lib/supabase'
 import { PartnerJobsView } from './components/Partners/PartnerJobsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
@@ -182,6 +183,15 @@ function AppContent() {
     async (jobId: string, revId: string, stage: StageKey) => {
       const job = jobs.find(j => j.id === jobId)
       if (!job) return
+      // Through the stage gate (sql/087): rules, audit and notifications, the
+      // same as a job's stage. A database without it has no such function;
+      // then the revision is written as before.
+      const { error: rpcError } = await supabase.rpc('move_revision_stage', { p_job: jobId, p_revision: revId, p_to: stage })
+      if (!rpcError) {
+        queryClient.invalidateQueries({ queryKey: ['jobs'] })
+        return
+      }
+      if (rpcError.code !== 'PGRST202' && rpcError.code !== '42883') throw rpcError
       const today = new Date().toISOString().slice(0, 10)
       const updatedRevisions = (job.revisions ?? []).map(r =>
         r.id === revId

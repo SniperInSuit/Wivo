@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ChevronRight, HelpCircle, Search, X, Handshake } from 'lucide-react'
-import { usePartnerJobs, openPartnerJob, useMoveJobStage, type PartnerJob, type PartnerRole } from '@/hooks/usePartners'
+import { usePartnerJobs, openPartnerJob, useMoveJobStage, useMoveRevisionStage, type PartnerJob, type PartnerRole } from '@/hooks/usePartners'
 import { usePipeline } from '@/context/PipelineContext'
 import { JobThread } from './JobThread'
 import { JobFiles } from '../Files/JobFiles'
@@ -105,6 +105,43 @@ function HandOver({ job }: { job: PartnerJob }) {
   )
 }
 
+/** Revisions inherit the share: the partner hands over the ones in its stages. */
+function PartnerRevisions({ job }: { job: PartnerJob }) {
+  const move = useMoveRevisionStage()
+  const { stages, stageMap } = usePipeline()
+  const [error, setError] = useState<string | null>(null)
+  const nextOf = (k: string): string | null => {
+    const i = stages.findIndex(s => s.key === k)
+    return i >= 0 && i < stages.length - 1 ? stages[i + 1].key : null
+  }
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-ink-muted">{t('partners.revisions')}</p>
+      <ul className="space-y-1 mt-1">
+        {job.revisions.map((r, i) => {
+          const stage = r.status ?? stages[0]?.key ?? ''
+          const next = nextOf(stage)
+          const mine = job.assigned_stages.includes(stage)
+          return (
+            <li key={r.id} className="flex items-center gap-2 text-sm">
+              <span className="text-ink">{t('partners.revisionN', { n: i + 1 })}</span>
+              <StageBadge stage={stage} />
+              {mine && next && (
+                <button type="button" disabled={move.isPending}
+                  onClick={() => { setError(null); move.mutate({ jobId: job.job_id, revisionId: r.id, to: next }, { onError: e => setError(describeError(e)) }) }}
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg border border-accent/40 px-2 py-0.5 text-xs font-semibold text-accent hover:bg-accent/10 disabled:opacity-50">
+                  {stageMap[next]?.label ?? next} <ChevronRight size={12} aria-hidden="true" />
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      {error && <p role="alert" className="text-xs text-rose-500">{error}</p>}
+    </div>
+  )
+}
+
 function PartnerJobRow({ job, selected, onOpen }: { job: PartnerJob; selected: boolean; onOpen: () => void }) {
   return (
     <tr onClick={onOpen} className={`cursor-pointer border-t border-ink-faint/15 hover:bg-bg-sidebar ${selected ? 'bg-bg-sidebar' : ''}`}>
@@ -186,6 +223,8 @@ function PartnerJobPanel({ job, onClose }: { job: PartnerJob; onClose: () => voi
           </ul>
         </div>
       )}
+
+      {job.revisions.length > 0 && <PartnerRevisions job={job} />}
 
       <p className="text-xs text-ink-muted">{t('partners.changesGoThroughQuestions')}</p>
 
