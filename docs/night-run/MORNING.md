@@ -57,6 +57,17 @@ create policy "profiles_read" on public.profiles for select using (
 Revision stages move through the same gate as job stages: rules, audit,
 notifications, and a partner can hand over a revision in its stages.
 
+### Short-lived download links: run sql/088, deploy `file-link`
+`supabase functions deploy file-link`. Downloads then get a 60-second link
+signed on the server after the audited check, instead of a link whose
+lifetime the app chooses. Once every computer runs the new build, make it the
+only way to a file:
+```sql
+drop policy if exists "job_files_select" on storage.objects;
+```
+(Previews still use the grant path; keep the policy until previews move too,
+or accept that thumbnails stop showing.)
+
 ### Run sql/084 before the first partnership
 Partner-side fixes from the same review (thread scoping, partner permissions,
 the 90-day read-only cap, and more — review-068-079.md). No partnership

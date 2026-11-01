@@ -10,8 +10,8 @@ import { format } from 'date-fns'
 import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2 } from 'lucide-react'
 import { useJobThread, usePostJobComment, useResolveQuestion } from '@/hooks/usePartners'
 import { describeError } from '../Patients/errors'
-import { supabase } from '../../lib/supabase'
 import { enqueueUpload } from '../../lib/uploadQueue'
+import { fileDownloadUrl } from '../../lib/fileLink'
 import { guessFileType } from '../../lib/fileClean'
 import { t, dateLocale } from '@/lib/i18n'
 
@@ -34,10 +34,11 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
   }
 
   async function open(fileId: string, name: string) {
-    const { data: path, error: err } = await supabase.rpc('request_file_download', { p_file: fileId })
-    if (err) { setError(describeError(err)); return }
-    const { data } = await supabase.storage.from('job-files').createSignedUrl(path as string, 60, { download: name })
-    if (data?.signedUrl) window.open(data.signedUrl)
+    try {
+      window.open(await fileDownloadUrl(fileId, name))
+    } catch (e) {
+      setError(describeError(e))
+    }
   }
 
   async function send() {

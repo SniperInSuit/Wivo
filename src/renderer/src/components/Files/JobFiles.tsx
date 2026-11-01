@@ -14,6 +14,7 @@ import { Download, Upload, Trash2, RotateCw, X, History, Paperclip } from 'lucid
 import { supabase } from '../../lib/supabase'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { enqueueUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
+import { fileDownloadUrl } from '../../lib/fileLink'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
 
@@ -94,12 +95,8 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
   async function download(f: JobFileRow) {
     setActionError(null)
     try {
-      const { data: path, error: err } = await supabase.rpc('request_file_download', { p_file: f.id })
-      if (err) throw err
-      const { data, error: linkErr } = await supabase.storage.from('job-files').createSignedUrl(path as string, 60, { download: f.file_name })
-      if (linkErr) throw linkErr
       const a = document.createElement('a')
-      a.href = data.signedUrl
+      a.href = await fileDownloadUrl(f.id, f.file_name)
       a.download = f.file_name
       a.click()
     } catch (e) {
