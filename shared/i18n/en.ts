@@ -2270,6 +2270,7 @@ export const en = {
   'updateBanner.dismiss': "Dismiss",
 
   // ── workers ───────────────────────────────────────────────────────────────
+  'workers.inviteNotApplied': "The account was created but did not join the clinic. Try again; if it repeats, report a bug.",
   'workers.debugConsole': "Debug console",
   'workers.entryEntries': ({ logs }: Params) => `${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`,
   'workers.clear': "Clear",

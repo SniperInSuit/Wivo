@@ -301,21 +301,39 @@ export function WorkersPage() {
       const username = usesEmail ? null : identifier.toLowerCase().replace(/\s+/g, '')
       const email = usesEmail ? identifier : usernameToEmail(identifier)
 
+      // A one-time invite token (sql/086): the signup trigger puts the new
+      // account straight into this clinic, so nothing has to find and link a
+      // clinic-less profile afterwards. A database without 086 has no such
+      // function; then the old link-after-signup below still applies.
+      const { data: inviteToken, error: inviteErr } = await supabase.rpc('create_worker_invite')
+      const tokenFlow = !inviteErr && typeof inviteToken === 'string'
+
       // Created on an isolated client so the owner stays logged in as themselves
       // — see createSignupClient().
       const { data: signUpData, error } = await createSignupClient().auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: inviteName.trim() || identifier.split('@')[0] }
+          data: {
+            full_name: inviteName.trim() || identifier.split('@')[0],
+            ...(tokenFlow ? { invite_token: inviteToken, ...(username ? { username } : {}) } : {}),
+          }
         }
       })
       if (error) throw error
 
-      // Link the new profile to this clinic (trigger creates profile with 'worker' role)
-      // Retry a few times since the trigger may not have fired yet
       const newUserId = signUpData.user?.id
-      if (newUserId && clinicId) {
+      if (tokenFlow && newUserId) {
+        // Already in the clinic. The one thing to confirm: a username someone
+        // else holds is left empty by the trigger rather than failing signup.
+        const { data: created } = await supabase.from('profiles').select('clinic_id, username').eq('id', newUserId).maybeSingle()
+        if (!created?.clinic_id) throw new Error(t('workers.inviteNotApplied'))
+        if (username && created.username !== username) throw new Error(t('workers.thisUsernameIsAlreadyTakenThe'))
+      }
+
+      // Older databases: link the new profile to this clinic (trigger creates
+      // profile with 'worker' role). Retry a few times since the trigger may not have fired yet
+      if (!tokenFlow && newUserId && clinicId) {
         for (let attempt = 0; attempt < 5; attempt++) {
           await new Promise(r => setTimeout(r, 500))
           const { error: linkErr } = await supabase

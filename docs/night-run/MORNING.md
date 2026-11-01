@@ -42,6 +42,17 @@ select p.full_name, wp.permission from worker_permissions wp
 The CSV import never worked against the database (it sent no clinic); the new
 build fixes that.
 
+### Run sql/086 (Add worker with an invite token)
+The new build creates a one-time token and the new account joins your clinic
+the moment it is created — no window, nothing for another clinic to race.
+Once every computer runs the new build, close the old window for good:
+```sql
+drop policy if exists "profiles_read" on public.profiles;
+create policy "profiles_read" on public.profiles for select using (
+  id = auth.uid() or clinic_id = public.my_clinic_id()
+  or (clinic_id is null and removed_from = public.my_clinic_id()));
+```
+
 ### Run sql/084 before the first partnership
 Partner-side fixes from the same review (thread scoping, partner permissions,
 the 90-day read-only cap, and more — review-068-079.md). No partnership

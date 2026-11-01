@@ -2257,6 +2257,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'updateBanner.dismiss': "Peida",
 
   // ── workers ───────────────────────────────────────────────────────────────
+  'workers.inviteNotApplied': "Konto loodi, aga see ei liitunud kliinikuga. Proovi uuesti; kui kordub, teata veast.",
   'workers.debugConsole': "Debug Console",
   'workers.entryEntries': "{logsCount} kirjet",
   'workers.clear': "Tühjenda",
