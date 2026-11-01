@@ -15,6 +15,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 /**
+ * For the resumable upload, which talks to Storage's TUS endpoint directly
+ * (supabase-js has no TUS client). The anon key is public by design; the
+ * user's access token is what Storage authorises against.
+ */
+export const storageEndpoint = (): string => `${supabaseUrl}/storage/v1/upload/resumable`
+export const anonKey = (): string => supabaseAnonKey
+
+/**
  * A throwaway client for creating someone ELSE's account.
  *
  * `signUp` signs the new user in on whichever client made the call. On the main

@@ -2949,6 +2949,31 @@ export const en = {
   'mfa.qrAlt': "QR code for your authenticator app",
   'mfa.enrollIntro': "Wivo requires a second factor for everyone. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator or your password manager), then enter the 6-digit code it shows.",
   'mfa.twoFactorSignIn': "Two-factor sign-in",
+
+  // ── files ─────────────────────────────────────────────────────────────────
+  'files.uploadedBy': "{who}, {when}",
+  'files.deleteConfirm': "Delete {name}? It disappears from the job; the file itself is kept, as all files are.",
+  'files.delete': "Delete",
+  'files.download': "Download",
+  'files.newVersion': "New version",
+  'files.olderVersions': "Older versions",
+  'files.noFilesYet': "No files yet. Drop them here or use Add files.",
+  'files.cancel': "Cancel",
+  'files.retry': "Retry",
+  'files.preparing': "Preparing",
+  'files.waiting': "Waiting",
+  'files.failed': "Failed",
+  'files.cleaningNote': "Before upload, photos lose their GPS location and X-rays the patient's name and ID. The file is named after the job code.",
+  'files.addFiles': "Add files",
+  'files.fileType': "File type",
+  'files.files': "Files",
+  'files.typeAuto': "Type: automatic",
+  'files.typeOther': "Other",
+  'files.typeDesign': "Design",
+  'files.typePrint': "Print file",
+  'files.typeXray': "X-ray",
+  'files.typePhoto': "Photo",
+  'files.typeScan': "Scan",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

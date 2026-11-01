@@ -14,6 +14,7 @@ import { ChevronRight, HelpCircle, Search, X, Handshake } from 'lucide-react'
 import { usePartnerJobs, openPartnerJob, useMoveJobStage, type PartnerJob, type PartnerRole } from '@/hooks/usePartners'
 import { usePipeline } from '@/context/PipelineContext'
 import { JobThread } from './JobThread'
+import { JobFiles } from '../Files/JobFiles'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
 
@@ -187,6 +188,8 @@ function PartnerJobPanel({ job, onClose }: { job: PartnerJob; onClose: () => voi
       )}
 
       <p className="text-xs text-ink-muted">{t('partners.changesGoThroughQuestions')}</p>
+
+      <JobFiles jobId={job.job_id} partner />
 
       <JobThread jobId={job.job_id} />
     </aside>

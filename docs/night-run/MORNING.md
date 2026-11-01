@@ -65,3 +65,10 @@ off, the app lets people in without a second factor (and partnership steps
 refuse, because the database requires aal2 for them).
 Test: sign in → QR screen → scan with Google/Microsoft Authenticator → code →
 app opens. Sign out, sign in → only the code is asked.
+
+### Apply sql/072 (job files) and check Storage
+Creates the private `job-files` bucket (500 MB per file) and its policies. After
+applying: open a job → Files → add a photo → it uploads with a progress bar →
+Download opens it. In Storage the object sits at `<clinic id>/<job id>/<file id>`.
+Known gap: HEIC photos (iPhone default) are uploaded as they are — their GPS is
+not removed yet. JPEGs are cleaned; ask staff to send JPEG until HEIC is done.

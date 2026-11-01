@@ -47,11 +47,13 @@ Creating a partnership
       and RPCs in sql/070 — 80db025; Seaded → Partnerships screen — 4aee9f9
 
 Files
-- [ ] `job_file`, private bucket, TUS background upload, SHA-256, versions,
-      soft delete
+- [x] `job_file`, private bucket, TUS background upload, SHA-256, versions,
+      soft delete (sql/072; downloads only via an audited 2-minute grant; own
+      TUS client with resume; Files section in both job panels) — COMMIT_FILES
 - [ ] Previews: STL → PNG, photo thumbnails
-- [ ] Client-side cleaning: DICOM header scrub, EXIF GPS removal, file name →
-      job code
+- [x] Client-side cleaning: DICOM header scrub, EXIF GPS removal, file name →
+      job code (lib/fileClean.ts, tested on synthetic JPEG/DICOM; HEIC photos
+      are not cleaned yet, see MORNING) — COMMIT_FILES
 - [ ] Folder watcher in Electron: scanner export folder → "Unsorted" → job
 - [ ] Patient export: PDF + ZIP of their files, download logged
 

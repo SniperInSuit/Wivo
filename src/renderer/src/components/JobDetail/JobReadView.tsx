@@ -20,6 +20,7 @@ import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
 import { JobThread } from '../Partners/JobThread'
+import { JobFiles } from '../Files/JobFiles'
 import { t } from '@/lib/i18n'
 
 interface JobReadViewProps {
@@ -358,6 +359,10 @@ export function JobReadView({
 
           {/* Comments and questions — the same thread a partner sees when the
               job is shared. Notes above stay this clinic's own. */}
+          <div className="card p-4">
+            <JobFiles jobId={job.id} />
+          </div>
+
           <div className="card p-4">
             <JobThread jobId={job.id} />
           </div>

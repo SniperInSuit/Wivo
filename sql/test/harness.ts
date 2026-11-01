@@ -223,6 +223,10 @@ async function allowedValue(db: PGlite, table: string, column: string): Promise<
       where c.contype = 'c' and n.nspname = 'public' and t.relname = $1`, [table])
   for (const { def } of rows) {
     if (!new RegExp(`\\b${column}\\b`).test(def)) continue
+    // A fixed-length hex pattern (`~ '^[0-9a-f]{64}$'`, a SHA-256): that many hex digits.
+    const hex = def.match(/\[0-9a-f\]\{(\d+)\}/)
+    if (hex) return 'a'.repeat(Number(hex[1]))
+    if (def.includes(' ~ ')) continue  // another pattern: not a list of values
     const m = def.match(/'([^']*)'::/)
     if (m) return m[1]
     // Ranges render as `(col >= 11) AND (col <= 18)`: the lower bound is allowed.
