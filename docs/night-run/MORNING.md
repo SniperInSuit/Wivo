@@ -49,3 +49,10 @@ should be only these Auth settings, which this list fixes.
 Note: sql/052 and sql/056 schedule a cron call to the PRODUCTION function URL.
 After restoring, run `select cron.unschedule('wivo-send-invoices');` on the test
 project so it does not call production every hour.
+
+### Apply sql/070 (organisations, partnerships, job codes, audit log)
+After 069. Your clinic gets a job-code prefix from its name (check
+`select name, code_prefix from clinics;` and change it now if you want another,
+before codes are printed anywhere) and every existing job gets a code in
+creation order. Approving a partnership as Wivo, until the admin console exists:
+`select platform_approve_partnership('<partnership id>');` in the SQL editor.

@@ -20,14 +20,15 @@ Status: `[x]` done · `[~]` partly done (see note) · `[ ]` not started ·
       verified absent; the other four are dashboard settings → MORNING.md)
 - [x] i18n foundation: English is the source language, existing Estonian moved
       into the `et` locale, no hard-coded UI text left in code (2,713 keys; guard
-      test; per-user language waits for Phase 1 organisations) — COMMIT_I18N
+      test; per-user language waits for Phase 1 organisations) — 256493d
 - [→] Restore test with current data (needs the production backup → MORNING.md)
 
 ## Phase 1: partnership, files, notifications
 
 Organisations and sharing
-- [ ] `organization`, `org_member`, `partnership`, `job_share`; existing data
-      becomes the Tallinn organisation
+- [x] `organization`, `org_member`, `partnership`, `job_share`; existing data
+      becomes the Tallinn organisation (sql/070; `clinics` is the organisation,
+      DECISIONS D9; plus job codes D10, audit_log, stage_transition) — COMMIT_ORG
 - [ ] New-job form: assigning a stage to a partner creates a `job_share`; case
       type (lab work / referral); consent mark for referrals
 - [ ] `partner_job_view`, search, menu restriction on shared jobs
@@ -35,8 +36,9 @@ Organisations and sharing
 - [ ] "Question" as a flag on the card, not a column
 
 Creating a partnership
-- [ ] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
-      limit, both admins confirm, suspend/end, every step audited)
+- [~] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
+      limit, both admins confirm, suspend/end, every step audited): database
+      and RPCs done and tested in sql/070 — COMMIT_ORG; Settings screen pending
 
 Files
 - [ ] `job_file`, private bucket, TUS background upload, SHA-256, versions,

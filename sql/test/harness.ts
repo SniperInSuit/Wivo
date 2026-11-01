@@ -95,8 +95,11 @@ export async function freshDb(): Promise<PGlite> {
 
 // ── Acting as someone ───────────────────────────────────────────────────────
 
-/** Who a query runs as. A user id means a signed-in `authenticated` user. */
-export type Actor = { id: string } | 'anon'
+/**
+ * Who a query runs as. A user id means a signed-in `authenticated` user;
+ * `mfa: true` means they signed in with a second factor (`aal2`).
+ */
+export type Actor = { id: string; mfa?: boolean } | 'anon'
 
 /**
  * Runs `fn` as that actor, exactly as PostgREST would: the database role
@@ -107,7 +110,9 @@ export type Actor = { id: string } | 'anon'
  */
 export async function as<T>(db: PGlite, actor: Actor, fn: () => Promise<T>): Promise<T> {
   const role = actor === 'anon' ? 'anon' : 'authenticated'
-  const claims = actor === 'anon' ? { role: 'anon' } : { sub: actor.id, role: 'authenticated' }
+  const claims = actor === 'anon'
+    ? { role: 'anon' }
+    : { sub: actor.id, role: 'authenticated', aal: actor.mfa ? 'aal2' : 'aal1' }
   await db.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)])
   await db.exec(`set role ${role}`)
   try {
@@ -170,8 +175,13 @@ export async function createTenant(db: PGlite, name: string): Promise<Tenant> {
   const clinicId = rows[0].id
   const ownerId = await createUser(db, `${name} owner`)
   const workerId = await createUser(db, `${name} worker`)
-  await db.query(`update public.profiles set clinic_id = $1, role = 'owner'  where id = $2`, [clinicId, ownerId])
-  await db.query(`update public.profiles set clinic_id = $1, role = 'worker' where id = $2`, [clinicId, workerId])
+  // `org_role` exists from sql/070 on; the harness also builds databases
+  // that stop earlier, so it is set only where the column is there.
+  const { rows: hasOrgRole } = await db.query(
+    `select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'org_role'`)
+  const orgRole = (r: string): string => (hasOrgRole.length ? `, org_role = '${r}'` : '')
+  await db.query(`update public.profiles set clinic_id = $1, role = 'owner'${orgRole('owner')} where id = $2`, [clinicId, ownerId])
+  await db.query(`update public.profiles set clinic_id = $1, role = 'worker'${orgRole('technician')} where id = $2`, [clinicId, workerId])
   return { clinicId, ownerId, workerId }
 }
 
@@ -250,14 +260,18 @@ export async function makeRow(
   const cols = await columnsOf(db, table)
   const fks = await fksOf(db, table)
   const values: Record<string, unknown> = {}
+  // The FIRST organisation column is the tenant's; a second one (org_b,
+  // partner_org) is some other organisation, as it would be in real life.
+  let orgCols = 0
+  const orgFor = async (): Promise<string> => (orgCols++ === 0 ? tenant.clinicId : otherClinic(db))
   for (const c of cols) {
     const fk = fks.find(f => f.column === c.name)
     const tenantCol = c.name === 'clinic_id' || c.name === 'org_id'
     if (!tenantCol && (c.nullable || c.hasDefault)) continue
-    if (tenantCol) { values[c.name] = tenant.clinicId; continue }
+    if (tenantCol) { values[c.name] = await orgFor(); continue }
     if (fk) {
       if (fk.refSchema === 'auth' || fk.refTable === 'profiles') values[c.name] = tenant.ownerId
-      else if (fk.refTable === 'clinics') values[c.name] = tenant.clinicId
+      else if (fk.refTable === 'clinics') values[c.name] = await orgFor()
       else values[c.name] = (await makeRow(db, fk.refTable, tenant, depth + 1))[fk.refColumn]
       continue
     }
@@ -269,6 +283,16 @@ export async function makeRow(
     : `insert into public.${table} default values returning *`
   const { rows } = await db.query<Record<string, unknown>>(sql, Object.values(values))
   return rows[0]
+}
+
+/**
+ * An organisation nobody in the test belongs to. A new one each time: some
+ * tables allow one row per pair of organisations (a partnership), and a row
+ * made for a foreign key must not collide with the next row asked for.
+ */
+async function otherClinic(db: PGlite): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(`insert into public.clinics (name) values ('Elsewhere') returning id`)
+  return rows[0].id
 }
 
 /** Primary-key columns of a table, for addressing one row. */

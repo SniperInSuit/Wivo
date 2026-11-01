@@ -84,3 +84,39 @@ spec's "language and country rules are separate". E-mail templates, CSV export
 headers and invoice line descriptions still hold Estonian literals: they are not
 interface text, they are content with its own language, and moving them is a
 separate job (noted in MORNING.md).
+
+## D9. `organization` = the existing `clinics` table; `org_member` = `profiles`
+
+The spec asks for `organization` and `org_member`, "exact names and types to
+fit the existing schema", and existing data under the Tallinn organisation.
+`clinics` already IS the tenant: every row in every table hangs off
+`clinic_id`, every policy goes through `my_clinic_id()`, and `profiles.clinic_id`
+already means "one user belongs to one organisation". A second tenant table
+would mean migrating every row and rewriting every policy, the riskiest change
+possible, for a name.
+
+So: `clinics` gets `country`, `default_language`, `home_instance`
+(globally unique UUIDs were already the ids) and `code_prefix`; `profiles` gets
+`org_role` (owner, admin, doctor, technician, assistant) and `language`. Views
+named `organization` and `org_member` expose them under the spec's names, with
+the caller's rights. New tables use the column name `org_id` (spec), which
+references `clinics(id)`. The existing Tallinn clinic row is the Tallinn
+organisation; no data moves.
+
+## D10. Job codes
+
+The spec relies on a "job code" (partner search, file names, e-mails with
+"only the code and a link") that did not exist. Added `jobs.job_code`:
+`<org prefix>-<yy>-<number>` (e.g. `TAL-26-0042`), numbered per organisation per
+year, set on insert and backfilled for existing jobs in creation order. The
+prefix is unique per organisation, so a code is unique across partners.
+
+## D11. Partnership approval and MFA
+
+Every partnership step requires an org admin (owner or `org_role` admin) signed
+in WITH MFA (`aal2` in the JWT), on both sides — the spec says it for the
+inviter; requiring it of both is the conservative reading. Until users have MFA
+(Phase 1 item), invites cannot be created: the UI says so.
+"Initially a Wivo admin also confirms" is `platform_approve_partnership(id)`,
+executable only by the service role / SQL editor (there is no admin console yet,
+Phase 3). Steps in MORNING.md.
