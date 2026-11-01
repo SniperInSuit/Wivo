@@ -33,7 +33,7 @@ export function ToothBadges({ hambad, max = 4, implantaadid }: ToothBadgesProps)
         return (
           <span
             key={tooth}
-            title={isImplant ? t(`Hammas ${tooth} — implantaadil`, `Tooth ${tooth} — on an implant`) : undefined}
+            title={isImplant ? t('ui.toothOnAnImplant', { tooth }) : undefined}
             className={`relative inline-block text-xs font-mono font-medium rounded px-1.5 py-0.5 leading-none ${
               isImplant
                 ? 'bg-slate-800 text-white'

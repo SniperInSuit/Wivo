@@ -93,7 +93,7 @@ export function ToothPicker({ allow3d = true, ...props }: ToothPickerWrapperProp
           <Suspense
             fallback={
               <div className="grid h-[340px] place-items-center rounded-xl bg-ink/5 text-sm text-ink-muted">
-                {t('Laen 3D vaadet…', 'Loading 3D view…')}
+                {t('teeth.loading3DView')}
               </div>
             }
           >

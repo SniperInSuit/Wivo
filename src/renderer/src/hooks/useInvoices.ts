@@ -79,7 +79,7 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (input: CreateInvoiceInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub — arvet ei saa luua.', 'No clinic — the invoice cannot be created.'))
+      if (!clinicId) throw new Error(t('useInvoices.noClinicTheInvoiceCannotBe'))
 
       // The number comes from the database, not from counting rows here: two
       // workstations issuing at the same moment would both pick the same one.
@@ -247,7 +247,7 @@ export function useMarkJobsPaid() {
       reference: string | null
     }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub — makset ei saa salvestada.', 'No clinic — the payment cannot be saved.'))
+      if (!clinicId) throw new Error(t('useInvoices.noClinicThePaymentCannotBe'))
       const { data: userData } = await supabase.auth.getUser()
 
       const payable = input.jobs.filter(j => j.amount > 0)
@@ -298,7 +298,7 @@ export function useAddPayment() {
   return useMutation({
     mutationFn: async (input: PaymentInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub — makset ei saa salvestada.', 'No clinic — the payment cannot be saved.'))
+      if (!clinicId) throw new Error(t('useInvoices.noClinicThePaymentCannotBe'))
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('payments')

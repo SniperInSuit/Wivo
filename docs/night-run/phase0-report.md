@@ -98,3 +98,27 @@ may touch. Exact steps are in MORNING.md. Today the restore is database-only:
 the app stores no files in Supabase Storage yet (no `storage.from(...)` anywhere,
 no buckets in `sql/`). Files join the restore test when Phase 1's `job_file`
 goes live.
+
+## 5. i18n foundation
+
+**Result: done.** English is the source language (`shared/i18n/en.ts`, 2,713
+keys); Estonian is a complete translation (`et.ts`); Russian is wired and
+empty, falling back to English (`ru.ts`). Every interface string goes through
+`t('ns.key', params)`.
+
+Inventory first, as the run instructions asked: v1.109.0 had added an English
+option as inline pairs, `t('Estonian', 'English')`, in 3,134 places. Those were
+converted by codemod (DECISIONS.md D4–D5). Weekday arrays that the inline
+version had written as `lang === 'en' ? [...] : [...]` are catalog keys now.
+
+Acceptance, "no interface text written in code", is a test:
+`shared/i18n/noHardcodedText.test.ts` fails on JSX text or a readable
+attribute that is not from `t()`, on any inline pair left behind, and on a
+translation whose placeholders differ from the English.
+
+Known limits:
+- Language is still chosen per computer (`wivo_lang`), defaulting to Estonian.
+  "Per user, with an organisation default" needs `organization` (Phase 1).
+- E-mail templates, CSV headers and generated invoice-line text hold Estonian
+  literals by design (D8).
+- Generated key names are stable but not pretty (D5).

@@ -74,7 +74,7 @@ export function useCreatePaymentPlan() {
   return useMutation({
     mutationFn: async ({ plan, invoice, lines }: CreatePlanInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub — maksegraafikut ei saa luua.', 'No clinic — the payment plan cannot be created.'))
+      if (!clinicId) throw new Error(t('usePaymentPlans.noClinicThePaymentPlanCannot'))
 
       // Refuse a broken schedule rather than write a plausible wrong one — the
       // same rule publishProblems() and quoteJob's `unpriced` follow.
@@ -82,7 +82,7 @@ export function useCreatePaymentPlan() {
       if (problems.length > 0) throw new Error(problems.join(' '))
       const schedule = instalmentSchedule(planShape(plan))
       if (schedule.length !== plan.osamakseid) {
-        throw new Error(t('Maksegraafikut ei õnnestu koostada.', 'The payment plan could not be put together.'))
+        throw new Error(t('usePaymentPlans.thePaymentPlanCouldNotBe'))
       }
 
       const { data: userData } = await supabase.auth.getUser()

@@ -50,63 +50,63 @@ export interface GaugeMetric {
  */
 export const GAUGE_METRICS: GaugeMetric[] = [
   {
-    key: 'kasum', label: t('Kasum', 'Profit'), unit: 'eur', higherIsBetter: true, defaultMax: 10000,
-    hint: t('Tööde hinnad miinus kõik kulud', 'Job prices minus all costs'),
+    key: 'kasum', label: t('dashboard.profit'), unit: 'eur', higherIsBetter: true, defaultMax: 10000,
+    hint: t('dashboard.jobPricesMinusAllCosts'),
     read: ctx => ctx.profit.profit, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'kate_pct', label: t('Kasumimarginaal', 'Profit margin'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
-    hint: t('Kasum protsendina tulust', 'Profit as a percentage of income'),
+    key: 'kate_pct', label: t('dashboard.profitMargin'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
+    hint: t('dashboard.profitAsAPercentageOfIncome'),
     read: ctx => ctx.profit.profitPct, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'kaive', label: t('Käive', 'Revenue'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: t('Tööde hinnad koos muudatuste tasudega', 'Job prices plus revision charges'),
+    key: 'kaive', label: t('dashboard.revenue'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('dashboard.jobPricesPlusRevisionCharges'),
     read: ctx => ctx.m.money, perm: 'payments.read',
   },
   {
-    key: 'arveldatud', label: t('Arveldatud', 'Invoiced'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: t('Arvetele pandud, käibemaksuta', 'Put on invoices, excl. VAT'),
+    key: 'arveldatud', label: t('dashboard.invoiced'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('dashboard.putOnInvoicesExclVAT'),
     read: ctx => ctx.fin.billed, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'laekunud', label: t('Laekunud', 'Received'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: t('Arvetelt päriselt kontole jõudnud', 'Money from invoices that actually reached the account'),
+    key: 'laekunud', label: t('dashboard.received'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('dashboard.moneyFromInvoicesThatActuallyReached'),
     read: ctx => ctx.fin.received, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'volg', label: t('Võlgu kokku', 'Total owed'), unit: 'eur', higherIsBetter: false, defaultMax: 5000,
-    hint: t('Tasumata arved, kogu aeg — mitte ainult valitud periood', 'Unpaid invoices, all time — not just the selected period'),
+    key: 'volg', label: t('dashboard.totalOwed'), unit: 'eur', higherIsBetter: false, defaultMax: 5000,
+    hint: t('dashboard.unpaidInvoicesAllTimeNotJust'),
     read: ctx => ctx.debt.outstanding, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'tahtajas', label: t('Tähtajas valmis', 'Done on time'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
-    hint: t('Osa töödest, mis jõudsid valmis tähtajaks', 'Share of jobs finished by their due date'),
+    key: 'tahtajas', label: t('dashboard.doneOnTime2'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
+    hint: t('dashboard.shareOfJobsFinishedByTheir2'),
     read: ctx => ctx.onTime.ratePct, needs: ['flow'],
   },
   {
-    key: 'labiaeg', label: t('Läbiaeg (mediaan)', 'Turnaround (median)'), unit: 'days', higherIsBetter: false, defaultMax: 14,
-    hint: t('Mediaan päevades saabumisest valmimiseni', 'Median days from arrival to completion'),
+    key: 'labiaeg', label: t('dashboard.turnaroundMedian'), unit: 'days', higherIsBetter: false, defaultMax: 14,
+    hint: t('dashboard.medianDaysFromArrivalToCompletion'),
     read: ctx => ctx.turnaround.median, needs: ['flow'],
   },
   {
-    key: 'tood', label: t('Valmis tööd', 'Finished jobs'), unit: 'count', higherIsBetter: true, defaultMax: 100,
-    hint: t('Tööde arv valitud perioodil', 'Number of jobs in the selected period'),
+    key: 'tood', label: t('dashboard.finishedJobs'), unit: 'count', higherIsBetter: true, defaultMax: 100,
+    hint: t('dashboard.numberOfJobsInTheSelected'),
     read: ctx => ctx.m.yksused,
   },
   {
-    key: 'hambad', label: t('Hambad', 'Teeth'), unit: 'count', higherIsBetter: true, defaultMax: 500,
-    hint: t('Toodetud hambaid valitud perioodil', 'Teeth produced in the selected period'),
+    key: 'hambad', label: t('dashboard.teeth2'), unit: 'count', higherIsBetter: true, defaultMax: 500,
+    hint: t('dashboard.teethProducedInTheSelectedPeriod'),
     read: ctx => ctx.m.hambad,
   },
   {
-    key: 'kasum_too', label: t('Kasum töö kohta', 'Profit per job'), unit: 'eur', higherIsBetter: true, defaultMax: 200,
-    hint: t('Kasum jagatud tööde arvuga', 'Profit divided by the number of jobs'),
+    key: 'kasum_too', label: t('dashboard.profitPerJob'), unit: 'eur', higherIsBetter: true, defaultMax: 200,
+    hint: t('dashboard.profitDividedByTheNumberOf'),
     read: ctx => ctx.unit.profitPerJob, perm: 'payments.read', needs: ['finance', 'unit'],
   },
   {
-    key: 'kate_hammas', label: t('Kate hamba kohta', 'Margin per tooth'), unit: 'eur', higherIsBetter: true, defaultMax: 100,
-    hint: t('Tulu miinus kulu, hamba kohta', 'Income minus cost, per tooth'),
+    key: 'kate_hammas', label: t('dashboard.marginPerTooth'), unit: 'eur', higherIsBetter: true, defaultMax: 100,
+    hint: t('dashboard.incomeMinusCostPerTooth'),
     read: ctx => ctx.unit.marginPerTooth, perm: 'payments.read', needs: ['finance', 'unit'],
   },
 ]
@@ -209,7 +209,7 @@ export function formatMetric(value: number, unit: MetricUnit): string {
   switch (unit) {
     case 'eur': return `${value.toFixed(2)} €`
     case 'pct': return `${value.toFixed(1)}%`
-    case 'days': return t(`${value} p`, `${value} d`)
+    case 'days': return t('dashboard.d3', { value })
     case 'count': return String(value)
   }
 }

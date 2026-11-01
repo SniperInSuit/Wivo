@@ -91,7 +91,7 @@ export function funFacts(jobs: Job[], doneStageKey: string): FunFacts {
     teeth += jobTeeth
 
     if (!biggest || jobTeeth > biggest.value) {
-      biggest = { label: j.patsient || j.too || t('Töö', 'Job'), value: jobTeeth, detail: j.too ?? undefined }
+      biggest = { label: j.patsient || j.too || t('funFacts.job'), value: jobTeeth, detail: j.too ?? undefined }
     }
 
     if (j.kiirtoo) rush++

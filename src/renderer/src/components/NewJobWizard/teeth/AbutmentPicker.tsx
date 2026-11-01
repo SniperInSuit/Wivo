@@ -47,12 +47,9 @@ export function AbutmentPicker({
   return (
     <div className="space-y-3 border-t border-ink-faint/30 pt-3">
       <div>
-        <h3 className="text-sm font-semibold text-ink-soft">{t('Kruvi / abutment', 'Screw / abutment')}</h3>
+        <h3 className="text-sm font-semibold text-ink-soft">{t('wizard.screwAbutment2')}</h3>
         <p className={WIZARD_HELP}>
-          {t(
-            'Kood kehtib kõigile selle töö hammastele. Kui mõni hammas erineb, ava „hammaste kaupa“ ja täida ainult see.',
-            'The code applies to every tooth on this job. If a tooth differs, open “Per tooth” and fill in just that one.'
-          )}
+          {t('wizard.theCodeAppliesToEveryTooth')}
         </p>
       </div>
 
@@ -72,13 +69,13 @@ export function AbutmentPicker({
             <label className="flex items-center gap-1.5 text-sm font-medium text-ink-soft">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
               <span className="truncate">{too}</span>
-              <span className="text-ink-faint font-normal">{t(`${sorted.length} hammast`, `${sorted.length} ${sorted.length === 1 ? 'tooth' : 'teeth'}`)}</span>
+              <span className="text-ink-faint font-normal">{t('wizard.toothTeeth2', { sorted, sortedCount: sorted.length })}</span>
             </label>
             <input
               type="text"
               value={all}
               onChange={e => onChangeType(too, e.target.value)}
-              placeholder={t('Nt MIS C1 3.75×11.5mm', 'e.g. MIS C1 3.75×11.5mm')}
+              placeholder={t('wizard.eGMISC1375')}
               className={INPUT}
             />
 
@@ -88,10 +85,10 @@ export function AbutmentPicker({
               className="flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
             >
               {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {t('Hammaste kaupa', 'Per tooth')}
+              {t('wizard.perTooth')}
               {overrides > 0 && (
                 <span className="text-[11px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                  {t(`${overrides} erineb`, `${overrides} ${overrides === 1 ? 'differs' : 'differ'}`)}
+                  {t('wizard.differsDiffer', { overrides })}
                 </span>
               )}
             </button>
@@ -111,7 +108,7 @@ export function AbutmentPicker({
                         onChange={e => onChangeTooth(tooth, e.target.value)}
                         // The inherited value as the placeholder, so an empty
                         // row visibly means "same as above" rather than "none".
-                        placeholder={all || t('Kood puudub', 'No code')}
+                        placeholder={all || t('wizard.noCode')}
                         className={INPUT + ' py-1.5 text-sm'}
                       />
                     </div>

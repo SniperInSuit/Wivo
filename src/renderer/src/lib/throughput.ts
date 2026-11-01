@@ -8,7 +8,7 @@
  */
 import type { Job } from '../types/job'
 import type { Coverage } from './finance'
-import { t, lang } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import { t, weekdays } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const parse = (iso: string | null | undefined): number => {
   if (!iso) return NaN
@@ -71,14 +71,12 @@ export interface WeekdayLoad {
 }
 
 const DELIVERY_LABEL: Record<string, string> = {
-  labor: t('Laboris', 'In the lab'),
-  teel: t('Teel', 'In transit'),
-  yle_antud: t('Üle antud', 'Delivered'),
+  labor: t('throughput.inTheLab'),
+  teel: t('throughput.inTransit'),
+  yle_antud: t('throughput.delivered'),
 }
 
-const WEEKDAYS = lang === 'en'
-  ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  : ['E', 'T', 'K', 'N', 'R', 'L', 'P']
+const WEEKDAYS = weekdays('short')
 
 /** @param done Finished jobs in the period. */
 export function turnaroundStats(done: Job[]): TurnaroundStats {
@@ -87,7 +85,7 @@ export function turnaroundStats(done: Job[]): TurnaroundStats {
     if (!j.kuupaev || !j.valmis_kuupaev) continue
     const d = days(j.kuupaev, j.valmis_kuupaev)
     if (!Number.isFinite(d)) continue
-    measured.push({ d: Math.max(0, d), label: j.patsient || j.too || t('Töö', 'Job') })
+    measured.push({ d: Math.max(0, d), label: j.patsient || j.too || t('throughput.job') })
   }
   const xs = measured.map(x => x.d)
   const sorted = [...measured].sort((a, b) => a.d - b.d)

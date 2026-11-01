@@ -42,11 +42,11 @@ export function WizardSearch({
           <button
             type="button"
             onClick={() => onChange('')}
-            title={t('Tühjenda otsing', 'Clear search')}
+            title={t('wizard.clearSearch')}
             className={`absolute right-1 top-1/2 -translate-y-1/2 ${WIZARD_HIT_MIN} flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors ${FOCUS_RING}`}
           >
             <X size={18} aria-hidden="true" />
-            <span className="sr-only">{t('Tühjenda otsing', 'Clear search')}</span>
+            <span className="sr-only">{t('wizard.clearSearch')}</span>
           </button>
         )}
       </div>

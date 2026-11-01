@@ -16,13 +16,13 @@ export function LastModifiedPanel({ patient, patientJobs }: LastModifiedPanelPro
   const d = ts ? parseISO(ts) : null
 
   return (
-    <PanelCard title={t('VIIMATI MUUDETUD', 'LAST MODIFIED')} icon={Clock}>
+    <PanelCard title={t('patients.lASTMODIFIED')} icon={Clock}>
       {!ts || !d || !isValid(d) ? (
-        <p className="text-sm text-ink-muted">{t('Andmed puuduvad', 'No data')}</p>
+        <p className="text-sm text-ink-muted">{t('patients.noData')}</p>
       ) : (
         <>
           <p className="text-xl font-bold text-ink">{format(d, 'dd.MM.yyyy HH:mm')}</p>
-          <p className="text-[11px] text-ink-muted">{t('Allikas:', 'Source:')} {describeSource(patient, patientJobs, ts)}</p>
+          <p className="text-[11px] text-ink-muted">{t('patients.source')} {describeSource(patient, patientJobs, ts)}</p>
         </>
       )}
 
@@ -30,7 +30,7 @@ export function LastModifiedPanel({ patient, patientJobs }: LastModifiedPanelPro
           time, so for imported rows this is when the row arrived, not when the
           work happened. Say so, or the number is quietly misleading. */}
       <p className="text-[10px] text-ink-faint">
-        {t('Imporditud tööde puhul on see impordi hetk, mitte tegelik töö kuupäev.', 'For imported jobs this is when the import ran, not the actual job date.')}
+        {t('patients.forImportedJobsThisIsWhen')}
       </p>
     </PanelCard>
   )
@@ -39,9 +39,9 @@ export function LastModifiedPanel({ patient, patientJobs }: LastModifiedPanelPro
 // Which record produced the maximum. Checked most-specific first: adding a note
 // also bumps patients.updated_at, and the note itself is the useful answer.
 function describeSource(patient: Patient, patientJobs: Job[], ts: string): string {
-  if ((patient.markused ?? []).some(n => n.ts === ts)) return t('märkus', 'note')
-  if (patientJobs.some(j => (j.revisions ?? []).some(r => r.ts === ts))) return t('muudatus', 'revision')
-  if (patientJobs.some(j => j.updated_at === ts)) return t('töö', 'job')
-  if (patient.updated_at === ts) return t('patsient', 'patient')
-  return t('teadmata', 'unknown')
+  if ((patient.markused ?? []).some(n => n.ts === ts)) return t('patients.note')
+  if (patientJobs.some(j => (j.revisions ?? []).some(r => r.ts === ts))) return t('patients.revision2')
+  if (patientJobs.some(j => j.updated_at === ts)) return t('patients.job2')
+  if (patient.updated_at === ts) return t('patients.patient')
+  return t('patients.unknown')
 }

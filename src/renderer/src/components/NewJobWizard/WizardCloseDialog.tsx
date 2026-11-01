@@ -56,13 +56,10 @@ export function WizardCloseDialog({
           </span>
           <div className="min-w-0">
             <h2 id="wizard-close-title" className="text-lg font-semibold text-ink">
-              {t('Sul on salvestamata andmed', 'You have unsaved changes')}
+              {t('wizard.youHaveUnsavedChanges')}
             </h2>
             <p id="wizard-close-desc" className="mt-1 text-base text-ink-muted">
-              {t(
-                'Kui sulged akna praegu, lähevad täidetud väljad kaotsi. Saad need mustandina alles hoida ja hiljem jätkata.',
-                'If you close the window now, the fields you have filled in will be lost. You can keep them as a draft and continue later.'
-              )}
+              {t('wizard.ifYouCloseTheWindowNow')}
             </p>
           </div>
         </div>
@@ -74,21 +71,21 @@ export function WizardCloseDialog({
             onClick={onContinueEditing}
             className={`${WIZARD_BTN} w-full bg-accent hover:bg-accent-hover text-white transition-colors`}
           >
-            {t('Jätka täitmist', 'Keep editing')}
+            {t('wizard.keepEditing')}
           </button>
           <button
             type="button"
             onClick={onSaveAndClose}
             className={`${WIZARD_BTN} w-full bg-bg-sidebar text-ink-soft hover:bg-ink-faint/20 transition-colors`}
           >
-            {t('Salvesta mustand ja sulge', 'Save draft and close')}
+            {t('wizard.saveDraftAndClose')}
           </button>
           <button
             type="button"
             onClick={onDiscardAndClose}
             className={`${WIZARD_BTN} w-full text-rose-500 hover:bg-rose-500/10 border border-rose-500/40 transition-colors`}
           >
-            {t('Kustuta ja sulge', 'Delete and close')}
+            {t('wizard.deleteAndClose')}
           </button>
         </div>
       </motion.div>

@@ -53,13 +53,13 @@ export function EmailSection() {
   const heartbeat = (() => {
     const at = e.viimane_kaivitus ? new Date(e.viimane_kaivitus) : null
     if (!at || Number.isNaN(at.getTime())) {
-      return { text: t('mitte kordagi', 'never'), stale: true }
+      return { text: t('settings.never'), stale: true }
     }
     const mins = Math.floor((Date.now() - at.getTime()) / 60000)
-    const text = mins < 2 ? t('just praegu', 'just now')
-      : mins < 60 ? t(`${mins} min tagasi`, `${mins} min ago`)
-      : mins < 60 * 48 ? t(`${Math.floor(mins / 60)} t tagasi`, `${Math.floor(mins / 60)} h ago`)
-      : t(`${Math.floor(mins / 1440)} päeva tagasi`, `${Math.floor(mins / 1440)} days ago`)
+    const text = mins < 2 ? t('settings.justNow')
+      : mins < 60 ? t('settings.minAgo', { mins })
+      : mins < 60 * 48 ? t('settings.hAgo', { floor: Math.floor(mins / 60) })
+      : t('settings.daysAgo', { floor: Math.floor(mins / 1440) })
     return { text, stale: mins > 180 }
   })()
 
@@ -74,26 +74,23 @@ export function EmailSection() {
   // one list because "why is nothing sending" is the question this screen will
   // be opened with.
   const blockers: string[] = []
-  if (!e.connected) blockers.push(t('ühendus on märkimata', 'the connection is not ticked'))
-  if (!e.host.trim()) blockers.push(t('server puudub', 'no server'))
-  if (!senderOk) blockers.push(t('saatja aadress puudub või on vigane', 'the sender address is missing or invalid'))
-  if (!e.saatmineLubatud) blockers.push(t('saatmine on välja lülitatud', 'sending is turned off'))
-  if (!e.lubaArved) blockers.push(t('arvete saatmine ei ole lubatud', 'sending invoices is not allowed'))
-  if (e.paevaLimiit <= 0) blockers.push(t('päevalimiit on 0', 'the daily limit is 0'))
-  if (!testOk) blockers.push(t('testaadress on vigane', 'the test address is invalid'))
+  if (!e.connected) blockers.push(t('settings.theConnectionIsNotTicked'))
+  if (!e.host.trim()) blockers.push(t('settings.noServer'))
+  if (!senderOk) blockers.push(t('settings.theSenderAddressIsMissingOr'))
+  if (!e.saatmineLubatud) blockers.push(t('settings.sendingIsTurnedOff'))
+  if (!e.lubaArved) blockers.push(t('settings.sendingInvoicesIsNotAllowed'))
+  if (e.paevaLimiit <= 0) blockers.push(t('settings.theDailyLimitIs0'))
+  if (!testOk) blockers.push(t('settings.theTestAddressIsInvalid'))
 
   return (
     <section className="space-y-6 max-w-2xl">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Mail size={14} className="text-accent" />
-          <h3 className="text-sm font-semibold text-ink">{t('E-posti ühendus', 'Email connection')}</h3>
+          <h3 className="text-sm font-semibold text-ink">{t('settings.emailConnection')}</h3>
         </div>
         <p className="text-xs text-ink-muted leading-relaxed">
-          {t(
-            'Wivo saab arveid välja saata sinu enda majutuse postkasti kaudu — Zone, Veebimajutus või muu SMTP. Nii jõuab kiri sinu domeenilt ja sinu SPF/DKIM kehtib juba.',
-            'Wivo can send invoices through your own hosting mailbox — Zone, Veebimajutus or any other SMTP. That way the email comes from your domain and your SPF/DKIM already applies.',
-          )}
+          {t('settings.wivoCanSendInvoicesThroughYour')}
         </p>
       </div>
 
@@ -105,20 +102,14 @@ export function EmailSection() {
           <ShieldCheck size={14} className="text-emerald-600 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-xs font-semibold text-emerald-900">
-              {t('Wivo saab ainult kirju SAATA', 'Wivo can only SEND email')}
+              {t('settings.wivoCanOnlySENDEmail')}
             </p>
             <p className="text-[11px] text-emerald-800 leading-relaxed">
-              {t(
-                'Postkasti lugemiseks on vaja IMAP-i seadeid, mida Wivo kuskil ei küsi ega hoia. Sinu saabuvat posti ei loeta, ei kustutata ega liigutata — ainus võimekus on kiri väljundkasti panna.',
-                'Reading a mailbox needs IMAP settings, which Wivo never asks for or stores. Your incoming mail is not read, deleted or moved — the only thing it can do is put a message in the outbox.',
-              )}
+              {t('settings.readingAMailboxNeedsIMAPSettings')}
             </p>
             <p className="text-[11px] text-emerald-800 leading-relaxed">
-              <strong>{t('Parooli siin ei ole.', 'The password is not here.')}</strong>{' '}
-              {t(
-                "See käib eraldi käsuga otse Supabase'i saladustesse ega jõua kunagi sellesse seadete ritta, mida iga kliiniku liige lugeda saab.",
-                'It goes straight into Supabase secrets with a separate command and never reaches this settings row, which every clinic member can read.',
-              )}
+              <strong>{t('settings.thePasswordIsNotHere')}</strong>{' '}
+              {t('settings.itGoesStraightIntoSupabaseSecrets')}
             </p>
           </div>
         </div>
@@ -127,10 +118,10 @@ export function EmailSection() {
       {/* ── Transport ── */}
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="SMTP server" value={e.host} onChange={v => patch({ host: v })}
+          <Field label={t('settings.smtpServer')} value={e.host} onChange={v => patch({ host: v })}
             placeholder="mail.elkdata.ee" />
           <div>
-            <label className="label">Port</label>
+            <label className="label">{t('settings.port')}</label>
             <input
               type="number" min="1" max="65535" value={e.port}
               onChange={ev => patch({ port: parseInt(ev.target.value) || 465 })}
@@ -140,9 +131,9 @@ export function EmailSection() {
                 on the field rather than in a support conversation later. */}
             {e.port !== 465 && (
               <p className="text-[11px] text-orange-600 mt-1 leading-snug">
-                {t('Supabase lubab väljuvat ühendust ainult pordile', 'Supabase allows outgoing connections only on port')}{' '}
+                {t('settings.supabaseAllowsOutgoingConnectionsOnlyOn')}{' '}
                 <strong>465</strong>.{' '}
-                {t('25 ja 587 on blokeeritud.', '25 and 587 are blocked.')}
+                {t('settings.n25And587AreBlocked')}
               </p>
             )}
           </div>
@@ -150,46 +141,37 @@ export function EmailSection() {
 
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label={t('Saatja aadress', 'Sender address')} value={e.saatjaAadress}
+            label={t('settings.senderAddress')} value={e.saatjaAadress}
             onChange={v => patch({ saatjaAadress: v })}
-            placeholder={t('info@kliinik.ee', 'info@clinic.com')}
+            placeholder={t('settings.infoClinicCom')}
             invalid={!!e.saatjaAadress && !senderOk}
           />
-          <Field label={t('Saatja nimi', 'Sender name')} value={e.saatjaNimi}
-            onChange={v => patch({ saatjaNimi: v })} placeholder={t('Kliiniku nimi', 'Clinic name')} />
+          <Field label={t('settings.senderName')} value={e.saatjaNimi}
+            onChange={v => patch({ saatjaNimi: v })} placeholder={t('settings.clinicName')} />
         </div>
 
         <Toggle
           checked={e.connected}
           onChange={v => patch({ connected: v })}
-          label={t("Saladused on Supabase'is paika pandud", 'The secrets are set in Supabase')}
-          hint={t(
-            'Märge sulle endale — Wivo ei näe saladusi ega saa seda kontrollida.',
-            'A note for yourself — Wivo cannot see the secrets or check this.',
-          )}
+          label={t('settings.theSecretsAreSetInSupabase')}
+          hint={t('settings.aNoteForYourselfWivoCannot')}
         />
       </div>
 
       {/* ── Permissions ── */}
       <div className="pt-4 border-t border-ink-faint/20 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink">{t('Mida tohib saata', 'What may be sent')}</h3>
+          <h3 className="text-sm font-semibold text-ink">{t('settings.whatMayBeSent')}</h3>
           <p className="text-xs text-ink-muted leading-relaxed">
-            {t(
-              'Iga luba on eraldi ja kõik on vaikimisi väljas. Uus kirjaliik tulevikus tähendab uut lülitit, mitte olemasoleva laienemist.',
-              'Each permission is separate and all are off by default. A new kind of email in future means a new switch, not a wider existing one.',
-            )}
+            {t('settings.eachPermissionIsSeparateAndAll')}
           </p>
         </div>
 
         <Toggle
           checked={e.saatmineLubatud}
           onChange={v => patch({ saatmineLubatud: v })}
-          label={t('Automaatne saatmine', 'Automatic sending')}
-          hint={t(
-            'Peakaitse. Väljas = midagi ei saadeta, olenemata kõigist teistest seadetest.',
-            'Master switch. Off = nothing is sent, whatever the other settings say.',
-          )}
+          label={t('settings.automaticSending')}
+          hint={t('settings.masterSwitchOffNothingIsSent')}
           strong
         />
 
@@ -197,47 +179,38 @@ export function EmailSection() {
           checked={e.lubaArved}
           onChange={v => patch({ lubaArved: v })}
           disabled={!e.saatmineLubatud}
-          label={t('Arved', 'Invoices')}
-          hint={t(
-            'Ainult arve, mille väljastuskuupäev on käes ja millel on tasumata summa.',
-            'Only an invoice whose issue date has come and that has an unpaid amount.',
-          )}
+          label={t('settings.invoices')}
+          hint={t('settings.onlyAnInvoiceWhoseIssueDate')}
         />
 
         <div>
-          <label className="label">{t('Päevalimiit', 'Daily limit')}</label>
+          <label className="label">{t('settings.dailyLimit')}</label>
           <div className="flex items-center gap-2">
             <input
               type="number" min="0" max="500" value={e.paevaLimiit}
               onChange={ev => patch({ paevaLimiit: Math.max(0, parseInt(ev.target.value) || 0) })}
               className="input py-1.5 text-sm w-24 text-right"
             />
-            <span className="text-xs text-ink-muted">{t('kirja päevas', e.paevaLimiit === 1 ? 'email per day' : 'emails per day')}</span>
+            <span className="text-xs text-ink-muted">{t('settings.emailPerDayEmailsPerDay', { e })}</span>
           </div>
           <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
-            {t(
-              'Ülempiir, mis kaitseb korduva käivituse ja jagatud majutuse saatmispiirangu eest. 0 = ei saadeta midagi.',
-              'A ceiling that guards against a repeated run and the shared hosting’s sending limit. 0 = nothing is sent.',
-            )}
+            {t('settings.aCeilingThatGuardsAgainstA')}
           </p>
         </div>
 
         <div>
           <label className="label flex items-center gap-1.5">
-            <FlaskConical size={11} /> {t('Testaadress', 'Test address')}
+            <FlaskConical size={11} /> {t('settings.testAddress')}
           </label>
           <input
             type="email" value={e.testAadress ?? ''}
             onChange={ev => patch({ testAadress: ev.target.value.trim() || null })}
-            placeholder={t('tühi = päris saajad', 'empty = real recipients')}
+            placeholder={t('settings.emptyRealRecipients')}
             className={`input ${e.testAadress && !testOk ? 'border-rose-400' : ''}`}
           />
           <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
-            {t('Kui täidetud, läheb', 'When filled in,')} <strong>{t('iga', 'every')}</strong>{' '}
-            {t(
-              'kiri siia, mitte patsiendile. Sama kood, sama kiri, sama limiit — üks aadress. Soovitan esimene nädal nii hoida.',
-              'email goes here, not to the patient. Same code, same email, same limit — one address. Worth keeping it this way for the first week.',
-            )}
+            {t('settings.whenFilledIn')} <strong>{t('settings.every')}</strong>{' '}
+            {t('settings.emailGoesHereNotToThe')}
           </p>
         </div>
       </div>
@@ -245,19 +218,16 @@ export function EmailSection() {
       {/* ── The letter ── */}
       <div className="pt-4 border-t border-ink-faint/20 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink">{t('Kirja tekst', 'Email text')}</h3>
+          <h3 className="text-sm font-semibold text-ink">{t('settings.emailText')}</h3>
           <p className="text-xs text-ink-muted leading-relaxed">
-            {t(
-              'Arve ise on kirja sees alati — päis, rekvisiidid, read, summad, makseinfo. Siin on sõnad selle',
-              'The invoice itself is always in the email — header, company details, lines, totals, payment details. These are the words',
-            )}{' '}
-            <strong>{t('ümber', 'around')}</strong>
-            {t(': tervitus enne ja allkiri järel.', ' it: a greeting before and a signature after.')}
+            {t('settings.theInvoiceItselfIsAlwaysIn')}{' '}
+            <strong>{t('settings.around')}</strong>
+            {t('settings.itAGreetingBeforeAndA')}
           </p>
         </div>
 
         <div>
-          <label className="label">{t('Pealkiri', 'Subject')}</label>
+          <label className="label">{t('settings.subject')}</label>
           <input
             type="text" value={e.pealkiri}
             onChange={ev => patch({ pealkiri: ev.target.value })}
@@ -266,7 +236,7 @@ export function EmailSection() {
         </div>
 
         <div>
-          <label className="label">{t('Sissejuhatus — arve kohal', 'Introduction — above the invoice')}</label>
+          <label className="label">{t('settings.introductionAboveTheInvoice')}</label>
           <textarea
             value={e.sissejuhatus} rows={5}
             onChange={ev => patch({ sissejuhatus: ev.target.value })}
@@ -275,7 +245,7 @@ export function EmailSection() {
         </div>
 
         <div>
-          <label className="label">{t('Lõpp — arve all', 'Closing — below the invoice')}</label>
+          <label className="label">{t('settings.closingBelowTheInvoice')}</label>
           <textarea
             value={e.lopp} rows={3}
             onChange={ev => patch({ lopp: ev.target.value })}
@@ -285,7 +255,7 @@ export function EmailSection() {
 
         <div>
           <p className="text-[11px] font-medium text-ink-muted mb-1">
-            {t('Kohatäited — klõpsa, et lisada sissejuhatusse', 'Placeholders — click to add to the introduction')}
+            {t('settings.placeholdersClickToAddToThe')}
           </p>
           <div className="flex flex-wrap gap-1">
             {TEMPLATE_TOKENS.map(tok => (
@@ -306,14 +276,14 @@ export function EmailSection() {
             cannot promise wording the patient does not get. */}
         {unknown.length > 0 && (
           <p className="text-[11px] text-orange-600">
-            {t('Tundmatu kohatäide:', 'Unknown placeholder:')} {unknown.map(token => `{${token}}`).join(', ')}{' '}
-            {t('— jõuab kirja sellisena, nagu on kirjutatud.', '— it goes into the email exactly as written.')}
+            {t('settings.unknownPlaceholder')} {unknown.map(token => `{${token}}`).join(', ')}{' '}
+            {t('settings.itGoesIntoTheEmailExactly')}
           </p>
         )}
 
         <div className="rounded-xl border border-ink-faint/20 bg-white p-3">
           <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider mb-2">
-            {t('Eelvaade', 'Preview')}
+            {t('settings.preview')}
           </p>
           <p className="text-xs font-semibold text-ink mb-2">
             {renderTemplate(e.pealkiri, PREVIEW_VARS)}
@@ -322,7 +292,7 @@ export function EmailSection() {
             {renderTemplate(e.sissejuhatus, PREVIEW_VARS)}
           </p>
           <div className="my-2 border-t border-dashed border-ink-faint/30 py-2">
-            <p className="text-[10px] text-ink-faint italic">{t('[ arve — päis, read, summad, makseinfo ]', '[ invoice — header, lines, totals, payment details ]')}</p>
+            <p className="text-[10px] text-ink-faint italic">{t('settings.invoiceHeaderLinesTotalsPaymentDetails')}</p>
           </div>
           <p className="text-[11px] text-ink-soft whitespace-pre-line leading-relaxed">
             {renderTemplate(e.lopp, PREVIEW_VARS)}
@@ -347,16 +317,13 @@ export function EmailSection() {
             }`} />
             <div className="min-w-0">
               <p className="text-xs text-ink">
-                <strong>{t('Ajastatud saatja käis viimati:', 'Scheduled sender last ran:')}</strong> {heartbeat.text}
+                <strong>{t('settings.scheduledSenderLastRan')}</strong> {heartbeat.text}
               </p>
               {heartbeat.stale && (
                 <p className="text-[11px] text-orange-800 leading-relaxed mt-0.5">
-                  {t(
-                    'Peaks käima igal tunnil. Kontrolli Supabase SQL-redaktoris, mida funktsioon päriselt vastas —',
-                    'It should run every hour. Check in the Supabase SQL editor what the function actually answered —',
-                  )}{' '}
+                  {t('settings.itShouldRunEveryHourCheck')}{' '}
                   <code>cron.job_run_details</code>{' '}
-                  {t('ütleb „succeeded" ka siis, kui vastus oli 401:', 'says “succeeded” even when the answer was 401:')}
+                  {t('settings.saysSucceededEvenWhenTheAnswer')}
                   <br />
                   <code className="text-[10px]">
                     select status_code, left(content,200), created from net._http_response order by created desc limit 5;
@@ -376,16 +343,16 @@ export function EmailSection() {
       }`}>
         {blockers.length === 0 ? (
           <p className="text-xs text-emerald-900">
-            <strong>{t('Saatmine on lubatud.', 'Sending is allowed.')}</strong>{' '}
+            <strong>{t('settings.sendingIsAllowed')}</strong>{' '}
             {e.testAadress
-              ? t(`Kirjad lähevad testaadressile ${e.testAadress}, mitte patsientidele.`, `Emails go to the test address ${e.testAadress}, not to patients.`)
-              : t('Kirjad lähevad päris saajatele.', 'Emails go to the real recipients.')}
+              ? t('settings.emailsGoToTheTestAddress', { testAadress: e.testAadress })
+              : t('settings.emailsGoToTheRealRecipients')}
           </p>
         ) : (
           <div className="flex items-start gap-2">
             <AlertTriangle size={13} className="text-orange-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-orange-900">
-              <strong>{t('Ei saadeta midagi.', 'Nothing is sent.')}</strong> {blockers.join('; ')}.
+              <strong>{t('settings.nothingIsSent')}</strong> {blockers.join('; ')}.
             </p>
           </div>
         )}

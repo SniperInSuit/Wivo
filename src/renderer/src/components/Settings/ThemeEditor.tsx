@@ -86,19 +86,16 @@ export function ThemeEditor() {
       <section>
         <div className="mb-1 flex items-center gap-2">
           <Palette size={14} className="text-accent" />
-          <h3 className="text-sm font-semibold text-ink">{t('Oma teema', 'Custom theme')}</h3>
+          <h3 className="text-sm font-semibold text-ink">{t('settings.customTheme')}</h3>
         </div>
         <p className="mb-3 text-xs text-ink-muted">
-          {t(
-            'Alusta olemasolevast teemast ja muuda seda. Nii näeb redaktor alguses välja täpselt nii, nagu rakendus praegu — ja sa muudad ainult seda, mida tahad.',
-            'Start from an existing theme and change it. That way the editor starts out looking exactly like the app does now — and you change only what you want.',
-          )}
+          {t('settings.startFromAnExistingThemeAnd')}
         </p>
         <div className="flex flex-wrap gap-2">
           {SEEDS.map(seed => (
             <button key={seed.key} type="button" onClick={() => start(seed.key)}
               className="btn-ghost border border-ink-faint/25 text-xs">
-              {t('Alusta:', 'Start from:')} {seed.label}
+              {t('settings.startFrom')} {seed.label}
             </button>
           ))}
         </div>
@@ -110,20 +107,20 @@ export function ThemeEditor() {
     <section>
       <div className="mb-1 flex items-center gap-2">
         <Palette size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">{t('Oma teema', 'Custom theme')}</h3>
+        <h3 className="text-sm font-semibold text-ink">{t('settings.customTheme')}</h3>
         {settings.teema !== 'oma' && (
           <button type="button" onClick={() => setTeema('oma')}
             className="btn-ghost border border-accent/40 text-[11px] text-accent">
-            {t('Lülita sisse', 'Turn on')}
+            {t('settings.turnOn')}
           </button>
         )}
         <button
           type="button"
           onClick={() => setOmaTeema(undefined)}
           className="ml-auto flex items-center gap-1 text-[11px] text-ink-faint transition-colors hover:text-ink"
-          title={t('Kustuta oma teema ja alusta uuesti', 'Delete the custom theme and start again')}
+          title={t('settings.deleteTheCustomThemeAndStart')}
         >
-          <RotateCcw size={11} /> {t('Algseisu', 'Reset')}
+          <RotateCcw size={11} /> {t('settings.reset')}
         </button>
       </div>
 
@@ -140,37 +137,28 @@ export function ThemeEditor() {
             : <Check size={13} className="flex-shrink-0 text-emerald-600" />}
           <p className="text-xs font-semibold text-ink">
             {failing.length > 0
-              ? t(
-                `${failing.length} ${failing.length === 1 ? 'kombinatsioon' : 'kombinatsiooni'} on raskesti loetav`,
-                `${failing.length} ${failing.length === 1 ? 'combination is' : 'combinations are'} hard to read`,
-              )
-              : t('Kõik kontrollitud kombinatsioonid on loetavad', 'All checked combinations are readable')}
+              ? t('settings.hardToReadCombinationIsCombinations', { failing })
+              : t('settings.allCheckedCombinationsAreReadable')}
           </p>
         </div>
         {failing.length > 0 && (
           <ul className="mt-1.5 space-y-0.5">
             {failing.map(r => (
               <li key={`${r.fg}-${r.bg}`} className="text-[11px] text-ink-muted">
-                <span className="text-ink">{r.label}</span> — {t('kontrast', 'contrast')}{' '}
+                <span className="text-ink">{r.label}</span> — {t('settings.contrast')}{' '}
                 <span className="font-semibold tabular-nums text-orange-600">{r.ratio.toFixed(2)} : 1</span>,{' '}
-                {t(`vaja vähemalt ${r.min} : 1`, `needs at least ${r.min} : 1`)}
+                {t('settings.needsAtLeast1', { min: r.min })}
               </li>
             ))}
           </ul>
         )}
         {unchecked > 0 && (
           <p className="mt-1.5 text-[11px] text-ink-faint">
-            {t(
-              `${unchecked} paari ei kontrollitud — üks nende värvidest järgib veel alusteemat.`,
-              `${unchecked} ${unchecked === 1 ? 'pair was' : 'pairs were'} not checked — one of the colours still follows the base theme.`,
-            )}
+            {t('settings.notCheckedOneOfTheColours', { unchecked })}
           </p>
         )}
         <p className="mt-1.5 text-[11px] text-ink-faint">
-          {t(
-            'Mõõt on WCAG kontrastisuhe. 4,5 : 1 on tavateksti alampiir — just see kontroll oleks ära hoidnud teemavea, kus lehe pealkirjad olid 1,06 : 1 ja praktiliselt nähtamatud.',
-            'The measure is the WCAG contrast ratio. 4.5 : 1 is the minimum for body text — exactly the check that would have prevented the theme bug where page headings were 1.06 : 1 and practically invisible.',
-          )}
+          {t('settings.theMeasureIsTheWCAGContrast')}
         </p>
       </div>
 
@@ -220,7 +208,7 @@ export function ThemeEditor() {
                           const v = e.target.value
                           if (hexToRgb(v)) setOmaTeemaToken(token.key, v.startsWith('#') ? v : `#${v}`)
                         }}
-                        placeholder={t('alusteema', 'base theme')}
+                        placeholder={t('settings.baseTheme')}
                         spellCheck={false}
                         className="input w-24 font-mono text-[11px]"
                       />

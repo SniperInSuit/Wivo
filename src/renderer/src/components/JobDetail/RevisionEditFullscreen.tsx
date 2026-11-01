@@ -133,8 +133,8 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
   let techLabel = ''
   if (techRate) {
     switch (techRate.kind) {
-      case 'hammas': techCost = teethCount * techRate.amount; techLabel = t(`${teethCount} × ${techRate.amount} €/hammas`, `${teethCount} × ${techRate.amount} €/tooth`); break
-      case 'too':    techCost = techRate.amount; techLabel = t(`${techRate.amount} €/töö`, `${techRate.amount} €/job`); break
+      case 'hammas': techCost = teethCount * techRate.amount; techLabel = t('jobDetail.tooth3', { teethCount, amount: techRate.amount }); break
+      case 'too':    techCost = techRate.amount; techLabel = t('jobDetail.job3', { amount: techRate.amount }); break
       default:       break
     }
   }
@@ -146,8 +146,8 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
   let designLabel = ''
   if (designRate) {
     switch (designRate.kind) {
-      case 'hammas': designCost = teethCount * designRate.amount; designLabel = t(`${teethCount} × ${designRate.amount} €/hammas`, `${teethCount} × ${designRate.amount} €/tooth`); break
-      case 'too':    designCost = designRate.amount; designLabel = t(`${designRate.amount} €/töö`, `${designRate.amount} €/job`); break
+      case 'hammas': designCost = teethCount * designRate.amount; designLabel = t('jobDetail.tooth3', { teethCount, amount: designRate.amount }); break
+      case 'too':    designCost = designRate.amount; designLabel = t('jobDetail.job3', { amount: designRate.amount }); break
       default:       break
     }
   }
@@ -211,10 +211,10 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
     <div className="fixed inset-0 bg-slate-900 z-[60] flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50 flex-shrink-0">
-        <h2 className="text-base font-bold text-slate-100">{t('Muuda muudatust', 'Edit revision')}</h2>
+        <h2 className="text-base font-bold text-slate-100">{t('jobDetail.editRevision')}</h2>
         <div className="flex items-center gap-2">
           <button type="button" onClick={onCancel} className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors">
-            {t('Tühista', 'Cancel')}
+            {t('jobDetail.cancel2')}
           </button>
           <button
             type="button"
@@ -223,7 +223,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
             className="btn-primary disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {t('Salvesta', 'Save')}
+            {t('jobDetail.save')}
           </button>
         </div>
       </div>
@@ -239,7 +239,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
           <div className="space-y-5">
             {/* Status */}
             <div>
-              <label className="label text-slate-400">{t('Staatus', 'Status')}</label>
+              <label className="label text-slate-400">{t('jobDetail.status')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {stages.map(s => (
                   <button key={s.key} type="button"
@@ -263,7 +263,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 }`}
               >
                 <Zap size={14} className={form.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
-                {form.kiirtoo ? t(`Kiirtöö — hind ${settings.kiirtooKordaja}×`, `Rush — price ${settings.kiirtooKordaja}×`) : t('Kiirtöö', 'Rush')}
+                {form.kiirtoo ? t('jobDetail.rushPrice', { kiirtooKordaja: settings.kiirtooKordaja }) : t('jobDetail.rush')}
               </button>
               <button type="button" onClick={() => set('mudel', !form.mudel)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
@@ -271,7 +271,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 }`}
               >
                 <Cpu size={14} className={form.mudel ? 'text-amber-400' : ''} />
-                {form.mudel ? t('Mudel', 'Model') : t('Mudel', 'Model')}
+                {form.mudel ? t('jobDetail.model') : t('jobDetail.model')}
               </button>
               <button type="button" onClick={() => set('taspidev', !form.taspidev)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${
@@ -279,16 +279,16 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 }`}
               >
                 <Banknote size={14} className={form.taspidev ? 'text-emerald-400' : 'text-red-400'} />
-                {form.taspidev ? t('Tasustatud', 'Paid') : t('Tasustamata', 'Not paid')}
+                {form.taspidev ? t('jobDetail.paid2') : t('jobDetail.notPaid2')}
               </button>
             </div>
 
             {/* Mudel ID — appears with the toggle that makes it meaningful. */}
             {form.mudel && (
               <div>
-                <label className="label text-slate-400">{t('Mudel ID', 'Model ID')}</label>
+                <label className="label text-slate-400">{t('jobDetail.modelID')}</label>
                 <input type="text" value={form.mudel_id} onChange={e => set('mudel_id', e.target.value)}
-                  placeholder={t('Mudeli töö nr…', 'Model job no.…')}
+                  placeholder={t('jobDetail.modelJobNo')}
                   className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
                 />
               </div>
@@ -296,16 +296,16 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
 
             {/* Kirjeldus (note) */}
             <div>
-              <label className="label text-slate-400">{t('Kirjeldus *', 'Description *')}</label>
+              <label className="label text-slate-400">{t('jobDetail.description2')}</label>
               <textarea value={form.note} onChange={e => set('note', e.target.value)}
-                placeholder={t('Kirjelda vajalikud muudatused…', 'Describe the changes needed…')} rows={3} autoFocus
+                placeholder={t('jobDetail.describeTheChangesNeeded')} rows={3} autoFocus
                 className="input resize-none bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
               />
             </div>
 
             {/* Reasons */}
             <div className="relative">
-              <label className="label text-slate-400">{t('Põhjus', 'Reason')}</label>
+              <label className="label text-slate-400">{t('jobDetail.reason')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {REVISION_REASONS.map(r => (
                   <button key={r} type="button"
@@ -330,7 +330,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                   <button type="button" onClick={() => setShowBreakageOdonto(true)}
                     className="flex items-center gap-1.5 flex-wrap text-xs text-slate-300 hover:text-white transition-colors"
                   >
-                    <span className="text-red-400 font-medium">{t('Purunenud:', 'Broken:')}</span>
+                    <span className="text-red-400 font-medium">{t('jobDetail.broken')}</span>
                     {form.purunenud_hambad.split(',').filter(tooth => tooth.trim()).map(tooth => (
                       <span key={tooth} className="bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold">
                         {tooth.trim()}
@@ -352,11 +352,11 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 return (
                 <div className="mt-2 bg-slate-800 border border-slate-600 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-[10px] font-semibold text-red-400">{t('Märgi purunenud hambad', 'Mark broken teeth')}</label>
+                    <label className="text-[10px] font-semibold text-red-400">{t('jobDetail.markBrokenTeeth')}</label>
                     <button type="button" onClick={() => setShowBreakageOdonto(false)}
                       className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10"
                     >
-                      <Check size={10} className="inline mr-1" />{t('Valmis', 'Done')}
+                      <Check size={10} className="inline mr-1" />{t('jobDetail.done')}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-1.5">
@@ -406,12 +406,12 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 return (
                   <>
                     <label className="label text-slate-400">
-                      {t('Materjal', 'Material')}
+                      {t('jobDetail.material2')}
                       {hasItems && activeItem && (
                         <span className="text-accent font-normal ml-1">— {activeItem.too}</span>
                       )}
                       {hasItems && !activeItem && (
-                        <span className="text-slate-500 font-normal ml-1">— {t('vali tööosa', 'choose a work item')}</span>
+                        <span className="text-slate-500 font-normal ml-1">— {t('jobDetail.chooseAWorkItem')}</span>
                       )}
                     </label>
                     <div className="flex gap-1.5 mb-2 flex-wrap">
@@ -461,18 +461,18 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 means the people already on the job. */}
             <div className="grid grid-cols-2 gap-3">
               <WorkerSelect
-                label={t('Teostaja', 'Done by')}
+                label={t('jobDetail.doneBy')}
                 value={form.assigned_to}
                 onChange={v => set('assigned_to', v)}
-                emptyLabel={t('Sama mis tööl', 'Same as job')}
+                emptyLabel={t('jobDetail.sameAsJob2')}
                 showNone
                 dark
               />
               <WorkerSelect
-                label={t('Disainija', 'Designer')}
+                label={t('jobDetail.designer2')}
                 value={form.designed_by}
                 onChange={v => set('designed_by', v)}
-                emptyLabel={t('Sama mis tööl', 'Same as job')}
+                emptyLabel={t('jobDetail.sameAsJob2')}
                 showNone
                 dark
               />
@@ -480,28 +480,28 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
 
             {/* Värv */}
             <div>
-              <label className="label text-slate-400">{t('Uus värv', 'New shade')}</label>
+              <label className="label text-slate-400">{t('jobDetail.newShade2')}</label>
               <ShadePicker value={form.varv} onChange={v => set('varv', v)} />
             </div>
 
             <div>
-              <label className="label text-slate-400">{t('Köndivärv (VITA ND)', 'Stump shade (VITA ND)')}</label>
+              <label className="label text-slate-400">{t('jobDetail.stumpShadeVITAND')}</label>
               <DieShadePicker value={form.kondivarv} onChange={v => set('kondivarv', v)} />
             </div>
 
             {/* Print ID + Disain ID */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label text-slate-400">Print ID</label>
+                <label className="label text-slate-400">{t('common.printId')}</label>
                 <input type="text" value={form.print_id} onChange={e => set('print_id', e.target.value)}
-                  placeholder={t('SprintRay töö nr…', 'SprintRay job no.…')}
+                  placeholder={t('jobDetail.sprintRayJobNo')}
                   className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
                 />
               </div>
               <div>
-                <label className="label text-slate-400">{t('Disain ID', 'Design ID')}</label>
+                <label className="label text-slate-400">{t('jobDetail.designID')}</label>
                 <input type="text" value={form.disain_id ?? ''} onChange={e => set('disain_id', e.target.value)}
-                  placeholder={t('Disaini faili viide…', 'Design file reference…')}
+                  placeholder={t('jobDetail.designFileReference')}
                   className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
                 />
               </div>
@@ -509,7 +509,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
 
             {/* Deadline */}
             <div>
-              <label className="label text-slate-400">{t('Uus tähtaeg', 'New due date')}</label>
+              <label className="label text-slate-400">{t('jobDetail.newDueDate2')}</label>
               <div className="flex gap-2">
                 <input type="date"
                   value={(form.deadline ?? '').split('T')[0] || ''}
@@ -533,25 +533,25 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
 
             {/* Auto-computed cost */}
             <div>
-              <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> {t('Ümbertegemise kulu', 'Remake cost')}</label>
+              <label className="label text-slate-400 flex items-center gap-1"><Euro size={10} /> {t('jobDetail.remakeCost')}</label>
               <p className="text-lg font-bold text-slate-100 tabular-nums">
                 {autoPrice > 0 ? `${autoPrice.toFixed(2)} €` : '—'}
               </p>
               <div className="mt-1 space-y-0.5 text-[10px] text-slate-500">
-                {techCost > 0 && <p>{t('Tehnik:', 'Technician:')} {techLabel} = {techCost.toFixed(2)} €</p>}
-                {designCost > 0 && <p>{t('Disain:', 'Design:')} {designLabel} = {designCost.toFixed(2)} €</p>}
-                {!effectiveTechId && form.taspidev && <p className="text-slate-600">{t('Tehnik määramata', 'No technician assigned')}</p>}
-                {effectiveTechId && techCost === 0 && form.taspidev && <p className="text-slate-600">{t('Tehnikul puudub tasureegel', 'Technician has no pay rule')}</p>}
+                {techCost > 0 && <p>{t('jobDetail.technician')} {techLabel} = {techCost.toFixed(2)} €</p>}
+                {designCost > 0 && <p>{t('jobDetail.design3')} {designLabel} = {designCost.toFixed(2)} €</p>}
+                {!effectiveTechId && form.taspidev && <p className="text-slate-600">{t('jobDetail.noTechnicianAssigned')}</p>}
+                {effectiveTechId && techCost === 0 && form.taspidev && <p className="text-slate-600">{t('jobDetail.technicianHasNoPayRule')}</p>}
                 {matCost > 0 && (
                   <p>
-                    {t('Materjal:', 'Material:')} {matCost.toFixed(2)} €
-                    {matDetail?.kapsleid != null && t(` (${matDetail.kapsleid} kapslit)`, ` (${matDetail.kapsleid} ${matDetail.kapsleid === 1 ? 'capsule' : 'capsules'})`)}
+                    {t('jobDetail.material3')} {matCost.toFixed(2)} €
+                    {matDetail?.kapsleid != null && t('jobDetail.capsuleCapsules', { matDetail, kapsleid: matDetail.kapsleid })}
                   </p>
                 )}
-                {tarvikuKulu > 0 && <p>{t('Uued tarvikud:', 'New consumables:')} {uusiTarvikuid} × {tarvikuHind.toFixed(2)} € = {tarvikuKulu.toFixed(2)} €</p>}
-                {extraTotal > 0 && <p>{t('Lisakulud:', 'Extra costs:')} {extraTotal.toFixed(2)} €</p>}
-                {form.kiirtoo && <p>× {settings.kiirtooKordaja} ({t('kiirtöö', 'rush')})</p>}
-                {!form.taspidev && <p className="text-amber-400">{t('Tasustamata — tööjõud ei arvestata', 'Not paid — labour not counted')}</p>}
+                {tarvikuKulu > 0 && <p>{t('jobDetail.newConsumables2')} {uusiTarvikuid} × {tarvikuHind.toFixed(2)} € = {tarvikuKulu.toFixed(2)} €</p>}
+                {extraTotal > 0 && <p>{t('jobDetail.extraCosts2')} {extraTotal.toFixed(2)} €</p>}
+                {form.kiirtoo && <p>× {settings.kiirtooKordaja} ({t('jobDetail.rush2')})</p>}
+                {!form.taspidev && <p className="text-amber-400">{t('jobDetail.notPaidLabourNotCounted')}</p>}
               </div>
             </div>
 
@@ -562,7 +562,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
             {tykihind > 0 && (
               <div>
                 <label className="label text-slate-400 flex items-center gap-1.5">
-                  <Cpu size={11} /> {t('Kapsleid', 'Capsules')}
+                  <Cpu size={11} /> {t('jobDetail.capsules')}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -582,12 +582,12 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                   {form.materjali_yhikud != null && (
                     <button type="button" onClick={() => set('materjali_yhikud', null)}
                       className="text-[11px] text-slate-500 hover:text-slate-300">
-                      {t('tühjenda', 'clear')}
+                      {t('jobDetail.clear2')}
                     </button>
                   )}
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {t('Tühjaks jättes arvestatakse hammaste järgi:', 'Left empty, it is counted by tooth:')} {matHammasteJargi.toFixed(2)} €.
+                  {t('jobDetail.leftEmptyItIsCountedBy2')} {matHammasteJargi.toFixed(2)} €.
                 </p>
               </div>
             )}
@@ -599,7 +599,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 first charging a full set every time, then none. */}
             {tarvikuHind > 0 && (
               <div>
-                <label className="label text-slate-400">{t('Abutmendid / tarvikud', 'Abutments / consumables')}</label>
+                <label className="label text-slate-400">{t('jobDetail.abutmentsConsumables')}</label>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -610,7 +610,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                         : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-accent/50'
                     }`}
                   >
-                    {t('Samad, taaskasutatud', 'Same ones, reused')}
+                    {t('jobDetail.sameOnesReused')}
                   </button>
                   <button
                     type="button"
@@ -621,7 +621,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                         : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-accent/50'
                     }`}
                   >
-                    {t('Telliti uued', 'New ones ordered')}
+                    {t('jobDetail.newOnesOrdered')}
                   </button>
                   {form.uusi_tarvikuid != null && (
                     <>
@@ -642,19 +642,16 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                     per-tooth costs bundles both into one "abutment", and that
                     is worth seeing rather than discovering in a margin. */}
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {t(
-                    'Taaskasutatud abutmendid on patsiendi suus ega maksa midagi. Ühiku hind tuleb Seaded → Hinnad →',
-                    'Reused abutments are in the patient\'s mouth and cost nothing. The unit price comes from Settings → Prices →',
-                  )}{' '}{primaryToo || t('tööliik', 'work type')} →{' '}
+                  {t('jobDetail.reusedAbutmentsAreInThePatient')}{' '}{primaryToo || t('jobDetail.workType2')} →{' '}
                   {tarvikuOsad.map(k => `${k.nimi} ${k.summa.toFixed(2)} €`).join(' + ')}
-                  {' '}{t('/hammas.', '/tooth.')}
+                  {' '}{t('jobDetail.tooth4')}
                 </p>
               </div>
             )}
 
             {/* Lisakulud — exceptional costs like replacement screws */}
             <div>
-              <label className="label text-slate-400">{t('Lisakulud', 'Extra costs')}</label>
+              <label className="label text-slate-400">{t('jobDetail.extraCosts')}</label>
               <div className="space-y-1.5">
                 {form.extra_costs.map((c, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -664,7 +661,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                         next[i] = { ...next[i], nimi: e.target.value }
                         set('extra_costs', next)
                       }}
-                      placeholder={t('Nimi (nt kruvi)', 'Name (e.g. screw)')}
+                      placeholder={t('jobDetail.nameEGScrew')}
                       className="input flex-1 bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent text-xs"
                     />
                     <div className="relative w-24">
@@ -687,7 +684,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                 <button type="button" onClick={() => {
                   set('extra_costs', [...form.extra_costs, { nimi: '', summa: 0 }])
                 }} className="text-xs text-accent hover:text-accent/80 font-medium">
-                  + {t('Lisa kulu', 'Add cost')}
+                  + {t('jobDetail.addCost')}
                 </button>
               </div>
             </div>
@@ -698,7 +695,7 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
               used to be its own copy, and it was the copy that could not add a
               second item of one type — the chip strip here had no + and no ×. */}
           <div className="space-y-3 sticky top-0">
-            <label className="label text-slate-400">{t('Töötüüp ja hambad', 'Work type and teeth')}</label>
+            <label className="label text-slate-400">{t('jobDetail.workTypeAndTeeth2')}</label>
             <WorkItemsField
               jobDesignedBy={form.designed_by ?? jobDesignedBy}
               value={form.work_items}

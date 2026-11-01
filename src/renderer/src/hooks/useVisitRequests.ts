@@ -19,10 +19,10 @@ import { t } from '@/lib/i18n'
 export type VisitRequestStatus = 'uus' | 'kinnitatud' | 'lykatud' | 'ramps'
 
 export const REQUEST_STATUS_LABEL: Record<VisitRequestStatus, string> = {
-  uus:        t('Uus', 'New'),
-  kinnitatud: t('Kinnitatud', 'Confirmed'),
-  lykatud:    t('Lükatud tagasi', 'Declined'),
-  ramps:      t('Rämps', 'Spam'),
+  uus:        t('useVisitRequests.new'),
+  kinnitatud: t('useVisitRequests.confirmed'),
+  lykatud:    t('useVisitRequests.declined'),
+  ramps:      t('useVisitRequests.spam'),
 }
 
 export interface VisitRequest {
@@ -146,7 +146,7 @@ export function useCreateVisitRequest() {
       eelistatud_aeg?: string | null; sonum?: string | null
     }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
+      if (!clinicId) throw new Error(t('useVisitRequests.noClinic'))
       const { data, error } = await supabase
         .from('visit_requests')
         .insert({

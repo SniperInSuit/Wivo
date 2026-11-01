@@ -48,28 +48,25 @@ export function UpdateBanner() {
         <div className="min-w-0 flex-1">
           {prodShow && state.stage === 'ready' && (
             <>
-              <p className="text-xs font-semibold text-ink">{t('Uuendus on valmis', 'Update ready')}</p>
+              <p className="text-xs font-semibold text-ink">{t('updateBanner.updateReady')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                {t(
-                  `Versioon ${state.version} rakendub, kui Wivo järgmine kord käivitad.`,
-                  `Version ${state.version} will be applied the next time you start Wivo.`,
-                )}
+                {t('updateBanner.versionWillBeAppliedTheNext', { version: state.version })}
               </p>
               <button
                 type="button"
                 onClick={installNow}
                 className="btn-ghost text-[11px] border border-ink-faint/25 mt-2 flex items-center gap-1.5"
               >
-                <RefreshCw size={11} /> {t('Taaskäivita kohe', 'Restart now')}
+                <RefreshCw size={11} /> {t('updateBanner.restartNow')}
               </button>
             </>
           )}
 
           {prodShow && failed && (
             <>
-              <p className="text-xs font-semibold text-ink">{t('Uuendus ei õnnestunud', 'Update failed')}</p>
+              <p className="text-xs font-semibold text-ink">{t('updateBanner.updateFailed')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                {state.message} {t(`Wivo töötab edasi versiooniga ${running}.`, `Wivo keeps running version ${running}.`)}
+                {state.message} {t('updateBanner.wivoKeepsRunningVersion', { running })}
               </p>
             </>
           )}
@@ -78,14 +75,14 @@ export function UpdateBanner() {
           {!prodShow && devShow && (
             <>
               <p className="text-xs font-semibold text-ink">
-                {dev.pullDone ? t('Uuendus tõmmatud', 'Update pulled') : t('Uus versioon saadaval', 'New version available')}
+                {dev.pullDone ? t('updateBanner.updatePulled') : t('updateBanner.newVersionAvailable')}
               </p>
               <p className="text-[11px] text-ink-muted mt-0.5">
                 {dev.pullDone
-                  ? t('Taaskäivita rakendus.', 'Restart the app.')
+                  ? t('updateBanner.restartTheApp')
                   : dev.diskAvailable
-                    ? t(`Saadaval ${dev.diskAvailable}, töötab ${running}.`, `${dev.diskAvailable} available, running ${running}.`)
-                    : t('Uuem versioon on saadaval.', 'A newer version is available.')}
+                    ? t('updateBanner.availableRunning', { diskAvailable: dev.diskAvailable, running })
+                    : t('updateBanner.aNewerVersionIsAvailable')}
               </p>
               <button
                 type="button"
@@ -94,7 +91,7 @@ export function UpdateBanner() {
                 className="btn-ghost text-[11px] border border-ink-faint/25 mt-2 flex items-center gap-1.5 disabled:opacity-50"
               >
                 <RefreshCw size={11} className={dev.pulling ? 'animate-spin' : ''} />
-                {dev.pulling ? t('Tõmban…', 'Pulling…') : dev.remoteAvailable ? t('Uuenda automaatselt', 'Update automatically') : t('Taaskäivita', 'Restart')}
+                {dev.pulling ? t('updateBanner.pulling') : dev.remoteAvailable ? t('updateBanner.updateAutomatically') : t('updateBanner.restart')}
               </button>
             </>
           )}
@@ -104,7 +101,7 @@ export function UpdateBanner() {
           type="button"
           onClick={() => setDismissed(key)}
           className="p-0.5 text-ink-faint hover:text-ink flex-shrink-0"
-          title={t('Peida', 'Dismiss')}
+          title={t('updateBanner.dismiss')}
         >
           <X size={12} />
         </button>

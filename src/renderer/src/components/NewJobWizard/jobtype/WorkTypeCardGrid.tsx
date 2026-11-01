@@ -62,7 +62,7 @@ export const filterWorkTypes = (types: readonly WorkType[], search: string): Wor
 /** Price line under the label, in the same shape as the Edit page's tooltip. */
 function priceLabel(type: WorkType): string | undefined {
   if (type.hind == null) return undefined
-  return `${type.hind.toFixed(2)} € ${type.hinnaTyyp === 'hammas' ? t('/ hammas', '/ tooth') : t('/ töö', '/ job')}`
+  return `${type.hind.toFixed(2)} € ${type.hinnaTyyp === 'hammas' ? t('wizard.tooth') : t('wizard.job')}`
 }
 
 export function WorkTypeCardGrid({
@@ -91,7 +91,7 @@ export function WorkTypeCardGrid({
   if (filtered.length === 0) {
     return (
       <p className="py-8 text-center text-base text-ink-muted">
-        {t('Otsingule ei vastanud ükski töö tüüp. Proovi teist sõna.', 'No work types match your search. Try another word.')}
+        {t('wizard.noWorkTypesMatchYourSearch')}
       </p>
     )
   }
@@ -100,7 +100,7 @@ export function WorkTypeCardGrid({
     <div>
       <div
         role="group"
-        aria-label={t('Töö tüübid', 'Work types')}
+        aria-label={t('wizard.workTypes')}
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
       >
         {visible.map(type => (
@@ -132,7 +132,7 @@ export function WorkTypeCardGrid({
           className={`${WIZARD_BTN} mt-4 flex items-center gap-2 border border-ink-faint/40 text-ink-soft hover:text-ink`}
         >
           <ChevronDown className="h-5 w-5" aria-hidden="true" />
-          {t('Näita rohkem', 'Show more')} ({hiddenCount})
+          {t('wizard.showMore')} ({hiddenCount})
         </button>
       )}
 
@@ -143,7 +143,7 @@ export function WorkTypeCardGrid({
           className={`${WIZARD_BTN} mt-4 flex items-center gap-2 border border-ink-faint/40 text-ink-soft hover:text-ink`}
         >
           <ChevronUp className="h-5 w-5" aria-hidden="true" />
-          {t('Näita vähem', 'Show less')}
+          {t('wizard.showLess')}
         </button>
       )}
     </div>

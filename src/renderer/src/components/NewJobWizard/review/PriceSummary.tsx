@@ -111,7 +111,7 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
         className="flex items-center gap-2 text-base font-semibold text-ink mb-4"
       >
         <Euro className="w-5 h-5 text-accent" aria-hidden="true" />
-        {t('Hind', 'Price')}
+        {t('wizard.price2')}
       </h3>
 
       {/* Same wording as the job page's pricing block on purpose — the user
@@ -120,7 +120,7 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3 mb-4">
           <p className="flex items-center gap-2 text-base font-semibold text-amber-500">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-            {t('Hinda ei arvutatud automaatselt', "The price wasn't calculated automatically")}
+            {t('wizard.thePriceWasnTCalculatedAutomatically')}
           </p>
           <ul className="mt-2 space-y-1">
             {quote.unpriced.map((reason, i) => (
@@ -128,14 +128,14 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
             ))}
           </ul>
           <p className="text-base text-ink-faint mt-2">
-            {t('Töö saab ikka luua. Hinna saad lisada töö lehel või määrata Seaded → Hinnad all.', 'You can still create the job. Add the price on the job page, or set it under Settings → Prices.')}
+            {t('wizard.youCanStillCreateTheJob')}
           </p>
         </div>
       )}
 
       {quote.lines.length > 0 && (
         <div className="bg-bg-sidebar rounded-xl p-4 space-y-2 mb-4">
-          <p className="text-base font-semibold text-ink-muted">{t('Autoarvutus', 'Automatic calculation')}</p>
+          <p className="text-base font-semibold text-ink-muted">{t('wizard.automaticCalculation')}</p>
           {quote.lines.map((line, i) => (
             <div
               key={i}
@@ -155,34 +155,34 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
 
       <dl className="space-y-2.5">
         <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-base text-ink-soft">{t('Laborihind', 'Lab price')}</dt>
+          <dt className="text-base text-ink-soft">{t('wizard.labPrice')}</dt>
           <dd className="text-base font-medium text-ink tabular-nums">
-            {production == null ? <span className="text-ink-faint">{t('Määramata', 'Not set')}</span> : eur(production)}
+            {production == null ? <span className="text-ink-faint">{t('wizard.notSet')}</span> : eur(production)}
           </dd>
         </div>
 
         {manual != null && (
           <p className="text-base text-ink-muted">
-            {t('Hind on käsitsi määratud — autoarvutust ei kasutata.', 'The price was set by hand — automatic calculation is not used.')}
+            {t('wizard.thePriceWasSetByHand')}
           </p>
         )}
 
         <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-base text-ink-soft">{t('Disainihind', 'Design fee')}</dt>
+          <dt className="text-base text-ink-soft">{t('wizard.designFee')}</dt>
           <dd className="text-base font-medium text-ink tabular-nums">
             {disain > 0 ? eur(disain) : <span className="text-ink-faint">—</span>}
           </dd>
         </div>
 
         <div className="flex items-baseline justify-between gap-4 pt-3 border-t border-ink-faint/25">
-          <dt className="text-sm font-medium uppercase tracking-wide text-ink-muted">{t('Kokku', 'Total')}</dt>
+          <dt className="text-sm font-medium uppercase tracking-wide text-ink-muted">{t('wizard.total')}</dt>
           {/* The one number on this page anybody actually looks for. An unpriced
               job deliberately does NOT get the big teal treatment — a large
               confident figure is exactly the wrong thing to show when the quote
               could not see half the job. */}
           <dd className="text-3xl font-bold leading-none text-accent tabular-nums">
             {total == null
-              ? <span className="text-base font-medium text-ink-faint">{t('Hind lisatakse hiljem', 'Price to be added later')}</span>
+              ? <span className="text-base font-medium text-ink-faint">{t('wizard.priceToBeAddedLater')}</span>
               : eur(total)}
           </dd>
         </div>
@@ -195,19 +195,19 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
       {onChange && (
         <div className="mt-5 pt-5 border-t border-ink-faint/25 grid gap-4 sm:grid-cols-2">
           <WizardField
-            label={t('Laborihind', 'Lab price')}
+            label={t('wizard.labPrice')}
             htmlFor="wizard-hind"
             help={
               auto == null
-                ? t('Automaatset hinda ei arvutatud. Võid selle siia ise kirjutada.', "No automatic price was calculated. You can type one here yourself.")
-                : t(`Automaatne hind on ${eur(auto)}. Kirjuta siia ainult siis, kui hind on kokku lepitud teisiti.`, `The automatic price is ${eur(auto)}. Only type here if a different price was agreed.`)
+                ? t('wizard.noAutomaticPriceWasCalculatedYou')
+                : t('wizard.theAutomaticPriceIsOnlyType', { auto: eur(auto) })
             }
           >
             <div className="flex gap-2">
               <EuroInput
                 id="wizard-hind"
                 value={pricing.overridden && pricing.hind != null ? pricing.hind : null}
-                placeholder={auto == null ? t('Määramata', 'Not set') : auto.toFixed(2)}
+                placeholder={auto == null ? t('wizard.notSet') : auto.toFixed(2)}
                 // Clearing the field returns the job to the autoarvutus rather
                 // than pinning it at "manually null", which would silently
                 // discard a price the book could work out.
@@ -220,16 +220,16 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
                   className={`${WIZARD_BTN} shrink-0 inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft`}
                 >
                   <RotateCcw className="w-4 h-4" aria-hidden="true" />
-                  {t('Autoarvutus', 'Auto-calculate')}
+                  {t('wizard.autoCalculate')}
                 </button>
               )}
             </div>
           </WizardField>
 
           <WizardField
-            label={t('Disainihind', 'Design fee')}
+            label={t('wizard.designFee')}
             htmlFor="wizard-disain-hind"
-            help={t('Disaini eest eraldi küsitav tasu. Jäta tühjaks, kui seda ei ole.', "A separate charge for the design. Leave empty if there isn't one.")}
+            help={t('wizard.aSeparateChargeForTheDesign')}
           >
             <EuroInput
               id="wizard-disain-hind"
@@ -256,13 +256,10 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
           <span>
             <span className="flex items-center gap-2 text-base font-medium text-ink">
               <Tag className="h-4 w-4 text-accent" aria-hidden="true" />
-              {t('Kasuta soodushinda', 'Use discount price')}
+              {t('wizard.useDiscountPrice')}
             </span>
             <span className="mt-0.5 block text-base text-ink-muted">
-              {t(
-                'Mõnel valitud töö tüübil on Seadetes teine, soodsam hind. Märgi see, kui selle tööga on nii kokku lepitud.',
-                'Some of the selected work types have a second, lower price in Settings. Tick this if that was agreed for this job.'
-              )}
+              {t('wizard.someOfTheSelectedWorkTypes')}
             </span>
           </span>
         </label>
@@ -271,7 +268,7 @@ export function PriceSummary({ quote, pricing, onChange, discountAvailable }: Pr
       {/* Paid status is deliberately absent: nothing is paid at the moment a job
           is created, and asking would invite a wrong answer. */}
       <p className="mt-4 text-base text-ink-faint">
-        {t('Maksmise saad märkida hiljem töö lehel.', 'You can mark it as paid later on the job page.')}
+        {t('wizard.youCanMarkItAsPaid')}
       </p>
     </section>
   )

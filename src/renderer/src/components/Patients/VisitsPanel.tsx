@@ -37,7 +37,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
 
   return (
     <PanelCard
-      title={t('VISIIDID', 'VISITS')}
+      title={t('patients.vISITS')}
       icon={CalendarClock}
       action={
         <button
@@ -45,23 +45,23 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
           className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
         >
           <Plus size={11} />
-          {t('Lisa visiit', 'Add visit')}
+          {t('patients.addVisit')}
         </button>
       }
     >
       {isError ? (
         <p className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-2">
-          {t('Visiitide tabelit pole. Käivita sql/007_visits.sql Supabase SQL-redaktoris.', 'No visits table. Run sql/007_visits.sql in the Supabase SQL editor.')}
+          {t('patients.noVisitsTableRunSql007')}
         </p>
       ) : mine.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t('Visiite pole.', 'No visits.')}</p>
+        <p className="text-sm text-ink-muted">{t('patients.noVisits')}</p>
       ) : (
         <div className="space-y-2.5">
           {/* The next appointment is the one thing worth surfacing above the list */}
           {next && (
             <div className="rounded-xl bg-accent/10 border border-accent/30 px-2.5 py-2">
               <p className="text-[10px] font-semibold text-accent uppercase tracking-wider">
-                {t('Järgmine visiit', 'Next visit')}
+                {t('patients.nextVisit')}
               </p>
               <p className="text-sm font-bold text-ink tabular-nums">
                 {format(parseISO(next.algus), 'dd.MM.yyyy HH:mm')}
@@ -75,7 +75,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
           {noShows > 0 && (
             <p className="flex items-center gap-1.5 text-[11px] text-amber-700">
               <AlertTriangle size={11} />
-              {t(`${noShows}× ei tulnud kohale`, `${noShows}× no-show`)}
+              {t('patients.noShow', { noShows })}
             </p>
           )}
 
@@ -107,7 +107,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
                       <p className="flex items-center gap-1 text-[11px] text-ink-soft truncate">
                         <Stethoscope size={9} className="text-ink-faint flex-shrink-0" />
                         {v.arst}
-                        <span className="text-ink-faint">· {v.kestus_min} min</span>
+                        <span className="text-ink-faint">· {v.kestus_min} {t('common.minutesShort')}</span>
                       </p>
                     )}
                     {v.markus?.trim() && (

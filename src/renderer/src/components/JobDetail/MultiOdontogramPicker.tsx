@@ -250,7 +250,7 @@ export function MultiOdontogramPicker({
               }`}
             >
               <Bolt size={12} />
-              {t('Implantaadid', 'Implants')}
+              {t('jobDetail.implants')}
             </button>
           )}
           {onToggleDesign && (
@@ -264,31 +264,25 @@ export function MultiOdontogramPicker({
               }`}
             >
               <PenTool size={12} />
-              {t('Disainija hambad', 'Designer teeth')}
+              {t('jobDetail.designerTeeth')}
             </button>
           )}
           <button type="button" onClick={toggleMirror}
             className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
           >
             <FlipHorizontal2 size={12} />
-            {mirror ? t('Patsiendi vaade', 'Patient view') : t('Arsti vaade', 'Dentist view')}
+            {mirror ? t('jobDetail.patientView') : t('jobDetail.dentistView')}
           </button>
         </div>
 
         {markMode === 'implant' && (
           <p className="text-[11px] text-slate-500 text-center mb-2">
-            {t(
-              'Klõpsa valitud hammastel, mis istuvad implantaadil. Ülejäänud on vahelülid. Kruvide kulu arvestatakse märgitud hammaste järgi.',
-              'Click the selected teeth that sit on an implant. The rest are pontics. Screw cost is counted by the marked teeth.',
-            )}
+            {t('jobDetail.clickTheSelectedTeethThatSit')}
           </p>
         )}
         {markMode === 'design' && (
           <p className="text-[11px] text-violet-600 text-center mb-2">
-            {t('Klõpsa hammastel, mille disainis ', 'Click the teeth designed by the ')}<strong>{t('disainija', 'designer')}</strong>{t(
-              '. Ülejäänud tegi tehnik ise. Märkimata jätmine tähendab, et disainija tegi kõik — disainitasu arvestatakse märgitud hammaste järgi.',
-              '. The technician did the rest. Marking none means the designer did them all — the design fee is counted by the marked teeth.',
-            )}
+            {t('jobDetail.clickTheTeethDesignedByThe')}<strong>{t('jobDetail.designer3')}</strong>{t('jobDetail.theTechnicianDidTheRestMarking')}
           </p>
         )}
 
@@ -317,7 +311,7 @@ export function MultiOdontogramPicker({
           </span>
           <div className="flex-1 flex items-center gap-2">
             <div className="flex-1 border-t border-dashed border-pink-200/50" />
-            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">UPPER</span>
+            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">{t('common.upperJawShort')}</span>
             <div className="flex-1 border-t border-dashed border-pink-200/50" />
           </div>
           <span className="text-[10px] font-bold text-pink-300/70 tracking-wider">
@@ -329,7 +323,7 @@ export function MultiOdontogramPicker({
           <span className="text-[10px] font-bold text-pink-300/70 tracking-wider invisible">R</span>
           <div className="flex-1 flex items-center gap-2">
             <div className="flex-1 border-t border-dashed border-pink-200/50" />
-            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">LOWER</span>
+            <span className="text-[9px] font-semibold text-pink-300/60 tracking-widest">{t('common.lowerJawShort')}</span>
             <div className="flex-1 border-t border-dashed border-pink-200/50" />
           </div>
           <span className="text-[10px] font-bold text-pink-300/70 tracking-wider invisible">L</span>
@@ -360,25 +354,25 @@ export function MultiOdontogramPicker({
           {totalTeeth > 0 ? (
             <span className="inline-flex items-center gap-1.5 text-xs">
               <span className="font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md tabular-nums">{totalTeeth}</span>
-              <span className="text-ink-muted">{t('hammast valitud', totalTeeth === 1 ? 'tooth selected' : 'teeth selected')}</span>
+              <span className="text-ink-muted">{t('jobDetail.toothSelectedTeethSelected', { totalTeeth })}</span>
             </span>
           ) : (
             <span className="text-xs text-ink-faint">
-              {activeItemId ? t('Klõpsa hambaid', 'Click teeth') : t('Vali tööosa', 'Choose a work item')}
+              {activeItemId ? t('jobDetail.clickTeeth') : t('jobDetail.chooseAWorkItem2')}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button type="button" onClick={toggleMirror}
             className="p-1.5 rounded-lg text-ink-faint hover:text-ink-muted hover:bg-bg-sidebar transition-colors"
-            title={t('Peegelda', 'Mirror')}
+            title={t('jobDetail.mirror')}
           >
             <FlipHorizontal2 size={14} />
           </button>
           {totalTeeth > 0 && (
             <button type="button"
               className="p-1.5 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title={t('Tühjenda', 'Clear')}
+              title={t('jobDetail.clear')}
               onClick={() => {
                 // Clear all teeth from active item by toggling each one off
                 if (!activeItemId) return

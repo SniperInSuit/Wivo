@@ -51,7 +51,7 @@ export function DieShadePicker({ value, onChange, disabled }: DieShadePickerProp
       <div className="flex items-center gap-2">
         <input
           type="text"
-          placeholder={t('Vaba tekst (nt titaan)', 'Free text (e.g. titanium)')}
+          placeholder={t('jobDetail.freeTextEGTitanium')}
           disabled={disabled}
           value={isCustom ? value : freeText}
           onChange={e => {
@@ -67,7 +67,7 @@ export function DieShadePicker({ value, onChange, disabled }: DieShadePickerProp
             disabled={disabled}
             className="text-xs text-ink-muted hover:text-red-500 transition-colors"
           >
-            {t('Tühjenda', 'Clear')}
+            {t('jobDetail.clear')}
           </button>
         )}
       </div>

@@ -1,6 +1,6 @@
 import type { DeliveryStatus } from './customer'
 // @shared rather than @/lib/i18n: node tests load this file, and that one touches `document`.
-import { t } from '@shared/i18n'
+import { t, type MessageKey } from '@shared/i18n'
 
 // Pipeline stage keys — now an open string so custom stages are possible
 export type StageKey = string
@@ -104,25 +104,27 @@ export const REVISION_REASONS = [
 ] as const
 
 /**
- * English for the predefined reasons, keyed by the STORED Estonian value. The
- * values themselves never change: they are saved on every revision, counted
- * by name in Statistics, and 'Purunemine' is compared in code.
+ * The message key for each predefined reason, keyed by the STORED Estonian
+ * value. The values themselves never change: they are saved on every revision,
+ * counted by name in Statistics, and 'Purunemine' is compared in code.
  */
-const REVISION_REASON_EN: Record<(typeof REVISION_REASONS)[number], string> = {
-  'Vale disain': 'Wrong design',
-  'Vale värv': 'Wrong shade',
-  'Vale materjal': 'Wrong material',
-  'Vale hammas': 'Wrong tooth',
-  'Halb passivus': 'Poor fit',
-  'Purunemine': 'Breakage',
-  'Patsiendi soov': "Patient's request",
-  'Arsti soov': "Dentist's request",
-  'Muu': 'Other',
+const REVISION_REASON_KEY: Record<(typeof REVISION_REASONS)[number], MessageKey> = {
+  'Vale disain': 'job.reasonWrongDesign',
+  'Vale värv': 'job.reasonWrongShade',
+  'Vale materjal': 'job.reasonWrongMaterial',
+  'Vale hammas': 'job.reasonWrongTooth',
+  'Halb passivus': 'job.reasonPoorFit',
+  'Purunemine': 'job.reasonBreakage',
+  'Patsiendi soov': 'job.reasonPatientRequest',
+  'Arsti soov': 'job.reasonDentistRequest',
+  'Muu': 'job.reasonOther',
 }
 
 /** One stored reason as the UI shows it. Free text passes through as typed. */
-export const revisionReasonText = (reason: string): string =>
-  t(reason, REVISION_REASON_EN[reason as keyof typeof REVISION_REASON_EN] ?? reason)
+export const revisionReasonText = (reason: string): string => {
+  const key = REVISION_REASON_KEY[reason as keyof typeof REVISION_REASON_KEY]
+  return key ? t(key) : reason
+}
 
 // A dated note on a job. Same shape as PatientNote — kept as its own type so the
 // two can diverge (a job note may later carry a stage, a patient note will not).

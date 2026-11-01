@@ -34,8 +34,8 @@ export function WizardWorkerSelect({ id, label, help, value, onChange }: WizardW
         id={id}
         value={value}
         onChange={onChange}
-        placeholder={t('Määramata', 'Unassigned')}
-        options={workers.map(w => ({ value: w.id, label: w.full_name || t('Nimeta', 'Unnamed') }))}
+        placeholder={t('wizard.unassigned')}
+        options={workers.map(w => ({ value: w.id, label: w.full_name || t('wizard.unnamed') }))}
       />
     </WizardField>
   )

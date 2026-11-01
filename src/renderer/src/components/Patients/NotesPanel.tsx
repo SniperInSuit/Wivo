@@ -43,7 +43,7 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
         kind: 'job' as const,
         note,
         job,
-        ref: orderRefs.get(job.id) ?? job.too ?? t('töö', 'job')
+        ref: orderRefs.get(job.id) ?? job.too ?? t('patients.job2')
       }))
     )
   ].sort((a, b) => (b.note.ts ?? '').localeCompare(a.note.ts ?? ''))
@@ -80,16 +80,16 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
 
   return (
     <PanelCard
-      title={t('MÄRKUSED', 'NOTES')}
+      title={t('patients.nOTES')}
       icon={MessageSquare}
       action={
         jobNoteCount > 0
-          ? <span className="text-[11px] text-ink-muted">{t(`${jobNoteCount} tööde märkust`, `${jobNoteCount} job ${jobNoteCount === 1 ? 'note' : 'notes'}`)}</span>
+          ? <span className="text-[11px] text-ink-muted">{t('patients.jobNoteNotes', { jobNoteCount })}</span>
           : undefined
       }
     >
       <div className="space-y-3">
-        {entries.length === 0 && <p className="text-sm text-ink-muted">{t('Märkusi pole.', 'No notes.')}</p>}
+        {entries.length === 0 && <p className="text-sm text-ink-muted">{t('patients.noNotes')}</p>}
 
         {entries.map(entry => {
           const n = entry.note
@@ -106,7 +106,7 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
                     type="button"
                     onClick={() => onOpenJobNote?.(entry.job, n.id)}
                     disabled={!onOpenJobNote}
-                    title={t(`Ava ${entry.job.too ?? 'töö'}`, `Open ${entry.job.too ?? 'job'}`)}
+                    title={t('patients.openJob', { entry })}
                     className="inline-flex items-center gap-1 text-[10px] font-mono font-medium bg-accent-light text-accent-dark rounded px-1.5 py-0.5 hover:bg-accent hover:text-white transition-colors disabled:hover:bg-accent-light disabled:hover:text-accent-dark"
                   >
                     {entry.ref}
@@ -128,16 +128,16 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
                         disabled={updatePatient.isPending}
                         className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-40"
                       >
-                        {t('Kustuta', 'Delete')}
+                        {t('patients.delete')}
                       </button>
-                      <button onClick={() => setConfirmId(null)} className="text-ink-faint hover:text-ink" title={t('Tühista', 'Cancel')}>
+                      <button onClick={() => setConfirmId(null)} className="text-ink-faint hover:text-ink" title={t('patients.cancel')}>
                         <X size={11} />
                       </button>
                     </span>
                   ) : (
                     <button
                       onClick={() => setConfirmId(n.id)}
-                      title={t('Kustuta märkus', 'Delete note')}
+                      title={t('patients.deleteNote')}
                       className="ml-auto text-ink-faint hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                     >
                       <Trash2 size={11} />
@@ -156,7 +156,7 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
           value={draft}
           onChange={e => setDraft(e.target.value)}
           rows={3}
-          placeholder={t('Uus märkus patsiendi kohta…', 'New note about the patient…')}
+          placeholder={t('patients.newNoteAboutThePatient')}
           className="input resize-none"
         />
         <button
@@ -165,11 +165,11 @@ export function NotesPanel({ patient, patientJobs, orderRefs, onError, onOpenJob
           className="btn-primary w-full justify-center disabled:opacity-40"
         >
           {updatePatient.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-          {t('Lisa märkus', 'Add note')}
+          {t('patients.addNote')}
         </button>
         {jobNoteCount > 0 && (
           <p className="text-[10px] text-ink-faint">
-            {t('Sildiga read on tööde märkused — neid muudetakse ja kustutatakse töö kaardil.', 'Tagged lines are job notes — edit and delete them on the job card.')}
+            {t('patients.taggedLinesAreJobNotesEdit')}
           </p>
         )}
       </div>

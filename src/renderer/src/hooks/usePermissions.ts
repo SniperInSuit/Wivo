@@ -16,18 +16,18 @@ export type PermissionKey =
 
 // Human-readable labels for the permissions UI
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
-  'jobs.read':       { label: t('Tööd vaadata', 'View jobs'), description: t('Näeb kõiki töid tahvlil ja tabelis', 'Sees all jobs on the board and in the table') },
-  'jobs.write':      { label: t('Töid muuta', 'Edit jobs'), description: t('Saab luua ja muuta töid', 'Can create and edit jobs') },
-  'patients.read':   { label: t('Patsiente vaadata', 'View patients'), description: t('Näeb patsientide nimekirja ja profiile', 'Sees the patient list and profiles') },
-  'patients.write':  { label: t('Patsiente muuta', 'Edit patients'), description: t('Saab muuta patsiendi terviseandmeid', 'Can edit patient health data') },
-  'visits.read':     { label: t('Visiite vaadata', 'View visits'), description: t('Näeb kõiki visiite kalendris', 'Sees all visits in the calendar') },
-  'visits.write':    { label: t('Visiite hallata', 'Manage visits'), description: t('Saab broneerida ja muuta visiite', 'Can book and edit visits') },
-  'stats.read':      { label: t('Statistikat vaadata', 'View statistics'), description: t('Näeb statistika ja aruannete lehte', 'Sees the statistics and reports page') },
-  'payments.read':   { label: t('Makseid vaadata', 'View payments'), description: t('Näeb arveid ja maksete infot', 'Sees invoices and payment details') },
-  'payments.write':  { label: t('Makseid hallata', 'Manage payments'), description: t('Saab märkida makstuks, luua arveid', 'Can mark as paid and create invoices') },
-  'settings.read':   { label: t('Seadeid vaadata', 'View settings'), description: t('Näeb kliiniku seadeid (ei saa muuta)', 'Sees the clinic settings (cannot change them)') },
-  'pipeline.write':  { label: t('Etappe muuta', 'Edit stages'), description: t('Saab lisada, eemaldada ja ümber nimetada töö etappe', 'Can add, remove and rename job stages') },
-  'payroll.manage':  { label: t('Töötasusid hallata', 'Manage payroll'), description: t('Näeb kõigi tasumäärasid ja tunde, saab kinnitada ja tühistada väljamakseid', 'Sees everyone’s pay rates and hours, can confirm and cancel payouts') },
+  'jobs.read':       { label: t('usePermissions.viewJobs'), description: t('usePermissions.seesAllJobsOnTheBoard') },
+  'jobs.write':      { label: t('usePermissions.editJobs'), description: t('usePermissions.canCreateAndEditJobs') },
+  'patients.read':   { label: t('usePermissions.viewPatients'), description: t('usePermissions.seesThePatientListAndProfiles') },
+  'patients.write':  { label: t('usePermissions.editPatients'), description: t('usePermissions.canEditPatientHealthData') },
+  'visits.read':     { label: t('usePermissions.viewVisits'), description: t('usePermissions.seesAllVisitsInTheCalendar') },
+  'visits.write':    { label: t('usePermissions.manageVisits'), description: t('usePermissions.canBookAndEditVisits') },
+  'stats.read':      { label: t('usePermissions.viewStatistics'), description: t('usePermissions.seesTheStatisticsAndReportsPage') },
+  'payments.read':   { label: t('usePermissions.viewPayments'), description: t('usePermissions.seesInvoicesAndPaymentDetails') },
+  'payments.write':  { label: t('usePermissions.managePayments'), description: t('usePermissions.canMarkAsPaidAndCreate') },
+  'settings.read':   { label: t('usePermissions.viewSettings'), description: t('usePermissions.seesTheClinicSettingsCannotChange') },
+  'pipeline.write':  { label: t('usePermissions.editStages'), description: t('usePermissions.canAddRemoveAndRenameJob') },
+  'payroll.manage':  { label: t('usePermissions.managePayroll'), description: t('usePermissions.seesEveryoneSPayRatesAnd') },
 }
 
 export const ALL_PERMISSIONS = Object.keys(PERMISSION_LABELS) as PermissionKey[]

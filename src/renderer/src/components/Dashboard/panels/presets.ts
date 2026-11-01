@@ -22,8 +22,8 @@ export interface Preset {
 export const PRESETS: readonly Preset[] = [
   {
     key: 'juht',
-    label: t('Juht', 'Manager'),
-    hint: t('Kas me teenime, ja kas töö liigub', 'Are we making money, and is the work moving'),
+    label: t('dashboard.manager'),
+    hint: t('dashboard.areWeMakingMoneyAndIs'),
     panels: [
       'raha.kasum', 'raha.kaive', 'raha.laekunud', 'raha.arveldamata',
       'yhik.kasum_too_kohta', 'toot.tood_kokku', 'toot.tahtajaks', 'toot.muudatuste_maar',
@@ -32,8 +32,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'finantsjuht',
-    label: t('Finantsjuht', 'Finance manager'),
-    hint: t('Kus raha on ja kust see lekib', 'Where the money is and where it leaks'),
+    label: t('dashboard.financeManager'),
+    hint: t('dashboard.whereTheMoneyIsAndWhere'),
     panels: [
       'raha.kasum', 'raha.kulud', 'raha.kate', 'raha.arveldatud',
       'raha.laekunud', 'raha.tasumata', 'raha.arveldamata', 'raha.laekumisaeg',
@@ -45,8 +45,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'tootmisjuht',
-    label: t('Tootmisjuht', 'Production manager'),
-    hint: t('Kas pink jõuab järele', 'Is the bench keeping up'),
+    label: t('dashboard.productionManager'),
+    hint: t('dashboard.isTheBenchKeepingUp'),
     panels: [
       'toot.tood_kokku', 'toot.hambaid', 'toot.tahtajaks', 'toot.tarne',
       'toot.muudatuste_maar', 'toot.masinad',
@@ -57,8 +57,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'tehnik',
-    label: t('Tehnik', 'Technician'),
-    hint: t('Minu töö — ilma rahata', 'My work — no money'),
+    label: t('dashboard.technician'),
+    hint: t('dashboard.myWorkNoMoney'),
     // No money panel by construction, not merely by permission: a technician
     // who was granted payments.read by accident should still get a sane view.
     panels: [
@@ -68,8 +68,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'lobus',
-    label: t('Lõbus', 'Fun'),
-    hint: t('Numbrid, mille pärast keegi ei plaani midagi ümber', 'Numbers nobody changes any plans over'),
+    label: t('dashboard.fun'),
+    hint: t('dashboard.numbersNobodyChangesAnyPlansOver'),
     panels: [
       'fun.hambad_kokku', 'fun.seeria', 'fun.tempo', 'fun.algus',
       'fun.rekordid', 'fun.lemmikud',
@@ -78,8 +78,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'tootmine',
-    label: t('Tootmine', 'Production'),
-    hint: t('Vana Tootmine-vahekaart', 'The old Production tab'),
+    label: t('dashboard.production'),
+    hint: t('dashboard.theOldProductionTab'),
     panels: [
       'toot.tood_kokku', 'toot.hambaid', 'toot.tahtajast_yle', 'toot.muudatuste_maar',
       'raha.kaive', 'raha.laekunud', 'yhik.tulu_too_kohta', 'yhik.kiirtoo_tasuvus',
@@ -89,8 +89,8 @@ export const PRESETS: readonly Preset[] = [
   },
   {
     key: 'rahandus',
-    label: t('Rahandus', 'Finance'),
-    hint: t('Vana Rahandus-vahekaart', 'The old Finance tab'),
+    label: t('dashboard.finance'),
+    hint: t('dashboard.theOldFinanceTab'),
     panels: [
       'raha.kasum', 'raha.kulud', 'raha.arveldatud', 'raha.laekunud',
       'raha.tasumata', 'raha.arveldamata', 'raha.toojoukulu', 'raha.valjamakstud',

@@ -41,11 +41,11 @@ export const EMPTY_VISIT: VisitInput = {
 }
 
 export const VISIT_STATUS_LABEL: Record<VisitStatus, string> = {
-  planeeritud: t('Planeeritud', 'Scheduled'),
-  saabunud: t('Saabunud', 'Arrived'),
-  toimunud: t('Toimunud', 'Completed'),
-  ei_tulnud: t('Ei tulnud', 'No-show'),
-  tuhistatud: t('Tühistatud', 'Cancelled')
+  planeeritud: t('visit.scheduled'),
+  saabunud: t('visit.arrived'),
+  toimunud: t('visit.completed'),
+  ei_tulnud: t('visit.noShow'),
+  tuhistatud: t('visit.cancelled')
 }
 
 // Colour per state. `ei_tulnud` is amber rather than red on purpose: it is not a
@@ -74,9 +74,9 @@ export const VISIT_ACTIONS: Record<VisitStatus, VisitStatus[]> = {
 
 // Verb form for the action button, which reads better than the state name
 export const VISIT_ACTION_LABEL: Record<VisitStatus, string> = {
-  planeeritud: t('Taasta', 'Restore'),
-  saabunud: t('Saabus', 'Arrived'),
-  toimunud: t('Üle antud', 'Handed over'),
-  ei_tulnud: t('Ei tulnud', 'No-show'),
-  tuhistatud: t('Tühista', 'Cancel')
+  planeeritud: t('visit.restore'),
+  saabunud: t('visit.arrived2'),
+  toimunud: t('visit.handedOver'),
+  ei_tulnud: t('visit.noShow'),
+  tuhistatud: t('visit.cancel')
 }

@@ -63,14 +63,14 @@ export function PatientsView({
   )
 
   const handleNew = () => run(async () => {
-    const created = await createPatient.mutateAsync({ ...EMPTY_PATIENT, nimi: t('Uus patsient', 'New patient') })
+    const created = await createPatient.mutateAsync({ ...EMPTY_PATIENT, nimi: t('patients.newPatient') })
     setSelectedId(created.id)
   })
 
   const handleBackfill = () => run(async () => {
     setBackfillMsg(null)
     const res = await backfill.mutateAsync()
-    setBackfillMsg(t(`${res.created} patsienti loodud · ${res.linked} tööd seotud`, `${res.created} ${res.created === 1 ? 'patient' : 'patients'} created · ${res.linked} ${res.linked === 1 ? 'job' : 'jobs'} linked`))
+    setBackfillMsg(t('patients.createdLinkedPatientPatientsJobJobs', { res, created: res.created, linked: res.linked }))
   })
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export function PatientsView({
   }, [focusPatientId, onFocusHandled])
 
   const goBack = useCallback(() => {
-    if (profileDirty && !window.confirm(t('Salvestamata muudatused lähevad kaotsi. Kas jätkata?', 'Unsaved changes will be lost. Continue?'))) return
+    if (profileDirty && !window.confirm(t('patients.unsavedChangesWillBeLostContinue'))) return
     setProfileDirty(false)
     setSelectedId(null)
   }, [profileDirty])
@@ -91,12 +91,12 @@ export function PatientsView({
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="card p-6 max-w-lg text-center space-y-2">
           <ShieldAlert className="mx-auto text-orange-500" size={28} />
-          <p className="font-semibold text-ink">{t('Patsientide tabelit ei leitud', 'Patients table not found')}</p>
+          <p className="font-semibold text-ink">{t('patients.patientsTableNotFound')}</p>
           <p className="text-sm text-ink-muted">
-            {t('Käivita', 'Run')} <code className="px-1 rounded bg-bg-sidebar">sql/001_patients.sql</code>,{' '}
-            <code className="px-1 rounded bg-bg-sidebar">sql/002_patients_rls.sql</code> {t('ja', 'and')}{' '}
+            {t('patients.run')} <code className="px-1 rounded bg-bg-sidebar">sql/001_patients.sql</code>,{' '}
+            <code className="px-1 rounded bg-bg-sidebar">sql/002_patients_rls.sql</code> {t('patients.and')}{' '}
             <code className="px-1 rounded bg-bg-sidebar">sql/003_patient_teeth.sql</code>{' '}
-            {t('Supabase SQL-redaktoris, seejärel laadi rakendus uuesti.', 'in the Supabase SQL editor, then reload the app.')}
+            {t('patients.inTheSupabaseSQLEditorThen')}
           </p>
           <p className="text-xs text-ink-faint">{(error as Error)?.message}</p>
         </div>

@@ -78,7 +78,7 @@ export function JobTimeline({ job, status, finishedAt: finishedAtProp }: JobTime
 
       {isDone && finishedAt && isValid(finishedAt) && (
         <p className="text-center text-[11px] text-ink-muted mt-2">
-          {t(`Valmis ${format(finishedAt, 'dd.MM.yyyy')} kell ${format(finishedAt, 'HH:mm')}`, `Done ${format(finishedAt, 'dd.MM.yyyy')} at ${format(finishedAt, 'HH:mm')}`)}
+          {t('jobDetail.doneAtDdMMYyyyHH', { format, finishedAt })}
         </p>
       )}
     </div>

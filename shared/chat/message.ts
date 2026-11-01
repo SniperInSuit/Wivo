@@ -104,7 +104,7 @@ export function hasContent(body: string): boolean {
  */
 export function previewOf(body: string, jobLabel?: (id: string) => string | null): string {
   return parseMessage(body)
-    .map(s => (s.kind === 'text' ? s.text : (jobLabel?.(s.jobId) ?? t('töö', 'job'))))
+    .map(s => (s.kind === 'text' ? s.text : (jobLabel?.(s.jobId) ?? t('chat.job'))))
     .join('')
     .replace(/\s+/g, ' ')
     .trim()

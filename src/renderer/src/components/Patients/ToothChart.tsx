@@ -71,7 +71,7 @@ function Tooth({ fdi, x, upper, style, manual, editable, onClick }: ToothProps) 
       {/* Native tooltip — the app has no tooltip component. The suffix is what
           lets the user tell a derived 'Töödeldud' from a manual override, which
           silently wins over it (risk R13). */}
-      <title>{`${fdi} — ${style.label}${manual ? t(' — käsitsi määratud', ' — set manually') : ''}`}</title>
+      <title>{`${fdi} — ${style.label}${manual ? t('patients.setManually') : ''}`}</title>
 
       <rect x={-PITCH / 2} y={hitY} width={PITCH} height={hitH} fill="transparent" />
 

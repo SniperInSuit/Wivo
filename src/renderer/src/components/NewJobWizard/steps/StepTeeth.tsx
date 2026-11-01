@@ -292,7 +292,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     return (
       <p className="flex items-start gap-2 rounded-xl bg-bg-sidebar p-4 text-base text-ink-soft">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" aria-hidden="true" />
-        {t('Valitud tööd ei vaja hammaste märkimist. Võid kohe edasi minna.', "The selected work doesn't need any teeth marked. You can go straight on.")}
+        {t('wizard.theSelectedWorkDoesnTNeed')}
       </p>
     )
   }
@@ -303,9 +303,9 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
       <div className="space-y-6">
         <p className="max-w-prose text-base text-ink-soft">
           {rules.archTypes.length === 1
-            ? t(`„${rules.archTypes[0]}" katab terve lõualuu, seega üksikuid hambaid märkima ei pea.`, `“${rules.archTypes[0]}” covers the whole jaw, so you don't need to mark individual teeth.`)
-            : t('Valitud tööd katavad terve lõualuu, seega üksikuid hambaid märkima ei pea.', "The selected work covers the whole jaw, so you don't need to mark individual teeth.")}{' '}
-          {t('Vali, millist lõualuud see töö puudutab.', 'Choose which jaw this job is for.')}
+            ? t('wizard.coversTheWholeJawSoYou', { archTypes: rules.archTypes[0] })
+            : t('wizard.theSelectedWorkCoversTheWhole')}{' '}
+          {t('wizard.chooseWhichJawThisJobIs')}
         </p>
 
         <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
@@ -316,10 +316,10 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         {state.selectedArch && (
           <div className="space-y-2">
             <div>
-              <h3 className="text-sm font-semibold text-ink-soft">{t('Hambad selles lõualuus', 'Teeth in this jaw')}</h3>
+              <h3 className="text-sm font-semibold text-ink-soft">{t('wizard.teethInThisJaw')}</h3>
               <p className="text-base text-ink-muted">
-                {t('Kõik on vaikimisi kaasas. Klõpsa hambal, mida see töö', 'All teeth are included by default. Click any tooth this job does')}{' '}
-                <strong>{t('ei', 'not')}</strong> {t('puuduta — näiteks viimane molaar.', 'cover — for example the last molar.')}
+                {t('wizard.allTeethAreIncludedByDefault')}{' '}
+                <strong>{t('wizard.not')}</strong> {t('wizard.coverForExampleTheLastMolar')}
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         <div className="space-y-4">
           {tabs.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-ink-soft">{t('Millisele tööle?', 'Which work type?')}</h3>
+              <h3 className="text-sm font-semibold text-ink-soft">{t('wizard.whichWorkType')}</h3>
               <WorkTypeTabs
                 tabs={tabs}
                 activeType={activeType}
@@ -378,7 +378,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
                 }}
               />
               <p className="text-xs text-ink-muted">
-                {t('Üks hammas kuulub korraga ainult ühele tööle.', 'A tooth can belong to only one work item at a time.')}
+                {t('wizard.aToothCanBelongToOnly')}
               </p>
             </div>
           )}
@@ -417,7 +417,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
           {rules.archTypes.length > 0 && (
             <div className="space-y-2 border-t border-ink-faint/30 pt-3">
               <h3 className="text-sm font-semibold text-ink-soft">
-                {t('Lõualuu', 'Jaw')} — {rules.archTypes.join(', ')}
+                {t('wizard.jaw')} — {rules.archTypes.join(', ')}
               </h3>
               <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
             </div>

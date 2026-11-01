@@ -39,38 +39,38 @@ export interface ThemeToken {
  * readable beats a gradient that is not.
  */
 export const THEME_TOKENS: ThemeToken[] = [
-  { key: 'accent', css: '--c-accent', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv', 'Accent colour'),
-    hint: t('Nupud, aktiivsed valikud, lingid', 'Buttons, active selections, links') },
-  { key: 'accent-hover', css: '--c-accent-hover', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (hover)', 'Accent colour (hover)') },
-  { key: 'accent-light', css: '--c-accent-light', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (hele)', 'Accent colour (light)') },
-  { key: 'accent-dark', css: '--c-accent-dark', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (tume)', 'Accent colour (dark)') },
+  { key: 'accent', css: '--c-accent', group: t('customTheme.accentColour'), label: t('customTheme.accentColour'),
+    hint: t('customTheme.buttonsActiveSelectionsLinks') },
+  { key: 'accent-hover', css: '--c-accent-hover', group: t('customTheme.accentColour'), label: t('customTheme.accentColourHover') },
+  { key: 'accent-light', css: '--c-accent-light', group: t('customTheme.accentColour'), label: t('customTheme.accentColourLight') },
+  { key: 'accent-dark', css: '--c-accent-dark', group: t('customTheme.accentColour'), label: t('customTheme.accentColourDark') },
 
-  { key: 'bg-card', css: '--c-bg-card', group: t('Taustad', 'Backgrounds'), label: t('Kaardi taust', 'Card background') },
-  { key: 'bg-sidebar', css: '--c-bg-sidebar', group: t('Taustad', 'Backgrounds'), label: t('Süvistatud pind', 'Inset surface'),
-    hint: t('Sisestusväljad ja süvendid kaardi sees', 'Input fields and insets inside a card') },
-  { key: 'bg', css: '--c-bg', group: t('Taustad', 'Backgrounds'), label: t('Üldine taust', 'General background') },
-  { key: 'app-bg', css: '--app-bg', group: t('Taustad', 'Backgrounds'), label: t('Lehe taust', 'Page background'),
-    hint: t('See, mille peal kaardid hõljuvad', 'What the cards float on') },
+  { key: 'bg-card', css: '--c-bg-card', group: t('customTheme.backgrounds'), label: t('customTheme.cardBackground') },
+  { key: 'bg-sidebar', css: '--c-bg-sidebar', group: t('customTheme.backgrounds'), label: t('customTheme.insetSurface'),
+    hint: t('customTheme.inputFieldsAndInsetsInsideA') },
+  { key: 'bg', css: '--c-bg', group: t('customTheme.backgrounds'), label: t('customTheme.generalBackground') },
+  { key: 'app-bg', css: '--app-bg', group: t('customTheme.backgrounds'), label: t('customTheme.pageBackground'),
+    hint: t('customTheme.whatTheCardsFloatOn') },
 
-  { key: 'ink', css: '--c-ink', group: t('Tekst kaardil', 'Text on cards'), label: t('Põhitekst', 'Body text') },
-  { key: 'ink-soft', css: '--c-ink-soft', group: t('Tekst kaardil', 'Text on cards'), label: t('Pehme tekst', 'Soft text') },
-  { key: 'ink-muted', css: '--c-ink-muted', group: t('Tekst kaardil', 'Text on cards'), label: t('Vaikne tekst', 'Muted text') },
-  { key: 'ink-faint', css: '--c-ink-faint', group: t('Tekst kaardil', 'Text on cards'), label: t('Ääred ja vihjed', 'Borders and hints') },
+  { key: 'ink', css: '--c-ink', group: t('customTheme.textOnCards'), label: t('customTheme.bodyText') },
+  { key: 'ink-soft', css: '--c-ink-soft', group: t('customTheme.textOnCards'), label: t('customTheme.softText') },
+  { key: 'ink-muted', css: '--c-ink-muted', group: t('customTheme.textOnCards'), label: t('customTheme.mutedText') },
+  { key: 'ink-faint', css: '--c-ink-faint', group: t('customTheme.textOnCards'), label: t('customTheme.bordersAndHints') },
 
-  { key: 'page-ink', css: '--c-page-ink', group: t('Tekst lehe taustal', 'Text on the page background'), label: t('Lehe pealkiri', 'Page title'),
-    hint: t('Otse lehe taustal, mitte kaardi sees', 'Directly on the page background, not inside a card') },
-  { key: 'page-ink-muted', css: '--c-page-ink-muted', group: t('Tekst lehe taustal', 'Text on the page background'), label: t('Lehe alltekst', 'Page subtitle') },
+  { key: 'page-ink', css: '--c-page-ink', group: t('customTheme.textOnThePageBackground'), label: t('customTheme.pageTitle'),
+    hint: t('customTheme.directlyOnThePageBackgroundNot') },
+  { key: 'page-ink-muted', css: '--c-page-ink-muted', group: t('customTheme.textOnThePageBackground'), label: t('customTheme.pageSubtitle') },
 
-  { key: 'nav-bg', css: '--c-nav-bg', group: t('Külgriba', 'Sidebar'), label: t('Külgriba taust', 'Sidebar background') },
-  { key: 'nav', css: '--c-nav', group: t('Külgriba', 'Sidebar'), label: t('Külgriba tekst', 'Sidebar text') },
-  { key: 'nav-muted', css: '--c-nav-muted', group: t('Külgriba', 'Sidebar'), label: t('Külgriba vaikne tekst', 'Sidebar muted text') },
+  { key: 'nav-bg', css: '--c-nav-bg', group: t('customTheme.sidebar'), label: t('customTheme.sidebarBackground') },
+  { key: 'nav', css: '--c-nav', group: t('customTheme.sidebar'), label: t('customTheme.sidebarText') },
+  { key: 'nav-muted', css: '--c-nav-muted', group: t('customTheme.sidebar'), label: t('customTheme.sidebarMutedText') },
 
-  { key: 'chrome', css: '--c-chrome', group: t('Ülariba', 'Top bar'), label: t('Ülariba taust', 'Top bar background') },
-  { key: 'chrome-text', css: '--c-chrome-text', group: t('Ülariba', 'Top bar'), label: t('Ülariba tekst', 'Top bar text') },
-  { key: 'chrome-muted', css: '--c-chrome-muted', group: t('Ülariba', 'Top bar'), label: t('Ülariba vaikne tekst', 'Top bar muted text') },
-  { key: 'chrome-faint', css: '--c-chrome-faint', group: t('Ülariba', 'Top bar'), label: t('Ülariba ääred', 'Top bar borders') },
+  { key: 'chrome', css: '--c-chrome', group: t('customTheme.topBar'), label: t('customTheme.topBarBackground') },
+  { key: 'chrome-text', css: '--c-chrome-text', group: t('customTheme.topBar'), label: t('customTheme.topBarText') },
+  { key: 'chrome-muted', css: '--c-chrome-muted', group: t('customTheme.topBar'), label: t('customTheme.topBarMutedText') },
+  { key: 'chrome-faint', css: '--c-chrome-faint', group: t('customTheme.topBar'), label: t('customTheme.topBarBorders') },
 
-  { key: 'chip-plate', css: '--c-chip-plate', group: t('Muu', 'Other'), label: t('Logoplaat', 'Logo plate') },
+  { key: 'chip-plate', css: '--c-chip-plate', group: t('customTheme.other'), label: t('customTheme.logoPlate') },
 ]
 
 export const THEME_TOKEN_KEYS = THEME_TOKENS.map(token => token.key)
@@ -154,17 +154,17 @@ export interface ContrastCheck {
  * with it. These are the pairs the stylesheet actually puts together.
  */
 export const CONTRAST_CHECKS: ContrastCheck[] = [
-  { fg: 'page-ink', bg: 'app-bg', label: t('Lehe pealkiri lehe taustal', 'Page title on page background'), min: 4.5 },
-  { fg: 'page-ink-muted', bg: 'app-bg', label: t('Lehe alltekst lehe taustal', 'Page subtitle on page background'), min: 4.5 },
-  { fg: 'ink', bg: 'bg-card', label: t('Põhitekst kaardil', 'Body text on card'), min: 4.5 },
-  { fg: 'ink-muted', bg: 'bg-card', label: t('Vaikne tekst kaardil', 'Muted text on card'), min: 4.5 },
-  { fg: 'ink-faint', bg: 'bg-card', label: t('Ääred ja vihjed kaardil', 'Borders and hints on card'), min: 3 },
-  { fg: 'ink', bg: 'bg-sidebar', label: t('Tekst sisestusväljal', 'Text in input field'), min: 4.5 },
-  { fg: 'nav', bg: 'nav-bg', label: t('Külgriba tekst', 'Sidebar text'), min: 4.5 },
-  { fg: 'nav-muted', bg: 'nav-bg', label: t('Külgriba vaikne tekst', 'Sidebar muted text'), min: 4.5 },
-  { fg: 'chrome-text', bg: 'chrome', label: t('Ülariba tekst', 'Top bar text'), min: 4.5 },
-  { fg: 'chrome-muted', bg: 'chrome', label: t('Ülariba vaikne tekst', 'Top bar muted text'), min: 4.5 },
-  { fg: 'accent', bg: 'bg-card', label: t('Rõhuvärv kaardil', 'Accent colour on card'), min: 3 },
+  { fg: 'page-ink', bg: 'app-bg', label: t('customTheme.pageTitleOnPageBackground'), min: 4.5 },
+  { fg: 'page-ink-muted', bg: 'app-bg', label: t('customTheme.pageSubtitleOnPageBackground'), min: 4.5 },
+  { fg: 'ink', bg: 'bg-card', label: t('customTheme.bodyTextOnCard'), min: 4.5 },
+  { fg: 'ink-muted', bg: 'bg-card', label: t('customTheme.mutedTextOnCard'), min: 4.5 },
+  { fg: 'ink-faint', bg: 'bg-card', label: t('customTheme.bordersAndHintsOnCard'), min: 3 },
+  { fg: 'ink', bg: 'bg-sidebar', label: t('customTheme.textInInputField'), min: 4.5 },
+  { fg: 'nav', bg: 'nav-bg', label: t('customTheme.sidebarText'), min: 4.5 },
+  { fg: 'nav-muted', bg: 'nav-bg', label: t('customTheme.sidebarMutedText'), min: 4.5 },
+  { fg: 'chrome-text', bg: 'chrome', label: t('customTheme.topBarText'), min: 4.5 },
+  { fg: 'chrome-muted', bg: 'chrome', label: t('customTheme.topBarMutedText'), min: 4.5 },
+  { fg: 'accent', bg: 'bg-card', label: t('customTheme.accentColourOnCard'), min: 3 },
 ]
 
 export interface ContrastResult extends ContrastCheck {

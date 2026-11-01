@@ -21,12 +21,12 @@ const TEXTURE_OPTIONS = ['Sile', 'Loomulik', 'Tugev'] as const
 // Display only: the stored value stays the Estonian word above, because it is
 // written into kirjeldus (job content) verbatim.
 const FINISH_LABEL: Record<string, string> = {
-  Läikiv: t('Läikiv', 'Glossy'),
-  Poolmatt: t('Poolmatt', 'Semi-matte'),
-  Matt: t('Matt', 'Matte'),
-  Sile: t('Sile', 'Smooth'),
-  Loomulik: t('Loomulik', 'Natural'),
-  Tugev: t('Tugev', 'Pronounced'),
+  Läikiv: t('wizard.glossy'),
+  Poolmatt: t('wizard.semiMatte'),
+  Matt: t('wizard.matte'),
+  Sile: t('wizard.smooth'),
+  Loomulik: t('wizard.natural'),
+  Tugev: t('wizard.pronounced'),
 }
 export const finishLabel = (value: string): string => FINISH_LABEL[value] ?? value
 
@@ -64,7 +64,7 @@ function OptionRow({ label, options, value, onChange }: {
           className={`${WIZARD_BTN} inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft`}
         >
           <Eraser className="w-4 h-4" aria-hidden="true" />
-          {t('Tühjenda', 'Clear')}
+          {t('wizard.clear')}
         </button>
       )}
     </div>
@@ -101,17 +101,17 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
       <section>
         <SectionHeading
           id="wizard-materjal-label"
-          title={t('Materjal', 'Material')}
+          title={t('wizard.material')}
           help={multi
-            ? t('Iga tööosa võib olla eri materjalist. Vali ülalt tööosa ja siis selle materjal.', 'Each work item can be in a different material. Choose a work item above, then its material.')
-            : t('Vali materjal, millest töö valmistatakse.', 'Choose the material the job is made from.')}
+            ? t('wizard.eachWorkItemCanBeIn')
+            : t('wizard.chooseTheMaterialTheJobIs')}
         />
 
         {/* One row per piece of work. Without it the wizard could only say what
             the WHOLE case was made of, so crowns in one material and bridges in
             another was unsayable — and priced at the first material's rate. */}
         {multi && (
-          <div role="tablist" aria-label={t('Tööosad', 'Work items')} className="flex flex-wrap gap-2 mb-4">
+          <div role="tablist" aria-label={t('wizard.workItems')} className="flex flex-wrap gap-2 mb-4">
             {state.jobTypes.map(key => {
               const nimi = baseTypeName(key)
               const assigned = state.materialByType[key]?.trim()
@@ -136,7 +136,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
                   />
                   {nimi}
                   <span className={assigned ? 'text-accent font-medium' : 'text-ink-faint'}>
-                    {assigned ?? t('materjal valimata', 'no material')}
+                    {assigned ?? t('wizard.noMaterial')}
                   </span>
                 </button>
               )
@@ -155,7 +155,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
             unassigned work is quoted with the job's first material. */}
         {multi && state.jobTypes.some(k => !state.materialByType[k]?.trim()) && (
           <p className={WIZARD_HELP}>
-            {t('Määramata tööosad hinnastatakse esimese valitud materjali järgi.', 'Work items with no material are priced at the first selected material.')}
+            {t('wizard.workItemsWithNoMaterialAre')}
           </p>
         )}
         {materialError && (
@@ -169,8 +169,8 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-toon-label"
-            title={t('Värvitoon', 'Shade')}
-            help={t('Üks toon kehtib kõigile selle töö hammastele. Üksiku hamba tooni saad hiljem töö lehel muuta.', "One shade applies to every tooth on this job. You can change a single tooth's shade later on the job page.")}
+            title={t('wizard.shade3')}
+            help={t('wizard.oneShadeAppliesToEveryTooth')}
           />
           <WizardShadePicker
             value={state.defaultShade}
@@ -183,8 +183,8 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
           <div className="mt-6">
             <SectionHeading
               id="wizard-kondivarv-label"
-              title={t('Köndivärv', 'Stump shade')}
-              help={t('Ihutud köndi enda toon (VITA ND). Läbipaistva keraamika all paistab see krooni läbi. Kui ei ole teada, jäta valimata.', "The shade of the prepared stump itself (VITA ND). Under translucent ceramics it shows through the crown. If it isn't known, leave it unselected.")}
+              title={t('wizard.stumpShade')}
+              help={t('wizard.theShadeOfThePreparedStump')}
             />
             <WizardDieShadePicker
               value={state.dieShade}
@@ -197,7 +197,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         // a bug to someone who filled this form yesterday for a crown.
         <p className="flex items-start gap-2 text-base text-ink-muted">
           <Info className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
-          {t('Valitud töö tüüpide juures värvitooni ei küsita.', "The selected work types don't need a shade.")}
+          {t('wizard.theSelectedWorkTypesDonT')}
         </p>
       )}
 
@@ -205,11 +205,11 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-glasuur-label"
-            title={t('Glasuur', 'Glaze')}
-            help={t('Kui glasuuri ei ole vaja, jäta valimata.', "If no glaze is needed, leave it unselected.")}
+            title={t('wizard.glaze')}
+            help={t('wizard.ifNoGlazeIsNeededLeave')}
           />
           <OptionRow
-            label={t('Glasuur', 'Glaze')}
+            label={t('wizard.glaze')}
             options={GLAZE_OPTIONS}
             value={state.glaze}
             onChange={glaze => patch({ glaze })}
@@ -221,11 +221,11 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-tekstuur-label"
-            title={t('Tekstuur', 'Texture')}
-            help={t('Pinna tekstuur. Vabatahtlik.', 'Surface texture. Optional.')}
+            title={t('wizard.texture')}
+            help={t('wizard.surfaceTextureOptional')}
           />
           <OptionRow
-            label={t('Tekstuur', 'Texture')}
+            label={t('wizard.texture')}
             options={TEXTURE_OPTIONS}
             value={state.texture}
             onChange={texture => patch({ texture })}

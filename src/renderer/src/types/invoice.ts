@@ -9,10 +9,10 @@ import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on l
 export type InvoiceStatus = 'mustand' | 'saadetud' | 'makstud' | 'tuhistatud'
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
-  mustand:    t('Mustand', 'Draft'),
-  saadetud:   t('Saadetud', 'Sent'),
-  makstud:    t('Makstud', 'Paid'),
-  tuhistatud: t('Tühistatud', 'Cancelled'),
+  mustand:    t('invoice.draft'),
+  saadetud:   t('invoice.sent'),
+  makstud:    t('invoice.paid'),
+  tuhistatud: t('invoice.cancelled'),
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
@@ -33,10 +33,10 @@ export const INVOICE_STATUS_HEX: Record<InvoiceStatus, string> = {
 export type PaymentMethod = 'ulekanne' | 'sularaha' | 'kaart' | 'muu'
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  ulekanne: t('Ülekanne', 'Bank transfer'),
-  sularaha: t('Sularaha', 'Cash'),
-  kaart:    t('Kaart', 'Card'),
-  muu:      t('Muu', 'Other'),
+  ulekanne: t('invoice.bankTransfer'),
+  sularaha: t('invoice.cash'),
+  kaart:    t('invoice.card'),
+  muu:      t('invoice.other'),
 }
 
 export interface InvoiceLine {

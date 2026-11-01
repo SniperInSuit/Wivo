@@ -125,7 +125,7 @@ export function StatTile({
       {coverage && missing > 0 && (
         <p className="text-[11px] text-orange-500 flex items-start gap-1">
           <AlertTriangle size={10} className="flex-shrink-0 mt-0.5" />
-          {coverage.covered}/{coverage.total} {coverageLabel} {t(`— ${missing} tööd puudu`, `— ${missing} ${missing === 1 ? 'job' : 'jobs'} missing`)}
+          {coverage.covered}/{coverage.total} {coverageLabel} {t('ui.missingJobJobs', { missing })}
         </p>
       )}
     </div>

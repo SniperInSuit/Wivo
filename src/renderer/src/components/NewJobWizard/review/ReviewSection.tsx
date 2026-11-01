@@ -45,13 +45,13 @@ export function ReviewSection({ title, step, onEdit, errors, children }: ReviewS
         <button
           type="button"
           onClick={() => onEdit(step)}
-          aria-label={t(`Muuda — ${title}`, `Edit — ${title}`)}
+          aria-label={t('wizard.edit', { title })}
           className={`flex items-center gap-1.5 px-3 text-base font-medium text-accent
                       rounded-lg hover:bg-accent/10 transition-colors
                       ${WIZARD_HIT_MIN} ${FOCUS_RING}`}
         >
           <Pencil className="w-4 h-4" aria-hidden="true" />
-          {t('Muuda', 'Edit')}
+          {t('wizard.edit2')}
         </button>
       </div>
 

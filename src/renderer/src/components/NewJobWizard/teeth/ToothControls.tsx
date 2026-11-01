@@ -82,13 +82,10 @@ export function ToothControls({
     onSetActiveTeeth(sortTeeth([...activeTeeth, ...added]))
     setAnnouncement(
       added.length === 0
-        ? t(`${what}: kõik hambad kuuluvad juba teistele töödele.`, `${what}: all these teeth already belong to other work items.`)
+        ? t('wizard.allTheseTeethAlreadyBelongTo', { what })
         : skipped.length > 0
-          ? t(
-            `${what}: lisatud ${teethCountLabel(added.length)}, ${teethCountLabel(skipped.length)} jäi vahele, sest kuulub teisele tööle.`,
-            `${what}: added ${teethCountLabel(added.length)}, skipped ${teethCountLabel(skipped.length)} because ${skipped.length === 1 ? 'it belongs' : 'they belong'} to another work item.`
-          )
-          : t(`${what}: lisatud ${teethCountLabel(added.length)}.`, `${what}: added ${teethCountLabel(added.length)}.`)
+          ? t('wizard.addedSkippedBecauseToAnotherWork', { what, teethCountLabel, added, skipped, addedCount: teethCountLabel(added.length), skippedCount: teethCountLabel(skipped.length) })
+          : t('wizard.added', { what, addedCount: teethCountLabel(added.length) })
     )
   }
 
@@ -105,7 +102,7 @@ export function ToothControls({
     return () => {
       if (disabled) return
       if (!activeType) {
-        setAnnouncement(t('Vali kõigepealt, millisele tööle hambaid märgid.', 'First choose which work type you are marking teeth for.'))
+        setAnnouncement(t('wizard.firstChooseWhichWorkTypeYou'))
         return
       }
       run()
@@ -115,7 +112,7 @@ export function ToothControls({
   function selectArch(arch: 'upper' | 'lower') {
     addTeeth(
       arch === 'upper' ? FDI_UPPER : FDI_LOWER,
-      arch === 'upper' ? t('Ülemine lõualuu', 'Upper jaw') : t('Alumine lõualuu', 'Lower jaw')
+      arch === 'upper' ? t('wizard.upperJaw') : t('wizard.lowerJaw')
     )
   }
 
@@ -123,7 +120,7 @@ export function ToothControls({
     const partners = activeTeeth
       .map(mirrorTooth)
       .filter((tooth): tooth is number => tooth != null)
-    addTeeth(partners, t('Peegeldus', 'Mirror'))
+    addTeeth(partners, t('wizard.mirror'))
   }
 
   const seg = [
@@ -140,7 +137,7 @@ export function ToothControls({
         className="inline-flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent"
         aria-live="polite"
       >
-        {t(`${total} hammast valitud`, `${total} ${total === 1 ? 'tooth' : 'teeth'} selected`)}
+        {t('wizard.selectedToothTeeth', { total })}
       </span>
 
       {/* Arch buttons — card style like work types */}
@@ -153,7 +150,7 @@ export function ToothControls({
           <span className="flex h-12 items-center justify-center p-1">
             <img src={upperImg} alt="" className="h-full object-contain" />
           </span>
-          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('Ülemine', 'Upper')}</span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('wizard.upper')}</span>
         </button>
         <button type="button" onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}
           className={`rounded-xl border-2 overflow-hidden text-center transition-all duration-150 aria-disabled:opacity-40 aria-disabled:cursor-not-allowed ${
@@ -163,7 +160,7 @@ export function ToothControls({
           <span className="flex h-12 items-center justify-center p-1">
             <img src={lowerImg} alt="" className="h-full object-contain" />
           </span>
-          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('Alumine', 'Lower')}</span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('wizard.lower')}</span>
         </button>
       </div>
 
@@ -175,22 +172,22 @@ export function ToothControls({
           onClick={() => { if (!disabled) setConfirmClear(true) }}
           aria-disabled={Boolean(disabled) || undefined}
         >
-          <Eraser className="h-3.5 w-3.5" /> {t('Tühjenda', 'Clear')}
+          <Eraser className="h-3.5 w-3.5" /> {t('wizard.clear')}
         </button>
       )}
 
       {activeType && (
         <p className="text-[11px] text-ink-muted">
-          {t(`Märgid hambaid tööle „${activeType}"`, `Marking teeth for “${activeType}”`)}
+          {t('wizard.markingTeethFor', { activeType })}
         </p>
       )}
 
       {confirmClear && (
         <div role="alertdialog" className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-50 px-2.5 py-1.5">
-          <span className="text-xs font-semibold text-rose-500">{t(`Tühjendada ${teethCountLabel(total)}?`, `Clear ${teethCountLabel(total)}?`)}</span>
+          <span className="text-xs font-semibold text-rose-500">{t('wizard.clear2', { total: teethCountLabel(total) })}</span>
           <button type="button" className="text-xs font-semibold bg-rose-500 text-white px-2 py-0.5 rounded"
-            onClick={() => { onClearAll(); setConfirmClear(false); setAnnouncement(t('Tühjendatud.', 'Cleared.')) }}>{t('Jah', 'Yes')}</button>
-          <button type="button" className="text-xs text-ink-muted" onClick={() => setConfirmClear(false)}>{t('Ei', 'No')}</button>
+            onClick={() => { onClearAll(); setConfirmClear(false); setAnnouncement(t('wizard.cleared')) }}>{t('wizard.yes')}</button>
+          <button type="button" className="text-xs text-ink-muted" onClick={() => setConfirmClear(false)}>{t('wizard.no')}</button>
         </div>
       )}
 

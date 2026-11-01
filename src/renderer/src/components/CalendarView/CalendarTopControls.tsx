@@ -29,9 +29,9 @@ export function CalendarTopControls({
             are the lab's. Each half appears only in a mode that has it, and
             'kombineeritud' only in WivoX where both actually exist. */}
         {([
-          { key: 'tood', label: t('Tööd', 'Jobs'), clinical: false, lab: true },
-          { key: 'visiidid', label: t('Visiidid', 'Visits'), clinical: true, lab: false },
-          { key: 'kombineeritud', label: t('Kombineeritud', 'Combined'), clinical: true, lab: true },
+          { key: 'tood', label: t('calendarView.jobs'), clinical: false, lab: true },
+          { key: 'visiidid', label: t('calendarView.visits'), clinical: true, lab: false },
+          { key: 'kombineeritud', label: t('calendarView.combined'), clinical: true, lab: true },
         ] as const)
           .filter(o => !o.clinical || settings.kliinilineRezhiim)
           .filter(o => !o.lab || settings.laboriRezhiim)
@@ -53,8 +53,8 @@ export function CalendarTopControls({
       {mode === 'visiidid' && (
         <div className="flex items-center gap-1 bg-nav/10 rounded-xl p-1 flex-shrink-0">
           {([
-            { key: 'kuu', label: t('Kuu', 'Month') },
-            { key: 'nadal', label: t('Nädal', 'Week') },
+            { key: 'kuu', label: t('calendarView.month') },
+            { key: 'nadal', label: t('calendarView.week') },
           ] as const).map(({ key, label }) => (
             <button
               key={key}
@@ -73,7 +73,7 @@ export function CalendarTopControls({
         onClick={onToday}
         className="text-nav hover:text-nav font-medium px-3 py-1.5 rounded-lg transition-colors text-sm border border-nav/30 flex-shrink-0"
       >
-        {t('Täna', 'Today')}
+        {t('calendarView.today')}
       </button>
     </>
   )

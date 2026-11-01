@@ -68,7 +68,7 @@ function Facts({ rows }: { rows: { label: string; value: React.ReactNode; muted?
 
 /** Horizontal share bars — the pattern the old page hand-rolled three times. */
 function ShareBars({ rows }: { rows: { label: string; value: string; share: number; color?: string }[] }) {
-  if (rows.length === 0) return <Empty>{t('Andmeid ei ole.', 'No data.')}</Empty>
+  if (rows.length === 0) return <Empty>{t('dashboard.noData4')}</Empty>
   return (
     <div className="space-y-2">
       {rows.map((r, i) => (
@@ -96,27 +96,27 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // ── Raha ja kasum ──────────────────────────────────────────────────────────
   'raha.kasum': ctx => (
     <StatTile
-      icon={TrendingUp} label={t('Kasum (tulu − kulu)', 'Profit (income − cost)')} value={eur(ctx.profit.profit)}
+      icon={TrendingUp} label={t('dashboard.profitIncomeCost')} value={eur(ctx.profit.profit)}
       accent={ctx.profit.profit >= 0 ? '#22C55E' : '#EF4444'}
-      sub={t(`Kate ${pct(ctx.profit.profitPct)}`, `Margin ${pct(ctx.profit.profitPct)}`)}
+      sub={t('dashboard.margin3', { profitPct: pct(ctx.profit.profitPct) })}
       // Both coverages, because this number subtracts both. The overhead caveat
       // is separate: subtracting an unentered zero and calling it profit is the
       // same lie as a margin that ignores labour.
-      coverage={ctx.fin.labourCoverage} coverageLabel={t('tööl on teostaja', 'jobs have an assignee')}
+      coverage={ctx.fin.labourCoverage} coverageLabel={t('dashboard.jobsHaveAnAssignee')}
     />
   ),
 
   'raha.kulud': ctx => (
-    <Block title={t('Kulu kokku', 'Total cost')} sub={eur(ctx.profit.costs)}>
+    <Block title={t('dashboard.totalCost')} sub={eur(ctx.profit.costs)}>
       <ShareBars rows={[
-        { label: t('Tööjõud + maksud', 'Labour + taxes'), value: eur(ctx.profit.labour), share: share(ctx.profit.labour, ctx.profit.costs) },
-        { label: t('Materjal ja tarvikud', 'Materials and supplies'), value: eur(ctx.profit.material), share: share(ctx.profit.material, ctx.profit.costs) },
-        { label: t('Fikseeritud', 'Fixed'), value: eur(ctx.profit.fixed), share: share(ctx.profit.fixed, ctx.profit.costs) },
-        { label: t('Üldkulud', 'Overheads'), value: eur(ctx.profit.overheads), share: share(ctx.profit.overheads, ctx.profit.costs) },
+        { label: t('dashboard.labourTaxes'), value: eur(ctx.profit.labour), share: share(ctx.profit.labour, ctx.profit.costs) },
+        { label: t('dashboard.materialsAndSupplies'), value: eur(ctx.profit.material), share: share(ctx.profit.material, ctx.profit.costs) },
+        { label: t('dashboard.fixed2'), value: eur(ctx.profit.fixed), share: share(ctx.profit.fixed, ctx.profit.costs) },
+        { label: t('dashboard.overheads2'), value: eur(ctx.profit.overheads), share: share(ctx.profit.overheads, ctx.profit.costs) },
       ].filter(r => r.value !== '0.00 €')} />
       {ctx.profit.overheads === 0 && (
         <p className="text-[11px] text-orange-500 mt-2 leading-relaxed">
-          {t('Üldkulusid ei ole sisestatud — see on kate, mitte kasum. Seaded → Hinnad → Üldkulud.', 'No overheads entered — this is margin, not profit. Settings → Prices → Overheads.')}
+          {t('dashboard.noOverheadsEnteredThisIsMargin')}
         </p>
       )}
     </Block>
@@ -124,65 +124,65 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'raha.kate': ctx => (
     <StatTile
-      icon={Percent} label={t('Brutokate', 'Gross margin')} value={eur(ctx.fin.grossMargin)}
-      sub={t(`${pct(ctx.fin.grossMarginPct)} arveldatust · netokate ${eur(ctx.fin.netMargin)} (${pct(ctx.fin.netMarginPct)})`, `${pct(ctx.fin.grossMarginPct)} of invoiced · net margin ${eur(ctx.fin.netMargin)} (${pct(ctx.fin.netMarginPct)})`)}
+      icon={Percent} label={t('dashboard.grossMargin')} value={eur(ctx.fin.grossMargin)}
+      sub={t('dashboard.ofInvoicedNetMargin', { grossMarginPct: pct(ctx.fin.grossMarginPct), netMargin: eur(ctx.fin.netMargin), netMarginPct: pct(ctx.fin.netMarginPct) })}
       accent="#6366F1"
-      coverage={ctx.fin.materialCoverage} coverageLabel={t('tööl on omahind', 'jobs have a cost price')}
+      coverage={ctx.fin.materialCoverage} coverageLabel={t('dashboard.jobsHaveACostPrice')}
     />
   ),
 
   'raha.kaive': ctx => (
-    <StatTile icon={Euro} label={t('Käive', 'Revenue')} value={eur(ctx.m.money)} sub={MONEY_HINT.kaive} />
+    <StatTile icon={Euro} label={t('dashboard.revenue')} value={eur(ctx.m.money)} sub={MONEY_HINT.kaive} />
   ),
 
   'raha.arveldatud': ctx => (
-    <StatTile icon={Euro} label={t('Arveldatud', 'Invoiced')} value={eur(ctx.fin.billed)} sub={MONEY_HINT.arveldatud} />
+    <StatTile icon={Euro} label={t('dashboard.invoiced')} value={eur(ctx.fin.billed)} sub={MONEY_HINT.arveldatud} />
   ),
 
   'raha.laekunud': ctx => (
-    <StatTile icon={Wallet} label={t('Laekunud', 'Received')} value={eur(ctx.fin.received)} sub={MONEY_HINT.laekunud} accent="#22C55E" />
+    <StatTile icon={Wallet} label={t('dashboard.received')} value={eur(ctx.fin.received)} sub={MONEY_HINT.laekunud} accent="#22C55E" />
   ),
 
   'raha.tasumata': ctx => (
     <StatTile
-      icon={Clock} label={t('Tasumata arvete järgi', 'Unpaid by invoice')} value={eur(ctx.fin.outstanding)} accent="#F59E0B"
+      icon={Clock} label={t('dashboard.unpaidByInvoice')} value={eur(ctx.fin.outstanding)} accent="#F59E0B"
       sub={ctx.fin.overdue > 0
-        ? t(`${eur(ctx.fin.overdue)} üle tähtaja`, `${eur(ctx.fin.overdue)} overdue`)
-        : t('Ainult väljastatud arved. Arveta töö on „Arveldamata" all.', 'Issued invoices only. Work without an invoice is under “Not invoiced”.')}
+        ? t('dashboard.overdue4', { overdue: eur(ctx.fin.overdue) })
+        : t('dashboard.issuedInvoicesOnlyWorkWithoutAn')}
     />
   ),
 
   'raha.arveldamata': ctx => (
     <StatTile
-      icon={FileWarning} label={t('Arveldamata', 'Not invoiced')} value={eur(ctx.fin.unbilled)} accent="#EF4444"
-      sub={t(`${ctx.fin.unbilledJobs} valmis tööd ilma arveta`, `${ctx.fin.unbilledJobs} finished ${ctx.fin.unbilledJobs === 1 ? 'job' : 'jobs'} without an invoice`)}
+      icon={FileWarning} label={t('dashboard.notInvoiced')} value={eur(ctx.fin.unbilled)} accent="#EF4444"
+      sub={t('dashboard.finishedWithoutAnInvoiceJobJobs2', { ctx, unbilledJobs: ctx.fin.unbilledJobs })}
     />
   ),
 
   'raha.toojoukulu': ctx => (
     <StatTile
-      icon={Users} label={t('Tööjõud + maksud + arve', 'Labour + taxes + invoices')} value={eur(ctx.fin.labourAccrued + ctx.profit.employerTax)}
+      icon={Users} label={t('dashboard.labourTaxesInvoices')} value={eur(ctx.fin.labourAccrued + ctx.profit.employerTax)}
       accent="#8B5CF6"
       sub={[
-        t(`Bruto ${eur(ctx.fin.labourEmployeeGross)}`, `Gross ${eur(ctx.fin.labourEmployeeGross)}`),
-        ctx.profit.employerTax > 0 ? t(`Maksud ${eur(ctx.profit.employerTax)}`, `Taxes ${eur(ctx.profit.employerTax)}`) : null,
-        ctx.fin.labourContractor > 0 ? t(`Arve alusel ${eur(ctx.fin.labourContractor)}`, `Contractor invoices ${eur(ctx.fin.labourContractor)}`) : null,
+        t('dashboard.gross2', { labourEmployeeGross: eur(ctx.fin.labourEmployeeGross) }),
+        ctx.profit.employerTax > 0 ? t('dashboard.taxes2', { employerTax: eur(ctx.profit.employerTax) }) : null,
+        ctx.fin.labourContractor > 0 ? t('dashboard.contractorInvoices2', { labourContractor: eur(ctx.fin.labourContractor) }) : null,
       ].filter(Boolean).join(' · ')}
-      coverage={ctx.fin.labourCoverage} coverageLabel={t('tööl on teostaja', 'jobs have an assignee')}
+      coverage={ctx.fin.labourCoverage} coverageLabel={t('dashboard.jobsHaveAnAssignee')}
     />
   ),
 
   'raha.valjamakstud': ctx => (
     <StatTile
-      icon={Wallet} label={t('Arvestatud vs välja makstud', 'Earned vs paid out')} value={eur(ctx.fin.labourAccrued)}
+      icon={Wallet} label={t('dashboard.earnedVsPaidOut')} value={eur(ctx.fin.labourAccrued)}
       accent="#8B5CF6"
-      sub={t(`Välja makstud ${eur(ctx.fin.labourPaid)} · maksmata ${eur(Math.max(0, ctx.fin.labourAccrued - ctx.fin.labourPaid))}`, `Paid out ${eur(ctx.fin.labourPaid)} · unpaid ${eur(Math.max(0, ctx.fin.labourAccrued - ctx.fin.labourPaid))}`)}
+      sub={t('dashboard.paidOutUnpaid', { labourPaid: eur(ctx.fin.labourPaid), eur: eur(Math.max(0, ctx.fin.labourAccrued - ctx.fin.labourPaid)) })}
     />
   ),
 
   'raha.kaive_kuude_kaupa': ctx => (
-    <Block title={t('Käive kuude kaupa', 'Revenue by month')}>
-      {ctx.stats.revenueByMonth.length === 0 ? <Empty>{t('Andmeid ei ole.', 'No data.')}</Empty> : (
+    <Block title={t('dashboard.revenueByMonth2')}>
+      {ctx.stats.revenueByMonth.length === 0 ? <Empty>{t('dashboard.noData4')}</Empty> : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={ctx.stats.revenueByMonth}>
             <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -196,7 +196,7 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   ),
 
   'raha.maksmise_viis': ctx => (
-    <Block title={t('Maksmise viis', 'Payment method')} sub={t('Kuidas raha päriselt saabub', 'How the money actually comes in')}>
+    <Block title={t('dashboard.paymentMethod')} sub={t('dashboard.howTheMoneyActuallyComesIn')}>
       <ShareBars rows={ctx.fin.byPaymentMethod.map(p => ({
         label: `${p.label} · ${p.count}×`,
         value: eur(p.amount),
@@ -206,7 +206,7 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   ),
 
   'raha.muudatuste_kahju': ctx => (
-    <Block title={t('Muudatuste kahju', 'Cost of revisions')} sub={t(`Netokahju kokku ${eur(ctx.fin.revisionLossTotal)}`, `Total net loss ${eur(ctx.fin.revisionLossTotal)}`)}>
+    <Block title={t('dashboard.costOfRevisions')} sub={t('dashboard.totalNetLoss', { revisionLossTotal: eur(ctx.fin.revisionLossTotal) })}>
       <ShareBars rows={ctx.fin.revisionLoss.slice(0, 6).map(r => ({
         label: `${r.reason} · ${r.count}×`,
         value: eur(r.net),
@@ -222,11 +222,11 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // because the date filter moved.
   'raha.volglased_kokku': ctx => (
     <StatTile
-      icon={HandCoins} label={t('Võlgu kokku', 'Total owed')} value={eur(ctx.debt.outstanding)}
+      icon={HandCoins} label={t('dashboard.totalOwed')} value={eur(ctx.debt.outstanding)}
       accent={ctx.debt.overdue > 0 ? '#EF4444' : '#F59E0B'}
       sub={ctx.debt.count === 0
-        ? t('Keegi ei võlgne · kogu aeg', 'Nobody owes anything · all time')
-        : t(`${ctx.debt.count} võlglast · üle tähtaja ${eur(ctx.debt.overdue)} · kogu aeg`, `${ctx.debt.count} ${ctx.debt.count === 1 ? 'debtor' : 'debtors'} · overdue ${eur(ctx.debt.overdue)} · all time`)}
+        ? t('dashboard.nobodyOwesAnythingAllTime')
+        : t('dashboard.overdueAllTimeDebtorDebtors', { ctx, eur, count: ctx.debt.count, overdue: eur(ctx.debt.overdue) })}
     />
   ),
 
@@ -235,13 +235,13 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const worst = rows[0]?.outstanding ?? 0
     return (
       <Block
-        title={t('Kes on võlgu', 'Who owes')}
-        sub={t(`Kogu aeg · arveldamata ${eur(ctx.debt.uninvoiced)} ei ole üle tähtaja — arvet ei ole saadetud`, `All time · ${eur(ctx.debt.uninvoiced)} not invoiced is not overdue — no invoice has been sent`)}
+        title={t('dashboard.whoOwes')}
+        sub={t('dashboard.allTimeNotInvoicedIsNot', { uninvoiced: eur(ctx.debt.uninvoiced) })}
       >
         {rows.length === 0
-          ? <Empty>{t('Ükski töö ei ole tasumata.', 'No job is unpaid.')}</Empty>
+          ? <Empty>{t('dashboard.noJobIsUnpaid')}</Empty>
           : <ShareBars rows={rows.map(r => ({
-              label: `${r.nimi}${r.daysLate > 0 ? t(` · ${r.daysLate} p üle`, ` · ${r.daysLate} d overdue`) : r.partial ? t(' · osaliselt makstud', ' · partly paid') : ''}`,
+              label: `${r.nimi}${r.daysLate > 0 ? t('dashboard.dOverdue', { daysLate: r.daysLate }) : r.partial ? t('dashboard.partlyPaid') : ''}`,
               value: eur(r.outstanding),
               share: share(r.outstanding, worst),
               // Red is a claim: it means a bill was sent and its date passed.
@@ -255,12 +255,12 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const buckets = debtBuckets(ctx.debt)
     const worst = Math.max(...buckets.map(b => b.amount), 1)
     return (
-      <Block title={t('Võla vanus', 'Debt age')} sub={t('Arve maksetähtajast, mitte töö kuupäevast', 'From the invoice due date, not the job date')}>
+      <Block title={t('dashboard.debtAge')} sub={t('dashboard.fromTheInvoiceDueDateNot')}>
         {ctx.debt.overdue === 0
-          ? <Empty>{t('Ükski saadetud arve ei ole üle tähtaja.', 'No sent invoice is overdue.')}</Empty>
+          ? <Empty>{t('dashboard.noSentInvoiceIsOverdue')}</Empty>
           : <ShareBars rows={buckets.filter(b => b.amount > 0).map(b => ({
               // The label stays Estonian in lib/debtors (the colour below compares it); only its unit is swapped here.
-              label: `${t(b.label, b.label.replace(/ p$/, ' d'))} · ${b.count}`,
+              label: `${b.label.replace(/ p$/, ` ${t('dashboard.daysShort')}`)} · ${b.count}`,
               value: eur(b.amount),
               share: share(b.amount, worst),
               color: b.label === '90+ p' ? '#B91C1C' : b.label === '61–90 p' ? '#EF4444' : '#F59E0B',
@@ -272,26 +272,26 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // ── Ühikumajandus ──────────────────────────────────────────────────────────
   'yhik.hind_hamba_kohta': ctx => (
     <StatTile
-      icon={TrendingUp} label={t('Hind hamba kohta', 'Price per tooth')} value={eur(ctx.stats.avgPricePerTooth)}
-      sub={t(`${ctx.m.hambad} hammast · ${teethSplitLabel(ctx.m)}`, `${ctx.m.hambad} ${ctx.m.hambad === 1 ? 'tooth' : 'teeth'} · ${teethSplitLabel(ctx.m)}`)}
+      icon={TrendingUp} label={t('dashboard.pricePerTooth')} value={eur(ctx.stats.avgPricePerTooth)}
+      sub={t('dashboard.toothTeeth3', { ctx, teethSplitLabel, hambad: ctx.m.hambad, m: teethSplitLabel(ctx.m) })}
     />
   ),
 
   'yhik.tulu_too_kohta': ctx => (
     <StatTile
-      icon={Euro} label={t('Ø hind / töö', 'Ø price / job')} value={eur(ctx.stats.avgPrice)}
+      icon={Euro} label={t('dashboard.priceJob')} value={eur(ctx.stats.avgPrice)}
       sub={unitSplitLabel(ctx.m)}
-      coverage={ctx.stats.priceCoverage} coverageLabel={t('tööl on hind', 'jobs have a price')}
+      coverage={ctx.stats.priceCoverage} coverageLabel={t('dashboard.jobsHaveAPrice')}
     />
   ),
 
   'yhik.kiirtoo_tasuvus': ctx => (
     <StatTile
-      icon={Zap} label={t('Kiirtöö tasuvus', 'Rush job payoff')} value={t(`${ctx.stats.kiirtooJobs.length} tööd`, `${ctx.stats.kiirtooJobs.length} ${ctx.stats.kiirtooJobs.length === 1 ? 'job' : 'jobs'}`)}
+      icon={Zap} label={t('dashboard.rushJobPayoff')} value={t('dashboard.jobJobs3', { ctx, kiirtooJobsCount: ctx.stats.kiirtooJobs.length })}
       accent="#F97316"
       sub={ctx.m.money > 0
-        ? t(`${eur(ctx.stats.kiirtooRevenue)} · ${pct(share(ctx.stats.kiirtooRevenue, ctx.m.money))} käibest`, `${eur(ctx.stats.kiirtooRevenue)} · ${pct(share(ctx.stats.kiirtooRevenue, ctx.m.money))} of revenue`)
-        : t(`${eur(ctx.stats.kiirtooRevenue)} käive`, `${eur(ctx.stats.kiirtooRevenue)} revenue`)}
+        ? t('dashboard.ofRevenue2', { kiirtooRevenue: eur(ctx.stats.kiirtooRevenue), pct: pct(share(ctx.stats.kiirtooRevenue, ctx.m.money)) })
+        : t('dashboard.revenue3', { kiirtooRevenue: eur(ctx.stats.kiirtooRevenue) })}
     />
   ),
 
@@ -299,21 +299,21 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     // A COPY — fin.byWorkType is memoised inside the aggregator.
     const rows = [...ctx.fin.byWorkType].sort((a, b) => b.margin - a.margin)
     return (
-      <Block title={t('Kate töö tüübi järgi', 'Margin by work type')} sub={t('Ühik on tööosa, mitte töö: mitme tüübiga juhtum loeb igas tüübis', 'The unit is the work item, not the job: a case with several types counts in each')}>
-        {rows.length === 0 ? <Empty>{t('Valmis töid ei ole.', 'No finished jobs.')}</Empty> : (
+      <Block title={t('dashboard.marginByWorkType')} sub={t('dashboard.theUnitIsTheWorkItem')}>
+        {rows.length === 0 ? <Empty>{t('dashboard.noFinishedJobs')}</Empty> : (
           <div className="overflow-auto h-full">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-2 py-1.5 font-semibold">{t('Töö tüüp', 'Work type')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Tööosi', 'Work items')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Tulu', 'Income')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Tööjõud', 'Labour')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Materjal', 'Material')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Kate', 'Margin')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('Kate %', 'Margin %')}</th>
-                  <th className="px-2 py-1.5 font-semibold text-right">{t('€/hammas kate', 'Margin €/tooth')}</th>
+                  <th className="px-2 py-1.5 font-semibold">{t('dashboard.workType')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.workItems')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.teeth')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.income')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.labour2')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.material2')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.margin')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.margin2')}</th>
+                  <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.marginTooth')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -351,11 +351,11 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const losing = [...ctx.fin.byWorkType].filter(type => type.margin < 0).sort((a, b) => a.margin - b.margin)
     return (
       <Block
-        title={t('Kahjumlikud töö tüübid', 'Loss-making work types')}
-        sub={t('Tüüp võib olla kahjumis ka lihtsalt sellepärast, et selle töö on arveldamata', 'A type can show a loss simply because its work has not been invoiced')}
+        title={t('dashboard.lossMakingWorkTypes')}
+        sub={t('dashboard.aTypeCanShowALoss')}
       >
         {losing.length === 0
-          ? <Empty>{t('Ühegi töötüübi kate ei ole negatiivne.', 'No work type has a negative margin.')}</Empty>
+          ? <Empty>{t('dashboard.noWorkTypeHasANegative')}</Empty>
           : <ShareBars rows={losing.slice(0, 6).map(type => ({
               label: type.name,
               value: eur(type.margin),
@@ -369,48 +369,48 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // ── Tootmine ja tähtajad ───────────────────────────────────────────────────
   'toot.tood_kokku': ctx => (
     <StatTile
-      icon={Layers} label={t('Töid kokku', 'Jobs total')} value={ctx.m.yksused} sub={unitSplitLabel(ctx.m)}
-      scope={ctx.period === 'all' ? t('kogu aeg', 'all time') : undefined}
+      icon={Layers} label={t('dashboard.jobsTotal')} value={ctx.m.yksused} sub={unitSplitLabel(ctx.m)}
+      scope={ctx.period === 'all' ? t('dashboard.allTime') : undefined}
     />
   ),
 
   'toot.hambaid': ctx => (
     <StatTile
-      icon={CheckCircle} label={t('Hambaid toodetud', 'Teeth produced')} value={ctx.m.hambad} sub={teethSplitLabel(ctx.m)}
+      icon={CheckCircle} label={t('dashboard.teethProduced')} value={ctx.m.hambad} sub={teethSplitLabel(ctx.m)}
       accent="#22C55E"
     />
   ),
 
   'toot.tahtajast_yle': ctx => (
     <StatTile
-      icon={AlertCircle} label={t('Tähtajast üle', 'Overdue')} value={ctx.stats.overdue.length} accent="#EF4444"
-      sub={t('lõpetamata, tähtaeg möödas', 'unfinished, past due date')} scope={t('hetkeseis', 'right now')}
+      icon={AlertCircle} label={t('dashboard.overdue3')} value={ctx.stats.overdue.length} accent="#EF4444"
+      sub={t('dashboard.unfinishedPastDueDate')} scope={t('dashboard.rightNow')}
     />
   ),
 
   'toot.labiaeg': ctx => (
     <StatTile
-      icon={Timer} label={t('Ø läbiaeg', 'Ø turnaround')}
-      value={ctx.stats.avgTurnaround > 0 ? t(`${ctx.stats.avgTurnaround.toFixed(1)} p`, `${ctx.stats.avgTurnaround.toFixed(1)} d`) : '—'}
-      sub={t('vastuvõtust valmimiseni', 'from receipt to completion')} accent="#8B5CF6"
-      coverage={ctx.stats.turnaroundCoverage} coverageLabel={t('tööl on valmimiskuupäev', 'jobs have a completion date')}
+      icon={Timer} label={t('dashboard.turnaround')}
+      value={ctx.stats.avgTurnaround > 0 ? t('dashboard.d', { avgTurnaround: ctx.stats.avgTurnaround.toFixed(1) }) : '—'}
+      sub={t('dashboard.fromReceiptToCompletion')} accent="#8B5CF6"
+      coverage={ctx.stats.turnaroundCoverage} coverageLabel={t('dashboard.jobsHaveACompletionDate')}
     />
   ),
 
   'toot.muudatuste_maar': ctx => (
     <StatTile
-      icon={Repeat} label={t('Revisjonimäär', 'Revision rate')} value={pct(ctx.stats.revisionRate)}
+      icon={Repeat} label={t('dashboard.revisionRate')} value={pct(ctx.stats.revisionRate)}
       accent={ctx.stats.revisionRate > 15 ? '#EF4444' : '#EC4899'}
       // `filtered.length`, not `totalWork`: the rate is jobs-with-a-revision
       // over JOBS, and `totalWork` is units. The old line printed a denominator
       // the percentage above it was never computed from.
-      sub={t(`${ctx.stats.withRevision.length} tööd ${ctx.stats.filtered.length}-st`, `${ctx.stats.withRevision.length} of ${ctx.stats.filtered.length} ${ctx.stats.filtered.length === 1 ? 'job' : 'jobs'}`)}
+      sub={t('dashboard.ofJobJobs', { ctx, withRevisionCount: ctx.stats.withRevision.length, filteredCount: ctx.stats.filtered.length })}
     />
   ),
 
   'toot.wip': ctx => (
-    <Block title={t('Töös etappide kaupa', 'In progress by stage')} sub={t('Hetkeseis, mitte perioodi number', 'Current state, not a figure for the period')}>
-      {ctx.stats.wipByStage.length === 0 ? <Empty>{t('Töös töid ei ole.', 'No jobs in progress.')}</Empty> : (
+    <Block title={t('dashboard.inProgressByStage')} sub={t('dashboard.currentStateNotAFigureFor')}>
+      {ctx.stats.wipByStage.length === 0 ? <Empty>{t('dashboard.noJobsInProgress')}</Empty> : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={ctx.stats.wipByStage}>
             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -424,8 +424,8 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   ),
 
   'toot.valmis_kuude_kaupa': ctx => (
-    <Block title={t('Valmis tööd kuude kaupa', 'Finished jobs by month')}>
-      {ctx.stats.throughput.length === 0 ? <Empty>{t('Andmeid ei ole.', 'No data.')}</Empty> : (
+    <Block title={t('dashboard.finishedJobsByMonth')}>
+      {ctx.stats.throughput.length === 0 ? <Empty>{t('dashboard.noData4')}</Empty> : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={ctx.stats.throughput}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--c-ink-faint) / 0.15)" />
@@ -443,8 +443,8 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const total = ctx.stats.revisionReasons.reduce((s, r) => s + r.count, 0)
     return (
       <Block
-        title={t('Muudatuste põhjused', 'Revision reasons')}
-        sub={t('Kahe põhjusega muudatus loeb mõlemas — ribade summa ületab muudatuste arvu', 'A revision with two reasons counts in both — the bars add up to more than the number of revisions')}
+        title={t('dashboard.revisionReasons')}
+        sub={t('dashboard.aRevisionWithTwoReasonsCounts')}
       >
         <ShareBars rows={ctx.stats.revisionReasons.slice(0, 8).map(r => ({
           label: r.name,
@@ -465,12 +465,12 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const rows = [...ctx.stats.byWorkType].filter(type => type.count > 0).sort((a, b) => b.count - a.count)
     const top = rows[0]?.count ?? 0
     return (
-      <Block title={t('Mida kõige rohkem teeme', 'What we make most')} sub={t('Tööde arv liigi kaupa, perioodil', 'Number of jobs per type, in the period')}>
+      <Block title={t('dashboard.whatWeMakeMost')} sub={t('dashboard.numberOfJobsPerTypeIn')}>
         <ShareBars rows={rows.map(type => ({
           label: type.name,
           // Both numbers, because neither answers it alone: a denture is one
           // job and fourteen teeth, a single crown is one of each.
-          value: t(`${type.count} tööd · ${type.teeth} hammast`, `${type.count} ${type.count === 1 ? 'job' : 'jobs'} · ${type.teeth} ${type.teeth === 1 ? 'tooth' : 'teeth'}`),
+          value: t('dashboard.jobJobsToothTeeth', { type, count: type.count, teeth: type.teeth }),
           share: share(type.count, top),
           color: ctx.wt.hex(type.name),
         }))} />
@@ -487,31 +487,28 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const { rows, unplacedRedone } = ctx.units
     const top = rows[0]?.teeth ?? 0
     return (
-      <Block title={t('Ühikuid töö liigi järgi', 'Units by work type')} sub={t('Hambaid tööosade kaupa, mitte tööde kaupa', 'Teeth by work item, not by job')}>
-        {rows.length === 0 ? <Empty>{t('Andmeid ei ole.', 'No data.')}</Empty> : (
+      <Block title={t('dashboard.unitsByWorkType')} sub={t('dashboard.teethByWorkItemNotBy')}>
+        {rows.length === 0 ? <Empty>{t('dashboard.noData4')}</Empty> : (
           <>
             <ShareBars rows={rows.map(type => ({
               label: type.name,
               // Items as well as teeth: a four-unit bridge is one item and four
               // teeth, and which of those a lab calls "a unit" depends on what
               // it is pricing.
-              value: t(`${type.teeth} hammast · ${type.items} tk`, `${type.teeth} ${type.teeth === 1 ? 'tooth' : 'teeth'} · ${type.items} pcs`),
+              value: t('dashboard.pcsToothTeeth', { type, teeth: type.teeth, items: type.items }),
               share: share(type.teeth, top),
               color: ctx.wt.hex(type.name),
             }))} />
             {rows.some(type => type.redone > 0) && (
               <p className="mt-2 text-[10px] text-ink-faint">
-                {t('Ümbertehtud hambad ei ole siin sees:', 'Remade teeth are not included here:')}{' '}
+                {t('dashboard.remadeTeethAreNotIncludedHere')}{' '}
                 {rows.filter(type => type.redone > 0).map(type => `${type.name} ${type.redone}`).join(' · ')}
               </p>
             )}
             {unplacedRedone > 0 && (
               // Reported rather than spread across the types — see unitsByType.
               <p className="mt-1 text-[10px] text-ink-faint">
-                {t(
-                  `${unplacedRedone} ümbertehtud hammast ei saanud liigini siduda (muudatus ei nimeta hambaid).`,
-                  `${unplacedRedone} remade ${unplacedRedone === 1 ? 'tooth' : 'teeth'} could not be linked to a type (the revision names no teeth).`,
-                )}
+                {t('dashboard.remadeCouldNotBeLinkedTo', { unplacedRedone })}
               </p>
             )}
           </>
@@ -521,8 +518,8 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   },
 
   'toot.materjalid': ctx => (
-    <Block title={t('Tööd materjali järgi', 'Jobs by material')}>
-      {ctx.stats.materialStats.length === 0 ? <Empty>{t('Materjale ei ole märgitud.', 'No materials recorded.')}</Empty> : (
+    <Block title={t('dashboard.jobsByMaterial')}>
+      {ctx.stats.materialStats.length === 0 ? <Empty>{t('dashboard.noMaterialsRecorded')}</Empty> : (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={ctx.stats.materialStats} layout="vertical" margin={{ left: 0, right: 12 }}>
             <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -542,11 +539,11 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const top = ctx.stats.machineStats[0]
     return (
       <StatTile
-        icon={Cpu} label={t('Masinate koormus', 'Machine load')}
+        icon={Cpu} label={t('dashboard.machineLoad')}
         value={top ? `${top.count}` : '—'}
         sub={top
           ? `${top.name}${ctx.stats.machineStats[1] ? ` · ${ctx.stats.machineStats[1].name} ${ctx.stats.machineStats[1].count}` : ''}`
-          : t('Masinaid ei ole märgitud', 'No machines recorded')}
+          : t('dashboard.noMachinesRecorded')}
         accent="#6366F1"
       />
     )
@@ -554,19 +551,19 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   // ── Kliendid ja inimesed ───────────────────────────────────────────────────
   'inim.tootajad': ctx => (
-    <Block title={t('Töötajate kaupa', 'By employee')} sub={t('Arvestatud on selle perioodi teenistus, olenemata sellest, kas see on juba välja makstud', 'Earned is what this period earned, whether or not it has been paid out yet')}>
-      {ctx.fin.byWorker.length === 0 ? <Empty>{t('Ühelegi tööle ei ole teostajat määratud.', 'No job has an assignee.')}</Empty> : (
+    <Block title={t('dashboard.byEmployee')} sub={t('dashboard.earnedIsWhatThisPeriodEarned')}>
+      {ctx.fin.byWorker.length === 0 ? <Empty>{t('dashboard.noJobHasAnAssignee')}</Empty> : (
         <div className="overflow-auto h-full">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                <th className="px-2 py-1.5 font-semibold">{t('Töötaja', 'Employee')}</th>
-                <th className="px-2 py-1.5 font-semibold">{t('Töösuhe', 'Employment')}</th>
-                <th className="px-2 py-1.5 font-semibold text-right">{t('Töid', 'Jobs')}</th>
-                <th className="px-2 py-1.5 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
-                <th className="px-2 py-1.5 font-semibold text-right">{t('Arvestatud', 'Earned')}</th>
-                <th className="px-2 py-1.5 font-semibold text-right">{t('Bruto', 'Gross')}</th>
-                <th className="px-2 py-1.5 font-semibold text-right">{t('Välja makstud', 'Paid out')}</th>
+                <th className="px-2 py-1.5 font-semibold">{t('dashboard.employee')}</th>
+                <th className="px-2 py-1.5 font-semibold">{t('dashboard.employment')}</th>
+                <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.jobs')}</th>
+                <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.teeth')}</th>
+                <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.earned')}</th>
+                <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.gross3')}</th>
+                <th className="px-2 py-1.5 font-semibold text-right">{t('dashboard.paidOut')}</th>
               </tr>
             </thead>
             <tbody>
@@ -574,7 +571,7 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
                 <tr key={w.profileId} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
                   <td className="px-2 py-1.5 text-ink">{w.name}</td>
                   <td className="px-2 py-1.5 text-ink-muted text-xs">
-                    {w.engagement === 'ettevote' ? t('Esitab arve', 'Contractor') : t('Palgal', 'On payroll')}
+                    {w.engagement === 'ettevote' ? t('dashboard.contractor') : t('dashboard.onPayroll')}
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-ink-muted">{w.jobs}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-ink-muted">{w.teeth}</td>
@@ -596,10 +593,10 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const rows = [...ctx.fin.byWorker].sort((a, b) => b.teeth - a.teeth)
     const top = rows[0]?.teeth ?? 0
     return (
-      <Block title={t('Töötajate koormus', 'Employee workload')} sub={t('Tööd ja hambad inimese kohta', 'Jobs and teeth per person')}>
+      <Block title={t('dashboard.employeeWorkload')} sub={t('dashboard.jobsAndTeethPerPerson')}>
         <ShareBars rows={rows.map(w => ({
-          label: t(`${w.name} · ${w.jobs} tööd`, `${w.name} · ${w.jobs} ${w.jobs === 1 ? 'job' : 'jobs'}`),
-          value: t(`${w.teeth} hammast`, `${w.teeth} ${w.teeth === 1 ? 'tooth' : 'teeth'}`),
+          label: t('dashboard.jobJobs4', { w, name: w.name, jobs: w.jobs }),
+          value: t('dashboard.toothTeeth4', { w, teeth: w.teeth }),
           share: share(w.teeth, top),
         }))} />
       </Block>
@@ -608,31 +605,31 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'inim.katvus': ctx => (
     <StatTile
-      icon={AlertCircle} label={t('Andmete katvus', 'Data coverage')}
+      icon={AlertCircle} label={t('dashboard.dataCoverage')}
       value={`${ctx.fin.labourCoverage.covered}/${ctx.fin.labourCoverage.total}`}
       accent="#F59E0B"
-      sub={t(`tööl on teostaja · omahind ${ctx.fin.materialCoverage.covered}/${ctx.fin.materialCoverage.total}`, `jobs have an assignee · cost price ${ctx.fin.materialCoverage.covered}/${ctx.fin.materialCoverage.total}`)}
+      sub={t('dashboard.jobsHaveAnAssigneeCostPrice', { covered: ctx.fin.materialCoverage.covered, total: ctx.fin.materialCoverage.total })}
     />
   ),
 
   'inim.patsiendid': ctx => (
     <StatTile
-      icon={UserPlus} label={t('Patsiendid', 'Patients')} value={ctx.stats.patientSummary.total}
-      sub={t(`${ctx.stats.patientSummary.newPatients} uut · ${ctx.stats.patientSummary.repeatPatients} korduvat`, `${ctx.stats.patientSummary.newPatients} new · ${ctx.stats.patientSummary.repeatPatients} returning`)}
+      icon={UserPlus} label={t('dashboard.patients')} value={ctx.stats.patientSummary.total}
+      sub={t('dashboard.newReturning', { newPatients: ctx.stats.patientSummary.newPatients, repeatPatients: ctx.stats.patientSummary.repeatPatients })}
       accent="#6366F1"
     />
   ),
 
   'inim.visiidid': ctx => (
     <StatTile
-      icon={Stethoscope} label={t('Visiidid', 'Visits')} value={ctx.stats.visitStats.total}
-      sub={t(`Ei tulnud ${pct(ctx.stats.visitStats.noShowRate)} · Ø ${ctx.stats.visitStats.avgKestus.toFixed(0)} min`, `No-shows ${pct(ctx.stats.visitStats.noShowRate)} · Ø ${ctx.stats.visitStats.avgKestus.toFixed(0)} min`)}
+      icon={Stethoscope} label={t('dashboard.visits')} value={ctx.stats.visitStats.total}
+      sub={t('dashboard.noShowsMin', { noShowRate: pct(ctx.stats.visitStats.noShowRate), avgKestus: ctx.stats.visitStats.avgKestus.toFixed(0) })}
       accent="#EC4899"
     />
   ),
 
   'inim.arstid': ctx => (
-    <Block title={t('Top suunavad arstid', 'Top referring dentists')} sub={t('Käibe järgi', 'By revenue')}>
+    <Block title={t('dashboard.topReferringDentists')} sub={t('dashboard.byRevenue')}>
       <ShareBars rows={ctx.stats.byDoctor.slice(0, 8).map(d => ({
         label: d.name,
         value: eur(d.revenue),
@@ -644,13 +641,13 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // ── Raha: arvete pool ──────────────────────────────────────────────────────
   'raha.vanus': ctx => (
     <Block
-      title={t('Võlgnevuse vanus', 'Outstanding by age')}
-      sub={t(`Üle tähtaja ${eur(ctx.invoices.agingTotal)} · tähtaeg ees ${eur(ctx.invoices.notDue)}`, `Overdue ${eur(ctx.invoices.agingTotal)} · not yet due ${eur(ctx.invoices.notDue)}`)}
+      title={t('dashboard.outstandingByAge')}
+      sub={t('dashboard.overdueNotYetDue', { agingTotal: eur(ctx.invoices.agingTotal), notDue: eur(ctx.invoices.notDue) })}
     >
       {ctx.invoices.agingTotal === 0
-        ? <Empty>{t('Ükski arve ei ole üle tähtaja.', 'No invoice is overdue.')}</Empty>
+        ? <Empty>{t('dashboard.noInvoiceIsOverdue')}</Empty>
         : <ShareBars rows={ctx.invoices.aging.filter(b => b.amount > 0).map((b, i) => ({
-            label: t(`${b.label} · ${b.count} arvet`, `${b.label} · ${b.count} ${b.count === 1 ? 'invoice' : 'invoices'}`),
+            label: t('dashboard.invoiceInvoices', { b, label: b.label, count: b.count }),
             value: eur(b.amount),
             share: share(b.amount, ctx.invoices.agingTotal),
             // Older debt reads redder, because it is.
@@ -661,114 +658,107 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'raha.laekumisaeg': ctx => (
     <StatTile
-      icon={Clock} label={t('Keskmine laekumisaeg', 'Average time to payment')}
-      value={ctx.invoices.daysToPay === null ? '—' : t(`${ctx.invoices.daysToPay} p`, `${ctx.invoices.daysToPay} d`)}
+      icon={Clock} label={t('dashboard.averageTimeToPayment')}
+      value={ctx.invoices.daysToPay === null ? '—' : t('dashboard.d4', { daysToPay: ctx.invoices.daysToPay })}
       accent="#6366F1"
       sub={ctx.invoices.daysToPay === null
-        ? t('Perioodil ei ole ükski arve lõplikult tasutud', 'No invoice was paid in full in the period')
-        : t(`${ctx.invoices.daysToPaySample} arve alusel · arvest rahani`, `Based on ${ctx.invoices.daysToPaySample} ${ctx.invoices.daysToPaySample === 1 ? 'invoice' : 'invoices'} · invoice to money`)}
+        ? t('dashboard.noInvoiceWasPaidInFull')
+        : t('dashboard.basedOnInvoiceToMoneyInvoice', { ctx, daysToPaySample: ctx.invoices.daysToPaySample })}
     />
   ),
 
   'raha.kaibemaks': ctx => (
     <StatTile
-      icon={Percent} label={t('Käibemaks perioodis', 'VAT in the period')} value={eur(ctx.invoices.vat)}
-      accent="#64748B" sub={t('väljastatud arvetel — riigile, mitte tulu', 'on issued invoices — owed to the state, not income')}
+      icon={Percent} label={t('dashboard.vATInThePeriod')} value={eur(ctx.invoices.vat)}
+      accent="#64748B" sub={t('dashboard.onIssuedInvoicesOwedToThe')}
     />
   ),
 
   'raha.keskmine_arve': ctx => (
     <StatTile
-      icon={Euro} label={t('Keskmine arve', 'Average invoice')} value={eur(ctx.invoices.averageInvoice)}
-      sub={t(`${ctx.invoices.issuedCount} arvet · kokku ${eur(ctx.invoices.issued)}`, `${ctx.invoices.issuedCount} ${ctx.invoices.issuedCount === 1 ? 'invoice' : 'invoices'} · ${eur(ctx.invoices.issued)} total`)}
+      icon={Euro} label={t('dashboard.averageInvoice')} value={eur(ctx.invoices.averageInvoice)}
+      sub={t('dashboard.totalInvoiceInvoices', { ctx, eur, issuedCount: ctx.invoices.issuedCount, issued: eur(ctx.invoices.issued) })}
     />
   ),
 
   // ── Ühikumajandus ──────────────────────────────────────────────────────────
   'yhik.kasum_too_kohta': ctx => (
     <StatTile
-      icon={TrendingUp} label={t('Kasum töö kohta', 'Profit per job')}
+      icon={TrendingUp} label={t('dashboard.profitPerJob')}
       value={ctx.unit.profitPerJob === null ? '—' : eur(ctx.unit.profitPerJob)}
       accent={(ctx.unit.profitPerJob ?? 0) >= 0 ? '#22C55E' : '#EF4444'}
-      sub={t(`${ctx.m.tood} tööd · muudatused ei ole eraldi tööd`, `${ctx.m.tood} ${ctx.m.tood === 1 ? 'job' : 'jobs'} · revisions are not separate jobs`)}
-      coverage={ctx.fin.labourCoverage} coverageLabel={t('tööl on teostaja', 'jobs have an assignee')}
+      sub={t('dashboard.revisionsAreNotSeparateJobsJob', { ctx, tood: ctx.m.tood })}
+      coverage={ctx.fin.labourCoverage} coverageLabel={t('dashboard.jobsHaveAnAssignee')}
     />
   ),
 
   'yhik.kate_hamba_kohta': ctx => (
     <StatTile
-      icon={TrendingUp} label={t('Kate hamba kohta', 'Margin per tooth')}
+      icon={TrendingUp} label={t('dashboard.marginPerTooth')}
       value={ctx.unit.marginPerTooth === null ? '—' : eur(ctx.unit.marginPerTooth)}
       accent="#22C55E"
       sub={ctx.unit.revenuePerTooth !== null && ctx.unit.costPerTooth !== null
-        ? t(`Tulu ${eur(ctx.unit.revenuePerTooth)} − kulu ${eur(ctx.unit.costPerTooth)}`, `Income ${eur(ctx.unit.revenuePerTooth)} − cost ${eur(ctx.unit.costPerTooth)}`)
+        ? t('dashboard.incomeCost', { revenuePerTooth: eur(ctx.unit.revenuePerTooth), costPerTooth: eur(ctx.unit.costPerTooth) })
         : undefined}
-      coverage={ctx.fin.materialCoverage} coverageLabel={t('tööl on omahind', 'jobs have a cost price')}
+      coverage={ctx.fin.materialCoverage} coverageLabel={t('dashboard.jobsHaveACostPrice')}
     />
   ),
 
   'yhik.kulu_hamba_kohta': ctx => (
     <StatTile
-      icon={Package} label={t('Kulu hamba kohta', 'Cost per tooth')}
+      icon={Package} label={t('dashboard.costPerTooth')}
       value={ctx.unit.costPerTooth === null ? '—' : eur(ctx.unit.costPerTooth)}
-      accent="#F97316" sub={t(`${ctx.m.hambad} hammast`, `${ctx.m.hambad} ${ctx.m.hambad === 1 ? 'tooth' : 'teeth'}`)}
-      coverage={ctx.fin.materialCoverage} coverageLabel={t('tööl on omahind', 'jobs have a cost price')}
+      accent="#F97316" sub={t('dashboard.toothTeeth5', { ctx, hambad: ctx.m.hambad })}
+      coverage={ctx.fin.materialCoverage} coverageLabel={t('dashboard.jobsHaveACostPrice')}
     />
   ),
 
   'yhik.osakaalud': ctx => (
-    <Block title={t('Kulude osakaal tulust', 'Costs as a share of income')} sub={t('Tööde väärtusest, mitte arveldatust', 'Of job value, not of invoiced')}>
+    <Block title={t('dashboard.costsAsAShareOfIncome')} sub={t('dashboard.ofJobValueNotOfInvoiced')}>
       <ShareBars rows={[
-        { label: t('Tööjõud + maksud', 'Labour + taxes'), value: ctx.unit.labourSharePct === null ? '—' : pct(ctx.unit.labourSharePct), share: ctx.unit.labourSharePct ?? 0, color: '#8B5CF6' },
-        { label: t('Materjal ja tarvikud', 'Materials and supplies'), value: ctx.unit.materialSharePct === null ? '—' : pct(ctx.unit.materialSharePct), share: ctx.unit.materialSharePct ?? 0, color: '#F97316' },
-        { label: t('Üldkulud', 'Overheads'), value: ctx.unit.overheadSharePct === null ? '—' : pct(ctx.unit.overheadSharePct), share: ctx.unit.overheadSharePct ?? 0, color: '#64748B' },
+        { label: t('dashboard.labourTaxes'), value: ctx.unit.labourSharePct === null ? '—' : pct(ctx.unit.labourSharePct), share: ctx.unit.labourSharePct ?? 0, color: '#8B5CF6' },
+        { label: t('dashboard.materialsAndSupplies'), value: ctx.unit.materialSharePct === null ? '—' : pct(ctx.unit.materialSharePct), share: ctx.unit.materialSharePct ?? 0, color: '#F97316' },
+        { label: t('dashboard.overheads2'), value: ctx.unit.overheadSharePct === null ? '—' : pct(ctx.unit.overheadSharePct), share: ctx.unit.overheadSharePct ?? 0, color: '#64748B' },
       ]} />
       <p className="text-[10px] text-ink-faint mt-2 leading-relaxed">
-        {t(
-          `Ülejäänu on kate. Materjali osakaal eeldab, et omahinnad on sisestatud — ${ctx.fin.materialCoverage.covered}/${ctx.fin.materialCoverage.total} tööl on.`,
-          `The rest is margin. The material share assumes cost prices have been entered — ${ctx.fin.materialCoverage.covered}/${ctx.fin.materialCoverage.total} jobs have them.`,
-        )}
+        {t('dashboard.theRestIsMarginTheMaterial', { covered: ctx.fin.materialCoverage.covered, total: ctx.fin.materialCoverage.total })}
       </p>
     </Block>
   ),
 
   'yhik.tulu_toopaeva_kohta': ctx => (
     <StatTile
-      icon={CalendarDays} label={t('Tulu tööpäeva kohta', 'Income per working day')}
+      icon={CalendarDays} label={t('dashboard.incomePerWorkingDay')}
       value={ctx.unit.revenuePerWorkingDay === null ? '—' : eur(ctx.unit.revenuePerWorkingDay)}
-      sub={t(`${ctx.unit.workingDays} tööpäeva möödas (E–R)`, `${ctx.unit.workingDays} working ${ctx.unit.workingDays === 1 ? 'day' : 'days'} so far (Mon–Fri)`)}
+      sub={t('dashboard.workingSoFarMonFriDay', { ctx, workingDays: ctx.unit.workingDays })}
     />
   ),
 
   // ── Tootmine ───────────────────────────────────────────────────────────────
   'toot.tahtajaks': ctx => (
     <StatTile
-      icon={CheckCircle} label={t('Tähtajaks valmis', 'Done on time')}
+      icon={CheckCircle} label={t('dashboard.doneOnTime')}
       value={ctx.onTime.ratePct === null ? '—' : pct(ctx.onTime.ratePct)}
       accent={(ctx.onTime.ratePct ?? 100) >= 90 ? '#22C55E' : '#F59E0B'}
       sub={ctx.onTime.ratePct === null
-        ? t('Ühelgi valmis tööl ei ole tähtaega', 'No finished job has a due date')
-        : t(`${ctx.onTime.onTime} õigeks · ${ctx.onTime.late} hiljaks${
-            ctx.onTime.averageDaysLate ? ` (Ø ${ctx.onTime.averageDaysLate} p)` : ''
-          }`, `${ctx.onTime.onTime} on time · ${ctx.onTime.late} late${
-            ctx.onTime.averageDaysLate ? ` (Ø ${ctx.onTime.averageDaysLate} d)` : ''
-          }`)}
-      coverage={ctx.onTime.coverage} coverageLabel={t('tööl on tähtaeg', 'jobs have a due date')}
+        ? t('dashboard.noFinishedJobHasADue')
+        : t('dashboard.onTimeLateD', { ctx })}
+      coverage={ctx.onTime.coverage} coverageLabel={t('dashboard.jobsHaveADueDate')}
     />
   ),
 
   'toot.labiaeg_jaotus': ctx => (
-    <Block title={t('Läbiaja jaotus', 'Turnaround spread')} sub={t('Keskmine üksi varjab saba — mediaan ja 90. protsentiil ei', 'An average alone hides the tail — the median and 90th percentile do not')}>
+    <Block title={t('dashboard.turnaroundSpread')} sub={t('dashboard.anAverageAloneHidesTheTail')}>
       <Facts rows={[
-        { label: t('Mediaan', 'Median'), value: ctx.turnaround.median === null ? '—' : t(`${ctx.turnaround.median} p`, `${ctx.turnaround.median} d`) },
-        { label: t('Keskmine', 'Average'), value: ctx.turnaround.average === null ? '—' : t(`${ctx.turnaround.average} p`, `${ctx.turnaround.average} d`), muted: true },
-        { label: t('9 tööd 10-st kiiremad kui', '9 jobs in 10 faster than'), value: ctx.turnaround.p90 === null ? '—' : t(`${ctx.turnaround.p90} p`, `${ctx.turnaround.p90} d`) },
-        { label: t('Kiireim', 'Fastest'), value: ctx.turnaround.fastest ? t(`${ctx.turnaround.fastest.days} p · ${ctx.turnaround.fastest.label}`, `${ctx.turnaround.fastest.days} d · ${ctx.turnaround.fastest.label}`) : '—', muted: true },
-        { label: t('Aeglaseim', 'Slowest'), value: ctx.turnaround.slowest ? t(`${ctx.turnaround.slowest.days} p · ${ctx.turnaround.slowest.label}`, `${ctx.turnaround.slowest.days} d · ${ctx.turnaround.slowest.label}`) : '—', muted: true },
+        { label: t('dashboard.median'), value: ctx.turnaround.median === null ? '—' : t('dashboard.d5', { median: ctx.turnaround.median }) },
+        { label: t('dashboard.average'), value: ctx.turnaround.average === null ? '—' : t('dashboard.d6', { average: ctx.turnaround.average }), muted: true },
+        { label: t('dashboard.n9JobsIn10FasterThan'), value: ctx.turnaround.p90 === null ? '—' : t('dashboard.d7', { p90: ctx.turnaround.p90 }) },
+        { label: t('dashboard.fastest'), value: ctx.turnaround.fastest ? t('dashboard.d8', { days: ctx.turnaround.fastest.days, label: ctx.turnaround.fastest.label }) : '—', muted: true },
+        { label: t('dashboard.slowest'), value: ctx.turnaround.slowest ? t('dashboard.d8', { days: ctx.turnaround.slowest.days, label: ctx.turnaround.slowest.label }) : '—', muted: true },
       ]} />
       {ctx.turnaround.coverage.missing > 0 && (
         <p className="text-[11px] text-orange-500 mt-2">
-          {t(`${ctx.turnaround.coverage.missing} valmis tööl puudub valmimiskuupäev.`, `${ctx.turnaround.coverage.missing} finished ${ctx.turnaround.coverage.missing === 1 ? 'job has' : 'jobs have'} no completion date.`)}
+          {t('dashboard.finishedNoCompletionDateJobHas', { ctx, missing: ctx.turnaround.coverage.missing })}
         </p>
       )}
     </Block>
@@ -776,7 +766,7 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'toot.tarne': ctx => (
     <StatTile
-      icon={Truck} label={t('Tarne seis', 'Delivery status')} value={ctx.delivery.waiting}
+      icon={Truck} label={t('dashboard.deliveryStatus')} value={ctx.delivery.waiting}
       accent="#F59E0B"
       sub={ctx.delivery.buckets.map(b => `${b.label} ${b.count}`).join(' · ')}
     />
@@ -784,21 +774,21 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'toot.tarneaeg': ctx => (
     <StatTile
-      icon={Truck} label={t('Tarneaeg', 'Delivery time')}
-      value={ctx.delivery.averageLagDays === null ? '—' : t(`${ctx.delivery.averageLagDays} p`, `${ctx.delivery.averageLagDays} d`)}
-      accent="#6366F1" sub={t('valmimisest üleandmiseni', 'from completion to handover')}
+      icon={Truck} label={t('dashboard.deliveryTime')}
+      value={ctx.delivery.averageLagDays === null ? '—' : t('dashboard.d9', { averageLagDays: ctx.delivery.averageLagDays })}
+      accent="#6366F1" sub={t('dashboard.fromCompletionToHandover')}
     />
   ),
 
   'toot.nadalapaevad': ctx => (
-    <Block title={t('Koormus nädalapäeva järgi', 'Load by weekday')} sub={t('Saabunud ja valminud tööd', 'Jobs arrived and finished')}>
+    <Block title={t('dashboard.loadByWeekday')} sub={t('dashboard.jobsArrivedAndFinished')}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={ctx.weekdays}>
           <XAxis dataKey="weekday" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
           <Tooltip contentStyle={TOOLTIP_STYLE} />
-          <Bar dataKey="received" name={t('Saabunud', 'Arrived')} fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
-          <Bar dataKey="finished" name={t('Valmis', 'Finished')} fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
+          <Bar dataKey="received" name={t('dashboard.arrived')} fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
+          <Bar dataKey="finished" name={t('dashboard.finished')} fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </Block>
@@ -808,9 +798,9 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   'inim.kliendid_kaive': ctx => {
     const rows = ctx.customers.rows.slice(0, 8)
     return (
-      <Block title={t('Top kliendid', 'Top clients')} sub={t('Tööde väärtuse järgi', 'By job value')}>
+      <Block title={t('dashboard.topClients')} sub={t('dashboard.byJobValue')}>
         <ShareBars rows={rows.map(r => ({
-          label: t(`${r.name} · ${r.jobs} tööd`, `${r.name} · ${r.jobs} ${r.jobs === 1 ? 'job' : 'jobs'}`),
+          label: t('dashboard.jobJobs5', { r, name: r.name, jobs: r.jobs }),
           value: eur(r.revenue),
           share: share(r.revenue, rows[0]?.revenue ?? 0),
         }))} />
@@ -820,19 +810,19 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'inim.kliendid_seis': ctx => (
     <StatTile
-      icon={Users} label={t('Kliendid perioodis', 'Clients in the period')} value={ctx.customers.active}
+      icon={Users} label={t('dashboard.clientsInThePeriod')} value={ctx.customers.active}
       accent="#6366F1"
-      sub={t(`${ctx.customers.added} uut · ${ctx.customers.dormant.length} magavat`, `${ctx.customers.added} new · ${ctx.customers.dormant.length} dormant`)}
+      sub={t('dashboard.newDormant', { added: ctx.customers.added, dormantCount: ctx.customers.dormant.length })}
     />
   ),
 
   'inim.kliendid_magavad': ctx => (
-    <Block title={t('Magavad kliendid', 'Dormant clients')} sub={t('Ei ole 90 päeva tellinud', 'No orders in 90 days')}>
+    <Block title={t('dashboard.dormantClients')} sub={t('dashboard.noOrdersIn90Days')}>
       {ctx.customers.dormant.length === 0
-        ? <Empty>{t('Kõik kliendid on tellinud viimase 90 päeva jooksul.', 'Every client has ordered in the last 90 days.')}</Empty>
+        ? <Empty>{t('dashboard.everyClientHasOrderedInThe')}</Empty>
         : <Facts rows={ctx.customers.dormant.slice(0, 10).map(d => ({
             label: d.name,
-            value: d.lastJob ?? t('ei ole kunagi tellinud', 'never ordered'),
+            value: d.lastJob ?? t('dashboard.neverOrdered'),
             muted: true,
           }))} />}
     </Block>
@@ -842,12 +832,12 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
     const rows = ctx.customers.rows.filter(r => r.daysToPay !== null)
     const worst = Math.max(...rows.map(r => r.daysToPay ?? 0), 1)
     return (
-      <Block title={t('Klientide maksedistsipliin', 'Client payment discipline')} sub={t('Keskmine päevade arv arvest makseni', 'Average days from invoice to payment')}>
+      <Block title={t('dashboard.clientPaymentDiscipline')} sub={t('dashboard.averageDaysFromInvoiceToPayment2')}>
         {rows.length === 0
-          ? <Empty>{t('Ükski arve ei ole veel lõplikult tasutud.', 'No invoice has been paid in full yet.')}</Empty>
+          ? <Empty>{t('dashboard.noInvoiceHasBeenPaidIn')}</Empty>
           : <ShareBars rows={rows.slice(0, 8).map(r => ({
               label: r.name,
-              value: t(`${r.daysToPay} p`, `${r.daysToPay} d`),
+              value: t('dashboard.d4', { daysToPay: r.daysToPay }),
               share: share(r.daysToPay ?? 0, worst),
               color: (r.daysToPay ?? 0) > 30 ? '#EF4444' : '#22C55E',
             }))} />}
@@ -858,68 +848,68 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
   // ── Lõbus teada ────────────────────────────────────────────────────────────
   'fun.hambad_kokku': ctx => (
     <StatTile
-      icon={Smile} label={t('Hambaid kokku', 'Teeth total')} value={ctx.fun.teethAllTime}
-      scope={t('kogu aeg', 'all time')} accent="#EC4899"
-      sub={t(`≈ ${ctx.fun.mouthsAllTime} täissuud · Ø ${ctx.fun.teethPerJob ?? '—'} hammast töö kohta`, `≈ ${ctx.fun.mouthsAllTime} full ${ctx.fun.mouthsAllTime === 1 ? 'mouth' : 'mouths'} · Ø ${ctx.fun.teethPerJob ?? '—'} teeth per job`)}
+      icon={Smile} label={t('dashboard.teethTotal')} value={ctx.fun.teethAllTime}
+      scope={t('dashboard.allTime')} accent="#EC4899"
+      sub={t('dashboard.fullTeethPerJobMouthMouths', { ctx, mouthsAllTime: ctx.fun.mouthsAllTime, value: ctx.fun.teethPerJob ?? '—' })}
     />
   ),
 
   'fun.rekordid': ctx => (
-    <Block title={t('Rekordid', 'Records')} sub={t('Kogu aeg', 'All time')}>
+    <Block title={t('dashboard.records')} sub={t('dashboard.allTime2')}>
       <Facts rows={[
         {
-          label: t('Suurim töö', 'Biggest job'),
+          label: t('dashboard.biggestJob'),
           value: ctx.fun.biggestJob
-            ? t(`${ctx.fun.biggestJob.value} hammast · ${ctx.fun.biggestJob.label}`, `${ctx.fun.biggestJob.value} ${ctx.fun.biggestJob.value === 1 ? 'tooth' : 'teeth'} · ${ctx.fun.biggestJob.label}`)
+            ? t('dashboard.toothTeeth6', { ctx, value: ctx.fun.biggestJob.value, label: ctx.fun.biggestJob.label })
             : '—',
         },
         {
-          label: t('Tihedaim päev', 'Busiest day'),
+          label: t('dashboard.busiestDay'),
           value: ctx.fun.busiestDay
-            ? t(`${ctx.fun.busiestDay.value} hammast · ${ctx.fun.busiestDay.label}`, `${ctx.fun.busiestDay.value} ${ctx.fun.busiestDay.value === 1 ? 'tooth' : 'teeth'} · ${ctx.fun.busiestDay.label}`)
+            ? t('dashboard.toothTeeth7', { ctx, value: ctx.fun.busiestDay.value, label: ctx.fun.busiestDay.label })
             : '—',
         },
         {
-          label: t('Kiireim töö (periood)', 'Fastest job (period)'),
-          value: ctx.turnaround.fastest ? t(`${ctx.turnaround.fastest.days} p`, `${ctx.turnaround.fastest.days} d`) : '—',
+          label: t('dashboard.fastestJobPeriod'),
+          value: ctx.turnaround.fastest ? t('dashboard.d10', { days: ctx.turnaround.fastest.days }) : '—',
           muted: true,
         },
         {
-          label: t('Aeglaseim töö (periood)', 'Slowest job (period)'),
-          value: ctx.turnaround.slowest ? t(`${ctx.turnaround.slowest.days} p`, `${ctx.turnaround.slowest.days} d`) : '—',
+          label: t('dashboard.slowestJobPeriod'),
+          value: ctx.turnaround.slowest ? t('dashboard.d10', { days: ctx.turnaround.slowest.days }) : '—',
           muted: true,
         },
-        { label: t('Töid kokku', 'Jobs total'), value: ctx.fun.jobsAllTime, muted: true },
+        { label: t('dashboard.jobsTotal'), value: ctx.fun.jobsAllTime, muted: true },
       ]} />
     </Block>
   ),
 
   'fun.seeria': ctx => (
     <StatTile
-      icon={Award} label={t('Pikim veatu seeria', 'Longest clean streak')} value={ctx.fun.cleanStreak}
-      scope={t('kogu aeg', 'all time')} accent="#22C55E"
-      sub={t('valmis tööd järjest ilma ühegi muudatuseta', 'finished jobs in a row without a single revision')}
+      icon={Award} label={t('dashboard.longestCleanStreak')} value={ctx.fun.cleanStreak}
+      scope={t('dashboard.allTime')} accent="#22C55E"
+      sub={t('dashboard.finishedJobsInARowWithout')}
     />
   ),
 
   'fun.lemmikud': ctx => (
-    <Block title={t('Lemmikud', 'Favourites')} sub={t('Kogu aeg', 'All time')}>
+    <Block title={t('dashboard.favourites')} sub={t('dashboard.allTime2')}>
       <Facts rows={[
         {
-          label: t('Sagedaseim värv', 'Most common shade'),
+          label: t('dashboard.mostCommonShade'),
           value: ctx.fun.favouriteShade
             ? `${ctx.fun.favouriteShade.label} · ${ctx.fun.favouriteShade.value}×`
             : '—',
         },
-        { label: t('Erinevaid materjale', 'Different materials'), value: ctx.fun.materialsUsed, muted: true },
-        { label: t('Hambakaardi katvus', 'Tooth chart coverage'), value: t(`${ctx.fun.toothMapCoverage}/32 positsiooni`, `${ctx.fun.toothMapCoverage}/32 positions`), muted: true },
+        { label: t('dashboard.differentMaterials'), value: ctx.fun.materialsUsed, muted: true },
+        { label: t('dashboard.toothChartCoverage'), value: t('dashboard.n32Positions', { toothMapCoverage: ctx.fun.toothMapCoverage }), muted: true },
         {
-          label: t('Lojaalseim patsient', 'Most loyal patient'),
-          value: ctx.fun.loyalPatient ? t(`${ctx.fun.loyalPatient.value} tööd`, `${ctx.fun.loyalPatient.value} ${ctx.fun.loyalPatient.value === 1 ? 'job' : 'jobs'}`) : '—',
+          label: t('dashboard.mostLoyalPatient'),
+          value: ctx.fun.loyalPatient ? t('dashboard.jobJobs6', { ctx, value: ctx.fun.loyalPatient.value }) : '—',
           muted: true,
         },
         {
-          label: t('Sagedaseim muudatuse põhjus', 'Most common revision reason'),
+          label: t('dashboard.mostCommonRevisionReason'),
           value: ctx.fun.topRevisionReason
             ? `${revisionReasonText(ctx.fun.topRevisionReason.label)} · ${ctx.fun.topRevisionReason.value}×`
             : '—',
@@ -931,18 +921,18 @@ export const PANEL_RENDER: Record<PanelId, PanelRender> = {
 
   'fun.tempo': ctx => (
     <StatTile
-      icon={Zap} label={t('Tempo', 'Pace')} value={t(`${ctx.fun.weekendJobs} nädalavahetusel`, `${ctx.fun.weekendJobs} at weekends`)}
-      scope={t('kogu aeg', 'all time')} accent="#F97316"
-      sub={t(`Kiirtöid ${pct(ctx.fun.rushPct)} kõigist töödest`, `Rush jobs ${pct(ctx.fun.rushPct)} of all jobs`)}
+      icon={Zap} label={t('dashboard.pace')} value={t('dashboard.atWeekends', { weekendJobs: ctx.fun.weekendJobs })}
+      scope={t('dashboard.allTime')} accent="#F97316"
+      sub={t('dashboard.rushJobsOfAllJobs', { rushPct: pct(ctx.fun.rushPct) })}
     />
   ),
 
   'fun.algus': ctx => (
     <StatTile
-      icon={CalendarDays} label={t('Kaua me juba teeme', 'How long we’ve been at it')}
-      value={ctx.fun.daysInBusiness === null ? '—' : t(`${ctx.fun.daysInBusiness} p`, `${ctx.fun.daysInBusiness} d`)}
-      scope={t('kogu aeg', 'all time')} accent="#6366F1"
-      sub={ctx.fun.firstJobDate ? t(`Esimene töö ${ctx.fun.firstJobDate}`, `First job ${ctx.fun.firstJobDate}`) : t('Ühtegi tööd ei ole veel', 'No jobs yet')}
+      icon={CalendarDays} label={t('dashboard.howLongWeVeBeenAt')}
+      value={ctx.fun.daysInBusiness === null ? '—' : t('dashboard.d11', { daysInBusiness: ctx.fun.daysInBusiness })}
+      scope={t('dashboard.allTime')} accent="#6366F1"
+      sub={ctx.fun.firstJobDate ? t('dashboard.firstJob', { firstJobDate: ctx.fun.firstJobDate }) : t('dashboard.noJobsYet')}
     />
   ),
 }

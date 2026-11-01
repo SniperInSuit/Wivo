@@ -39,11 +39,11 @@ type PeriodFilter = 'all' | 'week' | 'month' | 'last_month'
 type PayFilter = 'all' | 'unpaid' | 'partial' | 'overdue' | 'settled'
 
 const PAY_OPTIONS: { key: PayFilter; label: string }[] = [
-  { key: 'all',      label: t('Kõik maksed', 'All payments') },
-  { key: 'unpaid',   label: t('Tasumata', 'Unpaid') },
-  { key: 'partial',  label: t('Osaliselt makstud', 'Partly paid') },
-  { key: 'overdue',  label: t('Üle tähtaja', 'Overdue') },
-  { key: 'settled',  label: t('Makstud', 'Paid') },
+  { key: 'all',      label: t('tableView.allPayments') },
+  { key: 'unpaid',   label: t('tableView.unpaid') },
+  { key: 'partial',  label: t('tableView.partlyPaid') },
+  { key: 'overdue',  label: t('tableView.overdue') },
+  { key: 'settled',  label: t('tableView.paid') },
 ]
 
 /**
@@ -58,16 +58,16 @@ const PAY_OPTIONS: { key: PayFilter; label: string }[] = [
 type RevFilter = 'all' | 'any' | 'noreason'
 
 const REV_OPTIONS: { key: RevFilter; label: string }[] = [
-  { key: 'all',      label: t('Kõik muudatused', 'All revisions') },
-  { key: 'any',      label: t('On muudatusi', 'Has revisions') },
-  { key: 'noreason', label: t('Muudatus ilma põhjuseta', 'Revision with no reason') },
+  { key: 'all',      label: t('tableView.allRevisions') },
+  { key: 'any',      label: t('tableView.hasRevisions') },
+  { key: 'noreason', label: t('tableView.revisionWithNoReason') },
 ]
 
 const PERIOD_OPTIONS: { key: PeriodFilter; label: string }[] = [
-  { key: 'all',        label: t('Kõik kuupäevad', 'All dates') },
-  { key: 'week',       label: t('See nädal', 'This week') },
-  { key: 'month',      label: t('See kuu', 'This month') },
-  { key: 'last_month', label: t('Eelmine kuu', 'Last month') },
+  { key: 'all',        label: t('tableView.allDates') },
+  { key: 'week',       label: t('tableView.thisWeek') },
+  { key: 'month',      label: t('tableView.thisMonth') },
+  { key: 'last_month', label: t('tableView.lastMonth') },
 ]
 
 interface TableViewProps {
@@ -268,7 +268,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
     const counts: Record<string, number> = {}
     const swatches: Record<string, string> = {}
     for (const r of debt.rows) {
-      const late = r.daysLate > 0 ? t(` · ${r.daysLate} p üle`, ` · ${r.daysLate} d overdue`) : r.partial ? t(' · osaliselt', ' · partly paid') : ''
+      const late = r.daysLate > 0 ? t('tableView.dOverdue', { daysLate: r.daysLate }) : r.partial ? t('tableView.partlyPaid2') : ''
       const label = `${r.nimi} — ${r.outstanding.toFixed(2)} €${late}`
       names.push(label)
       keyOf[label] = r.key
@@ -400,7 +400,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           <button
             onClick={() => onSearchChange('')}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors flex-shrink-0"
-            title={t('Tühjenda otsing', 'Clear search')}
+            title={t('tableView.clearSearch')}
           >
             <Search size={11} />
             {search.trim()}
@@ -416,7 +416,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               stageFilter === 'all' ? 'chip-active' : 'text-ink-muted hover:text-ink bg-bg-sidebar'
             }`}
           >
-            {t('Kõik', 'All')} ({jobs.length})
+            {t('tableView.all')} ({jobs.length})
           </button>
           {stages.map(s => {
             const count = jobs.filter(j => j.status === s.key).length
@@ -452,7 +452,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
 
         {workTypeOptions.names.length > 1 && (
           <MultiFilterMenu
-            label={t('Tööliik', 'Work type')}
+            label={t('tableView.workType')}
             icon={Shapes}
             options={workTypeOptions.names}
             swatches={workTypeOptions.swatches}
@@ -488,7 +488,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             label, so "kes kui palju võlgu on" is answered without picking one. */}
         {debt.rows.length > 0 && (
           <MultiFilterMenu
-            label={`${t('Võlglane', 'Debtor')}${debt.outstanding > 0 ? ` · ${debt.outstanding.toFixed(0)} €` : ''}`}
+            label={`${t('tableView.debtor')}${debt.outstanding > 0 ? ` · ${debt.outstanding.toFixed(0)} €` : ''}`}
             icon={HandCoins}
             options={debtorLabels.names}
             counts={debtorLabels.counts}
@@ -511,7 +511,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               return next
             })}
             className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-bg-sidebar text-xs font-medium text-ink-muted hover:text-ink transition-colors flex-shrink-0"
-            title={t(`Eemalda filter: ${name}`, `Remove filter: ${name}`)}
+            title={t('tableView.removeFilter', { name })}
           >
             <span
               className="w-2 h-2 rounded-full flex-shrink-0"
@@ -532,7 +532,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             id => workers.find(w => w.id === id)?.full_name ?? '',
           ))}
           disabled={filtered.length === 0}
-          title={t(`Ekspordi ${filtered.length} rida CSV-sse`, `Export ${filtered.length} ${filtered.length === 1 ? 'row' : 'rows'} to CSV`)}
+          title={t('tableView.exportToCSVRowRows', { filtered, filteredCount: filtered.length })}
           className="text-xs px-2.5 py-1 rounded-lg font-medium text-ink-muted hover:text-ink bg-bg-sidebar transition-colors flex-shrink-0 flex items-center gap-1.5 disabled:opacity-40 ml-auto"
         >
           <Download size={12} /> CSV
@@ -543,7 +543,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             onClick={clearFilters}
             className="text-xs text-ink-faint hover:text-red-500 transition-colors flex-shrink-0"
           >
-            {t('Tühjenda filtrid', 'Clear filters')}
+            {t('tableView.clearFilters')}
           </button>
         )}
 
@@ -553,10 +553,10 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
       {selected.size > 0 && (
         <div className="flex items-center gap-3 px-5 py-2.5 bg-accent/[0.06] border-b border-accent/20 flex-shrink-0">
           <span className="text-sm font-semibold text-accent whitespace-nowrap">
-            {t(`${selected.size} valitud`, `${selected.size} selected`)}
+            {t('tableView.selected', { size: selected.size })}
           </span>
           <span className="text-ink-faint/40">|</span>
-          <span className="text-xs text-ink-muted whitespace-nowrap">{t('Muuda staatust:', 'Change status:')}</span>
+          <span className="text-xs text-ink-muted whitespace-nowrap">{t('tableView.changeStatus')}</span>
           <div className="flex gap-1 flex-wrap">
             {stages.map(s => (
               <button
@@ -575,7 +575,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           {onBulkAssign && (
             <>
               <span className="text-ink-faint/40">|</span>
-              <span className="text-xs text-ink-muted whitespace-nowrap">{t('Teostaja:', 'Done by:')}</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">{t('tableView.doneBy')}</span>
               <select
                 disabled={bulkWorking}
                 value=""
@@ -585,11 +585,11 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                 }}
                 className="input py-1 text-xs w-36"
               >
-                <option value="">{t('Määra…', 'Assign…')}</option>
-                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || t('Nimeta', 'Unnamed')}</option>)}
-                <option value="__none">{t('— eemalda —', '— remove —')}</option>
+                <option value="">{t('tableView.assign')}</option>
+                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || t('tableView.unnamed')}</option>)}
+                <option value="__none">{t('tableView.remove')}</option>
               </select>
-              <span className="text-xs text-ink-muted whitespace-nowrap">{t('Disainija:', 'Designer:')}</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">{t('tableView.designer')}</span>
               <select
                 disabled={bulkWorking}
                 value=""
@@ -599,9 +599,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                 }}
                 className="input py-1 text-xs w-36"
               >
-                <option value="">{t('Määra…', 'Assign…')}</option>
-                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || t('Nimeta', 'Unnamed')}</option>)}
-                <option value="__none">{t('— eemalda —', '— remove —')}</option>
+                <option value="">{t('tableView.assign')}</option>
+                {workers.map(w => <option key={w.id} value={w.id}>{w.full_name || t('tableView.unnamed')}</option>)}
+                <option value="__none">{t('tableView.remove')}</option>
               </select>
             </>
           )}
@@ -613,25 +613,25 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                 onClick={() => setPaidDialog(true)}
                 className="flex items-center gap-1 text-xs text-green-700 bg-green-100 hover:bg-green-200 px-2.5 py-1 rounded-lg font-semibold transition-colors disabled:opacity-50"
               >
-                <Euro size={11} /> {t('Makstud', 'Paid')}
+                <Euro size={11} /> {t('tableView.paid')}
               </button>
             )}
             {onBulkDelete && (
               bulkDeleteConfirm ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-red-600 font-medium">{t(`Kustutada ${selected.size}?`, `Delete ${selected.size}?`)}</span>
+                  <span className="text-xs text-red-600 font-medium">{t('tableView.delete', { size: selected.size })}</span>
                   <button
                     disabled={bulkWorking}
                     onClick={handleBulkDelete}
                     className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 disabled:opacity-50"
                   >
-                    {t('Jah', 'Yes')}
+                    {t('tableView.yes')}
                   </button>
                   <button
                     onClick={() => setBulkDeleteConfirm(false)}
                     className="text-xs text-ink-muted hover:text-ink px-2 py-1 rounded-lg"
                   >
-                    {t('Ei', 'No')}
+                    {t('tableView.no')}
                   </button>
                 </div>
               ) : (
@@ -639,7 +639,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   onClick={() => setBulkDeleteConfirm(true)}
                   className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors"
                 >
-                  <Trash2 size={12} /> {t('Kustuta', 'Delete')}
+                  <Trash2 size={12} /> {t('tableView.delete2')}
                 </button>
               )
             )}
@@ -647,7 +647,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               onClick={() => { setSelected(new Set()); setBulkDeleteConfirm(false) }}
               className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
             >
-              <XIcon size={12} /> {t('Tühista', 'Cancel')}
+              <XIcon size={12} /> {t('tableView.cancel')}
             </button>
           </div>
         </div>
@@ -676,25 +676,25 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               </th>
               {/* Pencil column — opens the side editor */}
               <th className="w-8 px-1 py-3" />
-              <Th label={t('Staatus', 'Status')}    field="status" />
-              <Th label={t('Kuupäev', 'Date')}   field="kuupaev" />
-              <Th label={t('Patsient', 'Patient')}  field="patsient" />
-              <Th label={t('Töö', 'Job')}       field="too" />
-              <Th label={t('Materjal', 'Material')}  field="materjal" />
+              <Th label={t('tableView.status')}    field="status" />
+              <Th label={t('tableView.date')}   field="kuupaev" />
+              <Th label={t('tableView.patient')}  field="patsient" />
+              <Th label={t('tableView.job')}       field="too" />
+              <Th label={t('tableView.material')}  field="materjal" />
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide whitespace-nowrap">
-                Print ID
+                {t('common.printId')}
               </th>
-              <Th label={t('Värv', 'Shade')}      field="varv" />
+              <Th label={t('tableView.shade')}      field="varv" />
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide whitespace-nowrap">
-                {t('Hambad', 'Teeth')}
+                {t('tableView.teeth')}
               </th>
-              <Th label={t('Tähtaeg', 'Due date')}   field="valmis_aeg" />
-              <Th label={t('Hind', 'Price')}      field="hind" />
+              <Th label={t('tableView.dueDate')}   field="valmis_aeg" />
+              <Th label={t('tableView.price')}      field="hind" />
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                {t('Makstud', 'Paid')}
+                {t('tableView.paid')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide min-w-[200px]">
-                {t('Muudatused', 'Revisions')}
+                {t('tableView.revisions')}
               </th>
               <th className="w-10" />
             </tr>
@@ -703,7 +703,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={15} className="text-center py-16 text-ink-faint text-sm">
-                  {hasFilters ? t('Tulemusi ei leitud', 'No results') : t('Töid pole veel lisatud', 'No jobs added yet')}
+                  {hasFilters ? t('tableView.noResults') : t('tableView.noJobsAddedYet')}
                 </td>
               </tr>
             )}
@@ -741,7 +741,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   <td
                     className="px-1 py-3 w-8"
                     onClick={e => { e.stopPropagation(); onJobClick(job) }}
-                    title={t('Muuda', 'Edit')}
+                    title={t('tableView.edit')}
                   >
                     <Edit2
                       size={14}
@@ -764,7 +764,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-sm text-ink">{job.patsient}</span>
                       {job.kiirtoo && (
-                        <span title={t('Kiirtöö', 'Rush job')} className="flex-shrink-0 leading-none">
+                        <span title={t('tableView.rushJob')} className="flex-shrink-0 leading-none">
                           <Zap size={12} className="text-orange-500" />
                         </span>
                       )}
@@ -823,7 +823,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                       const late = (debtorOfJob.get(job.id)?.overdue ?? 0) > 0
                       if (pay.settled) return (
                         <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-medium">
-                          <Check size={10} /> {t('Jah', 'Yes')}
+                          <Check size={10} /> {t('tableView.yes')}
                         </span>
                       )
                       if (pay.partial) return (
@@ -832,13 +832,13 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                             {pay.paid.toFixed(2)} € / {pay.total.toFixed(2)} €
                           </span>
                           <span className="text-[10px] text-orange-600 tabular-nums">
-                            {t(`jääk ${pay.outstanding.toFixed(2)} €`, `balance ${pay.outstanding.toFixed(2)} €`)}
+                            {t('tableView.balance', { outstanding: pay.outstanding.toFixed(2) })}
                           </span>
                         </div>
                       )
                       return job.hind ? (
                         <span className={`text-xs font-medium ${late ? 'text-red-600' : 'text-red-500'}`}>
-                          {t('Ei', 'No')}{late ? t(` · ${debtorOfJob.get(job.id)?.daysLate} p üle`, ` · ${debtorOfJob.get(job.id)?.daysLate} d overdue`) : ''}
+                          {t('tableView.no')}{late ? t('tableView.dOverdue', { daysLate: debtorOfJob.get(job.id)?.daysLate }) : ''}
                         </span>
                       ) : (
                         <span className="text-ink-faint text-xs">—</span>
@@ -885,7 +885,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                             )
                           })}
                           {overflow > 0 && (
-                            <span className="text-[10px] text-ink-faint">{t(`+${overflow} veel`, `+${overflow} more`)}</span>
+                            <span className="text-[10px] text-ink-faint">{t('tableView.more', { overflow })}</span>
                           )}
                         </div>
                       )
@@ -906,9 +906,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
         {filtered.length > 0 && (
           <div className="px-5 py-3 text-xs text-ink-faint border-t border-ink-faint/10 flex items-center gap-3 flex-wrap">
             <span>
-              {t(`${filtered.length} töö${filtered.length !== 1 ? 'd' : ''}`, `${filtered.length} ${filtered.length === 1 ? 'job' : 'jobs'}`)}
-              {hasFilters ? t(` (filtreeritud ${jobs.length}-st)`, ` (filtered from ${jobs.length})`) : ''}
-              {selected.size > 0 && t(` · ${selected.size} valitud`, ` · ${selected.size} selected`)}
+              {t('tableView.jobJobs', { filtered })}
+              {hasFilters ? t('tableView.filteredFrom', { jobsCount: jobs.length }) : ''}
+              {selected.size > 0 && t('tableView.selected2', { size: selected.size })}
             </span>
             {/* What is ON SCREEN is owed. Sums the same rows the CSV exports,
                 so the footer and the export can never disagree. */}
@@ -919,9 +919,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
               if (owed <= 0.005 && paid <= 0.005) return null
               return (
                 <span className="ml-auto tabular-nums">
-                  {t('Laekunud', 'Received')} <span className="text-emerald-600 font-semibold">{paid.toFixed(2)} €</span>
+                  {t('tableView.received')} <span className="text-emerald-600 font-semibold">{paid.toFixed(2)} €</span>
                   {' · '}
-                  {t('Tasumata', 'Unpaid')} <span className={owed > 0 ? 'text-red-500 font-semibold' : ''}>{owed.toFixed(2)} €</span>
+                  {t('tableView.unpaid')} <span className={owed > 0 ? 'text-red-500 font-semibold' : ''}>{owed.toFixed(2)} €</span>
                 </span>
               )
             })()}
@@ -933,7 +933,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           actually settled (one bank transfer, one till at close of day). */}
       {paidDialog && (
         <MarkPaidDialog
-          title={t('Märgi valitud tööd makstuks', 'Mark selected jobs as paid')}
+          title={t('tableView.markSelectedJobsAsPaid')}
           count={selected.size}
           // Same function the single-job dialog and the invoice use, so a batch
           // cannot be settled for a different number than its rows.

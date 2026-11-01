@@ -76,7 +76,7 @@ export function customerStats(
     if (!r) {
       r = {
         id,
-        name: id === UNASSIGNED ? t('Määramata', 'Unassigned') : nameOf.get(id) ?? t('Tundmatu klient', 'Unknown client'),
+        name: id === UNASSIGNED ? t('customerStats.unassigned') : nameOf.get(id) ?? t('customerStats.unknownClient'),
         jobs: 0, teeth: 0, revenue: 0, billed: 0, outstanding: 0, daysToPay: null,
       }
       rows.set(id, r)

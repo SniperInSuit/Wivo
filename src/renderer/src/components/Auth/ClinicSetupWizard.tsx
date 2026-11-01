@@ -35,7 +35,7 @@ export function ClinicSetupWizard() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim()) { setError(t('Kliiniku nimi on kohustuslik', 'Clinic name is required')); return }
+    if (!form.name.trim()) { setError(t('auth.clinicNameIsRequired')); return }
     if (!user) return
     setError(null)
     setSaving(true)
@@ -77,7 +77,7 @@ export function ClinicSetupWizard() {
       setClinic(clinic as Clinic)
       await refreshProfile()
     } catch (err: unknown) {
-      setError((err as Error)?.message ?? t('Kliiniku loomine ebaõnnestus', 'Could not create the clinic'))
+      setError((err as Error)?.message ?? t('auth.couldNotCreateTheClinic'))
     } finally {
       setSaving(false)
     }
@@ -88,23 +88,23 @@ export function ClinicSetupWizard() {
       <div className="bg-bg-card rounded-2xl shadow-panel p-8 w-full max-w-lg space-y-6">
         <div className="text-center space-y-2">
           <img src={wivoLogo} alt="Wivo" className="w-14 h-14 rounded-xl mx-auto" />
-          <h1 className="text-xl font-bold text-ink">{t('Seadista oma kliinik', 'Set up your clinic')}</h1>
+          <h1 className="text-xl font-bold text-ink">{t('auth.setUpYourClinic')}</h1>
           <p className="text-sm text-ink-muted">
-            {t('Sisesta kliiniku andmed. Need lähevad arvetele ja aruannetele.', 'Enter the clinic’s details. They appear on invoices and reports.')}
+            {t('auth.enterTheClinicSDetailsThey')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="label">{t('Kliiniku nimi *', 'Clinic name *')}</label>
+            <label className="label">{t('auth.clinicName')}</label>
             <div className="relative">
               <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
                 type="text"
                 value={form.name}
                 onChange={e => set('name', e.target.value)}
-                placeholder={t('Kliiniku nimi', 'Clinic name')}
+                placeholder={t('auth.clinicName2')}
                 className="input pl-9"
                 required
                 autoFocus
@@ -115,20 +115,20 @@ export function ClinicSetupWizard() {
           {/* Address row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="label">{t('Aadress', 'Address')}</label>
+              <label className="label">{t('auth.address')}</label>
               <div className="relative">
                 <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="text"
                   value={form.address}
                   onChange={e => set('address', e.target.value)}
-                  placeholder={t('Tänav, maja', 'Street, number')}
+                  placeholder={t('auth.streetNumber')}
                   className="input pl-9"
                 />
               </div>
             </div>
             <div>
-              <label className="label">{t('Linn', 'City')}</label>
+              <label className="label">{t('auth.city')}</label>
               <input
                 type="text"
                 value={form.city}
@@ -138,7 +138,7 @@ export function ClinicSetupWizard() {
               />
             </div>
             <div>
-              <label className="label">{t('Postiindeks', 'Postcode')}</label>
+              <label className="label">{t('auth.postcode')}</label>
               <input
                 type="text"
                 value={form.postal_code}
@@ -152,7 +152,7 @@ export function ClinicSetupWizard() {
           {/* Contact */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('Telefon', 'Phone')}</label>
+              <label className="label">{t('auth.phone')}</label>
               <div className="relative">
                 <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
@@ -165,14 +165,14 @@ export function ClinicSetupWizard() {
               </div>
             </div>
             <div>
-              <label className="label">{t('E-post', 'Email')}</label>
+              <label className="label">{t('auth.email')}</label>
               <div className="relative">
                 <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="email"
                   value={form.email}
                   onChange={e => set('email', e.target.value)}
-                  placeholder={t('info@kliinik.ee', 'info@clinic.com')}
+                  placeholder={t('auth.infoClinicCom')}
                   className="input pl-9"
                 />
               </div>
@@ -182,7 +182,7 @@ export function ClinicSetupWizard() {
           {/* Legal */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('Registrikood', 'Registry code')}</label>
+              <label className="label">{t('auth.registryCode')}</label>
               <div className="relative">
                 <FileText size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
@@ -195,7 +195,7 @@ export function ClinicSetupWizard() {
               </div>
             </div>
             <div>
-              <label className="label">{t('KMKR number', 'VAT number')}</label>
+              <label className="label">{t('auth.vATNumber')}</label>
               <input
                 type="text"
                 value={form.vat_number}
@@ -209,7 +209,7 @@ export function ClinicSetupWizard() {
           {/* Banking */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('Pank', 'Bank')}</label>
+              <label className="label">{t('auth.bank')}</label>
               <div className="relative">
                 <Landmark size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
@@ -249,13 +249,13 @@ export function ClinicSetupWizard() {
             ) : (
               <>
                 <Save size={14} />
-                {t('Loo kliinik ja alusta', 'Create clinic and start')}
+                {t('auth.createClinicAndStart')}
               </>
             )}
           </button>
 
           <p className="text-[11px] text-ink-faint text-center">
-            {t('Kõik andmed saab hiljem Seadetest muuta.', 'You can change all of this later in Settings.')}
+            {t('auth.youCanChangeAllOfThis')}
           </p>
         </form>
       </div>

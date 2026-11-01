@@ -66,8 +66,8 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] text-ink-faint">
-          {t(`${panels.length} paneeli`, `${panels.length} ${panels.length === 1 ? 'panel' : 'panels'}`)} · {presetKey ? PRESET_BY_KEY[presetKey]?.label ?? t('Kohandatud', 'Custom') : t('Kohandatud', 'Custom')}
-          {editing && t(' · lohista ümber või muuda suurust', ' · drag to rearrange or resize')}
+          {t('dashboard.panelPanels', { panels, panelsCount: panels.length })} · {presetKey ? PRESET_BY_KEY[presetKey]?.label ?? t('dashboard.custom') : t('dashboard.custom')}
+          {editing && t('dashboard.dragToRearrangeOrResize')}
         </p>
         <div className="flex items-center gap-1.5">
           <button
@@ -76,10 +76,10 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
               editing ? 'border-accent text-accent' : 'border-ink-faint/25'
             }`}
           >
-            {editing ? <><Check size={13} /> {t('Valmis', 'Done')}</> : <><LayoutGrid size={13} /> {t('Paiguta', 'Arrange')}</>}
+            {editing ? <><Check size={13} /> {t('dashboard.done')}</> : <><LayoutGrid size={13} /> {t('dashboard.arrange')}</>}
           </button>
           <button onClick={() => setPicking(true)} className="btn-ghost text-xs border border-ink-faint/25">
-            <Sliders size={13} /> {t('Kohanda', 'Customise')}
+            <Sliders size={13} /> {t('dashboard.customise')}
           </button>
         </div>
       </div>
@@ -136,10 +136,7 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
 
       {panels.length > 0 && (
         <p className="text-[10px] text-ink-faint leading-relaxed">
-          {t(
-            `Kõik paneelid kasutavad ülal valitud perioodi. Paneel, mille kohta sul õigust ei ole, ei ole nimekirjas ega renderdu — ${PANEL_BY_ID['raha.kasum'].title.toLowerCase()} ja teised rahanumbrid nõuavad eraldi õigust.`,
-            `Every panel uses the period selected above. A panel you have no permission for is not listed and does not render — ${PANEL_BY_ID['raha.kasum'].title.toLowerCase()} and other money figures need a separate permission.`,
-          )}
+          {t('dashboard.everyPanelUsesThePeriodSelected', { PANEL_BY_ID })}
         </p>
       )}
     </div>

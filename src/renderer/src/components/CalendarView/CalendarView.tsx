@@ -9,7 +9,7 @@ import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
   isSameDay, isToday, parseISO, isValid, addMonths, isBefore, startOfDay
 } from 'date-fns'
-import { t, lang, dateLocale } from '@/lib/i18n'
+import { t, dateLocale, weekdays } from '@/lib/i18n'
 import type { LucideIcon } from 'lucide-react'
 import type { Job, Revision } from '../../types/job'
 import { revisionReasonDisplay } from '../../types/job'
@@ -29,9 +29,7 @@ import { VisitTimeline } from './VisitTimeline'
 import { VisitWeekGrid } from './VisitWeekGrid'
 import { VisitForm } from './VisitForm'
 
-const WEEKDAYS = lang === 'en'
-  ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  : ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede', 'Laupäev', 'Pühapäev']
+const WEEKDAYS = weekdays('long')
 
 export type CalendarMode = 'tood' | 'visiidid' | 'kombineeritud'
 export type CalendarScale = 'kuu' | 'nadal'
@@ -275,7 +273,7 @@ export function CalendarView({
     // toISOString() on an Invalid Date throws "Invalid time value", and this is
     // called from grid arithmetic rather than from a date input.
     if (!isValid(newStart)) {
-      setVisitError(t('Visiidi uus aeg on vigane.', 'The new visit time is invalid.'))
+      setVisitError(t('calendarView.theNewVisitTimeIsInvalid'))
       return
     }
     try {
@@ -385,11 +383,11 @@ export function CalendarView({
             <div className="card p-4 flex items-start gap-2">
               <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-ink">{t('Visiitide tabelit ei leitud', 'Visits table not found')}</p>
+                <p className="text-sm font-semibold text-ink">{t('calendarView.visitsTableNotFound')}</p>
                 <p className="text-xs text-ink-muted">
-                  {t('Käivita', 'Run')} <code className="px-1 rounded bg-bg-sidebar">sql/007_visits.sql</code> {t('ja', 'and')}{' '}
+                  {t('calendarView.run')} <code className="px-1 rounded bg-bg-sidebar">sql/007_visits.sql</code> {t('calendarView.and')}{' '}
                   <code className="px-1 rounded bg-bg-sidebar">sql/008_visits_realtime.sql</code>{' '}
-                  {t('Supabase SQL-redaktoris. Tööde kalender töötab ka ilma selleta.', 'in the Supabase SQL editor. The jobs calendar works without it.')}
+                  {t('calendarView.inTheSupabaseSQLEditorThe')}
                 </p>
                 <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
               </div>
@@ -475,7 +473,7 @@ export function CalendarView({
                       count={matchDays.length}
                       index={matchIdx}
                       label={matchDays[matchIdx]
-                        ? format(parseISO(matchDays[matchIdx]), t('d. MMM', 'd MMM'), { locale: dateLocale })
+                        ? format(parseISO(matchDays[matchIdx]), t('calendarView.dMMM'), { locale: dateLocale })
                         : null}
                       onStep={dir => {
                         if (matchDays.length === 0) return
@@ -533,7 +531,7 @@ export function CalendarView({
                             {isMatch && (
                               <span
                                 className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"
-                                title={t('Vastab filtrile', 'Matches the filter')}
+                                title={t('calendarView.matchesTheFilter')}
                               />
                             )}
                             <div className="flex items-center justify-between mb-1">
@@ -549,7 +547,7 @@ export function CalendarView({
                                 {showVisits && <span className="flex items-center gap-0.5"><User size={9} />{dayVisits.length}</span>}
                                 {showJobs && <span className="flex items-center gap-0.5"><Zap size={9} />{dayJobCount}</span>}
                                 {showJobs && dayRevCount > 0 && (
-                                  <span className="flex items-center gap-0.5" title={t(`${dayRevCount} muudatust`, `${dayRevCount} ${dayRevCount === 1 ? 'revision' : 'revisions'}`)}>
+                                  <span className="flex items-center gap-0.5" title={t('calendarView.revisionRevisions', { dayRevCount })}>
                                     <CornerDownLeft size={9} />{dayRevCount}
                                   </span>
                                 )}
@@ -577,7 +575,7 @@ export function CalendarView({
                                 )
                               })}
                               {dayVisits.length > 2 && (
-                                <p className="text-[9px] text-ink-faint pl-1">+{dayVisits.length - 2} {t('visiit(i)', dayVisits.length - 2 === 1 ? 'visit' : 'visits')}</p>
+                                <p className="text-[9px] text-ink-faint pl-1">+{dayVisits.length - 2} {t('calendarView.visitVisits', { dayVisits })}</p>
                               )}
 
                               {dayVisits.length > 0 && dayEntries.length > 0 && (
@@ -594,8 +592,8 @@ export function CalendarView({
                                     onDoubleClick={ev => { ev.stopPropagation(); openEntry(e) }}
                                     title={
                                       isRev
-                                        ? `${t('Muudatus', 'Revision')} #${e.revNum} · ${e.job.too ?? t('Määramata', 'Unspecified')} · ${e.job.patsient} · ${st?.label ?? entryStage(e)}${e.rev.note ? ` — ${e.rev.note}` : ''}`
-                                        : `${e.job.too ?? t('Määramata', 'Unspecified')} (${wt.label(e.job.too)}) · ${e.job.patsient} · ${st?.label ?? entryStage(e)}`
+                                        ? `${t('calendarView.revision')} #${e.revNum} · ${e.job.too ?? t('calendarView.unspecified')} · ${e.job.patsient} · ${st?.label ?? entryStage(e)}${e.rev.note ? ` — ${e.rev.note}` : ''}`
+                                        : `${e.job.too ?? t('calendarView.unspecified')} (${wt.label(e.job.too)}) · ${e.job.patsient} · ${st?.label ?? entryStage(e)}`
                                     }
                                     className={`rounded-md px-1.5 py-0.5 border-l-[3px] ${
                                       isRev ? 'ring-1 ring-inset ring-slate-500/35' : ''
@@ -607,29 +605,29 @@ export function CalendarView({
                                   >
                                     <p className="text-[10px] font-semibold text-ink truncate flex items-center gap-0.5">
                                       {isRev && <CornerDownLeft size={8} className="flex-shrink-0" />}
-                                      {isRev ? `${t('Muudatus', 'Revision')} #${e.revNum}` : e.job.too ?? t('Määramata', 'Unspecified')}
+                                      {isRev ? `${t('calendarView.revision')} #${e.revNum}` : e.job.too ?? t('calendarView.unspecified')}
                                     </p>
                                     <p className="text-[9px] text-ink-muted truncate">
-                                      {e.job.patsient}{late && t(' · üle tähtaja', ' · overdue')}
+                                      {e.job.patsient}{late && t('calendarView.overdue')}
                                     </p>
                                   </div>
                                 )
                               })}
                               {dayEntries.length > 3 && (
-                                <p className="text-[9px] text-ink-faint pl-1">+{dayEntries.length - 3} {t('veel', 'more')}</p>
+                                <p className="text-[9px] text-ink-faint pl-1">+{dayEntries.length - 3} {t('calendarView.more')}</p>
                               )}
 
                               {dayVisits.length === 0 && dayEntries.length === 0 && (
                                 <>
                                   <p className="text-[9px] text-ink-faint/70 group-hover:hidden pl-1">
-                                    {t('0 visiiti · 0 tööd', '0 visits · 0 jobs')}
+                                    {t('calendarView.n0Visits0Jobs')}
                                   </p>
                                   <div className="hidden group-hover:flex flex-col gap-0.5">
                                     <button
                                       onClick={e => { e.stopPropagation(); setVisitForm({ visit: null, date: day }) }}
                                       className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
                                     >
-                                      + {t('Lisa visiit', 'Add visit')}
+                                      + {t('calendarView.addVisit')}
                                     </button>
                                     <button
                                       onClick={e => {
@@ -638,7 +636,7 @@ export function CalendarView({
                                       }}
                                       className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
                                     >
-                                      + {t('Lisa töö', 'Add job')}
+                                      + {t('calendarView.addJob')}
                                     </button>
                                   </div>
                                 </>
@@ -664,7 +662,7 @@ export function CalendarView({
               // nothing that is on screen
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
-                  {t('Visiidi seis', 'Visit status')}
+                  {t('calendarView.visitStatus')}
                 </span>
                 {(Object.keys(VISIT_STATUS_LABEL) as VisitStatus[]).map(st => (
                   <span key={st} className="flex items-center gap-1.5 text-[10px] text-nav">
@@ -676,7 +674,7 @@ export function CalendarView({
             ) : (
             <><div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
               <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
-                {t('Serv = etapp', 'Edge = stage')}
+                {t('calendarView.edgeStage')}
               </span>
               {stages.map(s => (
                 <span key={s.key} className="flex items-center gap-1.5 text-[10px] text-nav">
@@ -686,13 +684,13 @@ export function CalendarView({
               ))}
               <span className="flex items-center gap-1.5 text-[10px] text-nav">
                 <span className="w-0.5 h-3 rounded-sm bg-red-500" />
-                {t('Tähtaeg möödas', 'Past due')}
+                {t('calendarView.pastDue')}
               </span>
             </div>
             {visibleTypes.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <span className="text-[10px] font-semibold text-nav-muted uppercase tracking-wider w-[86px]">
-                  {t('Täidis = töö', 'Fill = job')}
+                  {t('calendarView.fillJob')}
                 </span>
                 {visibleTypes.map(type => (
                   <span key={type.label} className="flex items-center gap-1.5 text-[10px] text-nav">
@@ -705,11 +703,11 @@ export function CalendarView({
                 ))}
                 <span className="flex items-center gap-1.5 text-[10px] text-nav">
                   <span className="w-2.5 h-2.5 rounded bg-bg-sidebar ring-1 ring-inset ring-white/30" />
-                  {t('Visiit', 'Visit')}
+                  {t('calendarView.visit')}
                 </span>
                 <span className="flex items-center gap-1.5 text-[10px] text-nav">
                   <CornerDownLeft size={10} />
-                  {t('Muudatus (oma tähtaeg)', 'Revision (own due date)')}
+                  {t('calendarView.revisionOwnDueDate')}
                 </span>
               </div>
             )}</>
@@ -722,9 +720,9 @@ export function CalendarView({
         {!selected ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-2">
             <CalendarDays size={30} className="text-ink-faint" />
-            <p className="text-sm text-ink-muted">{t('Vali kalendrist päev', 'Pick a day in the calendar')}</p>
+            <p className="text-sm text-ink-muted">{t('calendarView.pickADayInTheCalendar')}</p>
             <p className="text-xs text-ink-faint">
-              {t('Näed selle päeva visiidid, tööd ja kokkuvõtte.', "You'll see that day's visits, jobs and summary.")}
+              {t('calendarView.youLlSeeThatDayS')}
             </p>
           </div>
         ) : (
@@ -735,10 +733,10 @@ export function CalendarView({
                   {format(selected, 'EEEE', { locale: dateLocale })}
                 </p>
                 <h2 className="text-lg font-bold text-ink">
-                  {format(selected, t('d. MMMM yyyy', 'd MMMM yyyy'), { locale: dateLocale })}
+                  {format(selected, t('calendarView.dMMMMYyyy'), { locale: dateLocale })}
                 </h2>
               </div>
-              <button onClick={() => setSelected(null)} className="btn-ghost p-1.5" title={t('Sulge', 'Close')}>
+              <button onClick={() => setSelected(null)} className="btn-ghost p-1.5" title={t('calendarView.close')}>
                 <X size={14} />
               </button>
             </div>
@@ -746,7 +744,7 @@ export function CalendarView({
             {/* Visits */}
             <section className="space-y-2">
               <h3 className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-                <User size={11} /> {t('Visiidid', 'Visits')} ({selVisits.length})
+                <User size={11} /> {t('calendarView.visits')} ({selVisits.length})
               </h3>
               {visitError && (
                 <p className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
@@ -754,7 +752,7 @@ export function CalendarView({
                 </p>
               )}
               {selVisits.length === 0 ? (
-                <p className="text-xs text-ink-faint">{t('Visiite ei ole.', 'No visits.')}</p>
+                <p className="text-xs text-ink-faint">{t('calendarView.noVisits')}</p>
               ) : selVisits.map(v => {
                 const d = parseISO(v.algus)
                 const vJobs = jobsForVisit(v)
@@ -783,7 +781,7 @@ export function CalendarView({
                     </div>
                     {v.arst?.trim() && <p className="text-sm font-semibold text-ink">{v.arst}</p>}
                     <p className="text-xs text-ink-muted">
-                      {vJobs.length} {vJobs.length === 1 ? t('töö', 'job') : t('tööd', 'jobs')} · {v.kestus_min} min
+                      {vJobs.length} {vJobs.length === 1 ? t('calendarView.job') : t('calendarView.jobs2')} · {v.kestus_min} {t('common.minutesShort')}
                     </p>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <User size={10} className="text-ink-faint flex-shrink-0" />
@@ -791,7 +789,7 @@ export function CalendarView({
                       {v.patient_id && onOpenPatient && (
                         <button
                           onClick={() => onOpenPatient(v.patient_id!)}
-                          title={t('Ava patsiendi profiil', 'Open patient profile')}
+                          title={t('calendarView.openPatientProfile')}
                           className="text-accent hover:underline flex-shrink-0"
                         >
                           <ArrowUpRight size={11} />
@@ -822,7 +820,7 @@ export function CalendarView({
                       disabled={vJobs.length === 0}
                       className="w-full mt-1 text-xs font-medium text-accent border border-accent/30 rounded-lg py-1.5 hover:bg-accent/10 transition-colors disabled:opacity-40"
                     >
-                      {t('Vaata töödele', 'View jobs')}
+                      {t('calendarView.viewJobs')}
                     </button>
                   </div>
                 )
@@ -832,15 +830,15 @@ export function CalendarView({
             {/* Jobs */}
             <section className="space-y-2">
               <h3 className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-                <Zap size={11} /> {t('Tööd', 'Jobs')} ({selEntries.length})
+                <Zap size={11} /> {t('calendarView.jobs')} ({selEntries.length})
                 {selRevCount > 0 && (
                   <span className="normal-case tracking-normal font-normal text-ink-faint">
-                    · {t(`${selRevCount} muudatust`, `${selRevCount} ${selRevCount === 1 ? 'revision' : 'revisions'}`)}
+                    · {t('calendarView.revisionRevisions2', { selRevCount })}
                   </span>
                 )}
               </h3>
               {selEntries.length === 0 ? (
-                <p className="text-xs text-ink-faint">{t('Töid ei ole.', 'No jobs.')}</p>
+                <p className="text-xs text-ink-faint">{t('calendarView.noJobs')}</p>
               ) : selEntries.map(e => {
                 const st = stageMap[entryStage(e)]
                 const late = isOverdue(e)
@@ -858,7 +856,7 @@ export function CalendarView({
                     {isRev && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-700 text-slate-100">
                         <CornerDownLeft size={9} />
-                        {t('Muudatus', 'Revision')} #{e.revNum}
+                        {t('calendarView.revision')} #{e.revNum}
                       </span>
                     )}
                     <div className="flex items-start justify-between gap-2">
@@ -868,13 +866,13 @@ export function CalendarView({
                           style={{ backgroundColor: wt.hex(e.job.too) }}
                           title={wt.label(e.job.too)}
                         />
-                        {e.job.too ?? t('Määramata töö', 'Unspecified job')}
+                        {e.job.too ?? t('calendarView.unspecifiedJob')}
                       </p>
                       <span
                         className="text-[10px] font-medium rounded-full px-1.5 py-0.5 flex-shrink-0"
                         style={stageChipStyle(late ? '#EF4444' : st?.hex ?? '#A8B4BE')}
                       >
-                        {late ? t('Üle tähtaja', 'Overdue') : st?.label ?? entryStage(e)}
+                        {late ? t('calendarView.overdue2') : st?.label ?? entryStage(e)}
                       </span>
                     </div>
                     <p className="text-xs text-ink-muted truncate">{e.job.patsient}</p>
@@ -902,25 +900,25 @@ export function CalendarView({
             {/* Day summary */}
             <section className="space-y-1.5 pt-1 border-t border-ink-faint/15">
               <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider pt-2">
-                {t('Päeva kokkuvõte', 'Day summary')}
+                {t('calendarView.daySummary')}
               </h3>
-              <Summary icon={User} label={t('Visiite', 'Visits')} value={selVisits.length} />
+              <Summary icon={User} label={t('calendarView.visits2')} value={selVisits.length} />
               <Summary
-                icon={UserCheck} label={t('Saabunud / üle antud', 'Arrived / handed over')} tone="text-emerald-600"
+                icon={UserCheck} label={t('calendarView.arrivedHandedOver')} tone="text-emerald-600"
                 value={selVisits.filter(v => v.staatus === 'saabunud' || v.staatus === 'toimunud').length}
               />
               <Summary
-                icon={UserX} label={t('Ei tulnud', 'No-show')} tone="text-amber-600"
+                icon={UserX} label={t('calendarView.noShow')} tone="text-amber-600"
                 value={selVisits.filter(v => v.staatus === 'ei_tulnud').length}
               />
-              <Summary icon={Zap} label={t('Töid', 'Jobs')} value={selEntries.length - selRevCount} />
-              <Summary icon={CornerDownLeft} label={t('Muudatusi', 'Revisions')} value={selRevCount} />
+              <Summary icon={Zap} label={t('calendarView.jobs3')} value={selEntries.length - selRevCount} />
+              <Summary icon={CornerDownLeft} label={t('calendarView.revisions')} value={selRevCount} />
               <Summary
-                icon={CheckCircle2} label={t('Valmis', 'Done')} tone="text-emerald-600"
+                icon={CheckCircle2} label={t('calendarView.done')} tone="text-emerald-600"
                 value={selEntries.filter(e => entryStage(e) === doneStageKey).length}
               />
               <Summary
-                icon={AlertTriangle} label={t('Üle tähtaja', 'Overdue')} tone="text-red-600"
+                icon={AlertTriangle} label={t('calendarView.overdue2')} tone="text-red-600"
                 value={selEntries.filter(isOverdue).length}
               />
             </section>
@@ -931,13 +929,13 @@ export function CalendarView({
                 onClick={() => setVisitForm({ visit: null, date: selected })}
                 className="w-full btn-ghost justify-center border border-ink-faint/25"
               >
-                <Plus size={14} /> {t('Lisa visiit', 'Add visit')}
+                <Plus size={14} /> {t('calendarView.addVisit')}
               </button>
               <button
                 onClick={() => onNewJobOnDate(format(selected, "yyyy-MM-dd'T'09:00"))}
                 className="w-full btn-ghost justify-center border border-ink-faint/25"
               >
-                <Plus size={14} /> {t('Lisa töö', 'Add job')}
+                <Plus size={14} /> {t('calendarView.addJob')}
               </button>
             </section>
           </div>
@@ -976,9 +974,9 @@ function MatchNav({ count, index, label, onStep, onJump }: {
     return (
       <span
         className="text-[10px] font-medium text-nav-muted whitespace-nowrap flex-shrink-0"
-        title={t('Ükski päev ei vasta filtrile', 'No day matches the filter')}
+        title={t('calendarView.noDayMatchesTheFilter')}
       >
-        {t('0 vastet', '0 matches')}
+        {t('calendarView.n0Matches')}
       </span>
     )
   }
@@ -987,14 +985,14 @@ function MatchNav({ count, index, label, onStep, onJump }: {
     <span className="flex items-center gap-0.5 flex-shrink-0">
       <button
         onClick={() => onStep(-1)}
-        title={t('Eelmine vaste', 'Previous match')}
+        title={t('calendarView.previousMatch')}
         className="p-0.5 rounded text-nav-muted hover:text-nav hover:bg-nav/10 transition-colors"
       >
         <ChevronLeft size={11} />
       </button>
       <button
         onClick={onJump}
-        title={label ? t(`Mine: ${label} (${index + 1}/${count})`, `Go to: ${label} (${index + 1}/${count})`) : undefined}
+        title={label ? t('calendarView.goTo', { label, value: index + 1, count }) : undefined}
         className="flex items-center gap-1 px-1 py-0.5 rounded hover:bg-nav/10 transition-colors"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
@@ -1004,7 +1002,7 @@ function MatchNav({ count, index, label, onStep, onJump }: {
       </button>
       <button
         onClick={() => onStep(1)}
-        title={t('Järgmine vaste', 'Next match')}
+        title={t('calendarView.nextMatch')}
         className="p-0.5 rounded text-nav-muted hover:text-nav hover:bg-nav/10 transition-colors"
       >
         <ChevronRight size={11} />
@@ -1053,7 +1051,7 @@ function FilterPopover({
     <div ref={ref} className="relative flex-shrink-0 z-30">
       <button
         onClick={() => setOpen(o => !o)}
-        title={hasFilters ? t(`${activeCount} filtrit aktiivne`, `${activeCount} ${activeCount === 1 ? 'filter' : 'filters'} active`) : t('Filtreeri', 'Filter')}
+        title={hasFilters ? t('calendarView.activeFilterFilters', { activeCount }) : t('calendarView.filter')}
         className={`relative flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
           hasFilters
             ? 'bg-accent text-white'
@@ -1072,24 +1070,24 @@ function FilterPopover({
       {open && (
         <div className="absolute top-8 left-0 z-50 card p-3 w-[220px] space-y-2 text-left">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">{t('Filtreeri', 'Filter')}</p>
-            <button onClick={() => setOpen(false)} className="text-ink-faint hover:text-ink" title={t('Sulge', 'Close')}>
+            <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">{t('calendarView.filter')}</p>
+            <button onClick={() => setOpen(false)} className="text-ink-faint hover:text-ink" title={t('calendarView.close')}>
               <X size={12} />
             </button>
           </div>
 
           <MultiFilterMenu
-            label={t('Patsient', 'Patient')} options={patients} selected={filterPatients} onChange={onPatients} full
+            label={t('calendarView.patient')} options={patients} selected={filterPatients} onChange={onPatients} full
           />
           {showJobs && (
             <MultiFilterMenu
-              label={t('Töö tüüp', 'Work type')} options={workTypes} selected={filterWorkTypes} onChange={onWorkTypes}
+              label={t('calendarView.workType')} options={workTypes} selected={filterWorkTypes} onChange={onWorkTypes}
               swatches={workTypeSwatches} full
             />
           )}
           {showVisits && doctors.length > 0 && (
             <MultiFilterMenu
-              label={t('Arst', 'Dentist')} options={doctors} selected={filterDoctors} onChange={onDoctors} full
+              label={t('calendarView.dentist')} options={doctors} selected={filterDoctors} onChange={onDoctors} full
             />
           )}
 
@@ -1099,7 +1097,7 @@ function FilterPopover({
               className="flex items-center gap-1 text-[11px] text-red-500 hover:text-red-400 font-medium transition-colors pt-1"
             >
               <XCircle size={12} />
-              {t('Tühjenda kõik', 'Clear all')}
+              {t('calendarView.clearAll')}
             </button>
           )}
         </div>

@@ -51,10 +51,10 @@ export interface ToothStateStyle {
 // Hexes are the existing tokens: accent #0AB6C4, accent-dark #077080,
 // accent-light #E6F7F9, ink-faint #A8B4BE, ink-muted #637381.
 export const TOOTH_STATES: ToothStateStyle[] = [
-  { key: 'toodeldud', label: t('Töödeldud', 'Lab work'),   fill: '#0AB6C4', stroke: '#077080', strokeWidth: 1.3, labelFill: '#077080', detail: true },
-  { key: 'ravi',      label: t('Ravi olemas', 'Treated'), fill: '#E6F7F9', stroke: '#0AB6C4', strokeWidth: 1.5, labelFill: '#0AB6C4', detail: true },
-  { key: 'terve',     label: t('Terve', 'Healthy'),       fill: '#FFFFFF', stroke: '#A8B4BE', strokeWidth: 1.2, labelFill: '#637381', detail: true },
-  { key: 'puudub',    label: t('Puudub', 'Missing'),      fill: 'none',    stroke: '#A8B4BE', strokeWidth: 1,   dash: '3 2', opacity: 0.45, labelFill: '#A8B4BE', detail: false },
+  { key: 'toodeldud', label: t('teeth.labWork'),   fill: '#0AB6C4', stroke: '#077080', strokeWidth: 1.3, labelFill: '#077080', detail: true },
+  { key: 'ravi',      label: t('teeth.treated'), fill: '#E6F7F9', stroke: '#0AB6C4', strokeWidth: 1.5, labelFill: '#0AB6C4', detail: true },
+  { key: 'terve',     label: t('teeth.healthy'),       fill: '#FFFFFF', stroke: '#A8B4BE', strokeWidth: 1.2, labelFill: '#637381', detail: true },
+  { key: 'puudub',    label: t('teeth.missing'),      fill: 'none',    stroke: '#A8B4BE', strokeWidth: 1,   dash: '3 2', opacity: 0.45, labelFill: '#A8B4BE', detail: false },
 ]
 
 // Lookup by key

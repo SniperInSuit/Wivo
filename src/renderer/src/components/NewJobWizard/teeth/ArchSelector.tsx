@@ -27,20 +27,20 @@ export interface ArchSelectorProps {
 const OPTIONS: { value: ArchSelection; label: string; sublabel: string; icon: ReactNode }[] = [
   {
     value: 'upper',
-    label: t('Ülemine lõualuu', 'Upper jaw'),
-    sublabel: t('Hambad 18–28', 'Teeth 18–28'),
+    label: t('wizard.upperJaw'),
+    sublabel: t('wizard.teeth1828'),
     icon: <img src={upperImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'lower',
-    label: t('Alumine lõualuu', 'Lower jaw'),
-    sublabel: t('Hambad 48–38', 'Teeth 48–38'),
+    label: t('wizard.lowerJaw'),
+    sublabel: t('wizard.teeth4838'),
     icon: <img src={lowerImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'both',
-    label: t('Mõlemad lõualuud', 'Both jaws'),
-    sublabel: t('Kõik 32 hammast', 'All 32 teeth'),
+    label: t('wizard.bothJaws'),
+    sublabel: t('wizard.all32Teeth'),
     icon: (
       <div className="flex flex-col items-center gap-0.5" aria-hidden="true">
         <img src={upperImg} alt="" className="h-7 w-7 object-contain" />
@@ -59,7 +59,7 @@ export function ArchSelector({ value, onChange, invalid }: ArchSelectorProps) {
     <div>
       <div
         role="radiogroup"
-        aria-label={t('Lõualuu', 'Jaw')}
+        aria-label={t('wizard.jaw')}
         aria-required="true"
         className="grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
@@ -79,7 +79,7 @@ export function ArchSelector({ value, onChange, invalid }: ArchSelectorProps) {
       {showError && (
         <p className={WIZARD_ERROR} role="alert">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {t('Vali lõualuu: ülemine, alumine või mõlemad.', 'Choose the jaw: upper, lower or both.')}
+          {t('wizard.chooseTheJawUpperLowerOr')}
         </p>
       )}
     </div>

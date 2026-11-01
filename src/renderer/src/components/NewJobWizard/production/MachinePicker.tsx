@@ -52,15 +52,15 @@ export function MachinePicker({ state, patch }: MachinePickerProps) {
   if (!multi) {
     return (
       <WizardField
-        label={t('Masin', 'Machine')}
+        label={t('wizard.machine')}
         htmlFor="wizard-masin"
-        help={t('Millise printeri või freesiga töö tehakse.', 'Which printer or milling machine the job is made on.')}
+        help={t('wizard.whichPrinterOrMillingMachineThe')}
       >
         <WizardSelect
           id="wizard-masin"
           value={active ? state.machineByType[active] ?? state.machine : state.machine}
           onChange={assign}
-          placeholder={t('Määramata', 'Not set')}
+          placeholder={t('wizard.notSet')}
           options={options}
         />
       </WizardField>
@@ -69,12 +69,12 @@ export function MachinePicker({ state, patch }: MachinePickerProps) {
 
   return (
     <div>
-      <p className="text-base font-semibold text-ink">{t('Masin', 'Machine')}</p>
+      <p className="text-base font-semibold text-ink">{t('wizard.machine')}</p>
       <p className={`${WIZARD_HELP} mb-3`}>
-        {t('Iga tööosa võib käia eri printeril. Vali tööosa ja siis selle masin.', 'Each work item can run on a different printer. Choose a work item, then its machine.')}
+        {t('wizard.eachWorkItemCanRunOn')}
       </p>
 
-      <div role="tablist" aria-label={t('Tööosad', 'Work items')} className="flex flex-wrap gap-2 mb-4">
+      <div role="tablist" aria-label={t('wizard.workItems')} className="flex flex-wrap gap-2 mb-4">
         {state.jobTypes.map(key => {
           const nimi = baseTypeName(key)
           const assigned = state.machineByType[key]?.trim()
@@ -99,7 +99,7 @@ export function MachinePicker({ state, patch }: MachinePickerProps) {
               />
               {nimi}
               <span className={assigned ? 'text-accent font-medium' : 'text-ink-faint'}>
-                {assigned ?? t('masin valimata', 'no machine')}
+                {assigned ?? t('wizard.noMachine')}
               </span>
             </button>
           )
@@ -107,15 +107,15 @@ export function MachinePicker({ state, patch }: MachinePickerProps) {
       </div>
 
       <WizardField
-        label={t(`${baseTypeName(active)} — masin`, `${baseTypeName(active)} — machine`)}
+        label={t('wizard.machine2', { active: baseTypeName(active) })}
         htmlFor="wizard-masin"
-        help={t('Määramata tööosa läheb töö esimese masina alla.', "A work item with no machine goes under the job's first machine.")}
+        help={t('wizard.aWorkItemWithNoMachine')}
       >
         <WizardSelect
           id="wizard-masin"
           value={state.machineByType[active] ?? null}
           onChange={assign}
-          placeholder={t('Määramata', 'Not set')}
+          placeholder={t('wizard.notSet')}
           options={options}
         />
       </WizardField>
@@ -123,10 +123,7 @@ export function MachinePicker({ state, patch }: MachinePickerProps) {
       {state.jobTypes.some(k => !state.machineByType[k]?.trim()) && (
         <p className={`${WIZARD_HELP} mt-2 flex items-start gap-2`}>
           <Cpu className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-          {t(
-            'Masinapõhine materjalikulu arvutatakse tööosa masina järgi — määramata tööosa kasutab esimese masina hinda.',
-            "Machine-specific material cost is worked out from each work item's machine — a work item with no machine uses the first machine's rate."
-          )}
+          {t('wizard.machineSpecificMaterialCostIsWorked')}
         </p>
       )}
     </div>

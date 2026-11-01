@@ -127,7 +127,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
       algus: fromLocalInput(form.algus) ?? ''
     }
     if (!payload.algus) {
-      setError(t('Visiidi algusaeg on puudu või vigane.', 'The visit start time is missing or invalid.'))
+      setError(t('calendarView.theVisitStartTimeIsMissing'))
       return
     }
     try {
@@ -174,7 +174,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-ink-faint/20 flex-shrink-0">
-          <h2 className="text-base font-semibold text-ink">{visit ? t('Muuda visiiti', 'Edit visit') : t('Uus visiit', 'New visit')}</h2>
+          <h2 className="text-base font-semibold text-ink">{visit ? t('calendarView.editVisit') : t('calendarView.newVisit')}</h2>
           <button type="button" onClick={onClose} className="btn-ghost p-2">
             <X size={15} />
           </button>
@@ -195,12 +195,12 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
                 className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
               >
                 <UserRound size={11} />
-                {t('Ava patsiendi profiil', 'Open patient profile')}
+                {t('calendarView.openPatientProfile')}
                 <ArrowUpRight size={11} />
               </button>
             ) : form.patsient.trim() ? (
               <p className="mt-1.5 text-[11px] text-ink-faint">
-                {t('Vali nimekirjast patsient, et profiili avada.', 'Pick a patient from the list to open their profile.')}
+                {t('calendarView.pickAPatientFromTheList')}
               </p>
             ) : null}
           </div>
@@ -210,7 +210,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               and an untyped visit simply draws grey. */}
           {vt.types.length > 0 && (
             <div>
-              <label className="label">{t('Visiidi tüüp', 'Visit type')}</label>
+              <label className="label">{t('calendarView.visitType')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {vt.types.map(type => {
                   const active = form.tyyp === type.nimi
@@ -237,7 +237,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           )}
 
           <div>
-            <label className="label">{t('Suunav arst', 'Referring dentist')}</label>
+            <label className="label">{t('calendarView.referringDentist')}</label>
             {/* Suggests the names already in use instead of inviting a new
                 spelling of one of them. Still a free field — a referral can
                 come from somebody who has never appeared here — but "Dr. Meeme
@@ -256,7 +256,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">{t('Algus', 'Start')}</label>
+              <label className="label">{t('calendarView.start')}</label>
               <input
                 type="datetime-local"
                 value={form.algus}
@@ -266,7 +266,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               />
             </div>
             <div>
-              <label className="label">{t('Kestus (min)', 'Duration (min)')}</label>
+              <label className="label">{t('calendarView.durationMin')}</label>
               <input
                 type="number"
                 min={5}
@@ -287,7 +287,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           </div>
 
           <div>
-            <label className="label">{t('Staatus', 'Status')}</label>
+            <label className="label">{t('calendarView.status')}</label>
             <div className="flex flex-wrap items-center gap-1.5">
               {(Object.keys(VISIT_STATUS_LABEL) as VisitStatus[]).map(st => (
                 <button
@@ -314,7 +314,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           </div>
 
           <div>
-            <label className="label">{t('Märkus', 'Note')}</label>
+            <label className="label">{t('calendarView.note')}</label>
             {/* Four rows and resizable: a web booking arrives with three lines
                 already in it (phone, chosen time, the patient's own message),
                 so two rows with `resize-none` meant reading somebody's request
@@ -323,7 +323,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               value={form.markus ?? ''}
               onChange={e => set('markus', e.target.value || null)}
               rows={4}
-              placeholder={t('Nt proovimine, üleandmine…', 'E.g. try-in, handover…')}
+              placeholder={t('calendarView.eGTryInHandover')}
               className="input resize-y min-h-[5rem]"
             />
           </div>
@@ -343,18 +343,18 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
                 className={`btn-ghost ${confirmDelete ? 'text-red-600 bg-red-50' : 'hover:text-red-600'}`}
               >
                 <Trash2 size={14} />
-                {confirmDelete ? t('Kinnita', 'Confirm') : t('Kustuta', 'Delete')}
+                {confirmDelete ? t('calendarView.confirm') : t('calendarView.delete')}
               </button>
             ) : <span />}
             <div className="flex items-center gap-2">
-              <button type="button" onClick={onClose} className="btn-ghost">{t('Tühista', 'Cancel')}</button>
+              <button type="button" onClick={onClose} className="btn-ghost">{t('calendarView.cancel')}</button>
               <button
                 type="submit"
                 disabled={saving || !form.patsient.trim() || !form.algus}
                 className="btn-primary disabled:opacity-40"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                {visit ? t('Salvesta', 'Save') : t('Loo visiit', 'Create visit')}
+                {visit ? t('calendarView.save') : t('calendarView.createVisit')}
               </button>
             </div>
           </div>

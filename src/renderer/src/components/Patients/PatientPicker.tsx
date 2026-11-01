@@ -68,14 +68,14 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
   return (
     <div className="relative" ref={boxRef}>
       <label className="label flex items-center justify-between">
-        <span>{t('Patsient', 'Patient')} {required && '*'}</span>
+        <span>{t('patients.patient2')} {required && '*'}</span>
         {linked ? (
           <span className="flex items-center gap-1 text-[10px] font-semibold text-accent">
-            <Check size={10} /> {t('seotud', 'linked')}
+            <Check size={10} /> {t('patients.linked')}
           </span>
         ) : name.trim() && !isError ? (
           <span className="flex items-center gap-1 text-[10px] font-medium text-ink-faint">
-            <Link2Off size={10} /> {t('sidumata', 'not linked')}
+            <Link2Off size={10} /> {t('patients.notLinked')}
           </span>
         ) : null}
       </label>
@@ -85,7 +85,7 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
         value={name}
         onChange={e => handleType(e.target.value)}
         onFocus={() => setOpen(true)}
-        placeholder={t('Nimi või ID', 'Name or ID')}
+        placeholder={t('patients.nameOrID')}
         required={required}
         autoComplete="off"
         className="input"
@@ -123,7 +123,7 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
                 ? <Loader2 size={13} className="text-accent animate-spin" />
                 : <UserPlus size={13} className="text-accent" />}
               <span className="text-sm text-accent font-medium truncate">
-                {t(`Loo patsient „${name.trim()}"`, `Create patient "${name.trim()}"`)}
+                {t('patients.createPatient', { name: name.trim() })}
               </span>
             </button>
           )}

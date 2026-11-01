@@ -29,7 +29,7 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
 
   return (
     <div className="space-y-4">
-      <div role="radiogroup" aria-label={t('Köndivärvi toonid', 'Stump shades')} className="flex flex-wrap gap-3">
+      <div role="radiogroup" aria-label={t('wizard.stumpShades')} className="flex flex-wrap gap-3">
         {DIE_SHADES.map(s => (
           <SelectableCard
             key={s.code}
@@ -57,9 +57,9 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
           style={{ backgroundColor: known?.hex ?? 'transparent' }}
         />
         <div className="min-w-0">
-          <p className="text-base font-semibold text-ink-soft">{t('Valitud köndivärv', 'Selected stump shade')}</p>
+          <p className="text-base font-semibold text-ink-soft">{t('wizard.selectedStumpShade')}</p>
           <p className="text-base text-ink font-medium truncate" aria-live="polite">
-            {value ?? t('Ei ole teada', 'Not known')}
+            {value ?? t('wizard.notKnown')}
           </p>
         </div>
         {value && (
@@ -69,14 +69,14 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
             className={`${WIZARD_BTN} ml-auto`}
           >
             <Eraser className="w-5 h-5" aria-hidden="true" />
-            {t('Tühjenda', 'Clear')}
+            {t('wizard.clear')}
           </button>
         )}
       </div>
 
       <div>
         <label htmlFor="wizard-kondivarv-vaba" className={WIZARD_HELP}>
-          {t('Või kirjelda sõnadega, kui skaalal vastet ei ole', "Or describe it in words if there's no match on the scale")}
+          {t('wizard.orDescribeItInWordsIf')}
         </label>
         <input
           id="wizard-kondivarv-vaba"
@@ -86,7 +86,7 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
             setFreeText(e.target.value)
             onChange(e.target.value.trim() ? e.target.value : null)
           }}
-          placeholder={t('Nt titaanabutment, metallitihvt', 'e.g. titanium abutment, metal post')}
+          placeholder={t('wizard.eGTitaniumAbutmentMetalPost')}
           className={`${WIZARD_INPUT} mt-1`}
         />
       </div>

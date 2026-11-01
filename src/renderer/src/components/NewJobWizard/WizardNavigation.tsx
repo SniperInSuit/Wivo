@@ -56,7 +56,7 @@ export function WizardNavigation({
 
   return (
     <div
-      aria-label={t(`Sammu ${step} juhtnupud`, `Step ${step} controls`)}
+      aria-label={t('wizard.stepControls', { step })}
       role="group"
       className={[
         // Below md this is the sticky bar; from md it collapses back into the
@@ -98,8 +98,8 @@ export function WizardNavigation({
           }`}
         >
           {draftNote === 'saved'
-            ? t('Mustand salvestatud siia arvutisse.', 'Draft saved on this computer.')
-            : t('Mustandit ei õnnestunud salvestada — brauseri salvestusruum on täis või blokeeritud.', "Couldn't save the draft — the browser's storage is full or blocked.")}
+            ? t('wizard.draftSavedOnThisComputer')
+            : t('wizard.couldnTSaveTheDraftThe')}
         </p>
       )}
 
@@ -111,7 +111,7 @@ export function WizardNavigation({
           className={`${WIZARD_BTN} flex items-center gap-2 text-ink-soft bg-bg-sidebar hover:bg-ink-faint/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors`}
         >
           <ArrowLeft size={18} aria-hidden="true" />
-          {t('Tagasi', 'Back')}
+          {t('wizard.back')}
         </button>
 
         <div className="flex-1 md:flex-none" />
@@ -123,7 +123,7 @@ export function WizardNavigation({
           className={`${WIZARD_BTN} hidden sm:flex items-center gap-2 text-ink-muted hover:text-ink hover:bg-bg-sidebar disabled:opacity-40 transition-colors`}
         >
           <Save size={18} aria-hidden="true" />
-          {t('Salvesta mustand', 'Save draft')}
+          {t('wizard.saveDraft')}
         </button>
 
         {isLastStep ? (
@@ -144,7 +144,7 @@ export function WizardNavigation({
             {saving
               ? <Loader2 size={18} aria-hidden="true" className="animate-spin" />
               : <Check size={18} aria-hidden="true" />}
-            {t('Loo töö', 'Create job')}
+            {t('wizard.createJob')}
           </button>
         ) : (
           <button
@@ -165,7 +165,7 @@ export function WizardNavigation({
               FOCUS_RING,
             ].join(' ')}
           >
-            {t('Jätka', 'Continue')}
+            {t('wizard.continue')}
             <ArrowRight size={18} aria-hidden="true" />
           </button>
         )}
@@ -180,7 +180,7 @@ export function WizardNavigation({
         className={`${WIZARD_BTN} sm:hidden flex items-center justify-center gap-2 text-ink-muted hover:text-ink hover:bg-bg-sidebar disabled:opacity-40 transition-colors`}
       >
         <Save size={18} aria-hidden="true" />
-        {t('Salvesta mustand', 'Save draft')}
+        {t('wizard.saveDraft')}
       </button>
     </div>
   )

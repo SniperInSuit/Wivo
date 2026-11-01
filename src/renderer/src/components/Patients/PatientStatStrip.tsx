@@ -20,23 +20,23 @@ export function PatientStatStrip({ stats }: PatientStatStripProps) {
   return (
     <div className="card h-full grid grid-cols-2 xl:grid-cols-4 divide-x divide-y xl:divide-y-0 divide-ink-faint/15">
       <StatCard
-        label={t('Tööd kokku', 'Total jobs')}
+        label={t('patients.totalJobs')}
         value={String(stats.jobCount)}
-        sub={t(`Viimane: ${lastLabel}`, `Latest: ${lastLabel}`)}
+        sub={t('patients.latest', { lastLabel })}
       />
       <StatCard
-        label={t('Töödeldud hambaid', 'Teeth worked on')}
+        label={t('patients.teethWorkedOn')}
         value={String(stats.totalTeeth)}
-        sub={t(`${stats.originalTeeth} originaal · ${stats.revisionTeeth} muudatused`, `${stats.originalTeeth} original · ${stats.revisionTeeth} ${stats.revisionTeeth === 1 ? 'revision' : 'revisions'}`)}
+        sub={t('patients.originalRevisionRevisions', { stats, originalTeeth: stats.originalTeeth, revisionTeeth: stats.revisionTeeth })}
       />
       <StatCard
-        label={t('Arveldatud', 'Invoiced')}
+        label={t('patients.invoiced')}
         value={`${stats.totalInvoiced.toFixed(2)} €`}
       />
       <StatCard
-        label={t('Tasumata', 'Unpaid')}
+        label={t('patients.unpaid')}
         value={`${stats.unpaidTotal.toFixed(2)} €`}
-        sub={t(`${stats.unpaidCount} arvet`, `${stats.unpaidCount} ${stats.unpaidCount === 1 ? 'invoice' : 'invoices'}`)}
+        sub={t('patients.invoiceInvoices', { stats, unpaidCount: stats.unpaidCount })}
         danger={stats.unpaidTotal > 0}
       />
     </div>

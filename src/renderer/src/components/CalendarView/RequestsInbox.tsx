@@ -41,18 +41,18 @@ const STATUS_STYLE: Record<VisitRequestStatus, string> = {
  */
 const MAKSE_SILT: Record<string, { text: string; cls: string } | null> = {
   vaba:        null,   // no fee was asked for: nothing to say
-  ootel:       { text: t('Tasumata', 'Unpaid'),   cls: 'bg-amber-100 text-amber-700' },
-  makstud:     { text: t('Tasutud', 'Paid'),    cls: 'bg-emerald-100 text-emerald-700' },
-  ebaonnestus: { text: t('Makse tõrge', 'Payment failed'), cls: 'bg-red-100 text-red-700' },
-  tuhistatud:  { text: t('Makse katkes', 'Payment cancelled'), cls: 'bg-ink-faint/15 text-ink-muted' },
+  ootel:       { text: t('calendarView.unpaid'),   cls: 'bg-amber-100 text-amber-700' },
+  makstud:     { text: t('calendarView.paid'),    cls: 'bg-emerald-100 text-emerald-700' },
+  ebaonnestus: { text: t('calendarView.paymentFailed'), cls: 'bg-red-100 text-red-700' },
+  tuhistatud:  { text: t('calendarView.paymentCancelled'), cls: 'bg-ink-faint/15 text-ink-muted' },
 }
 
 const FILTERS: { key: VisitRequestStatus | 'all'; label: string }[] = [
-  { key: 'uus',        label: t('Uued', 'New') },
-  { key: 'kinnitatud', label: t('Kinnitatud', 'Confirmed') },
-  { key: 'lykatud',    label: t('Tagasi lükatud', 'Declined') },
-  { key: 'ramps',      label: t('Rämps', 'Spam') },
-  { key: 'all',        label: t('Kõik', 'All') },
+  { key: 'uus',        label: t('calendarView.new') },
+  { key: 'kinnitatud', label: t('calendarView.confirmed') },
+  { key: 'lykatud',    label: t('calendarView.declined') },
+  { key: 'ramps',      label: t('calendarView.spam') },
+  { key: 'all',        label: t('calendarView.all') },
 ]
 
 function fmt(iso: string): string {
@@ -86,9 +86,9 @@ export function RequestsInbox() {
         <div className="card p-4 flex items-start gap-3">
           <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-ink">{t('Taotluste tabelit ei ole veel', 'The requests table does not exist yet')}</p>
+            <p className="text-sm font-semibold text-ink">{t('calendarView.theRequestsTableDoesNotExist')}</p>
             <p className="text-xs text-ink-muted mt-1">
-              {t('Jooksuta', 'Run')} <code className="text-accent">sql/059_visit_requests.sql</code> {t('Supabase SQL editoris. Kuni seda ei ole, ei saa veebivorm kuhugi kirjutada.', 'in the Supabase SQL editor. Until you do, the web form has nowhere to write.')}
+              {t('calendarView.run2')} <code className="text-accent">sql/059_visit_requests.sql</code> {t('calendarView.inTheSupabaseSQLEditorUntil')}
             </p>
             <p className="text-[11px] text-ink-faint mt-2">{describeError(error)}</p>
           </div>
@@ -101,7 +101,7 @@ export function RequestsInbox() {
     <div className="p-5 space-y-4 overflow-auto h-full">
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
-          <Inbox size={15} /> {t('Visiiditaotlused', 'Visit requests')}
+          <Inbox size={15} /> {t('calendarView.visitRequests')}
         </h2>
         <div className="flex items-center gap-1">
           {FILTERS.map(f => (
@@ -125,8 +125,8 @@ export function RequestsInbox() {
       {shown.length === 0 ? (
         <p className="text-sm text-ink-faint py-10 text-center">
           {filter === 'uus'
-            ? t('Uusi taotlusi ei ole.', 'No new requests.')
-            : t('Selles vaates ei ole taotlusi.', 'No requests in this view.')}
+            ? t('calendarView.noNewRequests')
+            : t('calendarView.noRequestsInThisView')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -182,11 +182,11 @@ export function RequestsInbox() {
                   {r.valik && r.valik.length > 0 && (
                     <div className="mt-1.5 rounded-lg bg-bg-sidebar px-2 py-1.5">
                       <p className="text-[11px] text-ink-soft">
-                        {t('Veebis arvutatud:', 'Calculated online:')}{' '}
+                        {t('calendarView.calculatedOnline')}{' '}
                         <span className="font-semibold tabular-nums">
                           {r.hinnang != null ? `${Number(r.hinnang).toFixed(2)} €` : '—'}
                         </span>
-                        <span className="text-ink-faint"> · {t('hinnanguline', 'estimate')}</span>
+                        <span className="text-ink-faint"> · {t('calendarView.estimate')}</span>
                       </p>
                       {r.valik.map((v, i) => (
                         <p key={i} className="text-[10px] text-ink-muted">
@@ -196,10 +196,10 @@ export function RequestsInbox() {
                     </div>
                   )}
                   <p className="text-[10px] text-ink-faint mt-1.5">
-                    {t('Saadetud', 'Sent')} {fmt(r.created_at)}
-                    {r.service_id && t(` · soovitud teenus: ${r.service_id}`, ` · requested service: ${r.service_id}`)}
+                    {t('calendarView.sent')} {fmt(r.created_at)}
+                    {r.service_id && t('calendarView.requestedService', { service_id: r.service_id })}
                     {r.kasitles && r.kasitletud_at
-                      && t(` · käsitles ${nameOf(r.kasitles) || '—'} ${fmt(r.kasitletud_at)}`, ` · handled by ${nameOf(r.kasitles) || '—'} ${fmt(r.kasitletud_at)}`)}
+                      && t('calendarView.handledBy', { value: nameOf(r.kasitles) || '—', kasitletud_at: fmt(r.kasitletud_at) })}
                   </p>
                 </div>
 
@@ -210,18 +210,18 @@ export function RequestsInbox() {
                         onClick={() => setConfirming(r)}
                         className="btn-primary text-xs px-2.5 py-1 flex items-center gap-1"
                       >
-                        <Check size={11} /> {t('Broneeri', 'Book')}
+                        <Check size={11} /> {t('calendarView.book')}
                       </button>
                       <button
                         onClick={() => setStatus(r, 'lykatud')}
-                        title={t('Ei sobi — jääb kirja, kustub 90 päeva pärast', 'Not suitable — kept on record, deleted after 90 days')}
+                        title={t('calendarView.notSuitableKeptOnRecordDeleted')}
                         className="btn-ghost text-xs px-2 py-1 border border-ink-faint/30 flex items-center gap-1"
                       >
-                        <X size={11} /> {t('Lükka tagasi', 'Decline')}
+                        <X size={11} /> {t('calendarView.decline')}
                       </button>
                       <button
                         onClick={() => setStatus(r, 'ramps')}
-                        title={t('Rämps', 'Spam')}
+                        title={t('calendarView.spam')}
                         className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
                       >
                         <Ban size={12} />
@@ -234,11 +234,11 @@ export function RequestsInbox() {
                         onClick={() => setStatus(r, 'uus')}
                         className="btn-ghost text-xs px-2 py-1 border border-ink-faint/30"
                       >
-                        {t('Tagasi uueks', 'Back to new')}
+                        {t('calendarView.backToNew')}
                       </button>
                       <button
                         onClick={() => remove.mutate(r.id)}
-                        title={t('Kustuta jäädavalt', 'Delete permanently')}
+                        title={t('calendarView.deletePermanently')}
                         className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={12} />

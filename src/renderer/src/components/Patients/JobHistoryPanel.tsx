@@ -78,16 +78,16 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
 
   return (
     <PanelCard
-      title={t('TÖÖDE AJALUGU', 'JOB HISTORY')}
+      title={t('patients.jOBHISTORY')}
       icon={Stethoscope}
       action={
         <span className="text-[11px] text-ink-muted">
-          {t(`${jobs.length} tööd`, `${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'}`)}{revisionCount > 0 && t(` · ${revisionCount} muudatust`, ` · ${revisionCount} ${revisionCount === 1 ? 'revision' : 'revisions'}`)}
+          {t('patients.jobJobs', { jobs, jobsCount: jobs.length })}{revisionCount > 0 && t('patients.revisionRevisions', { revisionCount })}
         </span>
       }
     >
       {lines.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t('Sellel patsiendil pole veel töid.', 'This patient has no jobs yet.')}</p>
+        <p className="text-sm text-ink-muted">{t('patients.thisPatientHasNoJobsYet')}</p>
       ) : (
         // The table is intrinsically wider than the column it sits in — it must
         // scroll inside itself, never widen the profile.
@@ -95,12 +95,12 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-ink-faint/15">
-                <Th>{t('Tellimus', 'Order')}</Th>
-                <Th>{t('Töö', 'Job')}</Th>
-                <Th>{t('Materjal / Värv', 'Material / Shade')}</Th>
-                <Th>{t('Hambad', 'Teeth')}</Th>
-                <Th align="right">{t('Hind', 'Price')}</Th>
-                <Th>{t('Makstud', 'Paid')}</Th>
+                <Th>{t('patients.order')}</Th>
+                <Th>{t('patients.job')}</Th>
+                <Th>{t('patients.materialShade')}</Th>
+                <Th>{t('patients.teeth')}</Th>
+                <Th align="right">{t('patients.price')}</Th>
+                <Th>{t('patients.paid')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -146,8 +146,8 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                     <td className={`py-2 pr-3 ${isRev ? 'text-ink-soft' : 'text-ink font-medium'}`}>
                       <span className="flex items-center gap-1.5">
                         {isRev
-                          ? (revision.note?.trim() || t('Muudatus', 'Revision'))
-                          : (job.too ?? t('Määramata töö', 'Unspecified job'))}
+                          ? (revision.note?.trim() || t('patients.revision'))
+                          : (job.too ?? t('patients.unspecifiedJob'))}
                         {(isRev ? revision.kiirtoo : job.kiirtoo) && (
                           <Zap size={11} className="text-orange-500 fill-orange-400 flex-shrink-0" />
                         )}
@@ -176,9 +176,9 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                           rather than repeating it. */}
                       {isRev ? '' : (() => {
                         const st = payState(job)
-                        if (st.settled) return t('Makstud', 'Paid')
-                        if (st.partial) return t(`Osaliselt (${st.outstanding.toFixed(2)} € jääk)`, `Partly (${st.outstanding.toFixed(2)} € left)`)
-                        return t('Maksmata', 'Unpaid')
+                        if (st.settled) return t('patients.paid')
+                        if (st.partial) return t('patients.partlyLeft', { outstanding: st.outstanding.toFixed(2) })
+                        return t('patients.unpaid2')
                       })()}
                     </td>
                   </tr>
@@ -200,7 +200,7 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
               {revisionCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] text-ink-faint ml-auto">
                   <CornerDownRight size={9} />
-                  {t('taane = muudatus · kokku', 'indent = revision · total')} {jobs.reduce((s, j) => s + jobTotal(j), 0).toFixed(2)} €
+                  {t('patients.indentRevisionTotal')} {jobs.reduce((s, j) => s + jobTotal(j), 0).toFixed(2)} €
                 </span>
               )}
             </div>

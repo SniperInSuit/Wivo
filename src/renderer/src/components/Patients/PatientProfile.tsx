@@ -193,7 +193,7 @@ export function PatientProfile({
           className="flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-accent transition-colors"
         >
           <ArrowLeft size={15} />
-          {t('Kõik patsiendid', 'All patients')}
+          {t('patients.allPatients')}
         </button>
 
         {actionError && (
@@ -202,7 +202,7 @@ export function PatientProfile({
             <p className="text-xs text-red-800 font-medium break-words flex-1">{actionError}</p>
             {onDismissError && (
               <button onClick={onDismissError} className="text-[10px] text-red-600 underline flex-shrink-0">
-                {t('Sulge', 'Close')}
+                {t('patients.close')}
               </button>
             )}
           </div>

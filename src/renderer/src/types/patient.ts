@@ -73,9 +73,9 @@ export const EMPTY_PATIENT: PatientInput = {
 }
 
 export const CONSENT_LABEL: Record<Patient['turundusnousolek'], string> = {
-  jah:      t('Tohib saata', 'Allowed'),
-  ei:       t('Ei soovi', 'Declined'),
-  kysimata: t('Küsimata', 'Not asked'),
+  jah:      t('patient.allowed'),
+  ei:       t('patient.declined'),
+  kysimata: t('patient.notAsked'),
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */

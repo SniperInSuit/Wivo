@@ -207,12 +207,12 @@ export function VisitWeekGrid({
     <section className="card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-faint/15">
         <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-          {format(weekStart, t('d. MMM', 'd MMM'), { locale: dateLocale })} – {format(addDays(weekStart, 6), t('d. MMM yyyy', 'd MMM yyyy'), { locale: dateLocale })}
+          {format(weekStart, t('calendarView.dMMM'), { locale: dateLocale })} – {format(addDays(weekStart, 6), t('calendarView.dMMMYyyy'), { locale: dateLocale })}
         </h2>
         <div className="flex items-center gap-1">
           <button
             onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, -1)) }}
-            className="btn-ghost p-1.5" title={t('Eelmine nädal', 'Previous week')}
+            className="btn-ghost p-1.5" title={t('calendarView.previousWeek')}
           >
             <ChevronLeft size={14} />
           </button>
@@ -220,11 +220,11 @@ export function VisitWeekGrid({
             onClick={() => { scrollSource.current = 'button'; onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 })) }}
             className="btn-ghost text-xs"
           >
-            {t('Jooksev nädal', 'This week')}
+            {t('calendarView.thisWeek')}
           </button>
           <button
             onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, 1)) }}
-            className="btn-ghost p-1.5" title={t('Järgmine nädal', 'Next week')}
+            className="btn-ghost p-1.5" title={t('calendarView.nextWeek')}
           >
             <ChevronRight size={14} />
           </button>
@@ -348,7 +348,7 @@ export function VisitWeekGrid({
                             start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
                             onSlotClick(start)
                           }}
-                          title={t('Klõpsa ja lohista ajavahemiku valimiseks', 'Click and drag to select a time range')}
+                          title={t('calendarView.clickAndDragToSelectA')}
                         >
                           {hours.map(h => (
                             <span key={h}>
@@ -485,7 +485,7 @@ export function VisitWeekGrid({
             el.scrollLeft = (parseInt(e.target.value) / 1000) * maxScroll
           }}
           className="flex-1 h-1 accent-accent cursor-pointer"
-          title={t('Libista sujuvalt', 'Slide smoothly')}
+          title={t('calendarView.slideSmoothly')}
         />
         <span className="text-[10px] text-ink-faint tabular-nums whitespace-nowrap w-16 text-right">
           {format(addDays(weekStart, 6), 'dd.MM', { locale: dateLocale })}
@@ -493,7 +493,7 @@ export function VisitWeekGrid({
       </div>
       <p className="flex items-center gap-1.5 px-4 py-1.5 text-[10px] text-ink-faint">
         <Plus size={10} />
-        {t('Klõpsa ja lohista ajavahemiku valimiseks', 'Click and drag to select a time range')}
+        {t('calendarView.clickAndDragToSelectA')}
       </p>
     </section>
   )

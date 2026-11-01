@@ -52,7 +52,7 @@ const GAP_HINT_MAX = 6
 const gapHint = (missing: readonly number[]): string =>
   missing.length === 0 || missing.length > GAP_HINT_MAX
     ? ''
-    : t(` Puudu: ${missing.join(', ')}.`, ` Missing: ${missing.join(', ')}.`)
+    : t('wizardRules.missing', { missing: missing.join(', ') })
 
 /** Errors + warnings for ONE step. Pure; never throws. */
 export function validateStep(
@@ -63,7 +63,7 @@ export function validateStep(
 
   if (step === 1) {
     if (state.jobTypes.length === 0) {
-      out.push(err('jobTypes', t('Vali vähemalt üks töö tüüp.', 'Choose at least one work type.')))
+      out.push(err('jobTypes', t('wizardRules.chooseAtLeastOneWorkType')))
     }
     return out
   }
@@ -79,37 +79,37 @@ export function validateStep(
         const check = checkConsecutive(teeth)
         if (!check.ok) {
           if (check.reason === 'empty') {
-            out.push(err('teeth', t(`Vali hambad tööle „${name}".`, `Choose teeth for “${name}”.`), name))
+            out.push(err('teeth', t('wizardRules.chooseTeethFor', { name }), name))
           } else if (check.reason === 'too-few') {
-            out.push(err('teeth', t(`„${name}" on sild — vali vähemalt kaks hammast.`, `“${name}” is a bridge — choose at least two teeth.`), name))
+            out.push(err('teeth', t('wizardRules.isABridgeChooseAtLeast', { name }), name))
           } else if (check.reason === 'mixed-arch') {
-            out.push(err('teeth', t(`„${name}" on sild — hambad peavad olema samas lõualuus.`, `“${name}” is a bridge — the teeth must be in the same jaw.`), name))
+            out.push(err('teeth', t('wizardRules.isABridgeTheTeethMust', { name }), name))
           } else {
             // Name the teeth that would close the gap. `missing` is already
             // computed by checkConsecutive and was previously thrown away,
             // leaving the user to work out which tooth the bridge is short of.
             // Capped: an 18–28 selection is missing fourteen numbers, and a
             // fourteen-number list is not an instruction.
-            out.push(err('teeth', t(`„${name}" on sild — vali järjestikused hambad ühes lõualuus.${gapHint(check.missing)}`, `“${name}” is a bridge — choose consecutive teeth in one jaw.${gapHint(check.missing)}`), name))
+            out.push(err('teeth', t('wizardRules.isABridgeChooseConsecutiveTeeth', { name, missing: gapHint(check.missing) }), name))
           }
         }
         continue
       }
 
       if (r.requiresTeeth && teeth.length === 0) {
-        out.push(err('teeth', t(`Vali hambad tööle „${name}".`, `Choose teeth for “${name}”.`), name))
+        out.push(err('teeth', t('wizardRules.chooseTeethFor', { name }), name))
       }
       // Never a hard limit: a lab that quotes two separate crowns as one job is
       // doing something legitimate, it just usually is not what was meant.
       if (r.suggestSingleTooth && teeth.length > 1) {
-        out.push(warn('teeth', t(`„${name}" jaoks on valitud rohkem kui üks hammas.`, `More than one tooth is selected for “${name}”.`), name))
+        out.push(warn('teeth', t('wizardRules.moreThanOneToothIsSelected', { name }), name))
       }
     }
 
     // One arch answer covers every arch-level type on the job, so this is asked
     // (and reported) once rather than per type.
     if (rules.archTypes.length > 0 && !state.selectedArch) {
-      out.push(err('arch', t('Vali lõualuu: ülemine, alumine või mõlemad.', 'Choose a jaw: upper, lower or both.')))
+      out.push(err('arch', t('wizardRules.chooseAJawUpperLowerOr')))
     }
 
     // The jaw can now be narrowed tooth by tooth, which means it can be emptied.
@@ -120,7 +120,7 @@ export function validateStep(
       for (const key of rules.archTypes) {
         const picked = state.selectedTeeth[key]
         if (picked !== undefined && picked.length === 0) {
-          out.push(err('teeth', t(`„${baseTypeName(key)}" — vähemalt üks hammas peab jääma.`, `“${baseTypeName(key)}” — at least one tooth must remain.`), key))
+          out.push(err('teeth', t('wizardRules.atLeastOneToothMustRemain', { key: baseTypeName(key) }), key))
         }
       }
     }
@@ -133,7 +133,7 @@ export function validateStep(
     // demanding an answer per row would make the common job harder to enter
     // than it was before per-type materials existed.
     if (materialsOf(state).length === 0) {
-      out.push(err('materials', t('Vali materjal või lisa oma materjal.', 'Choose a material or add your own.')))
+      out.push(err('materials', t('wizardRules.chooseAMaterialOrAddYour')))
     }
     return out
   }
@@ -142,21 +142,21 @@ export function validateStep(
     // A time with no date cannot be stored: valmis_aeg is one timestamp, and
     // "17:00 on no particular day" has nowhere to go.
     if (state.time && !state.deadline) {
-      out.push(err('deadline', t('Määra tähtaja kuupäev või eemalda kellaaeg.', 'Set a due date or remove the time.')))
+      out.push(err('deadline', t('wizardRules.setADueDateOrRemove')))
     }
     // Plain string compare is correct for 'YYYY-MM-DD' and avoids a timezone.
     if (state.deadline && state.date && state.deadline < state.date) {
-      out.push(err('deadline', t('Tähtaeg ei saa olla enne töö vastuvõtu kuupäeva.', 'The due date cannot be before the date the job was received.')))
+      out.push(err('deadline', t('wizardRules.theDueDateCannotBeBefore')))
     }
     if (state.priority === 'kiirtoo') {
-      out.push(warn('priority', t('Kiirtöö kahekordistab tootmishinna.', 'Rush doubles the production price.')))
+      out.push(warn('priority', t('wizardRules.rushDoublesTheProductionPrice')))
     }
     return out
   }
 
   if (step === 5) {
     if (!state.patient?.name.trim()) {
-      out.push(err('patient', t('Patsiendi nimi on kohustuslik.', 'Patient name is required.')))
+      out.push(err('patient', t('wizardRules.patientNameIsRequired')))
     }
     return out
   }

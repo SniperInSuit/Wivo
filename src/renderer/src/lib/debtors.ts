@@ -124,8 +124,8 @@ export function debtors(input: DebtorsInput): DebtorStats {
     const customerId = job.customer_id ?? null
     const key = customerId ? `klient:${customerId}` : `patsient:${(job.patsient ?? '').trim().toLowerCase()}`
     const nimi = customerId
-      ? (nameOf.get(customerId) ?? t('Tundmatu klient', 'Unknown client'))
-      : ((job.patsient ?? '').trim() || t('Nimeta', 'Unnamed'))
+      ? (nameOf.get(customerId) ?? t('debtors.unknownClient'))
+      : ((job.patsient ?? '').trim() || t('debtors.unnamed'))
 
     let row = acc.get(key)
     if (!row) {

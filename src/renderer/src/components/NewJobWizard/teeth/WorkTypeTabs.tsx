@@ -32,7 +32,7 @@ export interface WorkTypeTabsProps {
 }
 
 /** Estonian counts the singular on 1 and the partitive on everything else. */
-export const teethCountLabel = (n: number): string => (n === 1 ? t('1 hammas', '1 tooth') : t(`${n} hammast`, `${n} teeth`))
+export const teethCountLabel = (n: number): string => (n === 1 ? t('wizard.n1Tooth') : t('wizard.teeth2', { n }))
 
 export function WorkTypeTabs({ tabs, activeType, onSelect, onDuplicate, onRemove, disabled }: WorkTypeTabsProps) {
   if (tabs.length === 0) return null
@@ -40,7 +40,7 @@ export function WorkTypeTabs({ tabs, activeType, onSelect, onDuplicate, onRemove
   return (
     <div
       role="radiogroup"
-      aria-label={t('Millisele tööle hambaid märgid', 'Which work type you are marking teeth for')}
+      aria-label={t('wizard.whichWorkTypeYouAreMarking')}
       className="flex flex-wrap gap-2"
     >
       {tabs.map(tab => {
@@ -83,7 +83,7 @@ export function WorkTypeTabs({ tabs, activeType, onSelect, onDuplicate, onRemove
             {onDuplicate && (
               <button
                 type="button"
-                title={t('Lisa veel üks', 'Add another')}
+                title={t('wizard.addAnother')}
                 disabled={disabled}
                 onClick={() => onDuplicate(tabKey)}
                 className={`text-xs font-bold px-1.5 py-2 border-2 border-r-0 transition-colors ${
@@ -98,7 +98,7 @@ export function WorkTypeTabs({ tabs, activeType, onSelect, onDuplicate, onRemove
             {onRemove && (tab.key?.includes('§') ?? false) && (
               <button
                 type="button"
-                title={t('Eemalda', 'Remove')}
+                title={t('wizard.remove')}
                 disabled={disabled}
                 onClick={() => onRemove(tabKey)}
                 className={`text-xs font-bold px-1.5 py-2 border-2 border-l-0 rounded-r-xl transition-colors ${

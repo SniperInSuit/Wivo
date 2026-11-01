@@ -20,9 +20,9 @@ export function LoginPage() {
       const { error } = await signIn(email, password)
       if (error) throw error
     } catch (err: unknown) {
-      const msg = (err as Error)?.message ?? t('Midagi läks valesti', 'Something went wrong')
-      if (msg.includes('Invalid login credentials')) setError(t('Vale kasutajanimi või parool', 'Wrong username or password'))
-      else if (msg.includes('valid email')) setError(t('Sisesta kehtiv kasutajanimi või e-posti aadress', 'Enter a valid username or email address'))
+      const msg = (err as Error)?.message ?? t('auth.somethingWentWrong')
+      if (msg.includes('Invalid login credentials')) setError(t('auth.wrongUsernameOrPassword'))
+      else if (msg.includes('valid email')) setError(t('auth.enterAValidUsernameOrEmail'))
       else setError(msg)
     } finally {
       setLoading(false)
@@ -35,19 +35,19 @@ export function LoginPage() {
         <div className="text-center space-y-2">
           <img src={wivoLogo} alt="Wivo" className="w-16 h-16 rounded-xl mx-auto" />
           <h1 className="text-xl font-bold text-ink">Wivo</h1>
-          <p className="text-sm text-ink-muted">{t('Logi sisse oma kontoga', 'Sign in with your account')}</p>
+          <p className="text-sm text-ink-muted">{t('auth.signInWithYourAccount')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">{t('Kasutajanimi või e-post', 'Username or email')}</label>
+            <label className="label">{t('auth.usernameOrEmail')}</label>
             <div className="relative">
               <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
                 type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder={t('tehnik või nimi@kliinik.ee', 'technician or name@clinic.com')}
+                placeholder={t('auth.technicianOrNameClinicCom')}
                 className="input pl-9"
                 required
                 autoCapitalize="none"
@@ -58,7 +58,7 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label className="label">{t('Parool', 'Password')}</label>
+            <label className="label">{t('auth.password')}</label>
             <div className="relative">
               <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
@@ -92,12 +92,12 @@ export function LoginPage() {
             disabled={loading}
             className="btn-primary w-full justify-center disabled:opacity-50"
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : t('Logi sisse', 'Sign in')}
+            {loading ? <Loader2 size={16} className="animate-spin" /> : t('auth.signIn')}
           </button>
         </form>
 
         <p className="text-center text-[10px] text-ink-faint">
-          {t('Kontod loob kliiniku administraator', 'Accounts are created by the clinic administrator')}
+          {t('auth.accountsAreCreatedByTheClinic')}
         </p>
       </div>
     </div>

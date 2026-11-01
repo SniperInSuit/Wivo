@@ -37,7 +37,7 @@ export interface Deadline {
 
 const labelOf = (job: Job): string => {
   const names = [...new Set(jobWorkItems(job).map(i => i.too).filter(Boolean))]
-  return names.join(' + ') || job.too || t('Määramata töö', 'Unspecified job')
+  return names.join(' + ') || job.too || t('deadlines.unspecifiedJob')
 }
 
 /**
@@ -68,7 +68,7 @@ export function jobDeadlines(jobs: Job[]): Deadline[] {
         at: rev.deadline,
         // Its own stage, defaulting the way the rest of the app defaults it.
         status: rev.status ?? 'disain',
-        label: t(`Muudatus ${i + 1}: ${labelOf(job)}`, `Revision ${i + 1}: ${labelOf(job)}`),
+        label: t('deadlines.revision', { value: i + 1, job: labelOf(job) }),
         too: job.too ?? '',
       })
     }

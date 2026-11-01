@@ -28,24 +28,24 @@ export function InvoicesPanel({ stats, payments }: InvoicesPanelProps) {
     .slice(0, 6)
 
   return (
-    <PanelCard title={t('ARVED', 'INVOICES')} icon={Euro}>
+    <PanelCard title={t('patients.iNVOICES')} icon={Euro}>
       <div className="space-y-2 text-sm">
-        <Row dot="bg-accent" label={t('Arveldatud', 'Invoiced')} value={stats.totalInvoiced} />
-        <Row dot="bg-green-500" label={t('Makstud', 'Paid')} value={stats.paidTotal} />
-        <Row dot="bg-red-200" label={t('Tasumata', 'Unpaid')} value={stats.unpaidTotal} />
+        <Row dot="bg-accent" label={t('patients.invoiced')} value={stats.totalInvoiced} />
+        <Row dot="bg-green-500" label={t('patients.paid')} value={stats.paidTotal} />
+        <Row dot="bg-red-200" label={t('patients.unpaid')} value={stats.unpaidTotal} />
       </div>
 
       <p className="text-[11px] text-ink-muted">
-        {t(`${stats.unpaidCount} tasumata arvet`, `${stats.unpaidCount} unpaid ${stats.unpaidCount === 1 ? 'invoice' : 'invoices'}`)}
+        {t('patients.unpaidInvoiceInvoices', { stats, unpaidCount: stats.unpaidCount })}
         {stats.partialCount > 0 && (
-          <span className="text-orange-600">{t(` · ${stats.partialCount} osaliselt makstud`, ` · ${stats.partialCount} partly paid`)}</span>
+          <span className="text-orange-600">{t('patients.partlyPaid', { partialCount: stats.partialCount })}</span>
         )}
       </p>
 
       {methods.length > 0 && (
         <div className="pt-2 border-t border-ink-faint/15 space-y-1">
           <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">
-            {t('Makseviisid', 'Payment methods')}
+            {t('patients.paymentMethods')}
           </p>
           {methods.map(([m, b]) => (
             <div key={m} className="flex items-center justify-between text-xs">
@@ -62,7 +62,7 @@ export function InvoicesPanel({ stats, payments }: InvoicesPanelProps) {
       {recent.length > 0 && (
         <div className="pt-2 border-t border-ink-faint/15 space-y-1">
           <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">
-            {t('Viimased maksed', 'Recent payments')}
+            {t('patients.recentPayments')}
           </p>
           {recent.map(p => (
             <div key={p.id} className="flex items-center gap-2 text-[11px]">
@@ -80,7 +80,7 @@ export function InvoicesPanel({ stats, payments }: InvoicesPanelProps) {
           ))}
           {payments.length > recent.length && (
             <p className="text-[10px] text-ink-faint">
-              {t(`Näidatud ${recent.length} viimast ${payments.length}-st.`, `Showing the last ${recent.length} of ${payments.length}.`)}
+              {t('patients.showingTheLastOf', { recentCount: recent.length, paymentsCount: payments.length })}
             </p>
           )}
         </div>
@@ -88,10 +88,7 @@ export function InvoicesPanel({ stats, payments }: InvoicesPanelProps) {
 
       {payments.length === 0 && (
         <p className="text-[10px] text-ink-faint">
-          {t(
-            'Makseid ei ole veel kirja pandud. Vanad "makstud" märked tehti enne maksete jälgimist ja neil ei ole makseviisi.',
-            'No payments recorded yet. Old "paid" marks were made before payments were tracked and have no payment method.'
-          )}
+          {t('patients.noPaymentsRecordedYetOldPaid')}
         </p>
       )}
     </PanelCard>

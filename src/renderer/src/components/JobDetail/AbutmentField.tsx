@@ -58,14 +58,14 @@ export function AbutmentField({
   return (
     <div>
       <label className={`text-[10px] font-medium ${dark ? 'text-slate-400' : 'text-ink-muted'}`}>
-        {t('Kruvi / abutment', 'Screw / abutment')} — {item.too}
+        {t('jobDetail.screwAbutment')} — {item.too}
       </label>
       <input
         type="text"
         value={all}
         disabled={disabled}
         onChange={e => onChange({ kruvi: e.target.value || undefined })}
-        placeholder={t('Nt: MIS C1 3.75×11.5mm', 'E.g. MIS C1 3.75×11.5mm')}
+        placeholder={t('jobDetail.eGMISC1375')}
         className={`${inputCls} mt-0.5`}
       />
       {teeth.length > 1 && (
@@ -78,10 +78,10 @@ export function AbutmentField({
             }`}
           >
             {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {t('Hammaste kaupa', 'Per tooth')}
+            {t('jobDetail.perTooth')}
             {differing > 0 && (
               <span className="text-[9px] font-semibold text-accent bg-accent/10 px-1 py-0.5 rounded">
-                {t(`${differing} erineb`, `${differing} different`)}
+                {t('jobDetail.different', { differing })}
               </span>
             )}
           </button>
@@ -99,7 +99,7 @@ export function AbutmentField({
                     onChange={e => setTooth(tooth, e.target.value)}
                     // The inherited code as the placeholder, so an empty row
                     // reads as "same as above" rather than "none".
-                    placeholder={all || t('Kood puudub', 'No code')}
+                    placeholder={all || t('jobDetail.noCode')}
                     className={inputCls}
                   />
                 </div>

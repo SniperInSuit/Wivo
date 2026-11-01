@@ -62,7 +62,7 @@ export function CustomersView() {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder={t('Otsi klienti…', 'Search clients…')}
+            placeholder={t('customers.searchClients')}
             className="input pl-8 py-1.5 text-sm"
           />
         </div>
@@ -74,34 +74,34 @@ export function CustomersView() {
             }`}
           >
             <Archive size={12} />
-            {t('Arhiiv', 'Archive')} ({archivedCount})
+            {t('customers.archive')} ({archivedCount})
           </button>
         )}
         <button
           onClick={() => exportCsv('kliendid', shown, CUSTOMER_COLUMNS)}
           disabled={shown.length === 0}
           className="btn-ghost text-sm border border-ink-faint/25 ml-auto flex-shrink-0 disabled:opacity-40"
-          title={t(`Ekspordi ${shown.length} klienti CSV-sse`, `Export ${shown.length} ${shown.length === 1 ? 'client' : 'clients'} to CSV`)}
+          title={t('customers.exportToCSVClientClients', { shown, shownCount: shown.length })}
         >
           <Download size={14} /> CSV
         </button>
         <button onClick={() => setEditing('new')} className="btn-primary flex-shrink-0">
-          <Plus size={15} /> {t('Uus klient', 'New client')}
+          <Plus size={15} /> {t('customers.newClient')}
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <p className="text-sm text-ink-faint p-6">{t('Laen…', 'Loading…')}</p>
+          <p className="text-sm text-ink-faint p-6">{t('customers.loading')}</p>
         ) : shown.length === 0 ? (
           <div className="p-10 text-center">
             <Building2 size={32} className="mx-auto text-ink-faint/50 mb-3" />
             <p className="text-sm text-ink-muted">
-              {query ? t('Vastet ei leitud', 'No matches found') : t('Kliente pole veel lisatud', 'No clients added yet')}
+              {query ? t('customers.noMatchesFound') : t('customers.noClientsAddedYet')}
             </p>
             {!query && (
               <p className="text-xs text-ink-faint mt-1 max-w-sm mx-auto">
-                {t('Klient on hambaravikliinik, kes sulle töid saadab. Tööd ja arved seotakse kliendiga, et näeksid, kes mida tellis ja kellele arveldada.', 'A client is a dental practice that sends you jobs. Jobs and invoices are linked to the client, so you can see who ordered what and whom to bill.')}
+                {t('customers.aClientIsADentalPractice')}
               </p>
             )}
           </div>
@@ -109,11 +109,11 @@ export function CustomersView() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-bg-card">
               <tr className="border-b border-ink-faint/15 text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                <th className="px-4 py-3 text-left">{t('Klient', 'Client')}</th>
-                <th className="px-4 py-3 text-left">{t('Kontakt', 'Contact')}</th>
-                <th className="px-4 py-3 text-left">{t('Arveldus', 'Billing')}</th>
-                <th className="px-4 py-3 text-right">{t('Tööd', 'Jobs')}</th>
-                <th className="px-4 py-3 text-right">{t('Arved', 'Invoices')}</th>
+                <th className="px-4 py-3 text-left">{t('customers.client')}</th>
+                <th className="px-4 py-3 text-left">{t('customers.contact')}</th>
+                <th className="px-4 py-3 text-left">{t('customers.billing')}</th>
+                <th className="px-4 py-3 text-right">{t('customers.jobs')}</th>
+                <th className="px-4 py-3 text-right">{t('customers.invoices')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -139,7 +139,7 @@ export function CustomersView() {
                     </td>
                     <td className="px-4 py-2.5 text-xs text-ink-muted">
                       {BILLING_MODE_LABEL[c.billing_mode]}
-                      <span className="text-ink-faint"> · {c.payment_terms_days} {t('p', 'd')}</span>
+                      <span className="text-ink-faint"> · {c.payment_terms_days} {t('customers.d')}</span>
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{s.jobs || '—'}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{s.invoices || '—'}</td>
@@ -192,7 +192,7 @@ function CustomerForm({ customer, history, onClose }: {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!form.name.trim()) { setError(t('Nimi on kohustuslik', 'Name is required')); return }
+    if (!form.name.trim()) { setError(t('customers.nameIsRequired')); return }
     try {
       const patch = { ...form, name: form.name.trim() }
       if (customer) await update.mutateAsync({ id: customer.id, patch })
@@ -214,7 +214,7 @@ function CustomerForm({ customer, history, onClose }: {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-ink-faint/15">
           <h2 className="text-base font-semibold text-ink">
-            {customer ? form.name || t('Klient', 'Client') : t('Uus klient', 'New client')}
+            {customer ? form.name || t('customers.client') : t('customers.newClient')}
           </h2>
           <button type="button" onClick={onClose} className="text-ink-faint hover:text-ink">
             <X size={16} />
@@ -223,7 +223,7 @@ function CustomerForm({ customer, history, onClose }: {
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="label">{t('Nimi *', 'Name *')}</label>
+            <label className="label">{t('customers.name')}</label>
             <input
               autoFocus
               value={form.name}
@@ -235,33 +235,33 @@ function CustomerForm({ customer, history, onClose }: {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('Registrikood', 'Registry code')}</label>
+              <label className="label">{t('customers.registryCode')}</label>
               <input value={form.reg_code ?? ''} onChange={e => set('reg_code', e.target.value || null)} className="input" />
             </div>
             <div>
-              <label className="label">{t('KMKR number', 'VAT number')}</label>
+              <label className="label">{t('customers.vATNumber')}</label>
               <input value={form.vat_number ?? ''} onChange={e => set('vat_number', e.target.value || null)} className="input" />
             </div>
           </div>
 
           <div>
-            <label className="label">{t('Aadress', 'Address')}</label>
+            <label className="label">{t('customers.address')}</label>
             <input value={form.address ?? ''} onChange={e => set('address', e.target.value || null)} className="input" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('Kontaktisik', 'Contact person')}</label>
+              <label className="label">{t('customers.contactPerson')}</label>
               <input value={form.contact_name ?? ''} onChange={e => set('contact_name', e.target.value || null)} className="input" />
             </div>
             <div>
-              <label className="label">{t('Telefon', 'Phone')}</label>
+              <label className="label">{t('customers.phone')}</label>
               <input value={form.phone ?? ''} onChange={e => set('phone', e.target.value || null)} className="input" />
             </div>
           </div>
 
           <div>
-            <label className="label">{t('E-post', 'Email')}</label>
+            <label className="label">{t('customers.email')}</label>
             <input
               type="email"
               value={form.email ?? ''}
@@ -271,7 +271,7 @@ function CustomerForm({ customer, history, onClose }: {
           </div>
 
           <div>
-            <label className="label">{t('Arveldus', 'Billing')}</label>
+            <label className="label">{t('customers.billing')}</label>
             <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
               {(['per_job', 'monthly'] as const).map(m => (
                 <button
@@ -292,7 +292,7 @@ function CustomerForm({ customer, history, onClose }: {
           </div>
 
           <div>
-            <label className="label">{t('Maksetähtaeg (päeva)', 'Payment terms (days)')}</label>
+            <label className="label">{t('customers.paymentTermsDays')}</label>
             <input
               type="number"
               min={0}
@@ -304,7 +304,7 @@ function CustomerForm({ customer, history, onClose }: {
           </div>
 
           <div>
-            <label className="label">{t('Märkus', 'Note')}</label>
+            <label className="label">{t('customers.note')}</label>
             <textarea
               value={form.note ?? ''}
               onChange={e => set('note', e.target.value || null)}
@@ -328,8 +328,8 @@ function CustomerForm({ customer, history, onClose }: {
                 className="btn-ghost text-xs border border-ink-faint/25"
               >
                 {customer.archived_at
-                  ? <><ArchiveRestore size={12} /> {t('Taasta', 'Restore')}</>
-                  : <><Archive size={12} /> {t('Arhiveeri', 'Archive')}</>}
+                  ? <><ArchiveRestore size={12} /> {t('customers.restore')}</>
+                  : <><Archive size={12} /> {t('customers.archive2')}</>}
               </button>
               {/* Delete only for a customer nobody has traded with yet — the
                   "typed the wrong name" case. Anything with history is archived,
@@ -341,7 +341,7 @@ function CustomerForm({ customer, history, onClose }: {
                     onClick={() => del.mutate(customer.id, { onSuccess: onClose })}
                     className="btn-ghost text-xs text-red-500 border border-red-500/30"
                   >
-                    <Trash2 size={12} /> {t('Kinnita kustutamine', 'Confirm delete')}
+                    <Trash2 size={12} /> {t('customers.confirmDelete')}
                   </button>
                 ) : (
                   <button
@@ -349,23 +349,23 @@ function CustomerForm({ customer, history, onClose }: {
                     onClick={() => setConfirmDelete(true)}
                     className="text-xs text-ink-faint hover:text-red-500 transition-colors px-2"
                   >
-                    {t('Kustuta', 'Delete')}
+                    {t('customers.delete')}
                   </button>
                 )
               )}
               {hasHistory && (
                 <span className="text-[11px] text-ink-faint">
-                  {t(`${history.jobs} tööd · ${history.invoices} arvet — kustutada ei saa`, `${history.jobs} ${history.jobs === 1 ? 'job' : 'jobs'} · ${history.invoices} ${history.invoices === 1 ? 'invoice' : 'invoices'} — can't be deleted`)}
+                  {t('customers.canTBeDeletedJobJobs', { history, jobs: history.jobs, invoices: history.invoices })}
                 </span>
               )}
             </>
           )}
           <button type="button" onClick={onClose} className="btn-ghost text-sm ml-auto">
-            {t('Loobu', 'Cancel')}
+            {t('customers.cancel')}
           </button>
           <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
-            {t('Salvesta', 'Save')}
+            {t('customers.save')}
           </button>
         </div>
       </form>

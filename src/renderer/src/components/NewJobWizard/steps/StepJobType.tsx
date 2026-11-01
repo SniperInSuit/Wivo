@@ -26,10 +26,10 @@ const SEARCH_THRESHOLD = 12
  *  consequence rather than the next screen changing shape unannounced. */
 function needsLabel(r: WorkTypeRules | undefined): string {
   if (!r) return ''
-  if (r.isBridge) return t('Järgmisena: vali järjestikused hambad', 'Next: choose adjacent teeth')
-  if (r.toothMode === 'tooth') return t('Järgmisena: vali hambad', 'Next: choose teeth')
-  if (r.toothMode === 'arch') return t('Järgmisena: vali lõualuu', 'Next: choose the jaw')
-  return t('Hambaid ei ole vaja valida', 'No teeth to choose')
+  if (r.isBridge) return t('wizard.nextChooseAdjacentTeeth')
+  if (r.toothMode === 'tooth') return t('wizard.nextChooseTeeth')
+  if (r.toothMode === 'arch') return t('wizard.nextChooseTheJaw')
+  return t('wizard.noTeethToChoose')
 }
 
 export const StepJobType: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
@@ -111,10 +111,7 @@ export const StepJobType: WizardStepComponent = ({ state, patch, rules, errors, 
   return (
     <div className="space-y-6">
       <p className={WIZARD_HELP}>
-        {t(
-          'Võid valida mitu tüüpi — näiteks kroon ja sild samale tööle. Iga tüübi hambad saad valida eraldi järgmises sammus.',
-          "You can choose several types — for example a crown and a bridge on the same job. You'll choose the teeth for each type separately in the next step."
-        )}
+        {t('wizard.youCanChooseSeveralTypesFor')}
       </p>
 
       {showErrors && typeErrors.length > 0 && <WizardErrors errors={typeErrors} />}
@@ -123,9 +120,9 @@ export const StepJobType: WizardStepComponent = ({ state, patch, rules, errors, 
         <WizardSearch
           value={search}
           onChange={setSearch}
-          placeholder={t('Otsi töö tüüpi…', 'Search work types…')}
-          ariaLabel={t('Otsi töö tüüpi', 'Search work types')}
-          resultLabel={searching ? (matchCount === 1 ? t('1 vaste', '1 match') : t(`${matchCount} vastet`, `${matchCount} matches`)) : undefined}
+          placeholder={t('wizard.searchWorkTypes')}
+          ariaLabel={t('wizard.searchWorkTypes2')}
+          resultLabel={searching ? (matchCount === 1 ? t('wizard.n1Match') : t('wizard.matches', { matchCount })) : undefined}
         />
       )}
 
@@ -138,9 +135,9 @@ export const StepJobType: WizardStepComponent = ({ state, patch, rules, errors, 
       />
 
       {selected.length > 0 && (
-        <section aria-label={t('Valitud töö tüübid', 'Selected work types')} className="border-t border-ink-faint/30 pt-5">
+        <section aria-label={t('wizard.selectedWorkTypes')} className="border-t border-ink-faint/30 pt-5">
           <h3 className="mb-3 text-base font-semibold text-ink">
-            {t('Valitud', 'Selected')} {selected.length === 1 ? t('töö tüüp', 'work type') : t('töö tüübid', 'work types')} ({selected.length})
+            {t('wizard.selected')} {selected.length === 1 ? t('wizard.workType') : t('wizard.workTypes2')} ({selected.length})
           </h3>
           <ul className="space-y-2">
             {selected.map((nimi, i) => {
@@ -164,11 +161,11 @@ export const StepJobType: WizardStepComponent = ({ state, patch, rules, errors, 
                   <button
                     type="button"
                     onClick={() => toggle(nimi)}
-                    aria-label={t(`Eemalda töö tüüp ${nimi}`, `Remove work type ${nimi}`)}
+                    aria-label={t('wizard.removeWorkType', { nimi })}
                     className={`${WIZARD_HIT_MIN} ${FOCUS_RING} flex shrink-0 items-center gap-1.5 rounded-lg px-3 text-base font-medium text-ink-muted transition-colors hover:text-rose-500`}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
-                    {t('Eemalda', 'Remove')}
+                    {t('wizard.remove')}
                   </button>
                 </li>
               )

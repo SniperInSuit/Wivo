@@ -245,10 +245,10 @@ export function OdontogramPicker({ value, onChange, disabled }: OdontogramPicker
       <div className="flex items-center justify-between">
         {count > 0 ? (
           <p className="text-xs text-accent font-semibold">
-            {t(`${count} hammas${count !== 1 ? 't' : ''} valitud: ${[...selected].join(', ')}`, `${count} ${count === 1 ? 'tooth' : 'teeth'} selected: ${[...selected].join(', ')}`)}
+            {t('jobDetail.selectedToothTeeth', { count, selected })}
           </p>
         ) : (
-          <p className="text-xs text-ink-faint">{t('Vali hambad klõpsates', 'Click to select teeth')}</p>
+          <p className="text-xs text-ink-faint">{t('jobDetail.clickToSelectTeeth')}</p>
         )}
         {count > 0 && (
           <button
@@ -257,7 +257,7 @@ export function OdontogramPicker({ value, onChange, disabled }: OdontogramPicker
             disabled={disabled}
             className="text-xs text-ink-muted hover:text-red-500 transition-colors"
           >
-            {t('Tühjenda', 'Clear')}
+            {t('jobDetail.clear')}
           </button>
         )}
       </div>

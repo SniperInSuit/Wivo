@@ -15,9 +15,9 @@ import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on l
 export type PaymentPlanStatus = 'aktiivne' | 'lopetatud' | 'tuhistatud'
 
 export const PAYMENT_PLAN_STATUS_LABEL: Record<PaymentPlanStatus, string> = {
-  aktiivne:   t('Aktiivne', 'Active'),
-  lopetatud:  t('Lõpetatud', 'Completed'),
-  tuhistatud: t('Tühistatud', 'Cancelled'),
+  aktiivne:   t('paymentPlan.active'),
+  lopetatud:  t('paymentPlan.completed'),
+  tuhistatud: t('paymentPlan.cancelled'),
 }
 
 export const PAYMENT_PLAN_STATUS_HEX: Record<PaymentPlanStatus, string> = {

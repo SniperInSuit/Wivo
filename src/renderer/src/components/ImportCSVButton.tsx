@@ -178,7 +178,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
 
   function processText(text: string) {
     const rows = parseCSV(text)
-    if (rows.length < 2) { setErrMsg(t('CSV tühi', 'CSV is empty')); setState('error'); return }
+    if (rows.length < 2) { setErrMsg(t('importCSVButton.cSVIsEmpty')); setState('error'); return }
 
     const headerIdx = findHeaderRowIndex(rows)
     const rawHeaders = rows[headerIdx]
@@ -214,7 +214,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
       }))
 
     if (jobs.length === 0) {
-      setErrMsg(t('Ühtegi tööd ei leitud. Veendu, et "Patsient" veerg on olemas.', 'No jobs found. Make sure there is a "Patsient" column.'))
+      setErrMsg(t('importCSVButton.noJobsFoundMakeSureThere'))
       setState('error')
       return
     }
@@ -267,9 +267,9 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
     <>
       <input type="file" accept=".csv" ref={fileRef} onChange={handleFile} className="hidden" />
 
-      <button onClick={() => fileRef.current?.click()} className="text-nav hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm" title={t('Impordi CSV', 'Import CSV')}>
+      <button onClick={() => fileRef.current?.click()} className="text-nav hover:text-nav font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm" title={t('importCSVButton.importCSV')}>
         <Upload size={14} />
-        Import CSV
+        {t('common.importCsv')}
       </button>
 
       {state !== 'idle' && (
@@ -280,8 +280,8 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
               <>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-ink">{t(`Impordi ${preview.count} tööd`, `Import ${preview.count} ${preview.count === 1 ? 'job' : 'jobs'}`)}</h3>
-                    <p className="text-xs text-ink-muted mt-0.5">{t(`Eelvaade (esimesed ${preview.sample.length}):`, `Preview (first ${preview.sample.length}):`)}</p>
+                    <h3 className="font-semibold text-ink">{t('importCSVButton.importJobJobs', { preview, count: preview.count })}</h3>
+                    <p className="text-xs text-ink-muted mt-0.5">{t('importCSVButton.previewFirst', { sampleCount: preview.sample.length })}</p>
                   </div>
                   <button onClick={() => setState('idle')} className="text-ink-faint hover:text-ink">
                     <X size={16} />
@@ -297,13 +297,13 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
                     </div>
                   ))}
                   {preview.count > preview.sample.length && (
-                    <p className="text-xs text-ink-faint text-center pt-1">{t(`… ja veel ${preview.count - preview.sample.length} tööd`, `… and ${preview.count - preview.sample.length} more ${preview.count - preview.sample.length === 1 ? 'job' : 'jobs'}`)}</p>
+                    <p className="text-xs text-ink-faint text-center pt-1">{t('importCSVButton.andMoreJobJobs', { preview, value: preview.count - preview.sample.length })}</p>
                   )}
                 </div>
                 <div className="flex gap-2 justify-end pt-1">
-                  <button onClick={() => setState('idle')} className="btn-ghost">{t('Tühista', 'Cancel')}</button>
+                  <button onClick={() => setState('idle')} className="btn-ghost">{t('importCSVButton.cancel')}</button>
                   <button onClick={doInsert} className="btn-primary">
-                    <Upload size={13} /> {t("Lisa Supabase'i", 'Add to Supabase')}
+                    <Upload size={13} /> {t('importCSVButton.addToSupabase')}
                   </button>
                 </div>
               </>
@@ -312,7 +312,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
             {state === 'inserting' && (
               <div className="flex flex-col items-center gap-3 py-4">
                 <Loader2 size={28} className="animate-spin text-accent" />
-                <p className="text-sm text-ink-muted">{t('Importimine…', 'Importing…')} {progress}%</p>
+                <p className="text-sm text-ink-muted">{t('importCSVButton.importing')} {progress}%</p>
                 <div className="w-full bg-bg-sidebar rounded-full h-2 overflow-hidden">
                   <div className="bg-accent h-full rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
                 </div>
@@ -324,7 +324,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                   <Check size={20} className="text-green-600" />
                 </div>
-                <p className="text-sm font-medium text-ink">{t('Imporditud!', 'Imported!')}</p>
+                <p className="text-sm font-medium text-ink">{t('importCSVButton.imported')}</p>
               </div>
             )}
 
@@ -334,7 +334,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
                   <AlertTriangle size={20} className="text-red-500" />
                 </div>
                 <p className="text-sm text-ink text-center">{errMsg}</p>
-                <button onClick={() => setState('idle')} className="btn-ghost">{t('Sulge', 'Close')}</button>
+                <button onClick={() => setState('idle')} className="btn-ghost">{t('importCSVButton.close')}</button>
               </div>
             )}
           </div>

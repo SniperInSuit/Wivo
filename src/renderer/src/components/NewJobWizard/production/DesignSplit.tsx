@@ -41,12 +41,9 @@ export function DesignSplit({ state, patch, toothTypes }: Props) {
 
   return (
     <div className="md:col-span-2">
-      <p className="text-base font-medium text-ink">{t('Disainija hambad', "Designer's teeth")}</p>
+      <p className="text-base font-medium text-ink">{t('wizard.designerSTeeth')}</p>
       <p className={WIZARD_HELP}>
-        {t(
-          'Vaikimisi disainis disainija kõik hambad. Võta märge maha hammastelt, mille tehnik ise disainis — disainitasu arvestatakse ainult märgitutelt.',
-          'By default the designer designed all the teeth. Untick the teeth the technician designed — the design fee is counted only for the ticked ones.'
-        )}
+        {t('wizard.byDefaultTheDesignerDesignedAll')}
       </p>
       <div className="mt-2 space-y-2">
         {rows.map(({ key, teeth }) => {
@@ -63,7 +60,7 @@ export function DesignSplit({ state, patch, toothTypes }: Props) {
                     type="button"
                     onClick={() => toggle(key, tooth, teeth)}
                     aria-pressed={on}
-                    title={on ? t(`${tooth} — disainija`, `${tooth} — designer`) : t(`${tooth} — tehnik disainis ise`, `${tooth} — designed by the technician`)}
+                    title={on ? t('wizard.designer', { tooth }) : t('wizard.designedByTheTechnician', { tooth })}
                     className={`min-h-[44px] min-w-[44px] rounded-xl border-2 px-2 text-base font-semibold tabular-nums transition-colors ${
                       on
                         ? 'border-violet-500 bg-violet-500 text-white'

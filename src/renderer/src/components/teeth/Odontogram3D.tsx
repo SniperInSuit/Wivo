@@ -469,8 +469,8 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
   // The label names BOTH marks even though the glow can only show one.
   const hoverLabel = hoverKey && [
     hoverKey,
-    state.implants.has(hoverKey) ? t('implantaat', 'implant') : null,
-    state.designed.has(hoverKey) ? t('disainija', 'designer') : null,
+    state.implants.has(hoverKey) ? t('teeth.implant') : null,
+    state.designed.has(hoverKey) ? t('teeth.designer') : null,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -483,7 +483,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
       <div ref={hostRef} className="relative h-[340px] w-full overflow-hidden rounded-xl bg-ink/5">
         {loading && (
           <div className="absolute inset-0 grid place-items-center text-sm text-ink-muted">
-            {t('Laen mudelit…', 'Loading model…')}
+            {t('teeth.loadingModel')}
           </div>
         )}
         {/* The patient's own left and right, pinned to the model's sides.
@@ -491,8 +491,8 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
             this is what the 2D chart's mirror toggle is for, answered by the
             thing itself instead of by a setting. `opacity` starts at 0 so they
             do not flash in the top-left corner before the first frame. */}
-        <SideLabel innerRef={rightRef}>{t('Parem', 'Right')}</SideLabel>
-        <SideLabel innerRef={leftRef}>{t('Vasak', 'Left')}</SideLabel>
+        <SideLabel innerRef={rightRef}>{t('teeth.right')}</SideLabel>
+        <SideLabel innerRef={leftRef}>{t('teeth.left')}</SideLabel>
 
         {hoverPos && hoverLabel && (
           <div
@@ -526,7 +526,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
               active={markMode === 'implant'}
               onClick={() => setMarkMode(m => (m === 'implant' ? null : 'implant'))}
             >
-              {t('Implantaat', 'Implant')}
+              {t('teeth.implant2')}
             </ModeButton>
           )}
           {props.onToggleDesign && (
@@ -534,7 +534,7 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
               active={markMode === 'design'}
               onClick={() => setMarkMode(m => (m === 'design' ? null : 'design'))}
             >
-              {t('Disainija', 'Designer')}
+              {t('teeth.designer2')}
             </ModeButton>
           )}
         </div>
@@ -546,10 +546,10 @@ export function Odontogram3D({ onUnavailable, ...props }: Odontogram3DProps) {
           refused, so a click that does nothing is never a mystery. */}
       <p className="text-xs text-ink-muted">
         {markMode === 'implant'
-          ? t('Klõpsa hambal, mis on implantaadil. Märkida saab ainult selle tööosa hambaid.', 'Click a tooth that sits on an implant. Only this work item’s teeth can be marked.')
+          ? t('teeth.clickAToothThatSitsOn')
           : markMode === 'design'
-            ? t('Klõpsa hambal, mille tegi disainija. Märkida saab ainult selle tööosa hambaid.', 'Click a tooth the designer made. Only this work item’s teeth can be marked.')
-            : t('Lohista üle hammaste, et valida mitu korraga. Tühjalt kohalt lohistades pöörab mudelit, rullik suumib.', 'Drag across the teeth to select several at once. Dragging from an empty spot turns the model; the scroll wheel zooms.')}
+            ? t('teeth.clickAToothTheDesignerMade')
+            : t('teeth.dragAcrossTheTeethToSelect')}
       </p>
     </div>
   )

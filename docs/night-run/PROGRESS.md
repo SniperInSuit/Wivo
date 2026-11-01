@@ -18,8 +18,9 @@ Status: `[x]` done · `[~]` partly done (see note) · `[ ]` not started ·
 - [→] Five core protections: network restrictions + SSL, dashboard MFA, user MFA,
       leaked-password protection, no service-role key in the app (service key:
       verified absent; the other four are dashboard settings → MORNING.md)
-- [ ] i18n foundation: English is the source language, existing Estonian moved
-      into the `et` locale, no hard-coded UI text left in code
+- [x] i18n foundation: English is the source language, existing Estonian moved
+      into the `et` locale, no hard-coded UI text left in code (2,713 keys; guard
+      test; per-user language waits for Phase 1 organisations) — COMMIT_I18N
 - [→] Restore test with current data (needs the production backup → MORNING.md)
 
 ## Phase 1: partnership, files, notifications

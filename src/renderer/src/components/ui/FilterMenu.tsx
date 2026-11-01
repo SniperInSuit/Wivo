@@ -132,7 +132,7 @@ export function MultiFilterMenu({
                   autoFocus
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder={t(`Otsi… (${options.length})`, `Search… (${options.length})`)}
+                  placeholder={t('ui.search', { optionsCount: options.length })}
                   className="input py-1 pl-6 pr-2 text-xs w-full"
                 />
               </div>
@@ -140,9 +140,9 @@ export function MultiFilterMenu({
           )}
           <div className="overflow-y-auto">
             {options.length === 0 ? (
-              <p className="text-xs text-ink-faint px-3 py-2">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-xs text-ink-faint px-3 py-2">{t('ui.noData')}</p>
             ) : shown.length === 0 ? (
-              <p className="text-xs text-ink-faint px-3 py-2">{t('Vastet ei leitud', 'No matches')}</p>
+              <p className="text-xs text-ink-faint px-3 py-2">{t('ui.noMatches')}</p>
             ) : shown.map(opt => (
               <button
                 key={opt}

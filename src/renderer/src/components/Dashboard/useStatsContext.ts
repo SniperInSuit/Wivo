@@ -278,7 +278,7 @@ export function useStatsContext(
   return {
     period,
     range,
-    rangeLabel: period === 'all' ? t('kogu aeg', 'all time') : `${range.start} – ${range.end}`,
+    rangeLabel: period === 'all' ? t('dashboard.allTime') : `${range.start} – ${range.end}`,
     m,
     stats,
     units,

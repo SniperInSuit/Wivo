@@ -208,7 +208,7 @@ export function WorkItemsField({
                 disabled={disabled}
                 onClick={() => toggleType(type.nimi)}
                 title={type.hind != null
-                  ? `${type.hind.toFixed(2)} € ${type.hinnaTyyp === 'hammas' ? t('/ hammas', '/ tooth') : t('/ töö', '/ job')}`
+                  ? `${type.hind.toFixed(2)} € ${type.hinnaTyyp === 'hammas' ? t('jobDetail.tooth5') : t('jobDetail.job4')}`
                   : type.nimi}
                 className={`relative rounded-xl border-2 overflow-hidden text-center transition-all duration-150 disabled:opacity-50 ${
                   picked
@@ -236,7 +236,7 @@ export function WorkItemsField({
                   <span className={`block px-1 pb-1 text-[9px] tabular-nums ${
                     picked ? 'text-accent/70' : 'text-ink-faint'
                   }`}>
-                    {type.hind.toFixed(0)} € / {type.hinnaTyyp === 'hammas' ? t('hammas', 'tooth') : t('töö', 'job')}
+                    {type.hind.toFixed(0)} € / {type.hinnaTyyp === 'hammas' ? t('jobDetail.tooth2') : t('jobDetail.job2')}
                   </span>
                 )}
               </button>
@@ -252,7 +252,7 @@ export function WorkItemsField({
             }`}
           >
             {showAllTypes ? <ChevronUp size={14} /> : <Plus size={14} />}
-            {showAllTypes ? t('Peida', 'Hide') : t(`Lisa töötüüp (${wt.types.length})`, `Add work type (${wt.types.length})`)}
+            {showAllTypes ? t('jobDetail.hide') : t('jobDetail.addWorkType', { typesCount: wt.types.length })}
           </button>
         )}
         </>
@@ -291,7 +291,7 @@ export function WorkItemsField({
                     const name = clinicWorkers.find(w => w.id === item.designed_by)?.full_name ?? ''
                     return (
                       <span
-                        title={t(`Disainija: ${name || '—'}`, `Designer: ${name || '—'}`)}
+                        title={t('jobDetail.designer', { value: name || '—' })}
                         className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
                       >
                         ✎ {name.split(' ')[0] || '—'}
@@ -301,18 +301,18 @@ export function WorkItemsField({
                   <span
                     role="button"
                     onClick={e => { e.stopPropagation(); toggleBridge(item.id) }}
-                    title={item.bridge ? t('Eemalda silla märge', 'Remove bridge mark') : t('Märgi sillaks', 'Mark as bridge')}
+                    title={item.bridge ? t('jobDetail.removeBridgeMark') : t('jobDetail.markAsBridge')}
                     className={`text-[10px] px-1 py-0.5 rounded transition-colors ${
                       item.bridge ? 'bg-accent/20 text-accent' : c.faint
                     }`}
                   >
-                    {item.bridge ? t('⛓ sild', '⛓ bridge') : '⛓'}
+                    {item.bridge ? t('jobDetail.bridge') : '⛓'}
                   </span>
                 </button>
                 <button
                   type="button"
                   disabled={disabled}
-                  title={t(`Lisa veel üks ${item.too}`, `Add another ${item.too}`)}
+                  title={t('jobDetail.addAnother', { too: item.too })}
                   onClick={e => { e.stopPropagation(); duplicate(item) }}
                   className={`text-[10px] font-bold px-1 py-1.5 border-2 border-l-0 transition-colors disabled:opacity-40 ${
                     isActive
@@ -326,7 +326,7 @@ export function WorkItemsField({
                 <button
                   type="button"
                   disabled={disabled}
-                  title={t('Eemalda', 'Remove')}
+                  title={t('jobDetail.remove')}
                   onClick={e => { e.stopPropagation(); remove(item.id) }}
                   className={`text-[10px] font-bold px-1 py-1.5 rounded-r-lg border-2 border-l-0 transition-colors disabled:opacity-40 ${
                     isActive
@@ -341,7 +341,7 @@ export function WorkItemsField({
             )
           })}
           <p className={`text-[10px] ${c.faint}`}>
-            {activeId ? t('Klõpsa hammastel', 'Click the teeth') : t('Vali tööosa, et hambaid märkida', 'Choose a work item to mark teeth')}
+            {activeId ? t('jobDetail.clickTheTeeth') : t('jobDetail.chooseAWorkItemToMark')}
           </p>
         </div>
       )}
@@ -402,9 +402,9 @@ export function WorkItemsField({
             onLooseTeethChange && (
               <ToothPicker
                 // A chart-only placeholder, never saved: its name is just the legend label.
-                items={[{ id: '__loose__', too: t('Hambad', 'Teeth'), hambad: looseTeeth ?? '' }]}
+                items={[{ id: '__loose__', too: t('jobDetail.teeth'), hambad: looseTeeth ?? '' }]}
                 activeItemId="__loose__"
-                colorMap={{ [t('Hambad', 'Teeth')]: '#0AB6C4' }}
+                colorMap={{ [t('jobDetail.teeth')]: '#0AB6C4' }}
                 onToggleTooth={tooth => {
                   const teeth = new Set((looseTeeth ?? '').split(',').map(tooth => tooth.trim()).filter(Boolean))
                   const s = String(tooth)

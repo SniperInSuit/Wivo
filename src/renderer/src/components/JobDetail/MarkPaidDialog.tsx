@@ -149,13 +149,13 @@ export function MarkPaidDialog({
         <div className="px-5 py-4 space-y-3">
           {(amount != null || count != null) && (
             <p className="text-xs text-ink-muted">
-              {count != null && count > 1 && <>{t(`${count} tööd`, `${count} jobs`)} · </>}
+              {count != null && count > 1 && <>{t('jobDetail.jobs', { count })} · </>}
               {amount != null && (
-                <>{t('Kokku', 'Total')} <strong className="text-ink tabular-nums">{amount.toFixed(2)} €</strong></>
+                <>{t('jobDetail.total')} <strong className="text-ink tabular-nums">{amount.toFixed(2)} €</strong></>
               )}
               {alreadyPaid > 0 && (
-                <> · {t('juba laekunud', 'already received')} <span className="tabular-nums">{alreadyPaid.toFixed(2)} €</span>
-                  {' · '}{t('jääk', 'balance')} <strong className="text-ink tabular-nums">{outstanding.toFixed(2)} €</strong>
+                <> · {t('jobDetail.alreadyReceived')} <span className="tabular-nums">{alreadyPaid.toFixed(2)} €</span>
+                  {' · '}{t('jobDetail.balance2')} <strong className="text-ink tabular-nums">{outstanding.toFixed(2)} €</strong>
                 </>
               )}
             </p>
@@ -169,7 +169,7 @@ export function MarkPaidDialog({
               }`}>
                 {lines.length > 1 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-ink-muted uppercase">{t('Makse', 'Payment')} {idx + 1}</span>
+                    <span className="text-[10px] font-semibold text-ink-muted uppercase">{t('jobDetail.payment')} {idx + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeLine(line.id)}
@@ -183,7 +183,7 @@ export function MarkPaidDialog({
                 <div className="flex gap-2">
                   {/* Date */}
                   <div className="w-32">
-                    <label className="label">{t('Kuupäev', 'Date')}</label>
+                    <label className="label">{t('jobDetail.date')}</label>
                     <input
                       type="date" value={line.paidAt}
                       onChange={e => updateLine(line.id, { paidAt: e.target.value })}
@@ -194,7 +194,7 @@ export function MarkPaidDialog({
                   {/* Amount */}
                   {single && (
                     <div className="w-28">
-                      <label className="label">{t('Summa', 'Amount')}</label>
+                      <label className="label">{t('jobDetail.amount')}</label>
                       <div className="relative">
                         <input
                           type="number" min="0" step="0.01"
@@ -212,11 +212,11 @@ export function MarkPaidDialog({
 
                   {/* Reference */}
                   <div className="flex-1">
-                    <label className="label">{t('Viide', 'Reference')}</label>
+                    <label className="label">{t('jobDetail.reference')}</label>
                     <input
                       value={line.reference}
                       onChange={e => updateLine(line.id, { reference: e.target.value })}
-                      placeholder={t('Vabatahtlik', 'Optional')}
+                      placeholder={t('jobDetail.optional')}
                       className="input"
                     />
                   </div>
@@ -224,7 +224,7 @@ export function MarkPaidDialog({
 
                 {/* Method */}
                 <div>
-                  <label className="label">{t('Makseviis', 'Payment method')}</label>
+                  <label className="label">{t('jobDetail.paymentMethod')}</label>
                   <div className="grid grid-cols-2 gap-1">
                     {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map(m => (
                       <button
@@ -254,14 +254,14 @@ export function MarkPaidDialog({
               className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover font-medium transition-colors"
             >
               <Plus size={12} />
-              {t('Lisa teine makseviis', 'Add another payment method')}
+              {t('jobDetail.addAnotherPaymentMethod')}
             </button>
           )}
 
           {/* Summary */}
           {lines.length > 1 && (
             <div className="flex items-center justify-between px-1 pt-1 border-t border-ink-faint/15">
-              <span className="text-xs text-ink-muted">{t('Kokku makstud', 'Total paid')}</span>
+              <span className="text-xs text-ink-muted">{t('jobDetail.totalPaid')}</span>
               <span className={`text-sm font-bold tabular-nums ${
                 Math.abs(totalEntered - outstanding) < 0.01 ? 'text-emerald-600' : 'text-ink'
               }`}>
@@ -272,21 +272,21 @@ export function MarkPaidDialog({
 
           {isPartial && (
             <p className="text-[11px] text-orange-600 leading-relaxed">
-              {t('Osaline makse. Töö jääb ', 'Part payment. The job stays ')}<strong>{t('maksmata', 'unpaid')}</strong>{t(' seisu ja jääk', ' and the balance of')}{' '}
-              {(outstanding - totalEntered).toFixed(2)} € {t('on endiselt võlgu.', 'is still owed.')}
+              {t('jobDetail.partPaymentTheJobStays')}<strong>{t('jobDetail.unpaid2')}</strong>{t('jobDetail.andTheBalanceOf')}{' '}
+              {(outstanding - totalEntered).toFixed(2)} € {t('jobDetail.isStillOwed')}
             </p>
           )}
         </div>
 
         <div className="px-5 py-3 border-t border-ink-faint/15 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="btn-ghost border border-ink-faint/25">{t('Loobu', 'Cancel')}</button>
+          <button onClick={onClose} className="btn-ghost border border-ink-faint/25">{t('jobDetail.cancel')}</button>
           <button
             onClick={handleSubmit}
             disabled={busy || !valid}
             className="btn-primary disabled:opacity-50"
           >
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Euro size={13} />}
-            {isPartial ? t('Salvesta osamakse', 'Save part payment') : lines.length > 1 ? t('Salvesta maksed', 'Save payments') : t('Märgi makstuks', 'Mark as paid')}
+            {isPartial ? t('jobDetail.savePartPayment') : lines.length > 1 ? t('jobDetail.savePayments') : t('jobDetail.markAsPaid')}
           </button>
         </div>
       </motion.div>

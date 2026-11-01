@@ -52,17 +52,17 @@ const revTeeth = (j: Job) => {
 }
 
 function greeting(h: number): string {
-  if (h < 5) return t('Tere ööd', 'Hello')
-  if (h < 11) return t('Tere hommikust', 'Good morning')
-  if (h < 17) return t('Tere päevast', 'Good afternoon')
-  return t('Tere õhtust', 'Good evening')
+  if (h < 5) return t('overview.hello')
+  if (h < 11) return t('overview.goodMorning')
+  if (h < 17) return t('overview.goodAfternoon')
+  return t('overview.goodEvening')
 }
 
 export function OverviewView({ jobs, searchActive = false, loading, onJobClick, onNewJob, onNavigate }: OverviewViewProps) {
   // What the numbers below actually cover. No date filter anywhere on this page
   // — "kogu aeg" is the literal truth — but the search box silently reduces the
   // set, and a card that keeps claiming "kogu aeg" while it does is lying.
-  const scopeLabel = searchActive ? t('otsingu tulemused', 'search results') : t('kogu aeg', 'all time')
+  const scopeLabel = searchActive ? t('overview.searchResults') : t('overview.allTime')
   const { stages, stageMap, doneStageKey } = usePipeline()
   const { data: patients = [] } = usePatients()
   const { settings } = useSettings()
@@ -161,20 +161,20 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       for (const r of j.revisions ?? []) {
         items.push({
           id: `${j.id}:r:${r.id}`, ts: r.ts, job: j, icon: Activity,
-          text: t(`Muudatus lisatud — ${j.too ?? j.patsient}`, `Revision added — ${j.too ?? j.patsient}`)
+          text: t('overview.revisionAdded', { value: j.too ?? j.patsient })
         })
       }
       for (const n of j.markused ?? []) {
         items.push({
           id: `${j.id}:n:${n.id}`, ts: n.ts, job: j, icon: FileText,
-          text: t(`Märkus lisatud — ${j.too ?? j.patsient}`, `Note added — ${j.too ?? j.patsient}`)
+          text: t('overview.noteAdded', { value: j.too ?? j.patsient })
         })
       }
       items.push({
         id: `${j.id}:u`, ts: j.updated_at, job: j,
         icon: j.status === doneStageKey ? CalendarCheck : Clock,
         text: j.status === doneStageKey
-          ? t(`${j.too ?? j.patsient} märgiti valmis`, `${j.too ?? j.patsient} marked done`)
+          ? t('overview.markedDone', { value: j.too ?? j.patsient })
           : `${j.too ?? j.patsient} — ${stageMap[j.status]?.label ?? j.status}`
       })
     }
@@ -211,7 +211,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
             {greeting(now.getHours())}{name ? `, ${name}` : ''}!
           </h1>
           <p className="text-sm text-page-muted first-letter:uppercase">
-            {format(now, t('EEEE, d. MMMM yyyy', 'EEEE, d MMMM yyyy'), { locale: dateLocale })}
+            {format(now, t('overview.eEEEDMMMMYyyy'), { locale: dateLocale })}
           </p>
         </div>
       </div>
@@ -219,39 +219,39 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       {/* ─── KPI row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Kpi
-          label={t('Tööd kokku', 'Jobs total')} scope={scopeLabel}
+          label={t('overview.jobsTotal')} scope={scopeLabel}
           value={String(allTime.yksused)} icon={FileText}
           tint="bg-blue-50 text-blue-500"
           note={unitSplitLabel(allTime)}
-          delta={stats.totalDelta} deltaLabel={t('võrreldes eelmise nädalaga', 'compared with last week')}
+          delta={stats.totalDelta} deltaLabel={t('overview.comparedWithLastWeek')}
         />
         <Kpi
-          label={t('Tähtaeg täna', 'Due today')} value={String(stats.dueToday.length)} icon={CalendarCheck}
+          label={t('overview.dueToday')} value={String(stats.dueToday.length)} icon={CalendarCheck}
           tint="bg-amber-50 text-amber-500"
           note={
             stats.overdue.length > 0
-              ? t(`${stats.overdue.length} tööd on tähtaja ületanud`, `${stats.overdue.length} ${stats.overdue.length === 1 ? 'job is' : 'jobs are'} overdue`)
+              ? t('overview.overdueJobIsJobsAre', { stats, overdueCount: stats.overdue.length })
               : stats.dueToday.length === 0
-                ? t('Hea töö! Kõik tähtajad on täidetud.', 'Good work! Every due date has been met.')
+                ? t('overview.goodWorkEveryDueDateHas')
                 : undefined
           }
           noteDanger={stats.overdue.length > 0}
         />
         <Kpi
-          label={t('Hambaid toodetud', 'Teeth produced')} scope={scopeLabel}
+          label={t('overview.teethProduced')} scope={scopeLabel}
           value={String(allTime.hambad)} icon={Smile}
           tint="bg-emerald-50 text-emerald-500"
           note={teethSplitLabel(allTime)}
-          delta={stats.teethDelta} deltaLabel={t('võrreldes eelmise nädalaga', 'compared with last week')}
+          delta={stats.teethDelta} deltaLabel={t('overview.comparedWithLastWeek')}
         />
         {/* "Maksete seis" said nothing about which way the € pointed, so a big
             red number read as turnover. It is a DEBT: what clients still owe. */}
         <Kpi
-          label={t('Laekumata', 'Outstanding')} scope={scopeLabel}
+          label={t('overview.outstanding')} scope={scopeLabel}
           value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
-          sub={t(`${stats.billedTotal.toFixed(2)} € kogu väärtusest, ${stats.paidTotal.toFixed(2)} € laekunud`, `of ${stats.billedTotal.toFixed(2)} € total value, ${stats.paidTotal.toFixed(2)} € received`)}
-          note={t(`${stats.paidCount} makstud · ${stats.partialCount} osaliselt · ${stats.untouchedCount} maksmata`, `${stats.paidCount} paid · ${stats.partialCount} partly · ${stats.untouchedCount} unpaid`)}
+          sub={t('overview.ofTotalValueReceived', { billedTotal: stats.billedTotal.toFixed(2), paidTotal: stats.paidTotal.toFixed(2) })}
+          note={t('overview.paidPartlyUnpaid', { paidCount: stats.paidCount, partialCount: stats.partialCount, untouchedCount: stats.untouchedCount })}
           noteDanger={stats.untouchedCount + stats.partialCount > 0}
         />
       </div>
@@ -270,9 +270,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
 
       {/* ─── Three cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
-        <Panel title={t('TÖÖDE SEIS', 'JOB STATUS')} onMore={() => onNavigate('board')} moreLabel={t('Vaata kõiki töid', 'See all jobs')}>
+        <Panel title={t('overview.jOBSTATUS')} onMore={() => onNavigate('board')} moreLabel={t('overview.seeAllJobs')}>
           {loading ? (
-            <p className="text-sm text-ink-muted">{t('Laen…', 'Loading…')}</p>
+            <p className="text-sm text-ink-muted">{t('overview.loading')}</p>
           ) : (
             <div className="flex items-center gap-4">
               <div className="relative w-[130px] h-[130px] flex-shrink-0">
@@ -294,7 +294,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-xl font-bold text-ink leading-none">{stats.total}</span>
-                  <span className="text-[10px] text-ink-muted">{t('tööd', stats.total === 1 ? 'job' : 'jobs')}</span>
+                  <span className="text-[10px] text-ink-muted">{t('overview.jobJobs2', { stats })}</span>
                 </div>
               </div>
               <ul className="flex-1 min-w-0 space-y-1">
@@ -310,9 +310,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
           )}
         </Panel>
 
-        <Panel title={t('TÄNA TÄHTSAD TÖÖD', 'DUE TODAY')} onMore={() => onNavigate('table')} moreLabel={t('Vaata kõiki töid', 'See all jobs')}>
+        <Panel title={t('overview.dUETODAY')} onMore={() => onNavigate('table')} moreLabel={t('overview.seeAllJobs')}>
           {stats.dueToday.length === 0 && stats.overdue.length === 0 ? (
-            <p className="text-sm text-ink-muted">{t('Täna tähtajaga töid ei ole.', 'No jobs due today.')}</p>
+            <p className="text-sm text-ink-muted">{t('overview.noJobsDueToday')}</p>
           ) : (
             <ul className="space-y-2.5">
               {[...stats.overdue, ...stats.dueToday].slice(0, 4).map(row => {
@@ -350,9 +350,9 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
           )}
         </Panel>
 
-        <Panel title={t('VIIMASED TEGEVUSED', 'RECENT ACTIVITY')} onMore={() => onNavigate('table')} moreLabel={t('Vaata kõiki töid', 'See all jobs')}>
+        <Panel title={t('overview.rECENTACTIVITY')} onMore={() => onNavigate('table')} moreLabel={t('overview.seeAllJobs')}>
           {activity.length === 0 ? (
-            <p className="text-sm text-ink-muted">{t('Tegevusi pole.', 'No activity.')}</p>
+            <p className="text-sm text-ink-muted">{t('overview.noActivity')}</p>
           ) : (
             <ul className="space-y-2">
               {activity.map(({ id, ts, text, icon: Icon, job }) => {
@@ -369,7 +369,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
                       <span className="text-xs text-ink-soft truncate flex-1">{text}</span>
                       <span className="text-[10px] text-ink-faint flex-shrink-0 tabular-nums">
                         {d && isValid(d)
-                          ? isSameDay(d, now) ? t(`Täna ${format(d, 'HH:mm')}`, `Today ${format(d, 'HH:mm')}`) : format(d, 'dd.MM HH:mm')
+                          ? isSameDay(d, now) ? t('overview.todayHHMm', { format, d }) : format(d, 'dd.MM HH:mm')
                           : '—'}
                       </span>
                     </button>
@@ -384,25 +384,25 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       {/* ─── Bottom status bar ────────────────────────────────────────────── */}
       <div className="card px-5 py-3.5 grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-ink-faint/15">
         <Status
-          icon={Cpu} label={t('Masinad', 'Machines')}
+          icon={Cpu} label={t('overview.machines')}
           value={machines.length > 0
             ? machines.map(([m, n]) => `${m} (${n})`).join(' · ')
-            : t('Masinat pole määratud', 'No machine assigned')}
-          sub={t('pooleliolevad tööd masina kaupa', 'jobs in progress per machine')}
+            : t('overview.noMachineAssigned')}
+          sub={t('overview.jobsInProgressPerMachine')}
         />
         <Status
-          icon={Package} label={t('Materjalid', 'Materials')}
-          value={t(`${Object.keys(settings.materialPrices).length} materjali`, `${Object.keys(settings.materialPrices).length} ${Object.keys(settings.materialPrices).length === 1 ? 'material' : 'materials'}`)}
-          sub={t('hinnakirjas — Seaded → Hinnad', 'in the price list — Settings → Prices')}
+          icon={Package} label={t('overview.materials')}
+          value={t('overview.materialMaterials', { settings, keysCount: Object.keys(settings.materialPrices).length })}
+          sub={t('overview.inThePriceListSettingsPrices')}
         />
         <Status
-          icon={Activity} label={t('Tootmises', 'In production')}
-          value={t(`${stats.inProduction} tööd pooleli`, `${stats.inProduction} ${stats.inProduction === 1 ? 'job' : 'jobs'} in progress`)}
-          sub={t(`${stats.total - stats.inProduction} valmis`, `${stats.total - stats.inProduction} done`)}
+          icon={Activity} label={t('overview.inProduction')}
+          value={t('overview.inProgressJobJobs', { stats, inProduction: stats.inProduction })}
+          sub={t('overview.done', { value: stats.total - stats.inProduction })}
         />
         <Status
-          icon={CalendarCheck} label={t('Tänased tähtajad', 'Today’s due dates')}
-          value={t(`${stats.dueToday.length} tööd`, `${stats.dueToday.length} ${stats.dueToday.length === 1 ? 'job' : 'jobs'}`)}
+          icon={CalendarCheck} label={t('overview.todaySDueDates')}
+          value={t('overview.jobJobs3', { stats, dueTodayCount: stats.dueToday.length })}
           sub={`Wivo v${__APP_VERSION__}`}
         />
       </div>
@@ -447,7 +447,7 @@ function Kpi({ label, value, icon: Icon, tint, delta, deltaLabel, note, noteDang
       {delta !== undefined && deltaLabel && (
         <p className="flex items-center gap-1 text-[11px] mt-1.5">
           {delta === 0 ? (
-            <span className="text-ink-faint truncate">{t('Muutus puudub', 'No change')} {deltaLabel}</span>
+            <span className="text-ink-faint truncate">{t('overview.noChange')} {deltaLabel}</span>
           ) : (
             <>
               {delta > 0

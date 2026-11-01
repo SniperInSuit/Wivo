@@ -36,7 +36,7 @@ export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportD
         <input
           value={search}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder={t('Otsi patsienti, tööd…', 'Search patients, jobs…')}
+          placeholder={t('topBar.searchPatientsJobs')}
           className="w-full pl-8 px-3 py-1.5 text-sm bg-nav/10 border border-nav/20 rounded-lg text-nav placeholder:text-nav/60 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors duration-150"
         />
       </div>
@@ -52,12 +52,12 @@ export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportD
         {onNewVisit && (
           <button onClick={onNewVisit} className="btn-ghost text-nav hover:text-nav border border-nav/20">
             <CalendarPlus size={14} />
-            {t('Uus visiit', 'New visit')}
+            {t('topBar.newVisit')}
           </button>
         )}
         <button onClick={onNewJob} className="btn-primary">
           <Plus size={14} />
-          {t('Uus töö', 'New job')}
+          {t('topBar.newJob')}
         </button>
 
         {initials && (
@@ -68,7 +68,7 @@ export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportD
             <span className="text-xs font-medium text-nav truncate max-w-[130px]">{nimi}</span>
             <button
               onClick={signOut}
-              title={t('Logi välja', 'Sign out')}
+              title={t('topBar.signOut')}
               className="p-1.5 text-nav/50 hover:text-nav transition-colors rounded-lg"
             >
               <LogOut size={14} />

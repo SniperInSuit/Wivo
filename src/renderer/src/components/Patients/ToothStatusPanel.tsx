@@ -116,7 +116,7 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
 
   return (
     <PanelCard
-      title={t('HAMBASTAATUSE KAART (FDI)', 'TOOTH CHART (FDI)')}
+      title={t('patients.tOOTHCHARTFDI')}
       icon={Smile}
       action={
         editing ? (
@@ -127,17 +127,17 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
               className="btn-ghost text-xs px-2 py-1 text-accent disabled:opacity-40"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-              {t('Salvesta', 'Save')}
+              {t('patients.save')}
             </button>
             <button onClick={cancelEdits} disabled={saving} className="btn-ghost text-xs px-2 py-1 disabled:opacity-40">
               <X size={13} />
-              {t('Tühista', 'Cancel')}
+              {t('patients.cancel')}
             </button>
           </span>
         ) : (
           <button onClick={() => setEditing(true)} className="btn-ghost text-xs px-2 py-1">
             <Pencil size={13} />
-            {t('Muuda seisundeid', 'Edit states')}
+            {t('patients.editStates')}
           </button>
         )
       }
@@ -150,8 +150,8 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{t('Ülalõug', 'Upper jaw')}</span>
-          <span className="text-[10px] text-ink-faint">{t('R = patsiendi parem pool', "R = patient's right side")}</span>
+          <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{t('patients.upperJaw')}</span>
+          <span className="text-[10px] text-ink-faint">{t('patients.rPatientSRightSide')}</span>
         </div>
 
         <ToothChart
@@ -161,14 +161,14 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
           onToothClick={handleToothClick}
         />
 
-        <span className="block text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{t('Alalõug', 'Lower jaw')}</span>
+        <span className="block text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{t('patients.lowerJaw')}</span>
       </div>
 
       {editing && (
         <p className="text-[11px] text-ink-muted">
-          {t('Klõpsa hambal: Ravi olemas → Puudub → Terve → tühista käsitsi määrang.', 'Click a tooth: Treated → Missing → Healthy → clear the manual setting.')}
+          {t('patients.clickAToothTreatedMissingHealthy')}
           {dirty && (
-            <span className="font-semibold text-accent">{t(` ${draft.size} muudatust salvestamata.`, ` ${draft.size} unsaved ${draft.size === 1 ? 'change' : 'changes'}.`)}</span>
+            <span className="font-semibold text-accent">{t('patients.unsavedChangeChanges', { draft, size: draft.size })}</span>
           )}
         </p>
       )}
@@ -177,10 +177,7 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
 
       {manualFdi.size > 0 && (
         <p className="text-[10px] text-ink-faint">
-          {t(
-            `${manualFdi.size} hammast on käsitsi määratud — käsitsi määrang tühistab tööde ajaloost tuletatud seisundi.`,
-            `${manualFdi.size} ${manualFdi.size === 1 ? 'tooth is' : 'teeth are'} set manually — a manual setting overrides the state derived from job history.`
-          )}
+          {t('patients.setManuallyAManualSettingOverrides', { manualFdi, size: manualFdi.size })}
         </p>
       )}
     </PanelCard>

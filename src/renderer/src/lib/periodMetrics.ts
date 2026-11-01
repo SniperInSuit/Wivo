@@ -45,18 +45,18 @@ export type DateAnchor = 'too' | 'arve' | 'laekumine'
 export type MoneyConcept = 'tulu' | 'kaive' | 'arveldatud' | 'laekunud'
 
 export const MONEY_LABEL: Record<MoneyConcept, string> = {
-  tulu: t('Tulu', 'Income'),
-  kaive: t('Käive', 'Revenue'),
-  arveldatud: t('Arveldatud', 'Invoiced'),
-  laekunud: t('Laekunud', 'Received'),
+  tulu: t('periodMetrics.income'),
+  kaive: t('periodMetrics.revenue'),
+  arveldatud: t('periodMetrics.invoiced'),
+  laekunud: t('periodMetrics.received'),
 }
 
 /** One line of help per concept, shown under the number so the label is not alone. */
 export const MONEY_HINT: Record<MoneyConcept, string> = {
-  tulu: t('Tööde hinnad, muudatuste tasudeta', 'Job prices, excluding revision fees'),
-  kaive: t('Tööde hinnad koos muudatuste tasudega', 'Job prices, including revision fees'),
-  arveldatud: t('Arvetele kantud, käibemaksuta', 'Put on invoices, excluding VAT'),
-  laekunud: t('Tegelikult laekunud raha', 'Money actually received'),
+  tulu: t('periodMetrics.jobPricesExcludingRevisionFees'),
+  kaive: t('periodMetrics.jobPricesIncludingRevisionFees'),
+  arveldatud: t('periodMetrics.putOnInvoicesExcludingVAT'),
+  laekunud: t('periodMetrics.moneyActuallyReceived'),
 }
 
 export interface MetricParams {
@@ -199,16 +199,16 @@ export function periodMetrics(input: MetricInput, params: MetricParams): PeriodM
  * ways, which is half of why 19 vs 15 was not self-explaining.
  */
 export function unitSplitLabel(m: Pick<PeriodMetrics, 'tood' | 'muudatused'>): string {
-  const parts = [t(`${m.tood} ${m.tood === 1 ? 'töö' : 'tööd'}`, `${m.tood} ${m.tood === 1 ? 'job' : 'jobs'}`)]
-  if (m.muudatused > 0) parts.push(t(`${m.muudatused} muudatust`, `${m.muudatused} ${m.muudatused === 1 ? 'revision' : 'revisions'}`))
+  const parts = [t('periodMetrics.jobJobs', { m })]
+  if (m.muudatused > 0) parts.push(t('periodMetrics.revisionRevisions', { m, muudatused: m.muudatused }))
   return parts.join(' · ')
 }
 
 /** "108 originaal · 36 muudatused". Empty when there are no revision teeth. */
 export function teethSplitLabel(m: Pick<PeriodMetrics, 'hambadOriginaal' | 'hambadMuudatused'>): string {
   return m.hambadMuudatused > 0
-    ? t(`${m.hambadOriginaal} originaal · ${m.hambadMuudatused} muudatused`, `${m.hambadOriginaal} original · ${m.hambadMuudatused} revisions`)
-    : t(`${m.hambadOriginaal} originaal`, `${m.hambadOriginaal} original`)
+    ? t('periodMetrics.originalRevisions', { hambadOriginaal: m.hambadOriginaal, hambadMuudatused: m.hambadMuudatused })
+    : t('periodMetrics.original', { hambadOriginaal: m.hambadOriginaal })
 }
 
 // ─── The period window ────────────────────────────────────────────────────────

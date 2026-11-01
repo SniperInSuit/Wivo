@@ -24,8 +24,8 @@ export interface MaterialPickerProps {
 /** '15 € / hammas' or '15–22 € / hammas' — only when the lab actually priced it. */
 function priceLabel(small: number, large: number): string | undefined {
   if (!small && !large) return undefined
-  if (small === large) return t(`${small} € / hammas`, `${small} € / tooth`)
-  return t(`${small}–${large} € / hammas`, `${small}–${large} € / tooth`)
+  if (small === large) return t('wizard.tooth2', { small })
+  return t('wizard.tooth3', { small, large })
 }
 
 /**
@@ -109,9 +109,9 @@ export function MaterialPicker({
         <WizardSearch
           value={query}
           onChange={setQuery}
-          placeholder={t('Otsi materjali…', 'Search materials…')}
-          ariaLabel={t('Otsi materjali', 'Search materials')}
-          resultLabel={q ? t(`${visible.length} vastet`, `${visible.length} ${visible.length === 1 ? 'match' : 'matches'}`) : undefined}
+          placeholder={t('wizard.searchMaterials')}
+          ariaLabel={t('wizard.searchMaterials2')}
+          resultLabel={q ? t('wizard.matchMatches', { visible, visibleCount: visible.length }) : undefined}
         />
       )}
 
@@ -138,7 +138,7 @@ export function MaterialPicker({
         })}
         {visible.length === 0 && (
           <p className="text-base text-ink-muted py-4">
-            {t('Ühtegi materjali ei leitud. Lisa oma materjal allpool.', 'No materials found. Add your own material below.')}
+            {t('wizard.noMaterialsFoundAddYourOwn')}
           </p>
         )}
       </div>
@@ -149,9 +149,9 @@ export function MaterialPicker({
           that both look like a shade, so they are asked in different places and
           named differently. Only materials that come in shades show this. */}
       {shades && shades.length > 0 && (
-        <div role="radiogroup" aria-label={t(`${base} toon`, `${base} shade`)} className="space-y-2">
+        <div role="radiogroup" aria-label={t('wizard.shade', { base })} className="space-y-2">
           <p className="text-base font-semibold text-ink-soft">
-            {base} {t('toon', 'shade')}
+            {base} {t('wizard.shade2')}
             {shade && <span className="text-accent font-medium"> — {shade}</span>}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -176,15 +176,15 @@ export function MaterialPicker({
             })}
           </div>
           <p className="text-base text-ink-muted">
-            {t('Valimata jätmine tellib materjali ilma toonita', 'Leaving it unselected orders the material without a shade')} ({base}).
+            {t('wizard.leavingItUnselectedOrdersTheMaterial')} ({base}).
           </p>
         </div>
       )}
 
       <WizardField
-        label={t('Lisa oma materjal', 'Add your own material')}
+        label={t('wizard.addYourOwnMaterial')}
         htmlFor="wizard-materjal-custom"
-        help={t('Kui materjali nimekirjas pole, kirjuta see siia ja vajuta Lisa.', "If the material isn't in the list, type it here and press Add.")}
+        help={t('wizard.ifTheMaterialIsnTIn')}
       >
         <div className="flex gap-2">
           <input
@@ -193,7 +193,7 @@ export function MaterialPicker({
             value={custom}
             onChange={e => setCustom(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
-            placeholder={t('Nt Zirkoon 1200 MPa', 'e.g. Zirconia 1200 MPa')}
+            placeholder={t('wizard.eGZirconia1200MPa')}
             className={WIZARD_INPUT}
           />
           <button
@@ -203,7 +203,7 @@ export function MaterialPicker({
             className={`${WIZARD_BTN} shrink-0 inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft disabled:opacity-40`}
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
-            {t('Lisa', 'Add')}
+            {t('wizard.add')}
           </button>
         </div>
       </WizardField>

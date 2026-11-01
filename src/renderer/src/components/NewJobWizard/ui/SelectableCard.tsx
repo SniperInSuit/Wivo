@@ -147,7 +147,7 @@ export function SelectableCard({
       <span className={tile ? 'min-w-0 w-full' : 'min-w-0 w-full pr-6'}>
         {/* Read out before the label, so the state is heard first rather than
             after the user has already committed to the word. */}
-        {selected && <span className="sr-only">{t('Valitud. ', 'Selected. ')}</span>}
+        {selected && <span className="sr-only">{t('wizard.selected3')}</span>}
         <span
           className={`block text-base leading-snug ${
             selected ? 'font-semibold text-ink' : 'font-medium text-ink-soft'

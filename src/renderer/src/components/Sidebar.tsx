@@ -24,20 +24,20 @@ const NAV: {
   key: ViewMode; label: string; icon: typeof LayoutDashboard
   perm?: PermissionKey; clinical?: boolean; lab?: boolean
 }[] = [
-  { key: 'overview', label: t('Ülevaade', 'Overview'),   icon: LayoutDashboard },
-  { key: 'board',    label: t('Tööd', 'Jobs'),       icon: Kanban,          perm: 'jobs.read', lab: true },
-  { key: 'calendar', label: t('Kalender', 'Calendar'),   icon: CalendarDays,    perm: 'visits.read' },
-  { key: 'taotlused', label: t('Taotlused', 'Requests'), icon: Inbox,           perm: 'visits.write' },
-  { key: 'table',    label: t('Tabel', 'Table'),      icon: Table2,          perm: 'jobs.read', lab: true },
-  { key: 'patients', label: t('Patsiendid', 'Patients'), icon: Users,           perm: 'patients.read', clinical: true },
-  { key: 'kliendid', label: t('Kliendid', 'Clients'),   icon: Building2,       perm: 'jobs.read', lab: true },
-  { key: 'arved',    label: t('Arved', 'Invoices'),      icon: FileText,        perm: 'payments.read' },
-  { key: 'tootasud', label: t('Töötasud', 'Payroll'),   icon: Wallet },
-  { key: 'stats',    label: t('Statistika', 'Statistics'), icon: BarChart2,       perm: 'stats.read' },
+  { key: 'overview', label: t('sidebar.overview'),   icon: LayoutDashboard },
+  { key: 'board',    label: t('sidebar.jobs'),       icon: Kanban,          perm: 'jobs.read', lab: true },
+  { key: 'calendar', label: t('sidebar.calendar'),   icon: CalendarDays,    perm: 'visits.read' },
+  { key: 'taotlused', label: t('sidebar.requests'), icon: Inbox,           perm: 'visits.write' },
+  { key: 'table',    label: t('sidebar.table'),      icon: Table2,          perm: 'jobs.read', lab: true },
+  { key: 'patients', label: t('sidebar.patients'), icon: Users,           perm: 'patients.read', clinical: true },
+  { key: 'kliendid', label: t('sidebar.clients'),   icon: Building2,       perm: 'jobs.read', lab: true },
+  { key: 'arved',    label: t('sidebar.invoices'),      icon: FileText,        perm: 'payments.read' },
+  { key: 'tootasud', label: t('sidebar.payroll'),   icon: Wallet },
+  { key: 'stats',    label: t('sidebar.statistics'), icon: BarChart2,       perm: 'stats.read' },
 ]
 
 // Seaded is its own view (since 1.1.6) but stays visually separated below a rule
-const SETTINGS_ITEM = { key: 'settings', label: t('Seaded', 'Settings'), icon: Settings } as const
+const SETTINGS_ITEM = { key: 'settings', label: t('sidebar.settings'), icon: Settings } as const
 
 export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
@@ -96,10 +96,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
                 single ring colour would be wrong against one of them. */}
             {key === 'taotlused' && newRequests > 0 && (
               <span
-                title={t(
-                  `${newRequests} uut taotlust ootab vastust`,
-                  `${newRequests} new ${newRequests === 1 ? 'request is' : 'requests are'} waiting for a reply`,
-                )}
+                title={t('sidebar.newWaitingForAReplyRequest', { newRequests })}
                 className={`text-[10px] font-bold rounded-full bg-red-500 text-white min-w-[17px] h-[17px] px-1 flex items-center justify-center ${
                   wide ? 'ml-auto' : 'absolute top-0.5 right-0.5'
                 }`}
@@ -125,12 +122,12 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           {role === 'owner' && (
             <button
               onClick={() => onViewChange('workers')}
-              title={t('Meeskond', 'Team')}
+              title={t('sidebar.team')}
               className={itemClass(view === 'workers')}
             >
               <UsersRound size={wide ? 15 : 17} className="flex-shrink-0" />
               <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>
-                {t('Meeskond', 'Team')}
+                {t('sidebar.team')}
               </span>
             </button>
           )}
@@ -140,13 +137,13 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
       <div className="mt-auto border-t border-nav/10">
         <button
           onClick={toggleRiba}
-          title={wide ? t('Minimeeri külgriba', 'Collapse sidebar') : t('Laienda külgriba', 'Expand sidebar')}
+          title={wide ? t('sidebar.collapseSidebar') : t('sidebar.expandSidebar')}
           className={`w-full flex items-center text-nav hover:text-white transition-colors ${
             wide ? 'gap-2.5 px-4 py-2.5 text-xs' : 'justify-center py-2.5'
           }`}
         >
           {wide ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={16} />}
-          {wide && t('Minimeeri', 'Collapse')}
+          {wide && t('sidebar.collapse')}
         </button>
         <div className={`pb-2.5 ${wide ? 'px-4' : 'text-center'}`}>
           {/* The LIVE version, not the build-time constant — the constant goes

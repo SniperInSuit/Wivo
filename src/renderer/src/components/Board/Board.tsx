@@ -39,7 +39,7 @@ export function Board({
   const baseDate  = addWeeks(new Date(), weekOffset)
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(baseDate,   { weekStartsOn: 1 })
-  const weekFmt   = t('d. MMM', 'd MMM')
+  const weekFmt   = t('board.dMMM')
   const weekLabel = `${format(weekStart, weekFmt, { locale: dateLocale })} – ${format(weekEnd, weekFmt, { locale: dateLocale })}`
   const isCurrentWeek = weekOffset === 0
 

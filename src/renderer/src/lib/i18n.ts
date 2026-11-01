@@ -10,22 +10,22 @@
  * arrives after login, which would mean a second reload every time someone
  * signs in on a machine set to the other language.
  */
-import { et, enGB } from 'date-fns/locale'
+import { et, enGB, ru } from 'date-fns/locale'
 import { lang, LANG_KEY, type Lang } from '@shared/i18n'
 
-export { t, lang, type Lang } from '@shared/i18n'
+export { t, lang, weekdays, type Lang } from '@shared/i18n'
 
 /** For date-fns `format(…, { locale })`: month and weekday names follow the UI. */
-export const dateLocale = lang === 'en' ? enGB : et
+export const dateLocale = lang === 'en' ? enGB : lang === 'ru' ? ru : et
 
 /**
  * For `toLocaleString` / `Intl`. en-GB rather than en-US: day before month and
  * a 24-hour clock, which is what an Estonian lab reads either way.
  */
-export const intlLocale = lang === 'en' ? 'en-GB' : 'et-EE'
+export const intlLocale = lang === 'en' ? 'en-GB' : lang === 'ru' ? 'ru-RU' : 'et-EE'
 
 /**
- * Save and reload. See shared/i18n.ts for why this does not switch live.
+ * Save and reload. See shared/i18n/index.ts for why this does not switch live.
  * Whatever is on screen is lost, so the only caller is the Seaded control,
  * where nothing is half-typed.
  */

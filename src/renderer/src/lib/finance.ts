@@ -381,7 +381,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     labourAccrued += grossPay
     byWorker.push({
       profileId: w.id,
-      name: w.full_name || t('Nimeta', 'Unnamed'),
+      name: w.full_name || t('finance.unnamed'),
       engagement: w.toosuhe === 'ettevote' ? 'ettevote' : 'tootaja',
       jobs: jobsDone.length,
       teeth: jobsDone.reduce((s, j) => s + toothCount(j.hambad), 0),
@@ -575,7 +575,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       // money is SPLIT between them — adding the full cost to every bucket
       // would inflate the total by the number of reasons someone happened to tick.
       const names = revisionReasons(r)
-      const reasons = names.length > 0 ? names : [t('Määramata', 'Unspecified')]
+      const reasons = names.length > 0 ? names : [t('finance.unspecified')]
       const shareOf = (v: number) => v / reasons.length
       const revMat = r.materjal ?? j.materjal
       const revHambad = r.hambad ?? j.hambad
@@ -622,7 +622,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const job = jobs.find(x => x.id === l.job_id)
       const rev = job?.revisions?.find(r => r.id === l.revision_id)
       const names = rev ? revisionReasons(rev) : []
-      const reasons = names.length > 0 ? names : [t('Määramata', 'Unspecified')]
+      const reasons = names.length > 0 ? names : [t('finance.unspecified')]
       for (const reason of reasons) {
         const b = reasonBuckets.get(reason)
         if (b) b.labour += l.amount / reasons.length

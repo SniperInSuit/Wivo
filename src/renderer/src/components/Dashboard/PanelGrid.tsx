@@ -66,14 +66,14 @@ const GLIDE = { duration: 0.34, ease: [0.22, 1, 0.36, 1] } as const
 
 /** Apple-style discrete sizes. Named, because "2×2" means nothing on a menu. */
 export const SIZE_PRESETS: { label: string; size: [number, number] }[] = [
-  { label: t('Väike', 'Small'),               size: [1, 1] },
-  { label: t('Lai', 'Wide'),                  size: [2, 1] },
-  { label: t('Kõrge', 'Tall'),                size: [1, 2] },
-  { label: t('Ruut', 'Square'),               size: [2, 2] },
-  { label: t('Suur', 'Large'),                size: [3, 2] },
-  { label: t('Täislaius', 'Full width'),      size: [4, 2] },
-  { label: t('Pikk', 'Long'),                 size: [2, 4] },
-  { label: t('Täisekraan', 'Full screen'),    size: [4, 6] },
+  { label: t('dashboard.small'),               size: [1, 1] },
+  { label: t('dashboard.wide'),                  size: [2, 1] },
+  { label: t('dashboard.tall'),                size: [1, 2] },
+  { label: t('dashboard.square'),               size: [2, 2] },
+  { label: t('dashboard.large'),                size: [3, 2] },
+  { label: t('dashboard.fullWidth'),      size: [4, 2] },
+  { label: t('dashboard.long'),                 size: [2, 4] },
+  { label: t('dashboard.fullScreen'),    size: [4, 6] },
 ]
 
 export interface VisibilityInput {
@@ -129,7 +129,7 @@ class PanelBoundary extends Component<{ title: string; children: ReactNode }, { 
         </h3>
         <p className="text-[11px] text-orange-500 flex items-start gap-1.5">
           <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
-          {t('Seda paneeli ei õnnestunud kuvada. Ülejäänud lehe numbrid on korras.', 'This panel could not be shown. The rest of the page is fine.')}
+          {t('dashboard.thisPanelCouldNotBeShown')}
         </p>
       </div>
     )
@@ -195,9 +195,9 @@ export function PanelGrid({ panels, ctx, sizes, editing, onMove, onResize, onRem
   if (panels.length === 0) {
     return (
       <div className="card p-10 text-center">
-        <p className="text-sm text-ink-muted">{t('Ühtegi paneeli ei ole valitud.', 'No panels selected.')}</p>
+        <p className="text-sm text-ink-muted">{t('dashboard.noPanelsSelected')}</p>
         <p className="text-xs text-ink-faint mt-1">
-          {t('Vajuta „Kohanda" ja vali, mida sa siin näha tahad.', 'Press “Customise” and choose what you want to see here.')}
+          {t('dashboard.pressCustomiseAndChooseWhatYou')}
         </p>
       </div>
     )
@@ -471,18 +471,18 @@ function PanelChrome({ title, size, onResize, onRemove }: {
         <button
           onClick={() => setOpen(o => !o)}
           className="p-1 rounded text-ink-muted hover:text-ink"
-          title={t(`${title} — suurus ${w}×${h}`, `${title} — size ${w}×${h}`)}
+          title={t('dashboard.size', { title, w, h })}
         >
           <Maximize2 size={12} />
         </button>
-        <button onClick={onRemove} className="p-1 rounded text-ink-muted hover:text-red-500" title={t('Eemalda', 'Remove')}>
+        <button onClick={onRemove} className="p-1 rounded text-ink-muted hover:text-red-500" title={t('dashboard.remove')}>
           <X size={12} />
         </button>
       </div>
 
       {open && (
         <div className="absolute top-9 right-1.5 z-20 bg-bg-card rounded-lg shadow-card border border-ink-faint/15 p-1.5 w-40">
-          <p className="text-[10px] text-ink-faint px-1.5 pb-1">{t('Suurus ruutudes', 'Size in cells')}</p>
+          <p className="text-[10px] text-ink-faint px-1.5 pb-1">{t('dashboard.sizeInCells')}</p>
           {SIZE_PRESETS.map(s => {
             const active = s.size[0] === w && s.size[1] === h
             return (
@@ -499,8 +499,8 @@ function PanelChrome({ title, size, onResize, onRemove }: {
             )
           })}
           <div className="border-t border-ink-faint/10 mt-1 pt-1 flex items-center gap-1 px-1.5">
-            <Stepper label={t('L', 'W')} value={w} max={GRID_COLS} onChange={v => onResize(v, h)} />
-            <Stepper label={t('K', 'H')} value={h} max={MAX_PANEL_ROWS} onChange={v => onResize(w, v)} />
+            <Stepper label={t('dashboard.w')} value={w} max={GRID_COLS} onChange={v => onResize(v, h)} />
+            <Stepper label={t('dashboard.h')} value={h} max={MAX_PANEL_ROWS} onChange={v => onResize(w, v)} />
           </div>
         </div>
       )}

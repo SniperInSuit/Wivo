@@ -199,7 +199,7 @@ export function workTypeConsumables(
   const items = (type.kulud ?? [])
     .filter(k => k.summa > 0)
     .map(k => ({
-      nimi: k.nimi || t('Kulu', 'Cost'),
+      nimi: k.nimi || t('pricing.cost'),
       summa: Math.round((k.tyyp === 'hammas' ? k.summa * teeth : k.summa) * 100) / 100,
     }))
     .filter(k => k.summa > 0)
@@ -225,7 +225,7 @@ export function abutmentUnitParts(
   const type = resolveWorkType(too, types)
   return (type.kulud ?? [])
     .filter(k => k.tyyp === 'hammas' && k.summa > 0)
-    .map(k => ({ nimi: k.nimi || t('Tarvik', 'Part'), summa: k.summa }))
+    .map(k => ({ nimi: k.nimi || t('pricing.part'), summa: k.summa }))
 }
 
 export function abutmentUnitPrice(

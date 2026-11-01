@@ -40,13 +40,13 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     const { error, componentStack } = this.state
     return [
       `Wivo v${__APP_VERSION__}`,
-      `${t('Viga', 'Error')}: ${error?.message ?? t('tundmatu', 'unknown')}`,
+      `${t('errorBoundary.error')}: ${error?.message ?? t('errorBoundary.unknown')}`,
       '',
-      t('Komponendid:', 'Components:'),
-      componentStack?.trim() || t('(puudub)', '(none)'),
+      t('errorBoundary.components'),
+      componentStack?.trim() || t('errorBoundary.none'),
       '',
       'Stack:',
-      error?.stack?.trim() || t('(puudub)', '(none)'),
+      error?.stack?.trim() || t('errorBoundary.none'),
     ].join('\n')
   }
 
@@ -74,12 +74,9 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return (
       <div className="fixed inset-0 flex items-center justify-center p-8 bg-bg">
         <div className="card p-6 max-w-xl space-y-3">
-          <p className="font-semibold text-ink">{t('Rakenduses tekkis viga', 'Something went wrong')}</p>
+          <p className="font-semibold text-ink">{t('errorBoundary.somethingWentWrong')}</p>
           <p className="text-sm text-ink-muted">
-            {t(
-              'Wivo ei suutnud seda vaadet kuvada. Vajuta „Kopeeri veateade“ ja saada see edasi — seal on kirjas, milline osa rakendusest katki läks.',
-              'Wivo could not display this view. Press “Copy error report” and send it on — it says which part of the app broke.',
-            )}
+            {t('errorBoundary.wivoCouldNotDisplayThisView')}
           </p>
           <pre className="text-[11px] text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">
             {this.state.error.message}
@@ -88,7 +85,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
           {frames.length > 0 && (
             <details className="text-[11px]">
               <summary className="cursor-pointer text-ink-muted select-none">
-                {t('Kus see juhtus', 'Where it happened')}
+                {t('errorBoundary.whereItHappened')}
               </summary>
               <pre className="mt-2 text-[11px] text-ink-soft bg-bg-sidebar border border-ink-faint/20 rounded-lg p-3 overflow-auto max-h-40 whitespace-pre-wrap">
                 {frames.join('\n')}
@@ -101,13 +98,13 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
               onClick={() => this.setState({ error: null, componentStack: null, copied: false })}
               className="btn-primary"
             >
-              {t('Proovi uuesti', 'Try again')}
+              {t('errorBoundary.tryAgain')}
             </button>
             <button
               onClick={this.copy}
               className="btn-ghost border border-ink-faint/25"
             >
-              {this.state.copied ? t('Kopeeritud', 'Copied') : t('Kopeeri veateade', 'Copy error report')}
+              {this.state.copied ? t('errorBoundary.copied') : t('errorBoundary.copyErrorReport')}
             </button>
           </div>
         </div>

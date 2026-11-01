@@ -126,7 +126,7 @@ export function JobReadView({
   // whole switcher exists to remove — an empty field means "unchanged here".
   const v = rev
     ? {
-        title: rev.note?.trim() || t('Muudatus', 'Revision'),
+        title: rev.note?.trim() || t('jobDetail.revision'),
         teeth: rev.hambad ?? null,
         material: rev.materjal ?? null,
         shade: rev.varv ?? null,
@@ -170,12 +170,12 @@ export function JobReadView({
         <div className="flex flex-wrap items-center gap-1.5">
           {revisions.length > 0 && (
             <Chip active={activeRevisionId === null} onClick={() => onSelectVariant(null)}>
-              {t('Originaal', 'Original')}
+              {t('jobDetail.original')}
             </Chip>
           )}
           {revisions.map((r, i) => (
             <Chip key={r.id} active={activeRevisionId === r.id} onClick={() => onSelectVariant(r.id)}>
-              {t('Muudatus', 'Revision')} {i + 1}
+              {t('jobDetail.revision')} {i + 1}
             </Chip>
           ))}
           {onAddRevision && (
@@ -183,7 +183,7 @@ export function JobReadView({
               className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80 px-2 py-1 rounded-lg border border-accent/30 hover:bg-accent/10 transition-colors"
             >
               <Plus size={12} />
-              {t('Lisa muudatus', 'Add revision')}
+              {t('jobDetail.addRevision')}
             </button>
           )}
         </div>
@@ -193,10 +193,10 @@ export function JobReadView({
           {onDuplicate && (
             <button type="button" onClick={onDuplicate}
               className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg hover:bg-bg-sidebar transition-colors"
-              title={t('Dubleeri töö', 'Duplicate job')}
+              title={t('jobDetail.duplicateJob')}
             >
               <Copy size={12} />
-              {t('Dubleeri', 'Duplicate')}
+              {t('jobDetail.duplicate')}
             </button>
           )}
           <button type="button"
@@ -205,7 +205,7 @@ export function JobReadView({
               if (!el) return
               const w = window.open('', '_blank', 'width=800,height=600')
               if (!w) return
-              w.document.write(`<html><head><title>${job.patsient} — ${job.too || t('Töö', 'Job')}</title>
+              w.document.write(`<html><head><title>${job.patsient} — ${job.too || t('jobDetail.job')}</title>
                 <style>body{font-family:Inter,system-ui,sans-serif;padding:24px;font-size:13px;color:#1a1a1a}
                 section{border:1px solid #e5e5e5;border-radius:8px;padding:12px;margin-bottom:12px}
                 h3{font-size:11px;text-transform:uppercase;color:#0AB6C4;margin:0 0 8px}
@@ -214,7 +214,7 @@ export function JobReadView({
               w.print()
             }}
             className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg hover:bg-bg-sidebar transition-colors"
-            title={t('Prindi', 'Print')}
+            title={t('jobDetail.print')}
           >
             <Printer size={12} />
           </button>
@@ -224,10 +224,10 @@ export function JobReadView({
       <div ref={printRef} className={isBottom ? 'grid grid-cols-2 gap-3 items-start' : 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start'}>
         {/* ─── Left: production data ─────────────────────────────────────── */}
         <div className="space-y-3">
-          <Card title={rev ? t('MUUDATUSE ANDMED', 'REVISION DETAILS') : t('TÖÖ ANDMED', 'JOB DETAILS')} icon={FileText}>
+          <Card title={rev ? t('jobDetail.rEVISIONDETAILS') : t('jobDetail.jOBDETAILS')} icon={FileText}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               <div className="min-w-0">
-                <Label>{t('Patsient', 'Patient')}</Label>
+                <Label>{t('jobDetail.patient')}</Label>
                 <p className="text-sm font-semibold text-ink truncate" title={job.patsient}>
                   {job.patsient || '—'}
                 </p>
@@ -238,13 +238,13 @@ export function JobReadView({
                     className="flex items-center gap-1 text-[10px] font-medium text-accent hover:underline mt-0.5"
                   >
                     <UserRound size={10} />
-                    {t('Ava profiil', 'Open profile')}
+                    {t('jobDetail.openProfile')}
                     <ArrowUpRight size={10} />
                   </button>
                 )}
               </div>
               <div className="min-w-0">
-                <Label>{rev ? t('Kirjeldus', 'Description') : t('Töö tüüp', 'Work type')}</Label>
+                <Label>{rev ? t('jobDetail.description') : t('jobDetail.workType')}</Label>
                 <p className="text-sm font-semibold text-ink whitespace-pre-wrap break-words">
                   {v.title}
                   {v.rush && <Zap size={11} className="inline ml-1 text-orange-500 fill-orange-400" />}
@@ -262,7 +262,7 @@ export function JobReadView({
               </div>
               {!rev && job.kirjeldus && (
                 <div className="col-span-2 min-w-0">
-                  <Label>{t('Kirjeldus', 'Description')}</Label>
+                  <Label>{t('jobDetail.description')}</Label>
                   <p className="text-sm text-ink-soft whitespace-pre-wrap break-words">{job.kirjeldus}</p>
                 </div>
               )}
@@ -274,7 +274,7 @@ export function JobReadView({
                   showed no teeth at all — neither block was rendered. */}
               {!showItemsBlock && (
               <div>
-                <Label>{t('Hambad (FDI)', 'Teeth (FDI)')}</Label>
+                <Label>{t('jobDetail.teethFDI')}</Label>
                 {teeth > 0
                   ? <ToothBadges
                       hambad={v.teeth}
@@ -284,13 +284,13 @@ export function JobReadView({
                   : <p className="text-sm text-ink-faint">—</p>}
               </div>
               )}
-              <Cell label={t('Kogus', 'Quantity')} value={teeth > 0 ? t(`${teeth} hammast`, `${teeth} ${teeth === 1 ? 'tooth' : 'teeth'}`) : '—'} />
+              <Cell label={t('jobDetail.quantity')} value={teeth > 0 ? t('jobDetail.toothTeeth2', { teeth }) : '—'} />
               <Cell
-                label={rev ? t('Muudatuse aeg', 'Revision time') : t('Töö kuupäev', 'Job date')}
+                label={rev ? t('jobDetail.revisionTime') : t('jobDetail.jobDate')}
                 value={fmt(v.date, rev ? 'dd.MM.yyyy HH:mm' : 'dd.MM.yyyy')}
               />
               <div className="min-w-0">
-                <Label>{t('Tähtaeg', 'Due date')}</Label>
+                <Label>{t('jobDetail.dueDate')}</Label>
                 <p className="text-sm text-ink-soft">
                   {v.deadline
                     ? <>{fmt(v.deadline, 'dd.MM.yyyy')}{' '}<span className="text-ink-muted">{fmt(v.deadline, 'HH:mm')}</span></>
@@ -298,7 +298,7 @@ export function JobReadView({
                 </p>
               </div>
               {rev && (
-                <Cell label={t('Kuulub töö juurde', 'Belongs to job')} value={job.too || '—'} />
+                <Cell label={t('jobDetail.belongsToJob')} value={job.too || '—'} />
               )}
               {/* The date wages are paid on. It was editable only inside the
                   form, and only once the job had reached the done stage — so
@@ -311,11 +311,11 @@ export function JobReadView({
             </div>
           </Card>
 
-          <Card title={t('TOOTMISE ANDMED', 'PRODUCTION DETAILS')} icon={Cpu}>
+          <Card title={t('jobDetail.pRODUCTIONDETAILS')} icon={Cpu}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-              <Cell label={t('Materjal', 'Material')} value={v.material || '—'} strong />
+              <Cell label={t('jobDetail.material2')} value={v.material || '—'} strong />
               <div>
-                <Label>{t('VITA toon', 'VITA shade')}</Label>
+                <Label>{t('jobDetail.vITAShade')}</Label>
                 {v.shade ? <ShadeChip shade={v.shade} /> : <p className="text-sm text-ink-faint">—</p>}
               </div>
               {/* Only when answered. Plenty of work has no stump at all — a
@@ -323,11 +323,11 @@ export function JobReadView({
                   would be noise. */}
               {v.dieShade && (
                 <div>
-                  <Label>{t('Köndivärv', 'Stump shade')}</Label>
+                  <Label>{t('jobDetail.stumpShade')}</Label>
                   <ShadeChip shade={v.dieShade} />
                 </div>
               )}
-              <Cell label={t('Masin', 'Machine')} value={v.machine || (rev ? t('sama kui tööl', 'same as job') : '—')} strong />
+              <Cell label={t('jobDetail.machine')} value={v.machine || (rev ? t('jobDetail.sameAsJob') : '—')} strong />
               {/* Who made it and who designed it. These were on the form and
                   NOWHERE on the read view, so a finished job with nobody
                   assigned looked exactly like one with two people on it — and
@@ -337,17 +337,17 @@ export function JobReadView({
                   not a blank. */}
               {!rev && (
                 <>
-                  <WorkerCell label={t('Teostaja', 'Done by')} id={job.assigned_to} staff={staff} done={isDone} />
-                  <WorkerCell label={t('Disainija', 'Designer')} id={job.designed_by} staff={staff} done={isDone} />
+                  <WorkerCell label={t('jobDetail.doneBy')} id={job.assigned_to} staff={staff} done={isDone} />
+                  <WorkerCell label={t('jobDetail.designer2')} id={job.designed_by} staff={staff} done={isDone} />
                 </>
               )}
-              <Cell label="Print ID" value={v.printId || '—'} mono />
-              <Cell label={t('Disain ID', 'Design ID')} value={v.designId || '—'} mono />
+              <Cell label={t('common.printId')} value={v.printId || '—'} mono />
+              <Cell label={t('jobDetail.designID')} value={v.designId || '—'} mono />
               {/* Only for work that actually has a model — otherwise every job
                   in the app grows a permanent empty row for a field it cannot
                   have. Shown even when blank once the flag is on, because then
                   the missing number IS the thing worth noticing. */}
-              {v.model && <Cell label={t('Mudel ID', 'Model ID')} value={v.modelId || '—'} mono />}
+              {v.model && <Cell label={t('jobDetail.modelID')} value={v.modelId || '—'} mono />}
             </div>
           </Card>
 
@@ -358,31 +358,31 @@ export function JobReadView({
 
         {/* ─── Right: money ──────────────────────────────────────────────── */}
         <div className="space-y-3">
-          <Card title={t('HIND JA MAKSMINE', 'PRICE AND PAYMENT')} icon={Euro}>
+          <Card title={t('jobDetail.pRICEANDPAYMENT')} icon={Euro}>
             <div className="space-y-1.5">
               {rev ? (
                 <>
-                  <Line label={t('Töö hind', 'Job price')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
+                  <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
                   {v.price > 0 && (
-                    <Line label={t('Ümbertegemise kulu (sisemine)', 'Remake cost (internal)')} value={`${v.price.toFixed(2)} €`} muted />
+                    <Line label={t('jobDetail.remakeCostInternal')} value={`${v.price.toFixed(2)} €`} muted />
                   )}
                   {revisions.length > 1 && (
-                    <Line label={t(`Kõik muudatused (${revisions.length})`, `All revisions (${revisions.length})`)} value={`${revTotal.toFixed(2)} €`} muted />
+                    <Line label={t('jobDetail.allRevisions', { revisionsCount: revisions.length })} value={`${revTotal.toFixed(2)} €`} muted />
                   )}
                 </>
               ) : (
                 <>
-                  <Line label={t('Töö hind', 'Job price')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
-                  {extras > 0 && <Line label={t('Lisakulud', 'Extra costs')} value={`${extras.toFixed(2)} €`} />}
+                  <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
+                  {extras > 0 && <Line label={t('jobDetail.extraCosts')} value={`${extras.toFixed(2)} €`} />}
                 </>
               )}
               <div className="flex items-center justify-between pt-1.5 border-t border-ink-faint/15">
-                <span className="text-sm font-semibold text-ink">{t('Kokku tööl', 'Job total')}</span>
+                <span className="text-sm font-semibold text-ink">{t('jobDetail.jobTotal')}</span>
                 <span className="text-sm font-bold text-ink">{jobGrandTotal.toFixed(2)} €</span>
               </div>
               {revisions.length > 0 && !rev && showCosts && (
                 <div className="flex items-center justify-between text-[11px] text-ink-faint mt-1">
-                  <span>{t('Muudatuste kulu (sisemine)', 'Revision cost (internal)')}</span>
+                  <span>{t('jobDetail.revisionCostInternal')}</span>
                   <span className="tabular-nums">{total.revisionTotal.toFixed(2)} €</span>
                 </div>
               )}
@@ -394,14 +394,14 @@ export function JobReadView({
               <div className="rounded-lg px-3 py-2 mt-2.5 bg-orange-50 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-orange-500" />
-                  <span className="text-sm font-medium text-orange-800">{t('Osaliselt makstud', 'Partly paid')}</span>
+                  <span className="text-sm font-medium text-orange-800">{t('jobDetail.partlyPaid')}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-orange-800">
-                  <span>{t('Laekunud', 'Received')}</span>
+                  <span>{t('jobDetail.received')}</span>
                   <span className="tabular-nums font-semibold">{pay.paid.toFixed(2)} €</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-orange-900">
-                  <span className="font-medium">{t('Jääk', 'Balance')}</span>
+                  <span className="font-medium">{t('jobDetail.balance')}</span>
                   <span className="tabular-nums font-bold">{pay.outstanding.toFixed(2)} €</span>
                 </div>
               </div>
@@ -413,7 +413,7 @@ export function JobReadView({
               >
                 <span className={`w-2 h-2 rounded-full ${pay.settled ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span className={`text-sm font-medium ${pay.settled ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {pay.settled ? t('Makstud', 'Paid') : t('Maksmata', 'Unpaid')}
+                  {pay.settled ? t('jobDetail.paid') : t('jobDetail.unpaid')}
                 </span>
                 {pay.settled && job.makse_kuupaev && (
                   <span className="ml-auto text-[11px] text-emerald-700">
@@ -439,14 +439,11 @@ export function JobReadView({
                 the opposite of what the total does: revision costs are the
                 lab's own and stay off the client's bill. */}
             <p className="text-[11px] text-ink-muted mt-1.5">
-              {t(
-                'Makse käib kogu töö kohta. Muudatuste kulu on labori sisemine ja kliendi arvele ei lisandu.',
-                'Payment covers the whole job. Revision costs are the lab\'s own and are not added to the client\'s invoice.',
-              )}
+              {t('jobDetail.paymentCoversTheWholeJobRevision')}
             </p>
             {!pay.settled && onMarkPaid && (
               <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/30 mt-1.5">
-                {pay.partial ? t('Lisa makse', 'Add payment') : t('Märgi makstuks', 'Mark as paid')}
+                {pay.partial ? t('jobDetail.addPayment') : t('jobDetail.markAsPaid')}
               </button>
             )}
           </Card>
@@ -469,7 +466,7 @@ export function JobReadView({
             />
           )}
 
-          <Card title={t('TÖÖ AJALUGU', 'JOB HISTORY')} icon={History}>
+          <Card title={t('jobDetail.jOBHISTORY')} icon={History}>
             {/* Derived from the timestamps the job already carries — there is no
                 audit log table, so this is every event we can honestly show. */}
             <ol className="space-y-2">
@@ -481,16 +478,16 @@ export function JobReadView({
                     key={r.id}
                     ts={r.ts}
                     active={r.id === activeRevisionId}
-                    badge={t(`Muudatus ${n}`, `Revision ${n}`)}
-                    text={r.note?.trim() || t('Muudatus', 'Revision')}
+                    badge={t('jobDetail.revision3', { n })}
+                    text={r.note?.trim() || t('jobDetail.revision')}
                     meta={stageMap[r.status ?? job.status]?.label}
                     onClick={() => onSelectVariant(r.id)}
                   />
                 ))}
-              <Event ts={job.updated_at} text={t('Viimati muudetud', 'Last edited')} />
+              <Event ts={job.updated_at} text={t('jobDetail.lastEdited')} />
               <Event
                 ts={job.created_at}
-                text={t('Töö loodud', 'Job created')}
+                text={t('jobDetail.jobCreated')}
                 active={activeRevisionId === null}
                 onClick={() => onSelectVariant(null)}
               />
@@ -553,15 +550,15 @@ function PaymentRow({ payment: p, onDelete }: {
       {confirm ? (
         <span className="flex items-center gap-1 flex-shrink-0">
           <button onClick={() => { onDelete(); setConfirm(false) }}
-            className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-medium">{t('Jah', 'Yes')}</button>
+            className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-medium">{t('jobDetail.yes')}</button>
           <button onClick={() => setConfirm(false)}
-            className="text-[10px] text-ink-faint hover:text-ink">{t('Ei', 'No')}</button>
+            className="text-[10px] text-ink-faint hover:text-ink">{t('jobDetail.no')}</button>
         </span>
       ) : (
         <button
           onClick={() => setConfirm(true)}
           className="p-0.5 text-ink-faint hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-          title={t('Kustuta makse', 'Delete payment')}
+          title={t('jobDetail.deletePayment')}
         >
           <Trash2 size={10} />
         </button>
@@ -591,7 +588,7 @@ function WorkerCell({ label, id, staff, done }: {
       {name
         ? <p className="text-sm text-ink-soft truncate">{name}</p>
         : done
-          ? <p className="text-sm text-amber-600">{t('määramata — tasu ei arvestata', 'unassigned — no pay counted')}</p>
+          ? <p className="text-sm text-amber-600">{t('jobDetail.unassignedNoPayCounted')}</p>
           : <p className="text-sm text-ink-faint">—</p>}
     </div>
   )
@@ -601,7 +598,7 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
   const wt = useWorkTypes()
   return (
     <div className="col-span-2 space-y-1.5">
-      <Label>{t('Tööosad', 'Work items')} ({items.length})</Label>
+      <Label>{t('jobDetail.workItems')} ({items.length})</Label>
       {items.map(item => {
         const hex = wt.hex(item.too)
         const teethCount = item.hambad.split(',').filter(tooth => tooth.trim()).length
@@ -609,16 +606,16 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
           <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: `${hex}10` }}>
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
             <span className="text-sm font-semibold text-ink">{item.too}</span>
-            {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">{t('sild', 'bridge')}</span>}
+            {item.bridge && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">{t('jobDetail.bridge2')}</span>}
             {/* Who designed how much. A part-designed item pays the designer
                 less, and without this the smaller figure on the cost side has
                 nothing on the job to explain it. */}
             {designIsPartial(item) && (
               <span
                 className="text-[9px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium"
-                title={t(`Disainija tegi hambad ${designTeeth(item)}; ülejäänud tegi tehnik ise`, `The designer did teeth ${designTeeth(item)}; the technician did the rest`)}
+                title={t('jobDetail.theDesignerDidTeethTheTechnician', { item: designTeeth(item) })}
               >
-                {t('disain', 'design')} {designTeeth(item).split(',').filter(tooth => tooth.trim()).length}/
+                {t('jobDetail.design2')} {designTeeth(item).split(',').filter(tooth => tooth.trim()).length}/
                 {item.hambad.split(',').filter(tooth => tooth.trim()).length}
               </span>
             )}
@@ -634,7 +631,7 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
                 </span>
               )
             })()}
-            <span className="text-xs text-ink-muted ml-auto">{t(`${teethCount} hammast`, `${teethCount} ${teethCount === 1 ? 'tooth' : 'teeth'}`)}</span>
+            <span className="text-xs text-ink-muted ml-auto">{t('jobDetail.toothTeeth3', { teethCount })}</span>
             <ToothBadges hambad={item.hambad} max={8} implantaadid={item.implantaadid} />
           </div>
         )
@@ -660,12 +657,12 @@ function CompletionDate({ job }: { job: Job }) {
   const [draft, setDraft] = useState(job.valmis_kuupaev ?? '')
   const updateJob = useUpdateJob()
 
-  const fallback = job.valmis_aeg ? t('tähtaja', 'due') : t('saabumise', 'arrival')
+  const fallback = job.valmis_aeg ? t('jobDetail.due') : t('jobDetail.arrival')
 
   if (editing) {
     return (
       <div className="min-w-0">
-        <Label>{t('Valmimiskuupäev', 'Completion date')}</Label>
+        <Label>{t('jobDetail.completionDate')}</Label>
         <div className="flex items-center gap-1">
           <input
             type="date" autoFocus
@@ -683,14 +680,14 @@ function CompletionDate({ job }: { job: Job }) {
             }}
             className="text-emerald-600 hover:text-emerald-700 text-xs px-1"
           >
-            {t('Salvesta', 'Save')}
+            {t('jobDetail.save')}
           </button>
           <button
             type="button"
             onClick={() => { setDraft(job.valmis_kuupaev ?? ''); setEditing(false) }}
             className="text-ink-faint hover:text-ink text-xs px-1"
           >
-            {t('Loobu', 'Cancel')}
+            {t('jobDetail.cancel')}
           </button>
         </div>
       </div>
@@ -699,18 +696,18 @@ function CompletionDate({ job }: { job: Job }) {
 
   return (
     <div className="min-w-0">
-      <Label>{t('Valmimiskuupäev', 'Completion date')}</Label>
+      <Label>{t('jobDetail.completionDate')}</Label>
       <p className="text-sm text-ink-soft flex items-center gap-1.5">
         {job.valmis_kuupaev ? fmt(job.valmis_kuupaev, 'dd.MM.yyyy') : (
           <span className="text-orange-600 text-xs">
-            {t(`puudub — töötasu läks ${fallback} kuupäeva järgi`, `missing — pay went by the ${fallback} date`)}
+            {t('jobDetail.missingPayWentByTheDate', { fallback })}
           </span>
         )}
         <button
           type="button"
           onClick={() => setEditing(true)}
           className="text-ink-faint hover:text-accent"
-          title={t('Muuda valmimiskuupäeva', 'Edit completion date')}
+          title={t('jobDetail.editCompletionDate')}
         >
           <Pencil size={10} />
         </button>

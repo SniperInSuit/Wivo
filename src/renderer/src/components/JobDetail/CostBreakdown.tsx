@@ -63,7 +63,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
 
   return (
     <div className={`bg-bg-sidebar rounded-xl ${pad} space-y-1`}>
-      <p className="text-xs font-semibold text-ink-muted mb-1.5">{t('Omahind (labori kulu)', 'Cost price (lab cost)')}</p>
+      <p className="text-xs font-semibold text-ink-muted mb-1.5">{t('jobDetail.costPriceLabCost')}</p>
 
       {costs.categories.map(cat => {
         const overridden = cat.override != null
@@ -95,7 +95,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
                   {cat.label}
                   {overridden && (
                     <span className="ml-1.5 text-[9px] px-1 py-px rounded bg-amber-100 text-amber-700 font-medium align-middle">
-                      {t('käsitsi', 'manual')}
+                      {t('jobDetail.manual')}
                     </span>
                   )}
                 </span>
@@ -129,26 +129,26 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
                     <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
                   </div>
                   <button type="button" onClick={() => commit(cat.key)}
-                    title={t('Salvesta', 'Save')} className="text-emerald-600 hover:text-emerald-700 p-0.5">
+                    title={t('jobDetail.save')} className="text-emerald-600 hover:text-emerald-700 p-0.5">
                     <Check size={12} />
                   </button>
                   <button type="button" onClick={() => setEditing(null)}
-                    title={t('Loobu', 'Cancel')} className="text-ink-faint hover:text-ink p-0.5">
+                    title={t('jobDetail.cancel')} className="text-ink-faint hover:text-ink p-0.5">
                     <X size={12} />
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 justify-end">
                   <button type="button" onClick={() => start(cat.key, cat.amount)}
-                    title={t(`Muuda ${cat.label.toLowerCase()}u kulu käsitsi`, `Edit ${cat.label.toLowerCase()} cost manually`)}
+                    title={t('jobDetail.editCostManually', { label: cat.label.toLowerCase() })}
                     className="text-[10px] text-accent hover:text-accent/80 flex items-center gap-0.5">
-                    <Pencil size={9} /> {t('muuda', 'edit')}
+                    <Pencil size={9} /> {t('jobDetail.edit')}
                   </button>
                   {overridden && (
                     <button type="button" onClick={() => onOverride?.(cat.key, null)}
-                      title={t('Tagasi reeglite juurde', 'Back to the rules')}
+                      title={t('jobDetail.backToTheRules')}
                       className="text-[10px] text-ink-faint hover:text-ink flex items-center gap-0.5">
-                      <RotateCcw size={9} /> {t('reegel', 'rule')}
+                      <RotateCcw size={9} /> {t('jobDetail.rule')}
                     </button>
                   )}
                 </div>
@@ -160,7 +160,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
 
       {costs.technicianHourly != null && (
         <div className="flex justify-between text-[10px] text-ink-faint">
-          <span>{t('Tehnik tunnihind', 'Technician hourly rate')}</span>
+          <span>{t('jobDetail.technicianHourlyRate')}</span>
           <span className="tabular-nums">{costs.technicianHourly.toFixed(2)} €/h</span>
         </div>
       )}
@@ -178,7 +178,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
           what made the margin on this page wrong. */}
       <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
         <span className={hasRemakes ? 'text-ink-muted' : 'font-semibold text-ink'}>
-          {hasRemakes ? t('Originaal', 'Original') : t('Kokku kulu', 'Total cost')}
+          {hasRemakes ? t('jobDetail.original') : t('jobDetail.totalCost')}
         </span>
         <span className={`tabular-nums ${hasRemakes ? 'text-ink' : 'font-bold text-red-500'}`}>
           {costs.total.toFixed(2)} €
@@ -194,7 +194,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
           >
             <span className="text-ink-muted flex items-center gap-1">
               {showRemakes ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              {t('Muudatused', 'Revisions')} ({total!.revisions.length})
+              {t('jobDetail.revisions')} ({total!.revisions.length})
             </span>
             <span className="tabular-nums text-ink">{total!.revisionTotal.toFixed(2)} €</span>
           </button>
@@ -205,12 +205,12 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
                 <div key={r.id} className="py-0.5">
                   <div className="flex justify-between text-[11px] gap-2">
                     <span className="text-ink-muted truncate">
-                      {t('Muudatus', 'Revision')} {r.nr}
+                      {t('jobDetail.revision')} {r.nr}
                       {r.note ? ` · ${r.note}` : ''}
                       {/* Both are reasons a remake costs less than it looks, and
                           both are worth seeing next to the number, not guessing at. */}
-                      {!r.tasustatav && <span className="text-ink-faint"> · {t('tasustamata', 'not paid')}</span>}
-                      {!r.valmis && <span className="text-amber-600"> · {t('pooleli', 'in progress')}</span>}
+                      {!r.tasustatav && <span className="text-ink-faint"> · {t('jobDetail.notPaid')}</span>}
+                      {!r.valmis && <span className="text-amber-600"> · {t('jobDetail.inProgress')}</span>}
                     </span>
                     <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
                   </div>
@@ -221,11 +221,11 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
                   {r.total > 0 && (
                     <div className="text-[10px] text-ink-faint tabular-nums">
                       {[
-                        r.labour > 0 ? t(`töö ${r.labour.toFixed(2)}`, `labour ${r.labour.toFixed(2)}`) : null,
+                        r.labour > 0 ? t('jobDetail.labour', { labour: r.labour.toFixed(2) }) : null,
                         r.material - r.tarvikud > 0
-                          ? t(`materjal ${(r.material - r.tarvikud).toFixed(2)}`, `material ${(r.material - r.tarvikud).toFixed(2)}`) : null,
-                        r.tarvikud > 0 ? t(`uued tarvikud ${r.tarvikud.toFixed(2)}`, `new consumables ${r.tarvikud.toFixed(2)}`) : null,
-                        r.extras > 0 ? t(`lisa ${r.extras.toFixed(2)}`, `extras ${r.extras.toFixed(2)}`) : null,
+                          ? t('jobDetail.material', { value: (r.material - r.tarvikud).toFixed(2) }) : null,
+                        r.tarvikud > 0 ? t('jobDetail.newConsumables', { tarvikud: r.tarvikud.toFixed(2) }) : null,
+                        r.extras > 0 ? t('jobDetail.extras', { extras: r.extras.toFixed(2) }) : null,
                       ].filter(Boolean).join(' · ')} €
                     </div>
                   )}
@@ -235,7 +235,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
           )}
 
           <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
-            <span className="font-semibold text-ink">{t('Kokku kulu', 'Total cost')}</span>
+            <span className="font-semibold text-ink">{t('jobDetail.totalCost')}</span>
             <span className="font-bold text-red-500 tabular-nums">{total!.total.toFixed(2)} €</span>
           </div>
         </>
@@ -243,7 +243,7 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
 
       {shown.revenue > 0 && (
         <div className="flex justify-between text-xs">
-          <span className="text-ink-muted">{t('Kate', 'Margin')}</span>
+          <span className="text-ink-muted">{t('jobDetail.margin')}</span>
           <span className={`font-semibold tabular-nums ${shown.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {shown.margin.toFixed(2)} € ({shown.marginPct != null ? `${shown.marginPct.toFixed(0)}%` : '—'})
           </span>

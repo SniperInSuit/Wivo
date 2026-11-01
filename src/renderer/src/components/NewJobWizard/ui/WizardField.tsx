@@ -64,7 +64,7 @@ export function WizardField({
           {required && (
             <>
               <span aria-hidden="true" className="text-rose-500"> *</span>
-              <span className="sr-only">{t(' (kohustuslik)', ' (required)')}</span>
+              <span className="sr-only">{t('wizard.required')}</span>
             </>
           )}
         </label>
@@ -74,7 +74,7 @@ export function WizardField({
           {required && (
             <>
               <span aria-hidden="true" className="text-rose-500"> *</span>
-              <span className="sr-only">{t(' (kohustuslik)', ' (required)')}</span>
+              <span className="sr-only">{t('wizard.required')}</span>
             </>
           )}
         </div>

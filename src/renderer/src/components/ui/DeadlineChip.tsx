@@ -37,15 +37,15 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
 
   const time = format(date, 'HH:mm')
   const label = overdue
-    ? t('Tähtaeg möödas', 'Overdue')
+    ? t('ui.overdue')
     : isDone
       ? format(date, 'dd.MM')
       : isToday(date)
-        ? t(`Täna ${time}`, `Today ${time}`)
+        ? t('ui.today', { time })
         : isTomorrow(date)
-          ? t(`Homme ${time}`, `Tomorrow ${time}`)
+          ? t('ui.tomorrow', { time })
           : calDays <= 7
-            ? t(`${calDays}p ${time}`, `${calDays}d ${time}`)
+            ? t('ui.d', { calDays, time })
             : `${format(date, 'dd.MM')} ${time}`
 
   if (compact) {
@@ -61,7 +61,7 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
     <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${colorClass}`}>
       <Icon size={12} />
       <span>{format(date, 'dd.MM.yyyy HH:mm')}</span>
-      {overdue && <span className="ml-0.5 font-semibold">{t('• möödas', '• overdue')}</span>}
+      {overdue && <span className="ml-0.5 font-semibold">{t('ui.overdue2')}</span>}
       {urgent && !overdue && <span className="ml-0.5">• {hoursLeft}h</span>}
     </span>
   )

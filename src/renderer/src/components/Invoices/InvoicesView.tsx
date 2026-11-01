@@ -29,11 +29,11 @@ interface InvoicesViewProps {
 }
 
 const STATUS_FILTERS: { key: InvoiceStatus | 'koik' | 'tasumata'; label: string }[] = [
-  { key: 'koik', label: t('Kõik', 'All') },
-  { key: 'tasumata', label: t('Tasumata', 'Unpaid') },
-  { key: 'mustand', label: t('Mustandid', 'Drafts') },
-  { key: 'saadetud', label: t('Saadetud', 'Sent') },
-  { key: 'makstud', label: t('Makstud', 'Paid') },
+  { key: 'koik', label: t('invoices.all') },
+  { key: 'tasumata', label: t('invoices.unpaid') },
+  { key: 'mustand', label: t('invoices.drafts') },
+  { key: 'saadetud', label: t('invoices.sent') },
+  { key: 'makstud', label: t('invoices.paid') },
 ]
 
 export function InvoicesView({ jobs }: InvoicesViewProps) {
@@ -103,10 +103,10 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
         <div className="card p-4 flex items-start gap-2 max-w-2xl">
           <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-ink">{t('Arvete tabelit ei leitud', 'Invoices table not found')}</p>
+            <p className="text-sm font-semibold text-ink">{t('invoices.invoicesTableNotFound')}</p>
             <p className="text-xs text-ink-muted">
-              {t('Käivita', 'Run')} <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>{' '}
-              {t('Supabase SQL-redaktoris (Wivo kinni).', 'in the Supabase SQL editor (with Wivo closed).')}
+              {t('invoices.run')} <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>{' '}
+              {t('invoices.inTheSupabaseSQLEditorWith')}
             </p>
             <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
           </div>
@@ -120,37 +120,37 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
       <div className="flex-1 min-w-0 overflow-y-auto px-6 py-5 space-y-5">
         {/* ── Header ── */}
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-page-ink">{t('Arved', 'Invoices')}</h1>
+          <h1 className="text-xl font-bold text-page-ink">{t('invoices.invoices')}</h1>
           <div className="relative ml-auto">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={t('Otsi numbri või nime järgi…', 'Search by number or name…')}
+              placeholder={t('invoices.searchByNumberOrName')}
               className="input py-1.5 pl-8 text-sm w-64"
             />
           </div>
           <button
             onClick={() => exportCsv('arved', filtered, INVOICE_COLUMNS)}
             disabled={filtered.length === 0}
-            title={t(`Ekspordi ${filtered.length} arvet CSV-sse`, `Export ${filtered.length} ${filtered.length === 1 ? 'invoice' : 'invoices'} to CSV`)}
+            title={t('invoices.exportToCSVInvoiceInvoices', { filtered, filteredCount: filtered.length })}
             className="btn-ghost text-sm border border-ink-faint/25 disabled:opacity-40"
           >
             <Download size={14} /> CSV
           </button>
           {canWrite && (
             <button onClick={() => setShowForm(true)} className="btn-primary">
-              <Plus size={14} /> {t('Uus arve', 'New invoice')}
+              <Plus size={14} /> {t('invoices.newInvoice')}
             </button>
           )}
         </div>
 
         {/* ── Summary ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <SummaryCard icon={FileText} label={t('Arveldatud', 'Invoiced')} value={totals.billed} />
-          <SummaryCard icon={CheckCircle2} label={t('Laekunud', 'Received')} value={totals.paid} accent="#22C55E" />
-          <SummaryCard icon={Clock} label={t('Tasumata', 'Unpaid')} value={totals.due} accent="#F59E0B" />
-          <SummaryCard icon={AlertTriangle} label={t('Üle tähtaja', 'Overdue')} value={totals.overdue} accent="#EF4444" />
+          <SummaryCard icon={FileText} label={t('invoices.invoiced')} value={totals.billed} />
+          <SummaryCard icon={CheckCircle2} label={t('invoices.received')} value={totals.paid} accent="#22C55E" />
+          <SummaryCard icon={Clock} label={t('invoices.unpaid')} value={totals.due} accent="#F59E0B" />
+          <SummaryCard icon={AlertTriangle} label={t('invoices.overdue')} value={totals.overdue} accent="#EF4444" />
         </div>
 
         {/* ── Payment plans ── */}
@@ -193,7 +193,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
           <div className="card p-8 text-center">
             <FileText size={28} className="text-ink-faint mx-auto mb-2" />
             <p className="text-sm text-ink-muted">
-              {invoices.length === 0 ? t('Arveid ei ole veel loodud.', 'No invoices yet.') : t('Ükski arve ei vasta filtrile.', 'No invoices match the filter.')}
+              {invoices.length === 0 ? t('invoices.noInvoicesYet') : t('invoices.noInvoicesMatchTheFilter')}
             </p>
           </div>
         ) : (
@@ -201,13 +201,13 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">Number</th>
-                  <th className="px-3 py-2 font-semibold">{t('Saaja', 'Bill to')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('Kuupäev', 'Date')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('Tähtaeg', 'Due date')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Summa', 'Amount')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tasumata', 'Unpaid')}</th>
-                  <th className="px-3 py-2 font-semibold">{t('Seis', 'Status')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('common.number')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('invoices.billTo')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('invoices.date')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('invoices.dueDate')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('invoices.amount')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('invoices.unpaid')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('invoices.status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +249,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
                           className="text-[10px] font-medium rounded-full px-1.5 py-0.5"
                           style={stageChipStyle(late ? '#EF4444' : INVOICE_STATUS_HEX[inv.status])}
                         >
-                          {late ? t('Üle tähtaja', 'Overdue') : INVOICE_STATUS_LABEL[inv.status]}
+                          {late ? t('invoices.overdue') : INVOICE_STATUS_LABEL[inv.status]}
                         </span>
                       </td>
                     </tr>
@@ -321,7 +321,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
     setError(null)
     const value = parseFloat(amount)
     if (!Number.isFinite(value) || value <= 0) {
-      setError(t('Sisesta summa, mis on suurem kui null.', 'Enter an amount greater than zero.'))
+      setError(t('invoices.enterAnAmountGreaterThanZero'))
       return
     }
     try {
@@ -350,7 +350,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
       <div className="p-4 space-y-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[11px] text-ink-muted">{t('Arve', 'Invoice')}</p>
+            <p className="text-[11px] text-ink-muted">{t('invoices.invoice2')}</p>
             <h2 className="text-lg font-bold text-ink tabular-nums">{invoice.number}</h2>
             <p className="text-sm text-ink-muted flex items-center gap-1.5">
               {invoice.bill_to_kind === 'customer'
@@ -360,17 +360,17 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
             </p>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={onPrint} className="btn-ghost p-1.5" title={t('Prindi / salvesta PDF', 'Print / save PDF')}>
+            <button onClick={onPrint} className="btn-ghost p-1.5" title={t('invoices.printSavePDF')}>
               <Printer size={14} />
             </button>
-            <button onClick={onClose} className="btn-ghost p-1.5" title={t('Sulge', 'Close')}><X size={14} /></button>
+            <button onClick={onClose} className="btn-ghost p-1.5" title={t('invoices.close')}><X size={14} /></button>
           </div>
         </div>
 
         {/* Lines */}
         <section className="space-y-1.5">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-            {t('Read', 'Lines')} ({invoice.lines.length})
+            {t('invoices.lines')} ({invoice.lines.length})
           </h3>
           {invoice.lines.map(l => (
             <div key={l.id} className="flex items-start justify-between gap-2 text-xs">
@@ -384,11 +384,11 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
             </div>
           ))}
           <div className="border-t border-ink-faint/15 pt-1.5 space-y-0.5 text-xs">
-            <Row label={t('Summa', 'Net')} value={`${Number(invoice.net_total).toFixed(2)} €`} />
-            <Row label={t(`KM ${Number(invoice.vat_rate)}%`, `VAT ${Number(invoice.vat_rate)}%`)} value={`${Number(invoice.vat_total).toFixed(2)} €`} />
-            <Row label={t('Kokku', 'Total')} value={`${Number(invoice.gross_total).toFixed(2)} €`} bold />
-            <Row label={t('Laekunud', 'Received')} value={`${paid.toFixed(2)} €`} tone="text-emerald-600" />
-            <Row label={t('Tasumata', 'Unpaid')} value={`${due.toFixed(2)} €`} bold tone={due > 0 ? 'text-ink' : 'text-emerald-600'} />
+            <Row label={t('invoices.net')} value={`${Number(invoice.net_total).toFixed(2)} €`} />
+            <Row label={t('invoices.vAT3', { vat_rate: Number(invoice.vat_rate) })} value={`${Number(invoice.vat_total).toFixed(2)} €`} />
+            <Row label={t('invoices.total')} value={`${Number(invoice.gross_total).toFixed(2)} €`} bold />
+            <Row label={t('invoices.received')} value={`${paid.toFixed(2)} €`} tone="text-emerald-600" />
+            <Row label={t('invoices.unpaid')} value={`${due.toFixed(2)} €`} bold tone={due > 0 ? 'text-ink' : 'text-emerald-600'} />
           </div>
         </section>
 
@@ -399,7 +399,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
         {/* Status */}
         {canWrite && (
           <section className="space-y-2">
-            <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">{t('Seis', 'Status')}</h3>
+            <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">{t('invoices.status')}</h3>
             <div className="flex flex-wrap gap-1">
               {(Object.keys(INVOICE_STATUS_LABEL) as InvoiceStatus[]).map(s => (
                 <button
@@ -419,10 +419,10 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
         {/* Payments */}
         <section className="space-y-2">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-            {t('Maksed', 'Payments')} ({invoice.payments.length})
+            {t('invoices.payments')} ({invoice.payments.length})
           </h3>
           {invoice.payments.length === 0 ? (
-            <p className="text-xs text-ink-faint">{t('Makseid ei ole.', 'No payments.')}</p>
+            <p className="text-xs text-ink-faint">{t('invoices.noPayments')}</p>
           ) : invoice.payments.map(p => (
             <div key={p.id} className="flex items-center gap-2 text-xs rounded-lg border border-ink-faint/20 px-2.5 py-1.5">
               <div className="flex-1 min-w-0">
@@ -436,7 +436,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                 <button
                   onClick={() => deletePayment.mutate(p.id)}
                   className="p-1 rounded text-ink-faint hover:text-red-500 transition-colors"
-                  title={t('Kustuta makse', 'Delete payment')}
+                  title={t('invoices.deletePayment')}
                 >
                   <Trash2 size={11} />
                 </button>
@@ -469,7 +469,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                 />
                 <input
                   value={reference} onChange={e => setReference(e.target.value)}
-                  placeholder={t('Viide', 'Reference')} className="input py-1.5 text-sm"
+                  placeholder={t('invoices.reference')} className="input py-1.5 text-sm"
                 />
               </div>
               {error && <p className="text-[11px] text-red-600">{error}</p>}
@@ -478,7 +478,7 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                 disabled={addPayment.isPending}
                 className="w-full btn-ghost justify-center border border-ink-faint/25 disabled:opacity-50"
               >
-                <Euro size={13} /> {t('Lisa makse', 'Add payment')}
+                <Euro size={13} /> {t('invoices.addPayment')}
               </button>
             </form>
           )}
@@ -493,16 +493,16 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                   onClick={() => onDelete(invoice)}
                   className="flex-1 text-xs font-semibold text-white bg-red-500 rounded-lg py-1.5"
                 >
-                  {t('Kustuta jäädavalt', 'Delete permanently')}
+                  {t('invoices.deletePermanently')}
                 </button>
-                <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-xs">{t('Loobu', 'Cancel')}</button>
+                <button onClick={() => setConfirmDelete(false)} className="btn-ghost text-xs">{t('invoices.cancel')}</button>
               </div>
             ) : (
               <button
                 onClick={() => setConfirmDelete(true)}
                 className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors"
               >
-                <Trash2 size={11} /> {t('Kustuta arve', 'Delete invoice')}
+                <Trash2 size={11} /> {t('invoices.deleteInvoice')}
               </button>
             )}
           </section>

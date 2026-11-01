@@ -37,9 +37,9 @@ export function WorkerSelect({ label, value, onChange, emptyLabel = '—', dark,
         className={`input ${dark ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-accent' : ''}`}
       >
         <option value="">{emptyLabel}</option>
-        {showNone && <option value={WORKER_NONE}>{t('Tühi (ei tasustata)', 'Empty (not paid)')}</option>}
+        {showNone && <option value={WORKER_NONE}>{t('jobDetail.emptyNotPaid')}</option>}
         {workers.map(w => (
-          <option key={w.id} value={w.id}>{w.full_name || t('Nimeta', 'Unnamed')}</option>
+          <option key={w.id} value={w.id}>{w.full_name || t('jobDetail.unnamed')}</option>
         ))}
       </select>
     </div>

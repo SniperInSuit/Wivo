@@ -146,7 +146,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         <div className="card p-3 flex items-start gap-2">
           <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-ink-muted">
-            {t('Arvete tabelit ei leitud — käibe numbrid on nullid. Käivita', 'Invoices table not found — the revenue figures are zero. Run')}{' '}
+            {t('dashboard.invoicesTableNotFoundTheRevenue')}{' '}
             <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>.
           </p>
         </div>
@@ -159,25 +159,25 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         const { income: totalIncome, labour: labourTotal, material: materialTotal,
                 costs: totalCosts, profit } = p
         const costParts = [
-          labourTotal > 0 ? t(`Tööjõud ${labourTotal.toFixed(0)}`, `Labour ${labourTotal.toFixed(0)}`) : null,
-          materialTotal > 0 ? t(`Materjal ${materialTotal.toFixed(0)}`, `Material ${materialTotal.toFixed(0)}`) : null,
-          fin.fixedCostTotal > 0 ? t(`Fikseeritud ${fin.fixedCostTotal.toFixed(0)}`, `Fixed ${fin.fixedCostTotal.toFixed(0)}`) : null,
-          fin.overheadCost > 0 ? t(`Üldkulud ${fin.overheadCost.toFixed(0)}`, `Overheads ${fin.overheadCost.toFixed(0)}`) : null,
+          labourTotal > 0 ? t('dashboard.labour', { labourTotal: labourTotal.toFixed(0) }) : null,
+          materialTotal > 0 ? t('dashboard.material', { materialTotal: materialTotal.toFixed(0) }) : null,
+          fin.fixedCostTotal > 0 ? t('dashboard.fixed', { fixedCostTotal: fin.fixedCostTotal.toFixed(0) }) : null,
+          fin.overheadCost > 0 ? t('dashboard.overheads', { overheadCost: fin.overheadCost.toFixed(0) }) : null,
         ].filter(Boolean)
         return (
           <section>
             <div className="grid grid-cols-3 gap-3">
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">{t('Kasum (tulu − kulu)', 'Profit (income − cost)')}</p>
+                <p className="text-xs text-ink-muted mb-1">{t('dashboard.profitIncomeCost')}</p>
                 <p className={`text-2xl font-bold tabular-nums ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {profit.toFixed(2)} €
                 </p>
                 <p className="text-[11px] text-ink-faint mt-1">
-                  {t('Kate', 'Margin')} {totalIncome > 0 ? `${(profit / totalIncome * 100).toFixed(1)}%` : '—'}
+                  {t('dashboard.margin')} {totalIncome > 0 ? `${(profit / totalIncome * 100).toFixed(1)}%` : '—'}
                 </p>
               </div>
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">{t('Tulu (tööde hinnad)', 'Income (job prices)')}</p>
+                <p className="text-xs text-ink-muted mb-1">{t('dashboard.incomeJobPrices')}</p>
                 <p className="text-2xl font-bold tabular-nums text-ink">{totalIncome.toFixed(2)} €</p>
                 {/* From the shared aggregator, not from summing the table
                     below: that table splits a multi-type job across its types,
@@ -185,36 +185,36 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                     off it is what made this screen say 19 where Tootmine said
                     15 for the same month. */}
                 <p className="text-[11px] text-ink-faint mt-1">
-                  {unitSplitLabel(m)} · {t(`${m.hambad} hammast`, `${m.hambad} ${m.hambad === 1 ? 'tooth' : 'teeth'}`)}
+                  {unitSplitLabel(m)} · {t('dashboard.toothTeeth2', { m, hambad: m.hambad })}
                 </p>
                 <p className="text-[11px] text-ink-faint">{teethSplitLabel(m)}</p>
               </div>
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">{t('Kulu kokku', 'Total cost')}</p>
+                <p className="text-xs text-ink-muted mb-1">{t('dashboard.totalCost')}</p>
                 <p className="text-2xl font-bold tabular-nums text-red-500">{totalCosts.toFixed(2)} €</p>
                 {costParts.length > 0 && (
                   <div className="mt-1.5 space-y-0.5">
                     {labourTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">{t('Tööjõud + maksud', 'Labour + taxes')}</span>
+                        <span className="text-ink-faint">{t('dashboard.labourTaxes')}</span>
                         <span className="tabular-nums text-ink-muted">{labourTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {materialTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">{t('Materjal + tarvikud', 'Materials + supplies')}</span>
+                        <span className="text-ink-faint">{t('dashboard.materialsSupplies')}</span>
                         <span className="tabular-nums text-ink-muted">{materialTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {fin.fixedCostTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">{t('Fikseeritud', 'Fixed')}</span>
+                        <span className="text-ink-faint">{t('dashboard.fixed2')}</span>
                         <span className="tabular-nums text-ink-muted">{fin.fixedCostTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {fin.overheadCost > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">{t('Üldkulud', 'Overheads')}</span>
+                        <span className="text-ink-faint">{t('dashboard.overheads2')}</span>
                         <span className="tabular-nums text-ink-muted">{fin.overheadCost.toFixed(2)} €</span>
                       </div>
                     )}
@@ -229,36 +229,33 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── Money in ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingUp size={13} /> {t('Sisse', 'In')}
+          <TrendingUp size={13} /> {t('dashboard.in')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatTile money size="sm" icon={Euro} label={t('Arveldatud', 'Invoiced')} value={fin.billed} sub={MONEY_HINT.arveldatud} />
+          <StatTile money size="sm" icon={Euro} label={t('dashboard.invoiced')} value={fin.billed} sub={MONEY_HINT.arveldatud} />
           {/* Same quantity Tootmine now shows under the same name. It used to
               show the list price of jobs whose legacy `makstud` boolean was
               ticked, which is why the two screens reported 12 800 and 21 980
               for one month. */}
-          <StatTile money size="sm" icon={Wallet} label={t('Laekunud', 'Received')} value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
+          <StatTile money size="sm" icon={Wallet} label={t('dashboard.received')} value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
           {/* Invoice-based, and it has to say so. A lab that settles jobs
               without invoicing has no invoices to owe against, so this reads
               0.00 € — "nobody owes anything" — while Arveldamata next to it
               says otherwise. The Ülevaade counts the same debt job by job and
               reaches a different number for exactly this reason. */}
-          <StatTile money size="sm" icon={Clock} label={t('Tasumata arvete järgi', 'Unpaid by invoice')} value={fin.outstanding} accent="#F59E0B"
+          <StatTile money size="sm" icon={Clock} label={t('dashboard.unpaidByInvoice')} value={fin.outstanding} accent="#F59E0B"
             sub={fin.overdue > 0
-              ? t(`${fin.overdue.toFixed(2)} € üle tähtaja`, `${fin.overdue.toFixed(2)} € overdue`)
-              : t('Ainult väljastatud arved. Arveta tööd on kõrval „Arveldamata" all.', 'Issued invoices only. Jobs without an invoice are alongside, under “Not invoiced”.')} />
+              ? t('dashboard.overdue2', { overdue: fin.overdue.toFixed(2) })
+              : t('dashboard.issuedInvoicesOnlyJobsWithoutAn')} />
           <StatTile money size="sm"
-            icon={FileWarning} label={t('Arveldamata', 'Not invoiced')} value={fin.unbilled} accent="#EF4444"
-            sub={t(`${fin.unbilledJobs} valmis tööd ilma arveta`, `${fin.unbilledJobs} finished ${fin.unbilledJobs === 1 ? 'job' : 'jobs'} without an invoice`)}
+            icon={FileWarning} label={t('dashboard.notInvoiced')} value={fin.unbilled} accent="#EF4444"
+            sub={t('dashboard.finishedWithoutAnInvoiceJobJobs', { fin, unbilledJobs: fin.unbilledJobs })}
           />
         </div>
         {fin.unbilled > 0 && (
           <p className="text-[11px] text-ink-faint mt-2 flex items-start gap-1.5">
             <Info size={11} className="flex-shrink-0 mt-0.5" />
-            {t(
-              '"Arveldamata" on valmis töö, mille eest ei ole arvet tehtud — kulu on juba kantud, tulu mitte. Kõige kiirem koht raha leidmiseks.',
-              '"Not invoiced" is finished work with no invoice made for it — the cost is already booked, the income is not. The quickest place to find money.',
-            )}
+            {t('dashboard.notInvoicedIsFinishedWorkWith')}
           </p>
         )}
       </section>
@@ -266,81 +263,78 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── Money out ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingDown size={13} /> {t('Välja', 'Out')}
+          <TrendingDown size={13} /> {t('dashboard.out')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Gross, including the gross-up of anyone paid a net wage — the
               figure payroll taxes are actually charged on. */}
-          <StatTile money size="sm" icon={Users} label={t('Tööjõukulu (bruto)', 'Labour cost (gross)')} value={fin.labourAccrued} accent="#8B5CF6"
-            coverage={fin.labourCoverage} coverageLabel={t('tööl on teostaja', 'jobs have an assignee')} />
+          <StatTile money size="sm" icon={Users} label={t('dashboard.labourCostGross')} value={fin.labourAccrued} accent="#8B5CF6"
+            coverage={fin.labourCoverage} coverageLabel={t('dashboard.jobsHaveAnAssignee')} />
           {/* Gross pay is not the cost of employing someone — the employer's
               share of payroll taxes is, and that is what has to be funded. */}
           <StatTile money size="sm"
             icon={Wallet}
-            label={t('Tööjõud + maksud + arve', 'Labour + taxes + invoices')}
+            label={t('dashboard.labourTaxesInvoices')}
             value={fin.labourAccrued + employerTax}
             accent="#8B5CF6"
             sub={[
-              t(`Bruto ${fin.labourEmployeeGross.toFixed(2)} €`, `Gross ${fin.labourEmployeeGross.toFixed(2)} €`),
-              employerTax > 0 ? t(`Maksud ${employerTax.toFixed(2)} €`, `Taxes ${employerTax.toFixed(2)} €`) : null,
-              fin.labourContractor > 0 ? t(`Arve alusel ${fin.labourContractor.toFixed(2)} €`, `Contractor invoices ${fin.labourContractor.toFixed(2)} €`) : null,
+              t('dashboard.gross', { labourEmployeeGross: fin.labourEmployeeGross.toFixed(2) }),
+              employerTax > 0 ? t('dashboard.taxes', { employerTax: employerTax.toFixed(2) }) : null,
+              fin.labourContractor > 0 ? t('dashboard.contractorInvoices', { labourContractor: fin.labourContractor.toFixed(2) }) : null,
             ].filter(Boolean).join(' · ') || (
-              settings.tooandjaMaksudProtsent > 0 ? undefined : t('tööandja maksude määr on 0%', 'employer tax rate is 0%')
+              settings.tooandjaMaksudProtsent > 0 ? undefined : t('dashboard.employerTaxRateIs0')
             )}
           />
-          <StatTile money size="sm" icon={Package} label={t('Materjal ja tarvikud', 'Materials and supplies')} value={fin.materialCost + fin.consumableCost} accent="#F97316"
+          <StatTile money size="sm" icon={Package} label={t('dashboard.materialsAndSupplies')} value={fin.materialCost + fin.consumableCost} accent="#F97316"
             sub={fin.consumableCost > 0
-              ? t(`sh. tarvikud ${fin.consumableCost.toFixed(2)} €`, `incl. supplies ${fin.consumableCost.toFixed(2)} €`)
+              ? t('dashboard.inclSupplies', { consumableCost: fin.consumableCost.toFixed(2) })
               : undefined}
-            coverage={fin.materialCoverage} coverageLabel={t('tööl on omahind', 'jobs have a cost price')} />
+            coverage={fin.materialCoverage} coverageLabel={t('dashboard.jobsHaveACostPrice')} />
           {fin.fixedCostTotal > 0 && (
-            <StatTile money size="sm" icon={Package} label={t('Fikseeritud kulud', 'Fixed costs')} value={fin.fixedCostTotal} accent="#8B5CF6"
+            <StatTile money size="sm" icon={Package} label={t('dashboard.fixedCosts')} value={fin.fixedCostTotal} accent="#8B5CF6"
               sub={`${settings.fixedCostsPerJob.map(c => c.nimi).join(', ')}`} />
           )}
           {fin.overheadCost > 0 && (
-            <StatTile money size="sm" icon={Building2} label={t('Üldkulud', 'Overheads')} value={fin.overheadCost} accent="#64748B"
-              sub={t(`${settings.yldkulud.map(o => o.nimi).join(', ')} — perioodi osa`, `${settings.yldkulud.map(o => o.nimi).join(', ')} — share for the period`)} />
+            <StatTile money size="sm" icon={Building2} label={t('dashboard.overheads2')} value={fin.overheadCost} accent="#64748B"
+              sub={t('dashboard.shareForThePeriod', { map: settings.yldkulud.map(o => o.nimi).join(', ') })} />
           )}
-          <StatTile money size="sm" icon={Repeat} label={t('Muudatuste kahju', 'Cost of revisions')} value={fin.revisionLossTotal} accent="#EC4899"
-            sub={t('tööjõud + materjal − tasutud', 'labour + material − charged')} />
+          <StatTile money size="sm" icon={Repeat} label={t('dashboard.costOfRevisions')} value={fin.revisionLossTotal} accent="#EC4899"
+            sub={t('dashboard.labourMaterialCharged')} />
         </div>
       </section>
 
       {/* ── By work type ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
-          {t('Kate töö tüübi järgi', 'Margin by work type')}
+          {t('dashboard.marginByWorkType')}
         </h3>
         {/* Said once, here, rather than left for the reader to deduce from a
             footer that does not add up to the headline. */}
         <p className="text-[11px] text-ink-faint mb-3 max-w-2xl leading-relaxed">
-          {t('Ridade ühik on', 'The unit of each row is the')} <strong className="text-ink-muted">{t('tööosa', 'work item')}</strong>{t(
-            `, mitte töö: mitme tööosaga töö jaguneb oma tüüpide vahel, seega on veerg „Tööosi" summa suurem kui tööde arv (${unitSplitLabel(m)}). Muudatused lisavad hambaid ja kulu, aga mitte tööosi — rida kujul „0 tööosa · hambaid · negatiivne kate" on eelmisest perioodist pärit töö tasuta ümbertegemine ja on niimoodi õige.`,
-            `, not the job: a job with several work items is split across its types, so the “Work items” column adds up to more than the number of jobs (${unitSplitLabel(m)}). Revisions add teeth and cost but not work items — a row reading “0 work items · teeth · negative margin” is a free remake of a job from an earlier period, and that is correct.`,
-          )}
+          {t('dashboard.theUnitOfEachRowIs')} <strong className="text-ink-muted">{t('dashboard.workItem')}</strong>{t('dashboard.notTheJobAJobWith', { m: unitSplitLabel(m) })}
         </p>
         {fin.byWorkType.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-ink-faint">{t('Andmed puuduvad', 'No data')}</div>
+          <div className="card p-6 text-center text-sm text-ink-faint">{t('dashboard.noData')}</div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">{t('Töö tüüp', 'Work type')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tööosi', 'Work items')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tulu', 'Income')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kulu', 'Cost')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tööjõud', 'Labour')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Materjal', 'Material')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kate', 'Margin')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kate %', 'Margin %')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. tulu', 'Avg income')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. kulu', 'Avg cost')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. kate', 'Avg margin')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas tulu', 'Income €/tooth')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas kulu', 'Cost €/tooth')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas kate', 'Margin €/tooth')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('dashboard.workType')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.workItems')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.teeth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.income')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.cost')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.labour2')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.material2')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.margin')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.margin2')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.avgIncome')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.avgCost')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.avgMargin')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.incomeTooth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.costTooth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.marginTooth')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -401,7 +395,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-ink-faint/20 bg-bg-sidebar/60 font-semibold text-xs">
-                  <td className="px-3 py-2 text-ink-muted">{t('Kokku', 'Total')}</td>
+                  <td className="px-3 py-2 text-ink-muted">{t('dashboard.total')}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
                     {fin.byWorkType.reduce((s, type) => s + type.jobs, 0)}
                   </td>
@@ -479,31 +473,28 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           </div>
         )}
         <p className="text-[11px] text-ink-faint mt-2">
-          {t(
-            'Tühi "Arveldatud" tähendab, et selle tüübi töid ei ole veel arveldatud — kate on siis negatiivne, sest kulu on olemas ja tulu mitte.',
-            'An empty "Invoiced" means jobs of this type have not been invoiced yet — the margin is then negative, because the cost exists and the income does not.',
-          )}
+          {t('dashboard.anEmptyInvoicedMeansJobsOf')}
         </p>
       </section>
 
       {/* ── Revision loss ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Muudatuste kahju põhjuse järgi', 'Cost of revisions by reason')}
+          {t('dashboard.costOfRevisionsByReason')}
         </h3>
         {fin.revisionLoss.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-ink-faint">{t('Muudatusi ei olnud', 'There were no revisions')}</div>
+          <div className="card p-6 text-center text-sm text-ink-faint">{t('dashboard.thereWereNoRevisions')}</div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">{t('Põhjus', 'Reason')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Kordi', 'Times')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tööjõud', 'Labour')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Materjal', 'Material')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Tasutud', 'Charged')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Netokahju', 'Net loss')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('dashboard.reason')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.times')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.labour2')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.material2')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.charged')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.netLoss')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -525,21 +516,18 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           </div>
         )}
         <p className="text-[11px] text-ink-faint mt-2 leading-relaxed">
-          {t(
-            'Netokahju = mis ümbertegemine maksis, miinus see, mis selle eest küsiti. Kui muudatused ei ole tasureeglis tasustatud, on tööjõukulu 0 — ümbertegemise aeg läheb siis kaotsi tööajana, mitte rahana.',
-            'Net loss = what the remake cost, minus what was charged for it. If revisions are not paid under the pay rules, the labour cost is 0 — the remake time is then lost as working time, not as money.',
-          )}
+          {t('dashboard.netLossWhatTheRemakeCost')}
         </p>
       </section>
 
       {/* ── How clients paid ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Maksmise viis', 'Payment method')}
+          {t('dashboard.paymentMethod')}
         </h3>
         {fin.byPaymentMethod.length === 0 ? (
           <div className="card p-6 text-center text-sm text-ink-faint">
-            {t('Sellel perioodil ei ole makseid registreeritud.', 'No payments recorded in this period.')}
+            {t('dashboard.noPaymentsRecordedInThisPeriod')}
           </div>
         ) : (
           <div className="card p-4 space-y-2.5">
@@ -548,7 +536,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-ink font-medium">{m.label}</span>
                   <span className="text-ink-muted tabular-nums">
-                    {t(`${m.count} makset`, `${m.count} ${m.count === 1 ? 'payment' : 'payments'}`)} · <span className="font-semibold text-ink">{m.amount.toFixed(2)} €</span>
+                    {t('dashboard.paymentPayments', { m, count: m.count })} · <span className="font-semibold text-ink">{m.amount.toFixed(2)} €</span>
                     <span className="text-ink-faint"> · {m.share.toFixed(0)}%</span>
                   </span>
                 </div>
@@ -561,10 +549,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               </div>
             ))}
             <p className="text-[11px] text-ink-faint pt-1 leading-relaxed">
-              {t('Arvestatakse perioodil', 'Counts payments')} <strong className="text-ink-muted">{t('laekunud', 'received')}</strong>{t(
-                ' makseid, mitte väljastatud arveid — küsimus on, kuidas raha päriselt kohale jõuab. Sisaldab nii arvete makseid kui ka töö juures "Makstud" märkimisi.',
-                ' in the period, not invoices issued — the question is how the money actually arrives. Includes both invoice payments and jobs marked "Paid".',
-              )}
+              {t('dashboard.countsPayments')} <strong className="text-ink-muted">{t('dashboard.received3')}</strong>{t('dashboard.inThePeriodNotInvoicesIssued')}
             </p>
           </div>
         )}
@@ -573,26 +558,26 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── By worker ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Töötajate kaupa', 'By employee')}
+          {t('dashboard.byEmployee')}
         </h3>
         {fin.byWorker.length === 0 ? (
           <div className="card p-6 text-center text-sm text-ink-faint">
-            {t('Ühelegi tööle ei ole teostajat määratud.', 'No job has an assignee.')}
+            {t('dashboard.noJobHasAnAssignee')}
           </div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">{t('Töötaja', 'Employee')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('dashboard.employee')}</th>
                   {/* The engagement cell existed in every row but had no header,
                       so all five columns to its right were labelled with their
                       left-hand neighbour's name. */}
-                  <th className="px-3 py-2 font-semibold">{t('Töösuhe', 'Employment')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Töid', 'Jobs')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Arvestatud', 'Earned')}</th>
-                  <th className="px-3 py-2 font-semibold text-right">{t('Välja makstud', 'Paid out')}</th>
+                  <th className="px-3 py-2 font-semibold">{t('dashboard.employment')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.jobs')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.teeth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.earned')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('dashboard.paidOut')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -600,7 +585,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <tr key={w.profileId} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
                     <td className="px-3 py-2 text-ink">{w.name}</td>
                     <td className="px-3 py-2 text-ink-muted text-xs">
-                      {w.engagement === 'ettevote' ? t('Esitab arve', 'Contractor') : t('Palgal', 'On payroll')}
+                      {w.engagement === 'ettevote' ? t('dashboard.contractor') : t('dashboard.onPayroll')}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{w.jobs}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{w.teeth}</td>

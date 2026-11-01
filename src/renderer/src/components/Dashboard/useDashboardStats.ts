@@ -13,7 +13,7 @@ import { jobTotalValue } from '../../lib/jobPayments'
 import { useWorkTypes } from '../../stores/useSettings'
 import { periodMetrics, rangeFor } from '../../lib/periodMetrics'
 import type { Payment } from '../../types/invoice'
-import { t, lang } from '@/lib/i18n'
+import { t, weekdays } from '@/lib/i18n'
 
 /**
  * 'kuu' is ONE named calendar month, chosen with the month picker; 'month' is
@@ -159,7 +159,7 @@ export function useDashboardStats(
     // Machine breakdown
     const machineCounts: Record<string, number> = {}
     filtered.forEach((j) => {
-      const m = j.masina || t('Määramata', 'Unassigned')
+      const m = j.masina || t('dashboard.unassigned')
       machineCounts[m] = (machineCounts[m] ?? 0) + 1
     })
     const machineStats = Object.entries(machineCounts)
@@ -169,7 +169,7 @@ export function useDashboardStats(
     // Top patients by total tooth count (original + revision teeth split)
     const patientTeeth: Record<string, { original: number; revision: number }> = {}
     filtered.forEach((j) => {
-      const p = j.patsient || t('Tundmatu', 'Unknown')
+      const p = j.patsient || t('dashboard.unknown2')
       const cur = patientTeeth[p] ?? { original: 0, revision: 0 }
       cur.original += toothCount(j.hambad)
       cur.revision += revTeethOf(j)
@@ -268,7 +268,7 @@ export function useDashboardStats(
     // Material stats
     const materialCounts: Record<string, { count: number; teeth: number }> = {}
     filtered.forEach((j) => {
-      const m = j.materjal ?? t('Muu', 'Other')
+      const m = j.materjal ?? t('dashboard.other')
       if (!materialCounts[m]) materialCounts[m] = { count: 0, teeth: 0 }
       materialCounts[m].count++
       materialCounts[m].teeth += toothCount(j.hambad)
@@ -326,9 +326,9 @@ export function useDashboardStats(
     visitStats.noShowRate = noShowBase > 0 ? (visitStats.eiTulnud / noShowBase) * 100 : 0
 
     // Visits per weekday — when the lab is actually busy. 1 = Monday.
-    const dayNames = lang === 'en'
-      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-      : ['P', 'E', 'T', 'K', 'N', 'R', 'L']
+    // Sunday first: indexed by Date.getDay().
+    const week = weekdays('short')
+    const dayNames = [week[6], ...week.slice(0, 6)]
     const weekdayBuckets = Array.from({ length: 7 }, (_, i) => ({ name: dayNames[i], count: 0 }))
     visitsIn.forEach(v => {
       const d = parseISO(v.algus)
@@ -345,7 +345,7 @@ export function useDashboardStats(
     const doctorOf = (j: Job): string => {
       const p = (j.patient_id ? patientById.get(j.patient_id) : undefined)
         ?? patientByName.get((j.patsient ?? '').trim().toLowerCase())
-      return p?.arst?.trim() || p?.kliinik?.trim() || t('Määramata', 'Unassigned')
+      return p?.arst?.trim() || p?.kliinik?.trim() || t('dashboard.unassigned')
     }
     const doctorBuckets = new Map<string, { jobs: number; revenue: number }>()
     filtered.forEach(j => {
@@ -388,7 +388,7 @@ export function useDashboardStats(
         // bars, so the bars total more than the revision count — which is the
         // honest reading of "how often is a wrong shade involved".
         const names = revisionReasons(r)
-        for (const reason of (names.length > 0 ? names : [t('Määramata', 'Unspecified')])) {
+        for (const reason of (names.length > 0 ? names : [t('dashboard.unspecified')])) {
           reasonBuckets.set(reason, (reasonBuckets.get(reason) ?? 0) + 1)
         }
       })
@@ -504,8 +504,8 @@ export function useDashboardStats(
             const days = Math.max(0, Math.round((breakDate.getTime() - doneDate.getTime()) / (1000 * 60 * 60 * 24)))
             entries.push({
               days,
-              materjal: j.materjal ?? t('Määramata', 'Unspecified'),
-              too: j.too ?? t('Määramata', 'Unspecified'),
+              materjal: j.materjal ?? t('dashboard.unspecified'),
+              too: j.too ?? t('dashboard.unspecified'),
               tehnik: j.assigned_to ?? '',
             })
           }

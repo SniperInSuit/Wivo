@@ -74,7 +74,7 @@ export function VisitTimeline({
       <div className="flex items-center justify-between mb-3">
         <h2 className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted uppercase tracking-wider">
           <User size={12} />
-          {isToday ? t('Täna', 'Today') : format(day, 'dd.MM')} — {t('visiidid', 'visits')} ({dayVisits.length})
+          {isToday ? t('calendarView.today') : format(day, 'dd.MM')} — {t('calendarView.visits3')} ({dayVisits.length})
         </h2>
       </div>
 
@@ -82,7 +82,7 @@ export function VisitTimeline({
         <button
           onClick={() => onDayChange(addDays(day, -1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title={t('Eelmine päev', 'Previous day')}
+          title={t('calendarView.previousDay')}
         >
           <ChevronLeft size={14} />
         </button>
@@ -207,7 +207,7 @@ export function VisitTimeline({
                     onMouseLeave={() => setOpenId(id => (id === v.id ? null : id))}
                     onDoubleClick={() => onVisitOpen(v)}
                     onClick={() => onVisitOpen(v)}
-                    title={t('Ava visiit', 'Open visit')}
+                    title={t('calendarView.openVisit')}
                     className={`absolute w-[146px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
                       v.staatus === 'ei_tulnud'
                         ? 'bg-amber-50 border-amber-200 hover:border-amber-300'
@@ -228,14 +228,14 @@ export function VisitTimeline({
                       {format(d, 'HH:mm')}
                       {done && !cancelled && <Check size={9} className="text-emerald-600" />}
                       {cancelled && <X size={9} style={{ color: VISIT_STATUS_HEX[v.staatus] }} />}
-                      {isLate && <span className="text-[9px] font-semibold text-red-500">{t('hilines', 'late')}</span>}
+                      {isLate && <span className="text-[9px] font-semibold text-red-500">{t('calendarView.late')}</span>}
                     </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-ink truncate">
                       <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />
                       <span className="truncate">{v.arst?.trim() || v.patsient}</span>
                     </span>
                     <span className="text-[10px] text-ink-muted">
-                      {jobs.length} {jobs.length === 1 ? t('töö', 'job') : t('tööd', 'jobs')}
+                      {jobs.length} {jobs.length === 1 ? t('calendarView.job') : t('calendarView.jobs2')}
                     </span>
 
                     {/* Hover detail */}
@@ -247,7 +247,7 @@ export function VisitTimeline({
                         </span>
                         <span className="block text-[10px] text-ink-muted">
                           {format(d, 'HH:mm')}–{format(new Date(d.getTime() + v.kestus_min * 60000), 'HH:mm')}
-                          {' · '}{v.kestus_min} min
+                          {' · '}{v.kestus_min} {t('common.minutesShort')}
                         </span>
                         <span
                           className="inline-block text-[9px] font-medium rounded-full px-1.5"
@@ -267,7 +267,7 @@ export function VisitTimeline({
                           onClick={e => { e.stopPropagation(); onOpenJobs(v) }}
                           className="block text-[10px] font-medium text-accent hover:underline pt-0.5 border-t border-ink-faint/15"
                         >
-                          {t('Vaata tööde nimekirja', 'View job list')} ({jobs.length})
+                          {t('calendarView.viewJobList')} ({jobs.length})
                         </span>
                       </span>
                     )}
@@ -278,7 +278,7 @@ export function VisitTimeline({
 
             {dayVisits.length === 0 && (
               <p className="absolute inset-x-0 text-center text-sm text-ink-faint" style={{ top: CARD_ROW_0 + 10 }}>
-                {t('Sellel päeval visiite ei ole.', 'No visits on this day.')}
+                {t('calendarView.noVisitsOnThisDay')}
               </p>
             )}
           </div>
@@ -287,7 +287,7 @@ export function VisitTimeline({
         <button
           onClick={() => onDayChange(addDays(day, 1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title={t('Järgmine päev', 'Next day')}
+          title={t('calendarView.nextDay')}
         >
           <ChevronRight size={14} />
         </button>

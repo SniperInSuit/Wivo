@@ -30,12 +30,12 @@ export interface StepMeta {
 }
 
 export const WIZARD_STEPS: readonly StepMeta[] = [
-  { id: 1, key: 'tootuup',  short: t('Töö tüüp', 'Work type'), title: t('Mida valmistame?', 'What are we making?'), subtitle: t('Vali üks või mitu töö tüüpi.', 'Choose one or more work types.') },
-  { id: 2, key: 'hambad',   short: t('Hambad', 'Teeth'), title: t('Vali hambad', 'Choose teeth'), subtitle: t('Märgi hambad, mida see töö puudutab.', 'Mark the teeth this job involves.') },
-  { id: 3, key: 'materjal', short: t('Materjal', 'Material'), title: t('Materjal ja värv', 'Material and shade'), subtitle: t('Vali materjal ja vajadusel värvitoon.', 'Choose the material and, if needed, the shade.') },
-  { id: 4, key: 'tootmine', short: t('Tootmine', 'Production'), title: t('Tootmine', 'Production'), subtitle: t('Masin, teostajad ja tähtaeg.', 'Machine, assignees and due date.') },
-  { id: 5, key: 'tellimus', short: t('Tellimus', 'Order'), title: t('Patsient ja tellimus', 'Patient and order'), subtitle: t('Kelle jaoks see töö on.', 'Who this job is for.') },
-  { id: 6, key: 'kontroll', short: t('Kontroll', 'Review'), title: t('Kontrolli töö üle', 'Review the job'), subtitle: t('Vaata andmed üle ja loo töö.', 'Check the details and create the job.') },
+  { id: 1, key: 'tootuup',  short: t('wizardRules.workType'), title: t('wizardRules.whatAreWeMaking'), subtitle: t('wizardRules.chooseOneOrMoreWorkTypes') },
+  { id: 2, key: 'hambad',   short: t('wizardRules.teeth'), title: t('wizardRules.chooseTeeth'), subtitle: t('wizardRules.markTheTeethThisJobInvolves') },
+  { id: 3, key: 'materjal', short: t('wizardRules.material'), title: t('wizardRules.materialAndShade'), subtitle: t('wizardRules.chooseTheMaterialAndIfNeeded') },
+  { id: 4, key: 'tootmine', short: t('wizardRules.production'), title: t('wizardRules.production'), subtitle: t('wizardRules.machineAssigneesAndDueDate') },
+  { id: 5, key: 'tellimus', short: t('wizardRules.order'), title: t('wizardRules.patientAndOrder'), subtitle: t('wizardRules.whoThisJobIsFor') },
+  { id: 6, key: 'kontroll', short: t('wizardRules.review'), title: t('wizardRules.reviewTheJob'), subtitle: t('wizardRules.checkTheDetailsAndCreateThe') },
 ] as const
 
 const ALL_STEPS: readonly StepId[] = [1, 2, 3, 4, 5, 6]

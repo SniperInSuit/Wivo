@@ -125,7 +125,7 @@ export function NewJobWizard({
       // describeError, not e.message: the most likely failure here by far is an
       // un-run migration, and PostgREST's raw "Could not find the 'x' column of
       // 'jobs' in the schema cache" tells the owner nothing they can act on.
-      setCreateError(t(`Töö loomine ebaõnnestus. ${describeError(e)}`, `Couldn't create the job. ${describeError(e)}`))
+      setCreateError(t('wizard.couldnTCreateTheJob', { e: describeError(e) }))
     } finally {
       inFlight.current = false
     }

@@ -74,8 +74,8 @@ export function DebugConsole() {
       <div className="flex items-center justify-between mb-2 cursor-pointer" onClick={() => setExpanded(e => !e)}>
         <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
           <AlertTriangle size={14} className="text-accent" />
-          Debug Console
-          <span className="text-[10px] text-ink-faint font-normal">({t(`${logs.length} kirjet`, `${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`)})</span>
+          {t('workers.debugConsole')}
+          <span className="text-[10px] text-ink-faint font-normal">({t('workers.entryEntries', { logs, logsCount: logs.length })})</span>
           {logs.some(l => l.level === 'error') && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           )}
@@ -84,7 +84,7 @@ export function DebugConsole() {
           <button
             onClick={e => { e.stopPropagation(); logs.length = 0; notify() }}
             className="text-ink-faint hover:text-red-500 p-1 transition-colors"
-            title={t('Tühjenda', 'Clear')}
+            title={t('workers.clear')}
           >
             <Trash2 size={12} />
           </button>
@@ -95,7 +95,7 @@ export function DebugConsole() {
       {expanded && (
         <div className="max-h-[400px] overflow-y-auto space-y-0.5 font-mono text-[11px]">
           {logs.length === 0 && (
-            <p className="text-ink-faint py-4 text-center text-xs font-sans">{t('Logi on tühi', 'Log is empty')}</p>
+            <p className="text-ink-faint py-4 text-center text-xs font-sans">{t('workers.logIsEmpty')}</p>
           )}
           {logs.map(entry => (
             <div key={entry.id}

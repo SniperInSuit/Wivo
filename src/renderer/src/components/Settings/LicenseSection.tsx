@@ -18,13 +18,13 @@ export function LicenseSection() {
     try {
       const next = await install(token)
       if (next.state === 'invalid') {
-        setMessage(t('See võti ei kehti. Kontrolli, et kogu tekst sai kopeeritud.', 'This key is not valid. Check that all of the text was copied.'))
+        setMessage(t('settings.thisKeyIsNotValidCheck'))
       } else {
         setToken('')
-        setMessage(t('Litsents paigaldatud.', 'Licence installed.'))
+        setMessage(t('settings.licenceInstalled'))
       }
     } catch {
-      setMessage(t('Võtme salvestamine ebaõnnestus.', 'Could not save the key.'))
+      setMessage(t('settings.couldNotSaveTheKey'))
     } finally {
       setBusy(false)
     }
@@ -37,20 +37,17 @@ export function LicenseSection() {
   return (
     <section>
       <h3 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
-        <KeyRound size={14} className="text-accent" /> {t('Litsents', 'Licence')}
+        <KeyRound size={14} className="text-accent" /> {t('settings.licence')}
       </h3>
 
       {!enforced ? (
         <p className="text-xs text-ink-muted max-w-xl leading-relaxed">
-          {t(
-            'See build ei kontrolli litsentsi — arendusversioon. Kontroll lülitub sisse siis, kui',
-            'This build does not check the licence — it is a development version. Checking turns on once',
-          )}{' '}
+          {t('settings.thisBuildDoesNotCheckThe')}{' '}
           <code className="px-1 rounded bg-bg-sidebar">LICENCE_PUBLIC_KEY</code>{' '}
-          {t('on seatud.', 'is set.')}
+          {t('settings.isSet')}
         </p>
       ) : loading ? (
-        <p className="text-xs text-ink-faint">{t('Kontrollin…', 'Checking…')}</p>
+        <p className="text-xs text-ink-faint">{t('settings.checking')}</p>
       ) : (
         <>
           <div className="bg-bg-sidebar rounded-xl p-4 mb-4 max-w-xl">
@@ -58,27 +55,27 @@ export function LicenseSection() {
               {status.state === 'active'
                 ? <CheckCircle2 size={14} />
                 : <AlertTriangle size={14} />}
-              {status.state === 'active' ? t('Kehtiv', 'Valid') :
-               status.state === 'grace'   ? t(`Aegunud — armuaega ${status.graceLeft} päeva`, `Expired — ${status.graceLeft} ${status.graceLeft === 1 ? 'day' : 'days'} of grace left`) :
-               status.state === 'invalid' ? t('Ei kehti', 'Not valid') :
-               status.state === 'expired' ? t('Aegunud — kirjutuskaitse', 'Expired — read-only') : t('Puudub', 'Missing')}
+              {status.state === 'active' ? t('settings.valid') :
+               status.state === 'grace'   ? t('settings.expiredOfGraceLeftDayDays', { status, graceLeft: status.graceLeft }) :
+               status.state === 'invalid' ? t('settings.notValid') :
+               status.state === 'expired' ? t('settings.expiredReadOnly') : t('settings.missing')}
             </p>
             {status.payload && (
               <dl className="mt-2 space-y-1 text-xs">
-                <Row label={t('Kellele', 'Licensed to')} value={status.payload.name} />
-                <Row label={t('Pakett', 'Plan')} value={PLAN_LABEL[status.payload.plan]} />
-                <Row label={t('Kasutajaid', 'Users')} value={status.payload.seats?.toString() ?? t('piiramatu', 'unlimited')} />
-                <Row label={t('Kehtib kuni', 'Valid until')} value={status.payload.exp} />
+                <Row label={t('settings.licensedTo')} value={status.payload.name} />
+                <Row label={t('settings.plan')} value={PLAN_LABEL[status.payload.plan]} />
+                <Row label={t('settings.users')} value={status.payload.seats?.toString() ?? t('settings.unlimited2')} />
+                <Row label={t('settings.validUntil')} value={status.payload.exp} />
               </dl>
             )}
             {status.state === 'active' && status.daysLeft != null && status.daysLeft <= 30 && (
               <p className="text-[11px] text-amber-600 mt-2">
-                {t(`Aegub ${status.daysLeft} päeva pärast.`, `Expires in ${status.daysLeft} ${status.daysLeft === 1 ? 'day' : 'days'}.`)}
+                {t('settings.expiresInDayDays', { status, daysLeft: status.daysLeft })}
               </p>
             )}
           </div>
 
-          <label className="label">{t('Uus litsentsivõti', 'New licence key')}</label>
+          <label className="label">{t('settings.newLicenceKey')}</label>
           <textarea
             value={token}
             onChange={e => setToken(e.target.value)}
@@ -93,15 +90,12 @@ export function LicenseSection() {
               className="btn-primary disabled:opacity-50"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
-              {t('Paigalda', 'Install')}
+              {t('settings.install')}
             </button>
             {message && <p className="text-xs text-ink-muted">{message}</p>}
           </div>
           <p className="text-[11px] text-ink-faint mt-2 max-w-xl leading-relaxed">
-            {t(
-              'Võti on seotud sinu ettevõttega, mitte arvutiga — sama võti käib iga töökoha peale. Kontroll toimub arvutis kohapeal, ilma internetita: labor ei tohi seisma jääda sellepärast, et võrk kadus.',
-              'The key belongs to your company, not to a computer — the same key works on every workstation. It is checked on the computer itself, without the internet: the lab must not stop because the network went down.',
-            )}
+            {t('settings.theKeyBelongsToYourCompany')}
           </p>
         </>
       )}

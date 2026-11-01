@@ -19,15 +19,15 @@ export interface DieShade {
 }
 
 export const DIE_SHADES: DieShade[] = [
-  { code: 'ND1', hex: '#F7EFDF', note: t('Väga hele', 'Very light') },
-  { code: 'ND2', hex: '#F2E5CB', note: t('Hele', 'Light') },
-  { code: 'ND3', hex: '#EBD9B4', note: t('Hele kollakas', 'Light yellowish') },
-  { code: 'ND4', hex: '#E2CB9C', note: t('Kollakas', 'Yellowish') },
-  { code: 'ND5', hex: '#D5B884', note: t('Kollakaspruun', 'Yellowish brown') },
-  { code: 'ND6', hex: '#C0A170', note: t('Pruun', 'Brown') },
-  { code: 'ND7', hex: '#A78D66', note: t('Pruunikashall', 'Brownish grey') },
-  { code: 'ND8', hex: '#8A7A66', note: t('Hall — nt surnud hammas', 'Grey — e.g. non-vital tooth') },
-  { code: 'ND9', hex: '#6E6459', note: t('Tume hall — nt metallitihvt', 'Dark grey — e.g. metal post') },
+  { code: 'ND1', hex: '#F7EFDF', note: t('dieShades.veryLight') },
+  { code: 'ND2', hex: '#F2E5CB', note: t('dieShades.light') },
+  { code: 'ND3', hex: '#EBD9B4', note: t('dieShades.lightYellowish') },
+  { code: 'ND4', hex: '#E2CB9C', note: t('dieShades.yellowish') },
+  { code: 'ND5', hex: '#D5B884', note: t('dieShades.yellowishBrown') },
+  { code: 'ND6', hex: '#C0A170', note: t('dieShades.brown') },
+  { code: 'ND7', hex: '#A78D66', note: t('dieShades.brownishGrey') },
+  { code: 'ND8', hex: '#8A7A66', note: t('dieShades.greyEGNonVitalTooth') },
+  { code: 'ND9', hex: '#6E6459', note: t('dieShades.darkGreyEGMetalPost') },
 ]
 
 /** Look up a stump shade by code. Free text returns undefined. */

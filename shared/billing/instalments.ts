@@ -119,27 +119,27 @@ export function splitAmount(total: number, count: number): number[] {
 export function scheduleProblems(plan: PaymentPlanShape): string[] {
   const out: string[] = []
   if (!Number.isFinite(plan.total) || plan.total <= 0) {
-    out.push(t('Kogusumma puudub või ei ole positiivne.', 'The total is missing or not positive.'))
+    out.push(t('billing.theTotalIsMissingOrNot'))
   }
   if (!Number.isInteger(plan.count) || plan.count < 1) {
-    out.push(t('Osamaksete arv peab olema vähemalt 1.', 'There must be at least 1 instalment.'))
+    out.push(t('billing.thereMustBeAtLeast1'))
   } else if (plan.count > 60) {
-    out.push(t('Osamakseid saab olla kuni 60.', 'There can be at most 60 instalments.'))
+    out.push(t('billing.thereCanBeAtMost60'))
   }
   if (!parseYmd(plan.firstIssue)) {
-    out.push(t('Esimese arve kuupäev on puudu või vigane.', 'The first invoice date is missing or invalid.'))
+    out.push(t('billing.theFirstInvoiceDateIsMissing'))
   }
   if (plan.dayOfMonth !== undefined
     && (!Number.isInteger(plan.dayOfMonth) || plan.dayOfMonth < 1 || plan.dayOfMonth > 28)) {
     // 28 rather than 31 — see PaymentPlanShape.dayOfMonth.
-    out.push(t('Arve päev peab olema 1–28, et see kehtiks ka veebruaris.', 'The invoice day must be 1–28, so that it also works in February.'))
+    out.push(t('billing.theInvoiceDayMustBe1'))
   }
   if (!Number.isInteger(plan.termDays) || plan.termDays < 0) {
-    out.push(t('Maksetähtaeg peab olema päevades, 0 või rohkem.', 'The payment term must be in days, 0 or more.'))
+    out.push(t('billing.thePaymentTermMustBeIn'))
   }
   // A part that rounds to nothing means the plan is finer than money is.
   if (out.length === 0 && plan.total / plan.count < 0.01) {
-    out.push(t('Osamakse jääks alla sendi — vähenda osamaksete arvu.', 'An instalment would come to less than a cent — reduce the number of instalments.'))
+    out.push(t('billing.anInstalmentWouldComeToLess'))
   }
   return out
 }

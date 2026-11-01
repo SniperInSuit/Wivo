@@ -53,14 +53,14 @@ export interface ThemeOption {
 export const THEMES: ThemeOption[] = [
   {
     key: 'hele',
-    label: t('Hele', 'Light'),
-    hint: t('Vaikimisi, valge', 'Default, white'),
+    label: t('useSettings.light'),
+    hint: t('useSettings.defaultWhite'),
     preview: { bg: '#F7F9FA', card: '#FFFFFF' }
   },
   {
     key: 'navy-cloud',
     label: 'Navy Cloud',
-    hint: t('#16284B → #0F1D3A, heledad kastid', '#16284B → #0F1D3A, light cards'),
+    hint: t('useSettings.n16284B0F1D3ALightCards'),
     preview: {
       bg: 'linear-gradient(135deg,#16284B 0%,#142443 45%,#0F1D3A 100%)',
       card: '#F8FBFD'
@@ -69,7 +69,7 @@ export const THEMES: ThemeOption[] = [
   {
     key: 'cloudy-navy',
     label: 'Cloudy Navy',
-    hint: t('Hele taust, tumedad kastid', 'Light background, dark cards'),
+    hint: t('useSettings.lightBackgroundDarkCards'),
     preview: {
       bg: 'linear-gradient(135deg,#f4f8fc 0%,#e6edf6 45%,#cfdae9 78%,#b9c8dc 100%)',
       card: '#16233F'
@@ -77,8 +77,8 @@ export const THEMES: ThemeOption[] = [
   },
   {
     key: 'oma',
-    label: t('Oma', 'Custom'),
-    hint: t('Sinu värvid', 'Your colours'),
+    label: t('useSettings.custom'),
+    hint: t('useSettings.yourColours'),
     // No fixed swatch: this one's preview is whatever the person has made, so
     // the settings page reads it off the saved theme instead. A hardcoded pair
     // here would show somebody else's colours on their own theme.
@@ -96,11 +96,11 @@ export interface TextSizeOption {
 }
 
 export const TEXT_SIZES: TextSizeOption[] = [
-  { key: 'vaike',    label: t('Väike', 'Small'), hint: '90%',  value: 0.9 },
-  { key: 'tavaline', label: t('Tavaline', 'Normal'), hint: '100%', value: 1 },
-  { key: 'suur',     label: t('Suur', 'Large'), hint: '110%', value: 1.1 },
-  { key: 'suurem',   label: t('Suurem', 'Larger'), hint: '125%', value: 1.25 },
-  { key: 'suurim',   label: t('Väga suur', 'Extra large'), hint: '140%', value: 1.4 },
+  { key: 'vaike',    label: t('useSettings.small'), hint: '90%',  value: 0.9 },
+  { key: 'tavaline', label: t('useSettings.normal'), hint: '100%', value: 1 },
+  { key: 'suur',     label: t('useSettings.large'), hint: '110%', value: 1.1 },
+  { key: 'suurem',   label: t('useSettings.larger'), hint: '125%', value: 1.25 },
+  { key: 'suurim',   label: t('useSettings.extraLarge'), hint: '140%', value: 1.4 },
 ]
 
 export const TEXT_SCALE_MIN = 0.8

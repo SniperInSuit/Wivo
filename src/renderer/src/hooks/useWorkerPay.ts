@@ -83,7 +83,7 @@ export function useSaveWorkerRate() {
   return useMutation({
     mutationFn: async (rate: WorkerRateInput & { id?: string }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
+      if (!clinicId) throw new Error(t('useWorkerPay.noClinic'))
       if (rate.id) {
         const { id, ...patch } = rate
         const { data, error } = await supabase
@@ -149,7 +149,7 @@ export function useAddWorkHours() {
   return useMutation({
     mutationFn: async (input: WorkHoursInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
+      if (!clinicId) throw new Error(t('useWorkerPay.noClinic'))
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('work_hours')
@@ -220,8 +220,8 @@ export function useCreatePayout() {
       note?: string | null
     }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
-      if (input.lines.length === 0) throw new Error(t('Sellel perioodil ei ole midagi välja maksta.', 'There is nothing to pay out for this period.'))
+      if (!clinicId) throw new Error(t('useWorkerPay.noClinic'))
+      if (input.lines.length === 0) throw new Error(t('useWorkerPay.thereIsNothingToPayOut'))
 
       const total = Math.round(input.lines.reduce((s, l) => s + l.amount, 0) * 100) / 100
       const { data: userData } = await supabase.auth.getUser()

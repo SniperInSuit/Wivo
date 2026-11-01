@@ -25,15 +25,15 @@ import { useAuth } from '../../context/AuthContext'
 import { t } from '@/lib/i18n'
 
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
-  { key: 'week', label: t('See nädal', 'This week') },
+  { key: 'week', label: t('dashboard.thisWeek') },
   // 'kuu', not 'month': a named month, defaulting to this one. The fixed "See
   // kuu" it replaces answered a strictly smaller question — every month other
   // than the current one meant typing two dates into the range picker.
-  { key: 'kuu', label: t('Kuu', 'Month') },
-  { key: 'quarter', label: t('See kvartal', 'This quarter') },
-  { key: 'year', label: t('See aasta', 'This year') },
-  { key: 'all', label: t('Kõik', 'All') },
-  { key: 'custom', label: t('Vahemik', 'Range') },
+  { key: 'kuu', label: t('dashboard.month') },
+  { key: 'quarter', label: t('dashboard.thisQuarter') },
+  { key: 'year', label: t('dashboard.thisYear') },
+  { key: 'all', label: t('dashboard.all') },
+  { key: 'custom', label: t('dashboard.range') },
 ]
 
 /** 'yyyy-MM' → the whole calendar month, both ends inclusive. */
@@ -87,9 +87,9 @@ export function Dashboard({ jobs }: DashboardProps) {
           with margins. */}
       <div className="flex items-center gap-1 bg-bg-sidebar rounded-xl p-1 w-fit">
         {([
-          { key: 'minu', label: t('Minu vaade', 'My view') },
-          { key: 'tootmine', label: t('Tootmine', 'Production') },
-          { key: 'rahandus', label: t('Rahandus', 'Finance') },
+          { key: 'minu', label: t('dashboard.myView') },
+          { key: 'tootmine', label: t('dashboard.production') },
+          { key: 'rahandus', label: t('dashboard.finance') },
         ] as const).map(opt => (
           <button
             key={opt.key}
@@ -105,7 +105,7 @@ export function Dashboard({ jobs }: DashboardProps) {
 
       {/* Period filter */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-ink-muted mr-1">{t('Periood:', 'Period:')}</span>
+        <span className="text-sm font-medium text-ink-muted mr-1">{t('dashboard.period')}</span>
         {PERIOD_OPTIONS.map((p) => (
           <button
             key={p.key}
@@ -126,7 +126,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           <div className="flex items-center gap-1 ml-1">
             <button
               onClick={() => setMonth(m => shiftMonth(m, -1))}
-              aria-label={t('Eelmine kuu', 'Previous month')}
+              aria-label={t('dashboard.previousMonth')}
               className="px-2 py-1.5 rounded-lg bg-bg-sidebar text-ink-muted hover:text-ink transition-colors"
             >
               ‹
@@ -135,12 +135,12 @@ export function Dashboard({ jobs }: DashboardProps) {
               type="month"
               value={month}
               onChange={e => { if (e.target.value) setMonth(e.target.value) }}
-              aria-label={t('Kuu', 'Month')}
+              aria-label={t('dashboard.month')}
               className="input py-1.5 text-sm w-auto"
             />
             <button
               onClick={() => setMonth(m => shiftMonth(m, 1))}
-              aria-label={t('Järgmine kuu', 'Next month')}
+              aria-label={t('dashboard.nextMonth')}
               className="px-2 py-1.5 rounded-lg bg-bg-sidebar text-ink-muted hover:text-ink transition-colors"
             >
               ›
@@ -150,7 +150,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 onClick={() => setMonth(format(new Date(), 'yyyy-MM'))}
                 className="text-xs font-medium px-2 py-1.5 rounded-lg text-ink-muted hover:text-ink transition-colors"
               >
-                {t('Käesolev kuu', 'This month')}
+                {t('dashboard.thisMonth')}
               </button>
             )}
           </div>
@@ -164,7 +164,7 @@ export function Dashboard({ jobs }: DashboardProps) {
               type="date"
               value={custom.start}
               onChange={e => setCustom(c => ({ ...c, start: e.target.value }))}
-              aria-label={t('Alates', 'From')}
+              aria-label={t('dashboard.from')}
               className="input py-1.5 text-sm w-auto"
             />
             <span className="text-sm text-ink-faint">–</span>
@@ -172,12 +172,12 @@ export function Dashboard({ jobs }: DashboardProps) {
               type="date"
               value={custom.end}
               onChange={e => setCustom(c => ({ ...c, end: e.target.value }))}
-              aria-label={t('Kuni', 'To')}
+              aria-label={t('dashboard.to')}
               className="input py-1.5 text-sm w-auto"
             />
             {!customIsUsable(custom) && (
               <span className="text-xs text-ink-faint">
-                {t('Vali mõlemad kuupäevad — seni näidatakse kõiki töid.', 'Pick both dates — until then all jobs are shown.')}
+                {t('dashboard.pickBothDatesUntilThenAll')}
               </span>
             )}
           </div>
@@ -194,38 +194,38 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Summary cards ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Kokkuvõte', 'Summary')}
+          {t('dashboard.summary')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile
             icon={Users}
-            label={t('Töid kokku', 'Jobs total')}
+            label={t('dashboard.jobsTotal')}
             value={stats.totalWork}
             sub={unitSplitLabel(stats.metrics)}
           />
           <StatTile
             icon={Layers}
-            label={t('Tootmises', 'In production')}
+            label={t('dashboard.inProduction')}
             value={stats.inProduction.length}
-            sub={t(`${stats.overdue.length} tähtajast üle`, `${stats.overdue.length} overdue`)}
+            sub={t('dashboard.overdue', { overdueCount: stats.overdue.length })}
             accent="#F59E0B"
           />
           <StatTile
             icon={TrendingUp}
-            label={t('Hambaid toodetud', 'Teeth produced')}
+            label={t('dashboard.teethProduced')}
             value={stats.totalTeeth}
-            sub={t(`Ø ${stats.avgTeethPerJob.toFixed(1)} / töö · ${teethSplitLabel(stats.metrics)}`, `Ø ${stats.avgTeethPerJob.toFixed(1)} / job · ${teethSplitLabel(stats.metrics)}`)}
+            sub={t('dashboard.job', { avgTeethPerJob: stats.avgTeethPerJob.toFixed(1), metrics: teethSplitLabel(stats.metrics) })}
             accent="#10B981"
             breakdown={{
-              left: { label: t('originaal', 'original'), value: stats.originalTeeth, color: '#0AB6C4' },
-              right: { label: t('muudatused', 'revisions'), value: stats.revisionTeeth, color: '#EC4899' }
+              left: { label: t('dashboard.original'), value: stats.originalTeeth, color: '#0AB6C4' },
+              right: { label: t('dashboard.revisions'), value: stats.revisionTeeth, color: '#EC4899' }
             }}
           />
           <StatTile
             icon={AlertCircle}
-            label={t('Revisjonimäär', 'Revision rate')}
+            label={t('dashboard.revisionRate')}
             value={`${stats.revisionRate.toFixed(1)}%`}
-            sub={t(`${stats.withRevision.length} tööd`, `${stats.withRevision.length} ${stats.withRevision.length === 1 ? 'job' : 'jobs'}`)}
+            sub={t('dashboard.jobJobs', { stats, withRevisionCount: stats.withRevision.length })}
             accent="#EC4899"
           />
         </div>
@@ -234,51 +234,51 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Payment stats ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Euro size={13} /> {t('Maksed', 'Payments')}
+          <Euro size={13} /> {t('dashboard.payments')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <StatTile
             icon={Euro}
-            label={t('Käive kokku', 'Total revenue')}
+            label={t('dashboard.totalRevenue')}
             value={`${stats.totalRevenue.toFixed(2)} €`}
             sub={MONEY_HINT.kaive}
           />
           <StatTile
             icon={CheckCircle}
-            label={t('Laekunud', 'Received')}
+            label={t('dashboard.received')}
             value={`${stats.paidRevenue.toFixed(2)} €`}
-            sub={t(`${paidPct}% käibest · ${MONEY_HINT.laekunud.toLowerCase()}`, `${paidPct}% of revenue · ${MONEY_HINT.laekunud.toLowerCase()}`)}
+            sub={t('dashboard.ofRevenue', { paidPct, laekunud: MONEY_HINT.laekunud.toLowerCase() })}
             accent="#22C55E"
           />
           <StatTile
             icon={Clock}
-            label={t('Maksmata', 'Unpaid')}
+            label={t('dashboard.unpaid')}
             value={`${stats.unpaidRevenue.toFixed(2)} €`}
-            sub={t('Käive − laekunud', 'Revenue − received')}
+            sub={t('dashboard.revenueReceived')}
             accent="#EF4444"
           />
           <StatTile
             icon={TrendingUp}
-            label={t('Ø hind / töö', 'Ø price / job')}
+            label={t('dashboard.priceJob')}
             value={`${stats.avgPrice.toFixed(2)} €`}
-            sub={t(`Ø ${stats.avgPricePerTooth.toFixed(2)} € / hammas`, `Ø ${stats.avgPricePerTooth.toFixed(2)} € / tooth`)}
+            sub={t('dashboard.tooth', { avgPricePerTooth: stats.avgPricePerTooth.toFixed(2) })}
             coverage={stats.priceCoverage}
-            coverageLabel={t('tööl on hind', 'jobs have a price')}
+            coverageLabel={t('dashboard.jobsHaveAPrice')}
           />
         </div>
 
         {/* Paid vs Outstanding donut */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Tasutud vs ootel', 'Paid vs pending')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.paidVsPending')}</p>
             {stats.totalRevenue > 0 ? (
               <div className="flex items-center gap-4">
                 <ResponsiveContainer width={120} height={120}>
                   <PieChart>
                     <Pie
                       data={[
-                        { name: t('Laekunud', 'Received'), value: stats.paidRevenue },
-                        { name: t('Maksmata', 'Unpaid'), value: stats.unpaidRevenue }
+                        { name: t('dashboard.received'), value: stats.paidRevenue },
+                        { name: t('dashboard.unpaid'), value: stats.unpaidRevenue }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -295,35 +295,35 @@ export function Dashboard({ jobs }: DashboardProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
-                    <span className="text-ink-muted">{t('Laekunud: ', 'Received: ')}</span>
+                    <span className="text-ink-muted">{t('dashboard.received2')}</span>
                     <span className="font-semibold">{stats.paidRevenue.toFixed(2)} €</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-red-200 inline-block" />
-                    <span className="text-ink-muted">{t('Maksmata: ', 'Unpaid: ')}</span>
+                    <span className="text-ink-muted">{t('dashboard.unpaid2')}</span>
                     <span className="font-semibold">{stats.unpaidRevenue.toFixed(2)} €</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Revenue by month bar chart */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Käive kuude kaupa (€)', 'Revenue by month (€)')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.revenueByMonth')}</p>
             {stats.revenueByMonth.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <BarChart data={stats.revenueByMonth} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`${v} €`, t('Käive', 'Revenue')]} />
+                  <Tooltip formatter={(v: number) => [`${v} €`, t('dashboard.revenue')]} />
                   <Bar dataKey="revenue" fill="#0AB6C4" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
         </div>
@@ -332,12 +332,12 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Material stats ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Package size={13} /> {t('Materjalid', 'Materials')}
+          <Package size={13} /> {t('dashboard.materials')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* Bar chart: jobs per material */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Tööd materjali järgi', 'Jobs by material')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.jobsByMaterial')}</p>
             {stats.materialStats.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart
@@ -356,13 +356,13 @@ export function Dashboard({ jobs }: DashboardProps) {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Donut: share per material */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Osakaal (%)', 'Share (%)')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.share')}</p>
             {stats.materialStats.length > 0 ? (
               <div className="flex items-center gap-4">
                 <ResponsiveContainer width={120} height={140}>
@@ -398,7 +398,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
         </div>
@@ -407,12 +407,12 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Production stats ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingUp size={13} /> {t('Tootmine', 'Production')}
+          <TrendingUp size={13} /> {t('dashboard.production')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* WIP by stage */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Praegune WIP etappide kaupa', 'Current WIP by stage')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.currentWIPByStage')}</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.wipByStage} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
@@ -429,7 +429,7 @@ export function Dashboard({ jobs }: DashboardProps) {
 
           {/* Throughput */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Valmis tööd kuude kaupa', 'Finished jobs by month')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.finishedJobsByMonth')}</p>
             {stats.throughput.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={stats.throughput} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
@@ -447,7 +447,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
         </div>
@@ -456,24 +456,24 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Kiirtöö + Turnaround + Machine ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Zap size={13} /> {t('Kiirtöö & Masinad', 'Rush jobs & machines')}
+          <Zap size={13} /> {t('dashboard.rushJobsMachines')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile
             icon={Zap}
-            label={t('Kiirtööd', 'Rush jobs')}
+            label={t('dashboard.rushJobs')}
             value={stats.kiirtooJobs.length}
-            sub={t(`${stats.kiirtooRevenue.toFixed(2)} € käive`, `${stats.kiirtooRevenue.toFixed(2)} € revenue`)}
+            sub={t('dashboard.revenue2', { kiirtooRevenue: stats.kiirtooRevenue.toFixed(2) })}
             accent="#F97316"
           />
           <StatTile
             icon={Timer}
-            label={t('Ø läbiaeg', 'Ø turnaround')}
-            value={stats.avgTurnaround > 0 ? t(`${stats.avgTurnaround.toFixed(1)} p`, `${stats.avgTurnaround.toFixed(1)} d`) : '—'}
-            sub={t('vastuvõtust valmimiseni', 'from receipt to completion')}
+            label={t('dashboard.turnaround')}
+            value={stats.avgTurnaround > 0 ? t('dashboard.d', { avgTurnaround: stats.avgTurnaround.toFixed(1) }) : '—'}
+            sub={t('dashboard.fromReceiptToCompletion')}
             accent="#8B5CF6"
             coverage={stats.turnaroundCoverage}
-            coverageLabel={t('tööl on valmimiskuupäev', 'jobs have a completion date')}
+            coverageLabel={t('dashboard.jobsHaveACompletionDate')}
           />
           {stats.machineStats.slice(0, 2).map((m) => (
             <StatTile
@@ -481,7 +481,7 @@ export function Dashboard({ jobs }: DashboardProps) {
               icon={Cpu}
               label={m.name}
               value={m.count}
-              sub={t('printimist', m.count === 1 ? 'print' : 'prints')}
+              sub={t('dashboard.printPrints', { m })}
               accent="#0AB6C4"
             />
           ))}
@@ -491,13 +491,13 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Top patients + Teeth by work type ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Users size={13} /> {t('Patsiendid & Töötüübid', 'Patients & work types')}
+          <Users size={13} /> {t('dashboard.patientsWorkTypes')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch items-stretch">
           {/* Top patients */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-0.5">{t('Top patsiendid (hambad)', 'Top patients (teeth)')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Originaal + muudatuste hambad patsiendi kaupa', 'Original + revision teeth per patient')}</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">{t('dashboard.topPatientsTeeth')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.originalRevisionTeethPerPatient')}</p>
             {stats.topPatients.length > 0 ? (
               // An explicit height, like every other chart on this page.
               // `height="100%"` measures the PARENT, and the parent is
@@ -517,21 +517,21 @@ export function Dashboard({ jobs }: DashboardProps) {
                     type="category" dataKey="name" tick={{ fontSize: 11 }}
                     width={NAME_AXIS_WIDTH} interval={0} tickFormatter={truncateName}
                   />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [t(`${v} hammast`, `${v} ${v === 1 ? 'tooth' : 'teeth'}`), name === 'original' ? t('Originaal', 'Original') : t('Muudatused', 'Revisions')]} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [t('dashboard.toothTeeth', { v }), name === 'original' ? t('dashboard.original2') : t('dashboard.revisions2')]} />
                   <Bar dataKey="original" stackId="teeth" fill="#6366F1" radius={[0, 0, 0, 0]} name="original" />
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6 flex-1">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6 flex-1">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Work by work type — jobs, not teeth */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-0.5">{t('Tööd töötüübi järgi', 'Jobs by work type')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Tööde arv töö liigi kaupa (originaal + muudatused)', 'Number of jobs per work type (original + revisions)')}</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">{t('dashboard.jobsByWorkType')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.numberOfJobsPerWorkType')}</p>
             {stats.workByType.length > 0 ? (
               // Same fix as the card beside it — see the note there.
               <div className="flex-1 min-h-0">
@@ -546,21 +546,21 @@ export function Dashboard({ jobs }: DashboardProps) {
                     type="category" dataKey="name" tick={{ fontSize: 11 }}
                     width={NAME_AXIS_WIDTH} interval={0} tickFormatter={truncateName}
                   />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [t(`${v} tööd`, `${v} ${v === 1 ? 'job' : 'jobs'}`), name === 'original' ? t('Originaal', 'Original') : t('Muudatused', 'Revisions')]} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number, name: string) => [t('dashboard.jobJobs2', { v }), name === 'original' ? t('dashboard.original2') : t('dashboard.revisions2')]} />
                   <Bar dataKey="original" stackId="teeth" fill="#0AB6C4" radius={[0, 0, 0, 0]} name="original" />
                   <Bar dataKey="revision" stackId="teeth" fill="#EC4899" radius={[0, 4, 4, 0]} name="revision" />
                 </BarChart>
               </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6 flex-1">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6 flex-1">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Revision rate by work type */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-0.5">{t('Muudatuste määr töötüübi järgi', 'Revision rate by work type')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Mitu muudatust 100 töö kohta', 'Revisions per 100 jobs')}</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">{t('dashboard.revisionRateByWorkType')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.revisionsPer100Jobs')}</p>
             {stats.byWorkType.length > 0 ? (
               <div className="space-y-2">
                 {stats.byWorkType.filter(type => type.count > 0).map(type => {
@@ -586,14 +586,14 @@ export function Dashboard({ jobs }: DashboardProps) {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Revision reasons breakdown */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-0.5">{t('Muudatuste põhjused', 'Revision reasons')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Miks muudatusi tehakse', 'Why revisions are made')}</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">{t('dashboard.revisionReasons')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.whyRevisionsAreMade')}</p>
             {stats.revisionReasons.length > 0 ? (
               <div className="space-y-2">
                 {stats.revisionReasons.map((r, i) => {
@@ -617,7 +617,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Muudatusi pole', 'No revisions')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noRevisions')}</p>
             )}
           </div>
         </div>
@@ -626,14 +626,14 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Tooth analysis ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingUp size={13} /> {t('Hammaste analüüs', 'Tooth analysis')}
+          <TrendingUp size={13} /> {t('dashboard.toothAnalysis')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
           {/* Weakest teeth */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-1">{t('Nõrgemad hambad (FDI)', 'Weakest teeth (FDI)')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Kõige sagedamini töödeldud', 'Worked on most often')}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('dashboard.weakestTeethFDI')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.workedOnMostOften')}</p>
             {stats.weakestTeeth.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart
@@ -642,7 +642,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                 >
                   <XAxis dataKey="tooth" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [v, t('Töötlusi', 'Times worked on')]} />
+                  <Tooltip formatter={(v: number) => [v, t('dashboard.timesWorkedOn')]} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                     {stats.weakestTeeth.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -651,14 +651,14 @@ export function Dashboard({ jobs }: DashboardProps) {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
 
           {/* Strongest teeth */}
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-1">{t('Tugevamad hambad (FDI)', 'Strongest teeth (FDI)')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Harva töödeldud (kõige vastupidavamad)', 'Rarely worked on (most durable)')}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('dashboard.strongestTeethFDI')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.rarelyWorkedOnMostDurable')}</p>
             {stats.strongestTeeth.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart
@@ -667,12 +667,12 @@ export function Dashboard({ jobs }: DashboardProps) {
                 >
                   <XAxis dataKey="tooth" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [v, t('Töötlusi', 'Times worked on')]} />
+                  <Tooltip formatter={(v: number) => [v, t('dashboard.timesWorkedOn')]} />
                   <Bar dataKey="count" fill="#10B981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-ink-faint text-center py-6">{t('Andmed puuduvad', 'No data')}</p>
+              <p className="text-sm text-ink-faint text-center py-6">{t('dashboard.noData')}</p>
             )}
           </div>
         </div>
@@ -682,54 +682,54 @@ export function Dashboard({ jobs }: DashboardProps) {
       {stats.durability.total > 0 && (
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingUp size={13} /> {t('Vastupidavus', 'Durability')}
+          <TrendingUp size={13} /> {t('dashboard.durability')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-1">{t('Kokkuvõte', 'Summary')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Purunemised ja keskmine eluiga', 'Breakages and average lifespan')}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('dashboard.summary')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.breakagesAndAverageLifespan')}</p>
             <div className="space-y-2 flex-1">
               <div className="flex justify-between text-sm">
-                <span className="text-ink-muted">{t('Purunemisi kokku', 'Total breakages')}</span>
+                <span className="text-ink-muted">{t('dashboard.totalBreakages')}</span>
                 <span className="font-bold text-ink">{stats.durability.total}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-ink-muted">{t('Keskmine eluiga', 'Average lifespan')}</span>
-                <span className="font-bold text-ink">{t(`${stats.durability.avgDays} päeva`, `${stats.durability.avgDays} ${stats.durability.avgDays === 1 ? 'day' : 'days'}`)}</span>
+                <span className="text-ink-muted">{t('dashboard.averageLifespan')}</span>
+                <span className="font-bold text-ink">{t('dashboard.dayDays', { stats, avgDays: stats.durability.avgDays })}</span>
               </div>
             </div>
           </div>
 
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-1">{t('Materjali järgi', 'By material')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Keskmine vastupidavus materjali kaupa', 'Average durability per material')}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('dashboard.byMaterial')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.averageDurabilityPerMaterial')}</p>
             <div className="space-y-1.5 flex-1">
               {stats.durability.byMaterial.map(m => (
                 <div key={m.name} className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted truncate flex-1">{m.name}</span>
                   <span className="tabular-nums text-ink-faint w-8 text-right">{m.count}×</span>
-                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{t(`${m.avgDays} p`, `${m.avgDays} d`)}</span>
+                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{t('dashboard.d2', { avgDays: m.avgDays })}</span>
                 </div>
               ))}
               {stats.durability.byMaterial.length === 0 && (
-                <p className="text-xs text-ink-faint">{t('Andmed puuduvad', 'No data')}</p>
+                <p className="text-xs text-ink-faint">{t('dashboard.noData')}</p>
               )}
             </div>
           </div>
 
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-1">{t('Töötüübi järgi', 'By work type')}</p>
-            <p className="text-xs text-ink-faint mb-3">{t('Keskmine vastupidavus töötüübi kaupa', 'Average durability per work type')}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{t('dashboard.byWorkType')}</p>
+            <p className="text-xs text-ink-faint mb-3">{t('dashboard.averageDurabilityPerWorkType')}</p>
             <div className="space-y-1.5 flex-1">
               {stats.durability.byWorkType.map(type => (
                 <div key={type.name} className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted truncate flex-1">{type.name}</span>
                   <span className="tabular-nums text-ink-faint w-8 text-right">{type.count}×</span>
-                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{t(`${type.avgDays} p`, `${type.avgDays} d`)}</span>
+                  <span className="tabular-nums font-semibold text-ink w-16 text-right">{t('dashboard.d2', { avgDays: type.avgDays })}</span>
                 </div>
               ))}
               {stats.durability.byWorkType.length === 0 && (
-                <p className="text-xs text-ink-faint">{t('Andmed puuduvad', 'No data')}</p>
+                <p className="text-xs text-ink-faint">{t('dashboard.noData')}</p>
               )}
             </div>
           </div>
@@ -742,50 +742,50 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Visiidid ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Visiidid', 'Visits')}
+          {t('dashboard.visits')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile
             icon={CalendarClock}
-            label={t('Visiite kokku', 'Visits total')}
+            label={t('dashboard.visitsTotal')}
             value={stats.visitStats.total}
-            sub={t(`${stats.visitStats.planeeritud} planeeritud · ${stats.visitStats.toimunud} toimunud`, `${stats.visitStats.planeeritud} planned · ${stats.visitStats.toimunud} completed`)}
+            sub={t('dashboard.plannedCompleted', { planeeritud: stats.visitStats.planeeritud, toimunud: stats.visitStats.toimunud })}
           />
           <StatTile
             icon={UserX}
-            label={t('Ei tulnud', 'No-shows')}
+            label={t('dashboard.noShows')}
             value={`${stats.visitStats.noShowRate.toFixed(0)}%`}
-            sub={t(`${stats.visitStats.eiTulnud} visiiti · tühistamised välja arvatud`, `${stats.visitStats.eiTulnud} ${stats.visitStats.eiTulnud === 1 ? 'visit' : 'visits'} · cancellations excluded`)}
+            sub={t('dashboard.cancellationsExcludedVisitVisits', { stats, eiTulnud: stats.visitStats.eiTulnud })}
           />
           <StatTile
             icon={Timer}
-            label={t('Ø visiidi kestus', 'Ø visit length')}
+            label={t('dashboard.visitLength')}
             value={`${stats.visitStats.avgKestus.toFixed(0)} min`}
           />
           <StatTile
             icon={AlertCircle}
-            label={t('Tühistatud', 'Cancelled')}
+            label={t('dashboard.cancelled')}
             value={stats.visitStats.tuhistatud}
-            sub={t('ette teatatud', 'with notice')}
+            sub={t('dashboard.withNotice')}
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch mt-3">
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Visiidid nädalapäeva järgi', 'Visits by weekday')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.visitsByWeekday')}</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.visitsByWeekday}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8EC" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="count" name={t('Visiite', 'Visits')} fill="#0AB6C4" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t('dashboard.visits2')} fill="#0AB6C4" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink mb-3">{t('Visiitide seis', 'Visit status')}</p>
+            <p className="text-sm font-semibold text-ink mb-3">{t('dashboard.visitStatus')}</p>
             <div className="space-y-2">
               {(['planeeritud', 'saabunud', 'toimunud', 'ei_tulnud', 'tuhistatud'] as const).map(st => {
                 const map = {
@@ -823,14 +823,14 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Kust töö tuleb ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Kust töö tuleb', 'Where the work comes from')}
+          {t('dashboard.whereTheWorkComesFrom')}
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink">{t('Top suunavad arstid', 'Top referring dentists')}</p>
-            <p className="text-[11px] text-ink-muted mb-3">{t('Käive patsiendi kaardil oleva arsti järgi', 'Revenue by the dentist on the patient record')}</p>
+            <p className="text-sm font-semibold text-ink">{t('dashboard.topReferringDentists')}</p>
+            <p className="text-[11px] text-ink-muted mb-3">{t('dashboard.revenueByTheDentistOnThe')}</p>
             {stats.byDoctor.length === 0 ? (
-              <p className="text-sm text-ink-muted">{t('Andmed puuduvad.', 'No data.')}</p>
+              <p className="text-sm text-ink-muted">{t('dashboard.noData2')}</p>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(160, stats.byDoctor.length * 30)}>
                 <BarChart data={stats.byDoctor} layout="vertical" margin={{ left: 8, right: 16 }}>
@@ -840,7 +840,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                     type="category" dataKey="name" width={110}
                     tick={{ fontSize: 11, fill: '#637381' }} axisLine={false} tickLine={false}
                   />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(2)} €`, t('Käive', 'Revenue')]} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => [`${v.toFixed(2)} €`, t('dashboard.revenue')]} />
                   <Bar dataKey="revenue" fill="#0AB6C4" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -848,10 +848,10 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
 
           <div className="card p-4 flex flex-col">
-            <p className="text-sm font-semibold text-ink">{t('Käive töö liigi järgi', 'Revenue by work type')}</p>
-            <p className="text-[11px] text-ink-muted mb-3">{t('Sama liigitus, mida kalender kasutab', 'The same grouping the calendar uses')}</p>
+            <p className="text-sm font-semibold text-ink">{t('dashboard.revenueByWorkType')}</p>
+            <p className="text-[11px] text-ink-muted mb-3">{t('dashboard.theSameGroupingTheCalendarUses')}</p>
             {stats.byWorkType.length === 0 ? (
-              <p className="text-sm text-ink-muted">{t('Andmed puuduvad.', 'No data.')}</p>
+              <p className="text-sm text-ink-muted">{t('dashboard.noData2')}</p>
             ) : (
               <div className="space-y-1.5">
                 {stats.byWorkType.slice(0, 8).map(type => (
@@ -859,7 +859,7 @@ export function Dashboard({ jobs }: DashboardProps) {
                     <span className="w-2.5 h-2.5 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(type.name) }} />
                     <span className="text-ink-muted truncate flex-1">{type.name}</span>
                     <span className="text-ink-faint tabular-nums w-20 text-right">
-                      {type.count}× <span className="text-ink-faint/60">+ {t(`${type.revisions}m`, `${type.revisions}r`)}</span>
+                      {type.count}× <span className="text-ink-faint/60">+ {t('dashboard.r', { revisions: type.revisions })}</span>
                     </span>
                     <span className="text-ink-faint tabular-nums w-16 text-right">Ø {type.avgPrice.toFixed(0)} €</span>
                     <span className="font-semibold text-ink tabular-nums w-20 text-right">{type.revenue.toFixed(2)} €</span>
@@ -874,21 +874,21 @@ export function Dashboard({ jobs }: DashboardProps) {
       {/* ─── Patsiendid ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          {t('Patsiendid', 'Patients')}
+          {t('dashboard.patients')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatTile icon={Users} label={t('Patsiente kokku', 'Patients total')} value={stats.patientSummary.total} />
+          <StatTile icon={Users} label={t('dashboard.patientsTotal')} value={stats.patientSummary.total} />
           <StatTile
-            icon={UserPlus} label={t('Uusi patsiente', 'New patients')} value={stats.patientSummary.newPatients}
-            sub={t('valitud perioodil lisatud', 'added in the selected period')}
+            icon={UserPlus} label={t('dashboard.newPatients')} value={stats.patientSummary.newPatients}
+            sub={t('dashboard.addedInTheSelectedPeriod')}
           />
           <StatTile
-            icon={Repeat} label={t('Korduvad patsiendid', 'Returning patients')} value={stats.patientSummary.repeatPatients}
-            sub={t(`${stats.patientSummary.repeatRate.toFixed(0)}% neist, kellel on töid`, `${stats.patientSummary.repeatRate.toFixed(0)}% of those with jobs`)}
+            icon={Repeat} label={t('dashboard.returningPatients')} value={stats.patientSummary.repeatPatients}
+            sub={t('dashboard.ofThoseWithJobs', { repeatRate: stats.patientSummary.repeatRate.toFixed(0) })}
           />
           <StatTile
-            icon={Stethoscope} label={t('Suunavaid arste', 'Referring dentists')} value={stats.byDoctor.length}
-            sub={t('käibe järgi top 8', 'top 8 by revenue')}
+            icon={Stethoscope} label={t('dashboard.referringDentists')} value={stats.byDoctor.length}
+            sub={t('dashboard.top8ByRevenue')}
           />
         </div>
       </section>

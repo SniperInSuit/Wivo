@@ -15,22 +15,22 @@ interface RavikaartPanelProps {
 // profile is in edit mode, so a realtime echo can never overwrite what is typed.
 export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPanelProps) {
   return (
-    <PanelCard title={t('RAVIKAART', 'TREATMENT RECORD')} icon={FileText} sensitive>
+    <PanelCard title={t('patients.tREATMENTRECORD')} icon={FileText} sensitive>
       <div className="flex items-start gap-2 rounded-xl bg-orange-50 border border-orange-200 p-3">
         <ShieldAlert size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-orange-800">
-          {t('Ravikaardi andmed on', 'Treatment record data is')} <strong>{t('terviseandmed', 'health data')}</strong>{' '}
-          {t('(GDPR art. 9 eriliik). Sisesta ainult see, mis on töö tegemiseks vajalik.', '(GDPR Art. 9 special category). Enter only what the work requires.')}
+          {t('patients.treatmentRecordDataIs')} <strong>{t('patients.healthData')}</strong>{' '}
+          {t('patients.gDPRArt9SpecialCategoryEnter')}
         </p>
       </div>
 
-      <Field label={t('Kliinilised märkused', 'Clinical notes')}>
+      <Field label={t('patients.clinicalNotes')}>
         {editing ? (
           <textarea
             value={form.ravikaart ?? ''}
             onChange={e => onField('ravikaart', e.target.value || null)}
             rows={6}
-            placeholder={t('Ravi käik, tehtud tööd, tähelepanekud…', 'Course of treatment, work done, observations…')}
+            placeholder={t('patients.courseOfTreatmentWorkDoneObservations')}
             className="input resize-none"
           />
         ) : (
@@ -38,13 +38,13 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Allergiad', 'Allergies')}>
+      <Field label={t('patients.allergies')}>
         {editing ? (
           <textarea
             value={form.allergiad ?? ''}
             onChange={e => onField('allergiad', e.target.value || null)}
             rows={3}
-            placeholder={t('Teadaolevad allergiad…', 'Known allergies…')}
+            placeholder={t('patients.knownAllergies')}
             className="input resize-none"
           />
         ) : (
@@ -52,13 +52,13 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Materjali eelistused', 'Material preferences')}>
+      <Field label={t('patients.materialPreferences')}>
         {editing ? (
           <textarea
             value={form.eelistused ?? ''}
             onChange={e => onField('eelistused', e.target.value || null)}
             rows={3}
-            placeholder={t('Eelistatud materjalid, mida vältida…', 'Preferred materials, what to avoid…')}
+            placeholder={t('patients.preferredMaterialsWhatToAvoid')}
             className="input resize-none"
           />
         ) : (
@@ -66,14 +66,14 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Tooni eelistused', 'Shade preferences')}>
+      <Field label={t('patients.shadePreferences')}>
         {editing ? (
           // Free text, not a picker: the field holds a preference list ("A2, A3
           // pigem heledam"), not a single selectable VITA code.
           <input
             value={form.varvi_eelistus ?? ''}
             onChange={e => onField('varvi_eelistus', e.target.value || null)}
-            placeholder={t('nt A2, A3.5', 'e.g. A2, A3.5')}
+            placeholder={t('patients.eGA2A35')}
             className="input"
           />
         ) : (
@@ -81,13 +81,13 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Hambumus', 'Bite')}>
+      <Field label={t('patients.bite')}>
         {editing ? (
           <textarea
             value={form.lougad ?? ''}
             onChange={e => onField('lougad', e.target.value || null)}
             rows={3}
-            placeholder={t('Angle klass, kontaktid, oklusioon…', 'Angle class, contacts, occlusion…')}
+            placeholder={t('patients.angleClassContactsOcclusion')}
             className="input resize-none"
           />
         ) : (
@@ -95,13 +95,13 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Lõualiiges', 'Jaw joint (TMJ)')}>
+      <Field label={t('patients.jawJointTMJ')}>
         {editing ? (
           <textarea
             value={form.lougaliiges ?? ''}
             onChange={e => onField('lougaliiges', e.target.value || null)}
             rows={3}
-            placeholder={t('Lõualiigese kaebused, bruksism, klõpsumine…', 'TMJ complaints, bruxism, clicking…')}
+            placeholder={t('patients.tMJComplaintsBruxismClicking')}
             className="input resize-none"
           />
         ) : (
@@ -109,13 +109,13 @@ export function RavikaartPanel({ patient, editing, form, onField }: RavikaartPan
         )}
       </Field>
 
-      <Field label={t('Lisamärkused', 'Additional notes')}>
+      <Field label={t('patients.additionalNotes')}>
         {editing ? (
           <textarea
             value={form.markmed ?? ''}
             onChange={e => onField('markmed', e.target.value || null)}
             rows={3}
-            placeholder={t('Üldised märkmed (mitte terviseandmed)', 'General notes (not health data)')}
+            placeholder={t('patients.generalNotesNotHealthData')}
             className="input resize-none"
           />
         ) : (

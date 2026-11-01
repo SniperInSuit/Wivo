@@ -12,13 +12,13 @@ import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on l
 export type BillingMode = 'per_job' | 'monthly'
 
 export const BILLING_MODE_LABEL: Record<BillingMode, string> = {
-  per_job: t('Töö kaupa', 'Per job'),
-  monthly: t('Kuu koondarve', 'Monthly statement'),
+  per_job: t('customer.perJob'),
+  monthly: t('customer.monthlyStatement'),
 }
 
 export const BILLING_MODE_HINT: Record<BillingMode, string> = {
-  per_job: t('Iga töö arveldatakse eraldi, kui see valmis saab.', 'Each job is invoiced separately when it is done.'),
-  monthly: t('Üks arve kuus, mis katab kõik selle kuu valminud tööd.', 'One invoice a month, covering every job finished that month.'),
+  per_job: t('customer.eachJobIsInvoicedSeparatelyWhen'),
+  monthly: t('customer.oneInvoiceAMonthCoveringEvery'),
 }
 
 export interface Customer {
@@ -71,9 +71,9 @@ export type BillToKind = 'patient' | 'customer'
 export type DeliveryStatus = 'labor' | 'teel' | 'yle_antud'
 
 export const DELIVERY_LABEL: Record<DeliveryStatus, string> = {
-  labor:     t('Laboris', 'In the lab'),
-  teel:      t('Teel', 'In transit'),
-  yle_antud: t('Üle antud', 'Delivered'),
+  labor:     t('customer.inTheLab'),
+  teel:      t('customer.inTransit'),
+  yle_antud: t('customer.delivered'),
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */

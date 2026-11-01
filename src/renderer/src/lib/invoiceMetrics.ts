@@ -59,10 +59,10 @@ export interface InvoiceMetrics {
 }
 
 const BUCKETS: { label: string; from: number; to: number | null }[] = [
-  { label: t('1–30 p', '1–30 d'),  from: 1,  to: 31 },
-  { label: t('31–60 p', '31–60 d'), from: 31, to: 61 },
-  { label: t('61–90 p', '61–90 d'), from: 61, to: 91 },
-  { label: t('90+ p', '90+ d'),   from: 91, to: null },
+  { label: t('invoiceMetrics.n130D'),  from: 1,  to: 31 },
+  { label: t('invoiceMetrics.n3160D'), from: 31, to: 61 },
+  { label: t('invoiceMetrics.n6190D'), from: 61, to: 91 },
+  { label: t('invoiceMetrics.n90D'),   from: 91, to: null },
 ]
 
 /**

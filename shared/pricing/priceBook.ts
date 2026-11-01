@@ -159,10 +159,10 @@ export function overheadsMonthly(overheads: Overhead[], toopaevi = 5): number {
 
 /** For labels: "/kuus", "/päev". One place, so screens cannot disagree. */
 export const OVERHEAD_PERIOOD_SILT: Record<OverheadPeriood, string> = {
-  paev:  t('/tööpäev', '/working day'),
-  nadal: t('/nädal', '/week'),
-  kuu:   t('/kuus', '/month'),
-  aasta: t('/aasta', '/year'),
+  paev:  t('pricing.workingDay'),
+  nadal: t('pricing.week'),
+  kuu:   t('pricing.month'),
+  aasta: t('pricing.year'),
 }
 
 /** An add-on the customer can be charged for. Revenue, not cost. */

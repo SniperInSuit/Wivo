@@ -58,11 +58,11 @@ export const CAMERA_VIEWS: Record<ViewName, readonly [number, number, number]> =
 
 /** Labels for the preset buttons, in the order they are shown. */
 export const VIEW_LABELS: readonly { view: ViewName; label: string }[] = [
-  { view: 'front', label: t('Eest', 'Front') },
-  { view: 'top', label: t('Pealt', 'Top') },
-  { view: 'bottom', label: t('Alt', 'Bottom') },
-  { view: 'left', label: t('Vasakult', 'Left') },
-  { view: 'right', label: t('Paremalt', 'Right') },
+  { view: 'front', label: t('teeth.front') },
+  { view: 'top', label: t('teeth.top') },
+  { view: 'bottom', label: t('teeth.bottom') },
+  { view: 'left', label: t('teeth.left2') },
+  { view: 'right', label: t('teeth.right2') },
 ]
 
 /**
