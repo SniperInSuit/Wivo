@@ -49,11 +49,12 @@ Creating a partnership
 Files
 - [x] `job_file`, private bucket, TUS background upload, SHA-256, versions,
       soft delete (sql/072; downloads only via an audited 2-minute grant; own
-      TUS client with resume; Files section in both job panels) — COMMIT_FILES
-- [ ] Previews: STL → PNG, photo thumbnails
+      TUS client with resume; Files section in both job panels) — 9c05bd8
+- [x] Previews: STL → PNG, photo thumbnails (made on the uploader's machine;
+      sql/073; viewing them is one audited grant per job) — COMMIT_PREV
 - [x] Client-side cleaning: DICOM header scrub, EXIF GPS removal, file name →
       job code (lib/fileClean.ts, tested on synthetic JPEG/DICOM; HEIC photos
-      are not cleaned yet, see MORNING) — COMMIT_FILES
+      are not cleaned yet, see MORNING) — 9c05bd8
 - [ ] Folder watcher in Electron: scanner export folder → "Unsorted" → job
 - [ ] Patient export: PDF + ZIP of their files, download logged
 

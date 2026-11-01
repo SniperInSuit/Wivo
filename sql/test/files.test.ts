@@ -184,3 +184,27 @@ describe('anon', () => {
     expect(await as(db, 'anon', () => db.query(`select public.request_file_download(gen_random_uuid())`)).then(() => 'ok', () => 'refused')).toBe('refused')
   })
 })
+
+describe('previews (sql/073)', () => {
+  it('the uploader stores a preview next to the file; readers get it with a grant and one audit row', async () => {
+    const f = await register({ id: A.ownerId }, 'scan')
+    await upload({ id: A.ownerId }, f.storage_path)
+    await rowsAs(db, { id: A.ownerId }, `select public.confirm_job_file($1)`, [f.id])
+    const [{ path }] = await rowsAs<{ path: string }>(db, { id: A.ownerId }, `select public.set_job_file_preview($1) as path`, [f.id])
+    expect(path).toBe(f.storage_path + '.preview.png')
+    expect(await upload({ id: A.ownerId }, path)).toBeNull()
+    expect(await errorAs(db, { id: A.ownerId }, `select public.confirm_job_file_preview($1)`, [f.id])).toBeNull()
+
+    expect(await canSeeObject({ id: B.workerId }, path)).toBe(false)
+    const previews = await rowsAs<{ file_id: string }>(db, { id: B.workerId }, `select * from public.request_job_previews($1)`, [jobId])
+    expect(previews.map(p => p.file_id)).toContain(f.id)
+    expect(await canSeeObject({ id: B.workerId }, path)).toBe(true)
+  })
+
+  it('someone else cannot put a preview on your file, and a stranger gets none', async () => {
+    const f = await register({ id: A.ownerId }, 'photo')
+    expect(await errorAs(db, { id: B.workerId }, `select public.set_job_file_preview($1)`, [f.id])).toMatch(/not found/)
+    expect(await upload({ id: B.workerId }, f.storage_path + '.preview.png')).not.toBeNull()
+    expect(await errorAs(db, { id: C.ownerId }, `select * from public.request_job_previews($1)`, [jobId])).toMatch(/not found/)
+  })
+})

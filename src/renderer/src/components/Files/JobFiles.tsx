@@ -56,6 +56,19 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     },
   })
   const uploads = useJobUploads(jobId)
+  // One request per job opened: grants for every ready preview, one audit row.
+  const { data: previews } = useQuery<Map<string, string>>({
+    queryKey: ['job_previews', jobId, files.filter(f => f.completed).length],
+    enabled: files.length > 0,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const { data, error: err } = await supabase.rpc('request_job_previews', { p_job: jobId })
+      if (err || !data?.length) return new Map()
+      const rows = data as { file_id: string; preview_path: string }[]
+      const { data: links } = await supabase.storage.from('job-files').createSignedUrls(rows.map(r => r.preview_path), 300)
+      return new Map(rows.map((r, i) => [r.file_id, links?.[i]?.signedUrl ?? ''] as [string, string]).filter(([, u]) => u))
+    },
+  })
   const types = partner ? PARTNER_TYPES : ALL_TYPES
   const [type, setType] = useState<JobFileType | 'auto'>('auto')
   const [actionError, setActionError] = useState<string | null>(null)
@@ -159,7 +172,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
         : (
           <ul className="space-y-1">
             {active.map(f => (
-              <FileRow key={f.id} f={f} history={older.filter(o => chainOf(o, files).includes(f.id))}
+              <FileRow key={f.id} f={f} preview={previews?.get(f.id)} history={older.filter(o => chainOf(o, files).includes(f.id))}
                 canDelete={!partner} canVersion={types.includes(f.type)}
                 onDownload={download} onDelete={remove}
                 onVersion={() => { versionOf.current = f.id; input.current?.click() }} />
@@ -178,8 +191,9 @@ function chainOf(f: JobFileRow, all: JobFileRow[]): string[] {
   return out
 }
 
-function FileRow({ f, history, canDelete, canVersion, onDownload, onDelete, onVersion }: {
+function FileRow({ f, preview, history, canDelete, canVersion, onDownload, onDelete, onVersion }: {
   f: JobFileRow
+  preview?: string
   history: JobFileRow[]
   canDelete: boolean
   canVersion: boolean
@@ -191,6 +205,7 @@ function FileRow({ f, history, canDelete, canVersion, onDownload, onDelete, onVe
   return (
     <li className="rounded-lg border border-ink-faint/15 px-3 py-2 text-xs">
       <div className="flex items-center gap-2">
+        {preview && <img src={preview} alt="" className="h-10 w-10 rounded object-contain bg-bg-sidebar flex-shrink-0" />}
         <span className="font-mono text-ink truncate">{f.file_name}</span>
         <span className="rounded bg-bg-sidebar px-1.5 py-0.5 text-ink-soft">{fileTypeLabel(f.type)}</span>
         <span className="text-ink-muted">{sizeText(f.size)}</span>

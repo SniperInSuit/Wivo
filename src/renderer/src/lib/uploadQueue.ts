@@ -16,6 +16,7 @@ import { useSyncExternalStore } from 'react'
 import { supabase, storageEndpoint, anonKey } from './supabase'
 import { cleanForUpload, extensionOf, sha256Hex, type JobFileType } from './fileClean'
 import { tusUpload } from './tusUpload'
+import { makePreview } from './previews'
 
 export type UploadStatus = 'queued' | 'preparing' | 'uploading' | 'done' | 'failed'
 
@@ -80,8 +81,25 @@ async function runOne(task: UploadTask): Promise<void> {
 
   const { error: confirmError } = await supabase.rpc('confirm_job_file', { p_file: file.id })
   if (confirmError) throw confirmError
+  await attachPreview(file.id, task.file.name, bytes)
   patch(task.id, { status: 'done', sent: bytes.length })
   onDone?.(task.jobId)
+}
+
+/** Best effort: the file is already safely stored when this runs. */
+async function attachPreview(fileId: string, name: string, bytes: Uint8Array): Promise<void> {
+  try {
+    const blob = await makePreview(name, bytes)
+    if (!blob) return
+    const { data: path, error } = await supabase.rpc('set_job_file_preview', { p_file: fileId })
+    if (error) throw error
+    const { error: upErr } = await supabase.storage.from('job-files')
+      .upload(path as string, blob, { contentType: 'image/png', upsert: false })
+    if (upErr) throw upErr
+    await supabase.rpc('confirm_job_file_preview', { p_file: fileId })
+  } catch (e) {
+    console.warn('[wivo] preview not stored:', e)
+  }
 }
 
 async function pump(): Promise<void> {
