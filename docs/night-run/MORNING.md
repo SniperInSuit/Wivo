@@ -1,219 +1,210 @@
-# Morning notes (draft, finished at the end of the run)
+# Morning: night run 1–2 November 2026
 
-## Needs you
+Phase 0 and Phase 1 of `wivo-2.0-spec.md` are built, tested and committed on
+`main` (not pushed). 1,204 tests pass, including every migration replayed from
+an empty database and tenant-isolation tests over every table. You applied
+the migrations to **production** during the night; two independent reviews
+then found problems, and every confirmed one is fixed in a new migration
+(083–088) with a test that reproduces it. Start with section 1.
 
-### First: the migrations you already applied
-You ran the SQL on **production** during the night (23:34), including 082.
-There is no permanent test project, by your decision (DECISIONS.md D14). Three files were committed late:
-**080** (23:30), **081** (23:33) and **082** (23:35). If your run started
-before those, run them now, in order, each followed by
-`notify pgrst, 'reload schema';`. **082 matters most:** it repairs "Duplicate
-job" in the app you have installed today (with 070 live, a duplicate carried
-the original's job code and was refused).
+Reading list: `PROGRESS.md` (checklist with commits) · `DECISIONS.md` (D1–D14) ·
+`phase0-report.md` · `chat-inventory.md` · `review-068-079.md` · `review-080-084.md`.
 
-Quick checks on the live database:
+---
+
+## 1. Do first: production, in this order
+
+### 1.1 Run the remaining migrations
+In the SQL editor, one file at a time, each followed by `notify pgrst, 'reload schema';`:
+
+| File | Why now |
+|---|---|
+| **083** | **"Add worker" has done nothing since 068**: the account was created but never joined the clinic. Also: deleting a worker with audit rows failed; a worker could give themselves rights through a second account; founding a clinic could fail on a name clash; a removed founder could rejoin as owner. |
+| **084** | Partner-side fixes (thread scoping, partner permissions, 90-day read-only cap…). Required before the first partnership. |
+| **085** | Second-review fixes: the Add-worker window down to 2 minutes, payroll permission scoping, job-code edge cases (10 000th job), thread history. |
+| **086** | Add worker with a one-time invite token: the new account joins at creation, nothing to race. |
+| **087** | Revision stages through the same gate as job stages (rules, audit, notifications, partner hand-over). |
+| **088** | File names for the `file-link` function (1.4 below). |
+
+You said 082 is in. If anyone was "added" tonight, after 083: `select full_name, clinic_id from profiles where clinic_id is null;` and add them again.
+
+### 1.2 Check the live data
 ```sql
-select name, code_prefix from clinics;                    -- your prefix; change it now if you want another
-select count(*) from jobs where clinic_id is null;       -- 0 (068 adopted orphans: one clinic exists)
-select count(*) from jobs where job_code is null;        -- 0 (070 numbered every job)
-select jobname, schedule from cron.job;                  -- wivo-send-notifications exists (077)
-```
-Not yet done by applying the SQL: the Vault secret for 077, deploying the
-e-mail function, Resend, TOTP — the sections below.
-
-### Run sql/083 now (production fixes from the review)
-Fixes things broken or exploitable on production today: **"Add worker" did
-nothing since 068** (the worker ended up on the clinic-setup screen; if you
-added anyone tonight, check `select full_name, clinic_id from profiles where
-clinic_id is null;` and link them again after 083), deleting a worker with
-audit rows failed, a worker could grant themselves rights through a second
-account, founding a clinic could fail on a name clash, a removed founder could
-rejoin as owner. Details: review-068-079.md.
-
-### Run sql/085 (second review) after 084
-Tightens the "Add worker" window to 2 minutes and to owners who are in a clinic,
-fixes payroll permission scoping, thread history, job-code edge cases.
-Details: review-080-084.md. Then check that 083 switched off no grant you rely
-on — this should return no rows:
-```sql
-select p.full_name, wp.permission from worker_permissions wp
-  join profiles p on p.id = wp.profile_id where wp.clinic_id is distinct from p.clinic_id;
-```
-The CSV import never worked against the database (it sent no clinic); the new
-build fixes that.
-
-### Run sql/086 (Add worker with an invite token)
-The new build creates a one-time token and the new account joins your clinic
-the moment it is created — no window, nothing for another clinic to race.
-Once every computer runs the new build, close the old window for good:
-```sql
-drop policy if exists "profiles_read" on public.profiles;
-create policy "profiles_read" on public.profiles for select using (
-  id = auth.uid() or clinic_id = public.my_clinic_id()
-  or (clinic_id is null and removed_from = public.my_clinic_id()));
+select name, code_prefix from clinics;                   -- your job-code prefix (change it in SQL if you want another)
+select count(*) from jobs where clinic_id is null;      -- 0 (068 adopted orphans)
+select count(*) from jobs where job_code is null;       -- 0 (070 numbered every job)
+select p.full_name, wp.permission from worker_permissions wp      -- no rows: no grant
+  join profiles p on p.id = wp.profile_id                          -- was switched off by 083
+ where wp.clinic_id is distinct from p.clinic_id;
 ```
 
-### Run sql/087 (revision stages)
-Revision stages move through the same gate as job stages: rules, audit,
-notifications, and a partner can hand over a revision in its stages.
-
-### Short-lived download links: run sql/088, deploy `file-link`
-`supabase functions deploy file-link`. Downloads then get a 60-second link
-signed on the server after the audited check, instead of a link whose
-lifetime the app chooses. Once every computer runs the new build, make it the
-only way to a file:
-```sql
-drop policy if exists "job_files_select" on storage.objects;
-```
-(Previews still use the grant path; keep the policy until previews move too,
-or accept that thumbnails stop showing.)
-
-### Run sql/084 before the first partnership
-Partner-side fixes from the same review (thread scoping, partner permissions,
-the 90-day read-only cap, and more — review-068-079.md). No partnership
-exists on production, so nothing in it was exploitable there yet; apply it
-before creating one. Note: partner staff now need `jobs.read` (to see shared
-jobs) and `jobs.write` (to move stages, add files) in THEIR organisation's
-Workers → permissions, like any other job.
-
-### Raise the Storage upload limit
-Storage → Settings → Upload file size limit: the project default is 50 MB,
-the `job-files` bucket allows 500 MB. Raise it to 500 MB or full-arch scans
-fail at 50 MB.
-
-### Restore `jobs.updated_at` (the job-code backfill in 070 rewrote it)
-Numbering every job in 070 was an UPDATE, and the `jobs_updated_at` trigger
-stamped every job with the migration time. The app shows that time as the
-patient's "last modified" and as the date of legacy revisions. The old values
-are in last night's backup:
-1. All jobs touched by 070 share one exact timestamp:
-   `select updated_at, count(*) from jobs group by 1 order by 2 desc limit 3;`
-   — the top row (count ≈ all jobs) is the migration time, call it T.
-2. From the backup taken BEFORE you ran the migrations (Database → Backups,
-   or a restore into a throwaway project), export `select id, updated_at from jobs;`
-   as CSV and import it into production as a new table `jobs_updated_at_backup`.
-3. In the SQL editor:
+### 1.3 Put `jobs.updated_at` back
+Numbering every job (070) was an UPDATE, so the `jobs_updated_at` trigger stamped
+every job with the migration time. The app shows it as the patient's "last
+modified" and the date of legacy revisions. The old values are in the backup:
+1. `select updated_at, count(*) from jobs group by 1 order by 2 desc limit 3;`
+   — the top row (count ≈ all jobs) is the migration time **T**.
+2. From the backup taken before you ran the migrations (Database → Backups),
+   export `select id, updated_at from jobs;` to CSV and import it as table
+   `jobs_updated_at_backup`.
+3. Then:
    ```sql
    alter table jobs disable trigger jobs_updated_at;
    update jobs j set updated_at = b.updated_at
-     from jobs_updated_at_backup b
-    where j.id = b.id and j.updated_at = 'T';   -- only rows nobody has edited since
+     from jobs_updated_at_backup b where j.id = b.id and j.updated_at = 'T';
    alter table jobs enable trigger jobs_updated_at;
    drop table jobs_updated_at_backup;
    ```
 
-### sql/068 (tenant isolation) — already applied
-Closes the cross-tenant holes in phase0-report.md §2. Check in the app: you can
-still log in, see jobs, add a worker, remove and restore a worker.
+### 1.4 Before anyone installs the new build
+- **Two-factor sign-in is mandatory in the new build.** Authentication → Sign In / Providers →
+  Multi-Factor → **TOTP** on (it is on by default). Every user scans a QR code
+  at their next sign-in and cannot skip it. Tell the staff to have Google or
+  Microsoft Authenticator ready. Locked out (lost phone): Authentication →
+  Users → the user → remove the MFA factor.
+- **Storage → Settings → upload limit to 500 MB.** The project default is 50 MB; full-arch scans fail above it.
+- **Release:** bump the version as usual; nothing tonight touched `package.json`'s version.
 
-### sql/069 (chat hardening) — already applied
-Nothing to check in the app; `sql/test/chat.test.ts` is the check.
+---
 
-### Five core protections (dashboard, ~15 min)
-Production project, then the test project:
-1. **SSL:** Project Settings → Database → SSL Configuration → *Enforce SSL on
-   incoming connections* → on.
-2. **Network restrictions:** Project Settings → Database → Network Restrictions →
-   allow only your own IP(s) (and later the Hetzner backup VM). The app is not
-   affected: it uses the HTTPS API, not direct Postgres.
-3. **Dashboard MFA:** your account → Account preferences → Security → enable an
-   authenticator app. Then Organization → Settings → *Require MFA* for members.
-4. **User MFA:** Authentication → Sign In / Providers → Multi-Factor →
-   enable **TOTP** (not phone). The in-app enrolment is a Phase 1 item.
-5. **Leaked passwords:** Authentication → Policies (Password security) →
-   *Prevent use of leaked passwords* → on; minimum length 12.
-Then run **Advisors → Security Advisor** on both projects. The schema lints it
-checks are already tests (`sql/test/securityAdvisor.test.ts`); what remains
-should be only these Auth settings, which this list fixes.
+## 2. Switching features on (when you want them)
 
-### Restore test (Phase 0, ~30 min)
-1. Dashboard (production) → Database → Backups → download the latest daily
-   backup, or `pg_dump --no-owner --no-privileges "$PROD_URL" > prod.sql` from
-   a trusted machine.
-2. Restore into a throwaway project (never the other way): `psql "$TEST_URL" < prod.sql`.
-3. Row counts must match. Run this on both and compare:
+**E-mail notifications and bug-report e-mails** (075–077, 079)
+1. Vault: `select vault.create_secret('https://<project-ref>.functions.supabase.co', 'wivo_functions_url');`
+   (077 reads the URL from here, unlike 052, so no test copy can ever call production)
+2. Resend: verify the domain, create an API key.
+3. `supabase secrets set RESEND_API_KEY=… NOTIFY_FROM="Wivo <noreply@…>" APP_LINK="<link>/job/{id}" BUG_REPORT_TO=<your address>`
+4. `supabase functions deploy send-notifications` — it now refuses anyone without the service key.
+5. Check: `curl -X POST "$URL/send-notifications?dry=1" -H "Authorization: Bearer $SERVICE_KEY"`.
+APP_LINK: there is no web app yet; the download page is the honest link until the PWA (Phase 1b).
+
+**Short-lived download links**: `supabase functions deploy file-link`. Downloads
+then get a 60-second link signed on the server after the audited check. The
+app falls back to the old path until it is deployed.
+
+**Partnerships**: both admins need MFA; invite in Seaded → Partnerships; you
+approve each one as Wivo: `select platform_approve_partnership('<id>');`.
+Partner staff need `jobs.read` / `jobs.write` in their own Workers permissions.
+
+**Sentry**: an organisation in the **EU region**, an Electron project; put the DSN in
+`.env` as `MAIN_VITE_SENTRY_DSN=` and `VITE_SENTRY_DSN=`, rebuild. Without them
+no Sentry code ships. Also turn on Sentry's own data scrubber and IP-address
+storage off.
+
+**Once every computer runs the new build**, close the two compatibility paths:
+```sql
+-- Add worker: the old link-after-signup window (086 replaced it)
+drop policy if exists "profiles_read" on public.profiles;
+create policy "profiles_read" on public.profiles for select using (
+  id = auth.uid() or clinic_id = public.my_clinic_id()
+  or (clinic_id is null and removed_from = public.my_clinic_id()));
+-- Downloads only through file-link (thumbnails stop until previews move too)
+-- drop policy if exists "job_files_select" on storage.objects;
+```
+
+---
+
+## 3. Phase 0 items that need the dashboard or a backup
+
+**Five core protections** (~15 min). Service-role key: verified absent from the app.
+1. Database → SSL: *Enforce SSL* on.
+2. Database → Network Restrictions: only your IPs (the app uses HTTPS, unaffected).
+3. Your account → Security: authenticator; Organization → *Require MFA*.
+4. Auth → Multi-Factor: TOTP on (1.4).
+5. Auth → Password security: *Prevent leaked passwords* on, minimum 12.
+Then **Advisors → Security Advisor**: its schema lints already pass as tests
+(`sql/test/securityAdvisor.test.ts`); only these Auth settings should remain.
+
+**Restore test** (~30 min, spec Phase 0). Needs somewhere that is not production:
+1. Create a throwaway Supabase project and restore the latest backup into it:
+   `psql "$THROWAWAY_URL" < prod.sql` (the dump brings the schema with it).
+   (`scripts/fresh-schema.mjs` builds an EMPTY schema in one paste — for a new
+   software-only customer's own project, not for the restore test.)
+2. Compare row counts on both:
    ```sql
-   select table_name,
-          (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from public.%I', table_name), false, true, '')))[1]::text::int as rows
-     from information_schema.tables
-    where table_schema = 'public' and table_type = 'BASE TABLE'
-    order by 1;
+   select table_name, (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from public.%I', table_name), false, true, '')))[1]::text::int as rows
+     from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by 1;
    ```
-4. Point a dev build at the test project (`.env`), log in, open a job, an
-   invoice and the payroll page.
-5. No Storage files exist yet, so there is nothing to compare there.
-6. Afterwards the test project holds real patient data: delete it or restrict
-   access to the same people who can see production.
-Note: sql/052 and sql/056 schedule a cron call to the PRODUCTION function URL.
-After restoring, run `select cron.unschedule('wivo-send-invoices');` on the test
-project so it does not call production every hour.
+3. Point a dev build at it, open a job, an invoice, payroll. Then
+   `select cron.unschedule('wivo-send-invoices');` there (052 points at production), and delete the project.
 
-### sql/070 (organisations, partnerships, job codes, audit log) — already applied
-Your clinic gets a job-code prefix from its name (check
-`select name, code_prefix from clinics;` and change it now if you want another,
-before codes are printed anywhere) and every existing job gets a code in
-creation order. Approving a partnership as Wivo, until the admin console exists:
-`select platform_approve_partnership('<partnership id>');` in the SQL editor.
+**Leak check on production** (spec: release condition), once a second
+organisation with a user exists (Riga, or a test one with no patients):
+`SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=<an unshared job> node scripts/leak-check.mjs --production`
+— reads every table and calls the partner RPCs and Storage as Riga; exit 0 = nothing leaked.
 
-### Two-factor sign-in (before anyone logs in to the new build)
-Turn on TOTP first: Authentication → Sign In / Providers → Multi-Factor → TOTP.
-With it on, every user is asked to scan a QR code at their next sign-in and
-cannot skip it; from then on each sign-in asks for the 6-digit code. With it
-off, the app lets people in without a second factor (and partnership steps
-refuse, because the database requires aal2 for them).
-Test: sign in → QR screen → scan with Google/Microsoft Authenticator → code →
-app opens. Sign out, sign in → only the code is asked.
+---
 
-### sql/072 (job files) — already applied; check Storage
-Created the private `job-files` bucket (500 MB per file) and its policies. After
-applying: open a job → Files → add a photo → it uploads with a progress bar →
-Download opens it. In Storage the object sits at `<clinic id>/<job id>/<file id>`.
-GPS is removed from JPEG, HEIC (iPhone default), PNG and WebP photos before
-upload. HEIC photos get no thumbnail (Chromium cannot decode HEIC); they still
-upload and download normally.
+## 4. What is done
 
-### Notifications: 075–077 applied; now the Vault secret and the e-mail function
-1. (077 needed pg_cron + pg_net; if it failed, enable them and run it again.)
-2. Vault, once per project (production and test each get their OWN URL):
-   `select vault.create_secret('https://<project-ref>.functions.supabase.co', 'wivo_functions_url');`
-3. Resend: verify the sending domain, create an API key.
-4. `supabase secrets set RESEND_API_KEY=... NOTIFY_FROM="Wivo <noreply@your-domain>" APP_LINK="<link to the app>/job/{id}"`
-5. `supabase functions deploy send-notifications`
-6. Check: `curl -X POST "$URL/send-notifications?dry=1" -H "Authorization: Bearer $SERVICE_KEY"`
-   → `{"ok":true,"dry":true,"sent":N}`.
-Acceptance test (spec): share a job with the Riga test org → bell badge in Riga
-within seconds, e-mail within a minute. APP_LINK: there is no web app yet; a
-link to the download page or the PWA (Phase 1b) is the honest choice for now.
+| Spec item | Where | Commit |
+|---|---|---|
+| **Phase 0** | | |
+| Fresh database from `sql/` with no manual steps (tested on every `npm test`, PGlite) | sql/test/freshDb | 16874b3 |
+| RLS audit: every table has RLS; Advisor lints as tests; 5 cross-tenant holes closed | sql/068 | 98d2db6 |
+| Chat inventory; 6 rule gaps closed; finished, not removed | sql/069, chat-inventory.md | 0f550c1 |
+| Five protections: service key verified absent; dashboard steps above | phase0-report §3 | 5091283 |
+| i18n: English source (2,700+ keys), complete Estonian, Russian wired; guard test | shared/i18n | 256493d |
+| **Phase 1** | | |
+| organization / org_member (on `clinics` / `profiles`), partnership, job_share, job codes, audit log | sql/070 | 80db025 |
+| Partner access layer: partner_job_view, search, move_job_stage, stage_transition, questions | sql/071 | 4b54ad0 |
+| New-job form: stages to a partner, case type, referral consent | wizard | 7258ead |
+| Partner jobs screen, hand-over, question flag, job thread | app | 85d4f73 |
+| Partnership invite flow (hashed code, 7 days, rate limit, both admins + Wivo, audited) | sql/070 + Seaded | 4aee9f9 |
+| MFA for all users (TOTP) | app | 639b354 |
+| Job files: private bucket, TUS resumable, SHA-256, versions, soft delete, audited downloads | sql/072 | 9c05bd8 |
+| Previews: STL → PNG, photo thumbnails | sql/073 | c20ef3b |
+| Client cleaning: DICOM scrub, GPS off JPEG/HEIC/PNG/WebP, job-code file names | lib/fileClean | 9c05bd8, fd4fd89 |
+| Scanner folder watcher → Unsorted → job | Electron | 99e8ed5 |
+| Patient export: PDF + ZIP, logged | sql/074 | 5ece0af |
+| Comments & questions on chat, files on comments | sql/071, 080 | 85d4f73, b7cfa2d |
+| Notifications: realtime bell, Resend e-mail (code + link only) | sql/075–077 | 443044f |
+| Audit log: full coverage + admin screen | sql/078 | 137ac64 |
+| Language as a user setting with organisation default | app | 3efa00f |
+| Technician pay, large, on the job | app | 5a1f7d0 |
+| Report a bug → bug_report + e-mail, no screenshot unless added | sql/079 | 0a117ef |
+| Sentry with patient data filtered | app | 141b635 |
+| **Reviews** | | |
+| First review (27 findings): fixes | sql/083, 084 | 41e0e34, 52df269 |
+| Second review (9 findings + CSV import): fixes | sql/085 | e885d5f |
+| Add worker by invite token; revision stages; server-signed download links | sql/086–088 | 682852a, 860a6ff, bc4058f |
 
-### Bug reports: 079 applied; set BUG_REPORT_TO
-079 created `bug_report` (no app user can read it — see it in the Table Editor
-or via the service role) and the private `bug-reports` bucket. Then
-`supabase secrets set BUG_REPORT_TO=<your address>` and redeploy
-`send-notifications` (it e-mails new bug reports every minute too).
-Test: sidebar → Report a bug → write something → Send → row in `bug_report`,
-e-mail within a minute. With a screenshot attached the e-mail says so; the
-image stays in the bucket.
+## 5. What is not done
 
-### Sentry (optional, when you want it)
-Create the Sentry organisation in the **EU data region** (spec: data in the
-EU), one project of type Electron. Put the DSN in `.env` as both
-`MAIN_VITE_SENTRY_DSN=` and `VITE_SENTRY_DSN=` and rebuild. Without them the
-build contains no Sentry at all. In Sentry → Project settings → Security &
-Privacy, also turn on "Data scrubber" and "Prevent storing of IP addresses"
-as a second wall behind `shared/privacy/scrub.ts`.
+- **Russian translation.** Wired and falls back to English; not offered in the
+  switch until translated (spec default: Russian within the first month). D6.
+- **Hard-deleting a job** removes its file rows (the stored files stay) and its
+  shares without an "unshare" audit row. Needs your decision: refuse deleting
+  jobs that have files or shares, or move job deletion to soft delete.
+- **Preview thumbnails** still use the grant path, not `file-link`.
+- **"Partner" listing** (`partner_job_view`) is not audited per list; opening a job is.
+- **Restore test, five protections, leak check on the live stack**: yours (section 3).
+- **Admin console, modules, invoices to clinics**: Phase 3, not in tonight's scope.
 
-### Leak check against production (spec: release condition)
-Needs a second organisation with a user in it — the real Riga organisation
-once it exists, or a test one with no patients. Then, with one Tallinn job
-that is NOT shared with it:
-`SUPABASE_URL=… SUPABASE_ANON_KEY=… RIGA_EMAIL=… RIGA_PASSWORD=… TALLINN_ORG_ID=… TALLINN_JOB_ID=… node scripts/leak-check.mjs --production`
-It reads every table the migrations create and calls the partner RPCs and
-Storage as that user; every write it tries must be refused. Exit code 0 means
-nothing leaked.
+## 6. Decisions made (details in DECISIONS.md)
 
-### A throwaway project, for the restore test only
-`TEST_SERVICE_ROLE_KEY=<that project's service key> node scripts/fresh-schema.mjs > fresh.sql`
-gives one file that builds the whole schema (000 … newest) in a single paste
-into its SQL editor — the service key filled in for 052/056, and the invoice
-cron (which points at production) unscheduled at the end. It refuses the
-production key. Restore the backup into it, compare the counts, delete it.
+D3 PGlite instead of local Supabase (no Docker here) · D4–D5 v1.109's inline
+pairs converted to keys by codemod · D6 Russian not offered until translated ·
+D7 Estonian default until organisations set one · D8 documents (invoice,
+patient preview) keyed but in the document's language · **D9 `clinics` is the
+organisation, `profiles` the membership** · D10 job codes `PREFIX-YY-NNNN` ·
+D11 every partnership step needs admin + MFA on both sides; Wivo approves in SQL ·
+D12 MFA built before Files (partnerships need it) · D13 Sentry 5.12, off without a DSN ·
+D14 no permanent test project (your call).
+
+## 7. How to test the new build
+
+Restart `npm run dev` (main and preload changed; `npm install` on another machine).
+- Sign in → QR code → authenticator → code → app opens. Sign out/in → only the code.
+- Board: job codes on cards; "?" flag when a job has an open question.
+- New job → success screen shows the job code.
+- Job panel: technician pay card; **Files** (add a photo and an STL → progress →
+  thumbnail → Download; New version; Delete); **Comments and questions** (ask,
+  attach a file, mark answered).
+- Patient → "Export for the patient" → ZIP with a PDF and their files.
+- Sidebar → **Unsorted** → choose the scanner folder → attach a file to a job.
+- Sidebar bottom → **Report a bug** → row in `bug_report` (e-mail once deployed).
+- Seaded → Interface → language (saved to your profile); Audit log; Job stages →
+  partner moves; Partnerships (create an invite with MFA).
+- Workers → add a worker (after 086): they are in the clinic at once.
+- CSV import now actually imports (it never sent the clinic before).
