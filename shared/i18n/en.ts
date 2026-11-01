@@ -895,6 +895,9 @@ export const en = {
   'invoices.stopPlan': "Stop plan",
 
   // ── jobDetail ─────────────────────────────────────────────────────────────
+  'jobDetail.payProjectionNote': "What this job pays when it is finished, by the current pay rules. Revisions are paid separately.",
+  'jobDetail.designerPay': "Designer pay",
+  'jobDetail.technicianPay': "Technician pay",
   'jobDetail.screwAbutment': "Screw / abutment",
   'jobDetail.eGMISC1375': "E.g. MIS C1 3.75×11.5mm",
   'jobDetail.perTooth': "Per tooth",

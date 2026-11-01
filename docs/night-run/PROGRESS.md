@@ -77,8 +77,10 @@ Other
       English source + complete Estonian (Phase 0); language is now a user
       setting with an organisation default (follows the person); Russian is
       wired and falls back to English, translation itself deferred per the
-      spec's open-question default (DECISIONS D6) — COMMIT_LANG
-- [ ] Technician pay shown large on the job (from the existing rule engine)
+      spec's open-question default (DECISIONS D6) — 3efa00f
+- [x] Technician pay shown large on the job (from the existing rule engine:
+      the same calculateEarnings, asked "if this were done today"; RLS decides
+      who sees whose pay) — COMMIT_PAY
 - [x] MFA for all users (mandatory TOTP enrolment + code at sign-in; steps aside
       if the project has TOTP off; built early, DECISIONS D12) — 639b354
 

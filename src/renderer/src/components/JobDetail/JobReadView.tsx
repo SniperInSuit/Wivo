@@ -22,6 +22,7 @@ import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
 import { JobThread } from '../Partners/JobThread'
 import { JobFiles } from '../Files/JobFiles'
+import { JobPayCard } from './JobPayCard'
 import { t } from '@/lib/i18n'
 
 interface JobReadViewProps {
@@ -374,6 +375,7 @@ export function JobReadView({
 
         {/* ─── Right: money ──────────────────────────────────────────────── */}
         <div className="space-y-3">
+          <JobPayCard job={job} />
           <Card title={t('jobDetail.pRICEANDPAYMENT')} icon={Euro}>
             <div className="space-y-1.5">
               {rev ? (
