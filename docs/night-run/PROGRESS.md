@@ -29,8 +29,9 @@ Organisations and sharing
 - [x] `organization`, `org_member`, `partnership`, `job_share`; existing data
       becomes the Tallinn organisation (sql/070; `clinics` is the organisation,
       DECISIONS D9; plus job codes D10, audit_log, stage_transition) — 80db025
-- [ ] New-job form: assigning a stage to a partner creates a `job_share`; case
-      type (lab work / referral); consent mark for referrals
+- [x] New-job form: assigning a stage to a partner creates a `job_share`; case
+      type (lab work / referral); consent mark for referrals (share_job RPC in
+      sql/071; section in the wizard's production step) — COMMIT_SHAREUI
 - [ ] `partner_job_view`, search, menu restriction on shared jobs
 - [ ] `move_job_stage` + `stage_transition`; partner moves its own stage
 - [ ] "Question" as a flag on the card, not a column

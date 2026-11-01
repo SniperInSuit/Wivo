@@ -15,6 +15,10 @@ import { t } from '@/lib/i18n'
 export interface WizardSuccessProps {
   /** The created job's id. */
   jobId: string
+  /** The human-readable job code (sql/070), when the database assigns one. */
+  jobCode?: string | null
+  /** Shown above the button when something after creation went wrong. */
+  warning?: string | null
   /** Hands over to the Edit page. */
   onDone: () => void
 }
@@ -30,12 +34,14 @@ export interface WizardSuccessProps {
  * behaviour for this audience. "Ava töö" is focused on arrival, so Enter still
  * gets you there in one keystroke; the difference is that it waits.
  */
-export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Element {
+export function WizardSuccess({ jobId, jobCode, warning, onDone }: WizardSuccessProps): JSX.Element {
+  // The code is what goes on the case box; the uuid only where there is no code yet.
+  const shown = jobCode || jobId
   const [copied, setCopied] = useState(false)
 
   async function copyId() {
     try {
-      await navigator.clipboard.writeText(jobId)
+      await navigator.clipboard.writeText(shown)
       setCopied(true)
     } catch {
       // Clipboard access can be refused; the id is on screen either way.
@@ -67,7 +73,7 @@ export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Elemen
 
           <div className="mt-5 flex items-center justify-center gap-2">
             <span className="font-mono text-base text-ink-soft bg-bg-sidebar rounded-lg px-3 py-2 break-all">
-              {jobId}
+              {shown}
             </span>
             <button
               type="button"
@@ -82,6 +88,10 @@ export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Elemen
           <p aria-live="polite" className="mt-1.5 text-base text-emerald-500 min-h-[20px]">
             {copied ? t('wizard.jobIDCopied') : ''}
           </p>
+
+          {warning && (
+            <p role="alert" className="mt-2 text-base font-medium text-amber-500 text-left">{warning}</p>
+          )}
 
           <button
             type="button"

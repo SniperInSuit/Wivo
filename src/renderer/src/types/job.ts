@@ -526,6 +526,8 @@ export interface Job {
   // --- Metadata ---
   created_at: string
   updated_at: string
+  /** PREFIX-YY-NNNN, set by the database on insert (sql/070). Never written by the app. */
+  job_code?: string | null
 }
 
 // Partial type for create/edit forms (id and timestamps are server-generated).

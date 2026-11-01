@@ -29,6 +29,8 @@ import { WizardShell } from './WizardShell'
 import { WizardSuccess } from './WizardSuccess'
 import { WizardCloseDialog } from './WizardCloseDialog'
 import { describeError } from '../Patients/errors'
+import { PartnerShareContext } from './production/PartnerShare'
+import { shareJob, shareSpecProblem, type ShareSpec } from '@/hooks/usePartners'
 import { t } from '@/lib/i18n'
 
 export interface NewJobWizardProps {
@@ -79,6 +81,9 @@ export function NewJobWizard({
   const [created, setCreated] = useState<Job | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [askClose, setAskClose] = useState(false)
+  const [share, setShare] = useState<ShareSpec | null>(null)
+  const [shareWarning, setShareWarning] = useState<string | null>(null)
+  const shareContext = useMemo(() => ({ spec: share, setSpec: setShare }), [share])
 
   // ONE quote, built by the same function StepReview uses. Two builders would
   // eventually disagree, and the number the user approved would not be the
@@ -104,6 +109,10 @@ export function NewJobWizard({
       wizard.goNext()
       return
     }
+    if (share && shareSpecProblem(share)) {
+      setCreateError(t('partners.shareIncomplete'))
+      return
+    }
     inFlight.current = true
     setCreateError(null)
     wizard.patch({ status: 'creating' })
@@ -119,6 +128,15 @@ export function NewJobWizard({
       // The draft has served its purpose. Leaving it behind means the next
       // "Lisa uus töö" reopens the job that was just created.
       wizard.discardDraft()
+      if (share) {
+        // The job exists whatever happens next; a failed share is a warning on
+        // the success screen, not a reason to pretend nothing was created.
+        try {
+          await shareJob(job.id, share)
+        } catch (e) {
+          setShareWarning(t('partners.jobCreatedShareFailed', { e: describeError(e) }))
+        }
+      }
       setCreated(job)
     } catch (e) {
       wizard.patch({ status: 'draft' })
@@ -129,7 +147,7 @@ export function NewJobWizard({
     } finally {
       inFlight.current = false
     }
-  }, [wizard, createJob, stages, quote, types])
+  }, [wizard, createJob, stages, quote, types, share])
 
   const requestClose = useCallback(() => {
     // Refused while the insert is in flight. Closing here unmounts this
@@ -146,11 +164,18 @@ export function NewJobWizard({
   if (!open) return null
 
   if (created) {
-    return <WizardSuccess jobId={created.id} onDone={() => onCreated(created)} />
+    return (
+      <WizardSuccess
+        jobId={created.id}
+        jobCode={created.job_code}
+        warning={shareWarning}
+        onDone={() => onCreated(created)}
+      />
+    )
   }
 
   return (
-    <>
+    <PartnerShareContext.Provider value={shareContext}>
       <WizardShell
         wizard={wizard}
         onRequestClose={requestClose}
@@ -168,6 +193,6 @@ export function NewJobWizard({
           />
         )}
       </AnimatePresence>
-    </>
+    </PartnerShareContext.Provider>
   )
 }

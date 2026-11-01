@@ -2833,4 +2833,28 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'publicServices.exclVat': "km-ta",
   'publicServices.inclVat': "km-ga",
 
+  // ── partners ──────────────────────────────────────────────────────────────
+  'partners.jobCreatedShareFailed': "Töö loodi, aga partnerile jagamine ebaõnnestus: {e}. Jaga see töö juurest uuesti.",
+  'partners.shareIncomplete': "Lõpeta partnerile määramine või võta linnuke ära.",
+  'partners.partnerPriceHelp': "Mida sa partnerile selle töö eest maksad. Partner näeb seda, mitte kunagi patsiendi hinda.",
+  'partners.partnerPrice': "Partneri hind (€)",
+  'partners.consentRequired': "Suunamist ei saa ilma selle märketa saata.",
+  'partners.consentHelp': "Salvestatakse koos sinu nime ja ajaga.",
+  'partners.patientInformedAndAgreed': "Patsient teavitatud ja nõustus",
+  'partners.chooseAtLeastOneStage': "Vali vähemalt üks etapp.",
+  'partners.stagesForPartner': "Etapid, mida partner teeb",
+  'partners.referralHelp': "Partner näeb ka patsiendi nime ja kontakte. Vajab patsiendi nõusolekut.",
+  'partners.labWorkHelp': "Partner näeb tööd, hambaid ja patsiendi vanust — mitte nime, kontakte ega hindu.",
+  'partners.referral': "Suunamine",
+  'partners.labWork': "Laboritöö",
+  'partners.caseType': "Juhtumi tüüp",
+  'partners.role': "Roll",
+  'partners.choose': "Vali…",
+  'partners.choosePartner': "Vali partner.",
+  'partners.partner': "Partner",
+  'partners.assignStagesToAPartner': "Määra etapid partnerile",
+  'partners.roleSupplier': "Tarnija",
+  'partners.roleSurgery': "Kirurgia",
+  'partners.roleDesign': "Disain",
+
 }

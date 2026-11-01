@@ -2846,6 +2846,30 @@ export const en = {
   'publicServices.visitCount': "{n} visits",
   'publicServices.exclVat': "excl. VAT",
   'publicServices.inclVat': "incl. VAT",
+
+  // ── partners ──────────────────────────────────────────────────────────────
+  'partners.jobCreatedShareFailed': "The job was created, but sharing it with the partner failed: {e}. Share it again from the job.",
+  'partners.shareIncomplete': "Finish the partner assignment, or untick it.",
+  'partners.partnerPriceHelp': "What you pay the partner for this job. The partner sees this, never the patient's price.",
+  'partners.partnerPrice': "Partner's price (€)",
+  'partners.consentRequired': "A referral cannot be sent without this mark.",
+  'partners.consentHelp': "Saved with your name and the time.",
+  'partners.patientInformedAndAgreed': "Patient informed and agreed",
+  'partners.chooseAtLeastOneStage': "Choose at least one stage.",
+  'partners.stagesForPartner': "Stages the partner does",
+  'partners.referralHelp': "The partner also sees the patient's name and contacts. Needs the patient's consent.",
+  'partners.labWorkHelp': "The partner sees the work, the teeth and the patient's age — not the name, contacts or prices.",
+  'partners.referral': "Referral",
+  'partners.labWork': "Lab work",
+  'partners.caseType': "Case type",
+  'partners.role': "Role",
+  'partners.choose': "Choose…",
+  'partners.choosePartner': "Choose the partner.",
+  'partners.partner': "Partner",
+  'partners.assignStagesToAPartner': "Assign stages to a partner",
+  'partners.roleSupplier': "Supplier",
+  'partners.roleSurgery': "Surgery",
+  'partners.roleDesign': "Design",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

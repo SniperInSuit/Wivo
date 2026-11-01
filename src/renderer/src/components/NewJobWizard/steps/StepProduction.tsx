@@ -6,6 +6,7 @@ import { WizardWorkerSelect } from '../production/WizardWorkerSelect'
 import { MachinePicker } from '../production/MachinePicker'
 import { PriorityPicker } from '../production/PriorityPicker'
 import { DesignSplit } from '../production/DesignSplit'
+import { PartnerShare } from '../production/PartnerShare'
 import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
 import { t } from '@/lib/i18n'
 
@@ -49,6 +50,8 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
           patch={patch}
           toothTypes={rules.toothTypes}
         />
+
+        <PartnerShare />
 
         <WizardField
           label={t('wizard.dateReceived')}
