@@ -70,6 +70,45 @@ function clearGps(buf: Uint8Array, tiff: number, end: number): void {
   }
 }
 
+/**
+ * HEIC (the iPhone default), PNG and WebP carry the same TIFF-shaped EXIF
+ * block as a JPEG, wrapped in a different container: a HEIF `Exif` item, a
+ * PNG `eXIf` chunk, a WebP `EXIF` chunk. Rather than parse three containers,
+ * find each TIFF header that follows an EXIF marker, check it really is one
+ * (byte order, magic 42, a sane IFD0), and clear its GPS exactly as for a
+ * JPEG. Offsets are bounded by the file; nothing outside a validated TIFF
+ * block is touched.
+ */
+export function stripContainerGps(input: Uint8Array): Uint8Array {
+  const out = input.slice()
+  const view = new DataView(out.buffer, out.byteOffset, out.byteLength)
+  const markers = [
+    [0x45, 0x78, 0x69, 0x66, 0x00, 0x00], // "Exif\0\0" (HEIF item, some WebP)
+    [0x65, 0x58, 0x49, 0x66],             // "eXIf" (PNG chunk type)
+    [0x45, 0x58, 0x49, 0x46],             // "EXIF" (WebP chunk type)
+  ]
+  let found = false
+  for (let i = 0; i + 16 < out.length; i++) {
+    for (const m of markers) {
+      if (!m.every((b, k) => out[i + k] === b)) continue
+      // After a chunk type comes nothing (PNG: data follows the type) or a
+      // 4-byte size (WebP): try both places for the TIFF header.
+      for (const tiff of [i + m.length, i + m.length + 4]) {
+        if (tiff + 8 > out.length) continue
+        const le = out[tiff] === 0x49 && out[tiff + 1] === 0x49
+        const be = out[tiff] === 0x4d && out[tiff + 1] === 0x4d
+        if (!le && !be) continue
+        if (view.getUint16(tiff + 2, le) !== 42) continue
+        const ifd0 = tiff + view.getUint32(tiff + 4, le)
+        if (ifd0 + 2 > out.length || view.getUint16(ifd0, le) > 200) continue
+        clearGps(out, tiff, out.length)
+        found = true
+      }
+    }
+  }
+  return found ? out : input
+}
+
 // ── X-rays and CT: DICOM header ─────────────────────────────────────────────
 
 /**
@@ -197,10 +236,17 @@ export function guessFileType(name: string): JobFileType {
   return 'other'
 }
 
+/** HEIC/HEIF/AVIF (ISO base media `ftyp`), PNG or WebP. */
+function isPhotoContainer(b: Uint8Array): boolean {
+  const ascii = (o: number, s: string) => [...s].every((c, k) => b[o + k] === c.charCodeAt(0))
+  return ascii(4, 'ftyp') || (b[0] === 0x89 && ascii(1, 'PNG')) || (ascii(0, 'RIFF') && ascii(8, 'WEBP'))
+}
+
 /** The bytes as they will be uploaded: GPS gone from photos, identity gone from DICOM. */
 export function cleanForUpload(bytes: Uint8Array): Uint8Array {
   if (isDicom(bytes)) return scrubDicom(bytes)
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return stripJpegGps(bytes)
+  if (isPhotoContainer(bytes)) return stripContainerGps(bytes)
   return bytes
 }
 

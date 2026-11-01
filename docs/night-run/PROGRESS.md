@@ -53,8 +53,8 @@ Files
 - [x] Previews: STL → PNG, photo thumbnails (made on the uploader's machine;
       sql/073; viewing them is one audited grant per job) — c20ef3b
 - [x] Client-side cleaning: DICOM header scrub, EXIF GPS removal, file name →
-      job code (lib/fileClean.ts, tested on synthetic JPEG/DICOM; HEIC photos
-      are not cleaned yet, see MORNING) — 9c05bd8
+      job code (lib/fileClean.ts: JPEG, HEIC, PNG, WebP GPS; DICOM; tested on
+      synthetic files) — 9c05bd8
 - [x] Folder watcher in Electron: scanner export folder → "Unsorted" → job
       (main reads only inside the chosen folder; same clean/upload path) — 99e8ed5
 - [x] Patient export: PDF + ZIP of their files, download logged (sql/074 one

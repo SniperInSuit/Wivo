@@ -70,8 +70,9 @@ app opens. Sign out, sign in → only the code is asked.
 Creates the private `job-files` bucket (500 MB per file) and its policies. After
 applying: open a job → Files → add a photo → it uploads with a progress bar →
 Download opens it. In Storage the object sits at `<clinic id>/<job id>/<file id>`.
-Known gap: HEIC photos (iPhone default) are uploaded as they are — their GPS is
-not removed yet. JPEGs are cleaned; ask staff to send JPEG until HEIC is done.
+GPS is removed from JPEG, HEIC (iPhone default), PNG and WebP photos before
+upload. HEIC photos get no thumbnail (Chromium cannot decode HEIC); they still
+upload and download normally.
 
 ### Notifications: apply sql/075, 076, 077 and deploy the e-mail function
 1. Run 075 → 076 → 077 in order (077 needs pg_cron + pg_net, as 052 did).

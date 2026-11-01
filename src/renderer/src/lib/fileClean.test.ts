@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stripJpegGps, scrubDicom, cleanForUpload, guessFileType, sha256Hex, isDicom } from './fileClean'
+import { stripJpegGps, stripContainerGps, scrubDicom, cleanForUpload, guessFileType, sha256Hex, isDicom } from './fileClean'
 
 // ── A JPEG with EXIF: orientation in IFD0, latitude in the GPS IFD ─────────
 
@@ -127,5 +127,42 @@ describe('cleanForUpload', () => {
   it('hashes with SHA-256', async () => {
     expect(await sha256Hex(new Uint8Array(ascii('abc'))))
       .toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+  })
+})
+
+// ── HEIC / PNG: the same TIFF block in another container ───────────────────
+
+/** The TIFF part of jpegWithGps(), with where its latitude and orientation sit. */
+function tiffWithGps(): { tiff: number[]; latAt: number; orientAt: number } {
+  const { bytes, latAt, orientAt } = jpegWithGps()
+  const start = 2 + 4 + 6
+  const end = bytes.length - 2
+  return { tiff: [...bytes.subarray(start, end)], latAt: latAt - start, orientAt: orientAt - start }
+}
+
+describe('stripContainerGps', () => {
+  it('HEIC (an Exif item after ftyp): coordinates gone, orientation kept, same length', () => {
+    const { tiff, latAt, orientAt } = tiffWithGps()
+    const head = [0, 0, 0, 24, ...ascii('ftypheic'), 0, 0, 0, 0, ...ascii('mif1heic'), ...new Array(40).fill(7)]
+    const exifItem = [0, 0, 0, 6, ...ascii('Exif'), 0, 0]
+    const heic = new Uint8Array([...head, ...exifItem, ...tiff, ...new Array(30).fill(9)])
+    const t0 = head.length + exifItem.length
+    const out = cleanForUpload(heic)
+    expect([...out.subarray(t0 + latAt, t0 + latAt + 24)].every(b => b === 0)).toBe(true)
+    expect(out[t0 + orientAt + 8]).toBe(6)
+    expect(out.length).toBe(heic.length)
+  })
+
+  it('PNG (an eXIf chunk)', () => {
+    const { tiff, latAt } = tiffWithGps()
+    const head = [0x89, ...ascii('PNG'), 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, tiff.length, ...ascii('eXIf')]
+    const png = new Uint8Array([...head, ...tiff, 0, 0, 0, 0])
+    const out = cleanForUpload(png)
+    expect([...out.subarray(head.length + latAt, head.length + latAt + 24)].every(b => b === 0)).toBe(true)
+  })
+
+  it('bytes that merely contain "Exif" but no valid TIFF are left alone', () => {
+    const noise = new Uint8Array([0, 0, 0, 24, ...ascii('ftypheic'), ...ascii('Exif'), 0, 0, ...ascii('IIxx'), ...new Array(40).fill(1)])
+    expect(stripContainerGps(noise)).toBe(noise)
   })
 })
