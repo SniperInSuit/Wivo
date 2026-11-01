@@ -53,6 +53,11 @@ export type Engagement = 'tootaja' | 'ettevote'
 export type PayBasis = 'bruto' | 'neto'
 
 export interface Profile {
+  /** sql/075: e-mail for notifications. The in-app bell is always on. */
+  notify_email?: boolean
+  /** sql/070. */
+  org_role?: 'owner' | 'admin' | 'doctor' | 'technician' | 'assistant' | null
+  language?: 'en' | 'et' | 'ru' | null
   id: string
   full_name: string
   role: UserRole

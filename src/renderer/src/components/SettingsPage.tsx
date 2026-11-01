@@ -693,6 +693,27 @@ function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, 
 
 // ─── Profile settings sub-component ───────────────────────────────────────────
 
+/** Per-user channel choice (spec: "the user picks the channels"). The bell always shows. */
+function EmailNotificationsToggle({ auth }: { auth: ReturnType<typeof useAuth> }) {
+  const [on, setOn] = useState<boolean>(auth.profile?.notify_email ?? true)
+  return (
+    <label className="mt-4 flex items-start gap-2 text-sm text-ink max-w-xl">
+      <input type="checkbox" className="mt-0.5" checked={on}
+        onChange={async e => {
+          const next = e.target.checked
+          setOn(next)
+          const { error } = await supabase.rpc('set_notify_email', { p_on: next })
+          if (error) setOn(!next)
+          else void auth.refreshProfile()
+        }} />
+      <span>
+        {t('notifications.emailMe')}
+        <span className="block text-xs text-ink-muted">{t('notifications.emailHelp')}</span>
+      </span>
+    </label>
+  )
+}
+
 function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
   const [name, setName] = useState(auth.profile?.full_name ?? '')
   const [saving, setSaving] = useState(false)
@@ -749,6 +770,7 @@ function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
           {saving ? t('settingsPage.saving') : t('settingsPage.save')}
         </button>
       )}
+      <EmailNotificationsToggle auth={auth} />
     </section>
   )
 }

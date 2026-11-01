@@ -2993,4 +2993,14 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'patientExport.details': "Andmed",
   'patientExport.madeBy': "Koostas {clinic}, {date}",
 
+  // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.emailHelp': "E-kirjas on ainult töö kood ja link, mitte kunagi patsiendi andmeid.",
+  'notifications.emailMe': "Saada mulle e-kiri, kui partner jagab tööd, annab üle või küsib",
+  'notifications.question': "Uus küsimus tööl {code}",
+  'notifications.handedOver': "Töö {code} anti teile üle",
+  'notifications.jobShared': "{from} jagas teiega tööd {code}",
+  'notifications.none': "Midagi uut ei ole.",
+  'notifications.markAllRead': "Märgi kõik loetuks",
+  'notifications.notifications': "Teavitused",
+
 }

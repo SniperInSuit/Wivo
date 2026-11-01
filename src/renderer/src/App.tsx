@@ -318,6 +318,13 @@ function AppContent() {
           search={search}
           onSearchChange={setSearch}
           onNewJob={openNew}
+          onOpenNotification={n => {
+            // Our own job opens in the panel; a job shared WITH us is only
+            // reachable through the partner view.
+            const own = n.job_id ? jobs.find(j => j.id === n.job_id) : undefined
+            if (own) openEdit(own)
+            else setView('partner')
+          }}
           onNewVisit={() => { setView('calendar'); setNewVisitSignal(n => n + 1) }}
           onImportDone={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
           centerSlot={view === 'calendar' ? (

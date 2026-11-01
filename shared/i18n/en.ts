@@ -3006,6 +3006,16 @@ export const en = {
   'patientExport.dateOfBirth': "Date of birth",
   'patientExport.details': "Details",
   'patientExport.madeBy': "Prepared by {clinic} on {date}",
+
+  // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.emailHelp': "The e-mail contains only the job code and a link, never patient details.",
+  'notifications.emailMe': "E-mail me when a partner shares a job, hands one over or asks a question",
+  'notifications.question': "New question on job {code}",
+  'notifications.handedOver': "Job {code} was handed over to you",
+  'notifications.jobShared': "{from} shared job {code} with you",
+  'notifications.none': "Nothing new.",
+  'notifications.markAllRead': "Mark all read",
+  'notifications.notifications': "Notifications",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

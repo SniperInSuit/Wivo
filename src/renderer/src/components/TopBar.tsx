@@ -2,12 +2,16 @@ import { Plus, Search, LogOut, CalendarPlus } from 'lucide-react'
 import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
 import { ImportCSVButton } from './ImportCSVButton'
+import { NotificationBell } from './NotificationBell'
+import type { AppNotification } from '../hooks/useNotifications'
 import { t } from '@/lib/i18n'
 
 interface TopBarProps {
   search: string
   onSearchChange: (v: string) => void
   onNewJob: () => void
+  /** A notification was clicked: open its job wherever it lives. */
+  onOpenNotification?: (n: AppNotification) => void
   onNewVisit?: () => void
   onImportDone: () => void
   /**
@@ -21,7 +25,7 @@ interface TopBarProps {
 // Navigation moved to the Sidebar in 1.1.0 — this strip is now search + actions
 // only. The h-[56px] flex-shrink-0 sizing stays byte-for-byte: every view's
 // height contract is measured against it.
-export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportDone, centerSlot }: TopBarProps) {
+export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportDone, centerSlot, onOpenNotification }: TopBarProps) {
   const { settings } = useSettings()
   const { displayName, signOut } = useAuth()
   const nimi = displayName
@@ -48,6 +52,7 @@ export function TopBar({ search, onSearchChange, onNewJob, onNewVisit, onImportD
       )}
 
       <div className="flex items-center gap-2 ml-auto">
+        {onOpenNotification && <NotificationBell onOpen={onOpenNotification} />}
         <ImportCSVButton onSuccess={onImportDone} />
         {onNewVisit && (
           <button onClick={onNewVisit} className="btn-ghost text-nav hover:text-nav border border-nav/20">

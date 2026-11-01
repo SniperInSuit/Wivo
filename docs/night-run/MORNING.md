@@ -72,3 +72,16 @@ applying: open a job → Files → add a photo → it uploads with a progress ba
 Download opens it. In Storage the object sits at `<clinic id>/<job id>/<file id>`.
 Known gap: HEIC photos (iPhone default) are uploaded as they are — their GPS is
 not removed yet. JPEGs are cleaned; ask staff to send JPEG until HEIC is done.
+
+### Notifications: apply sql/075, 076, 077 and deploy the e-mail function
+1. Run 075 → 076 → 077 in order (077 needs pg_cron + pg_net, as 052 did).
+2. Vault, once per project (production and test each get their OWN URL):
+   `select vault.create_secret('https://<project-ref>.functions.supabase.co', 'wivo_functions_url');`
+3. Resend: verify the sending domain, create an API key.
+4. `supabase secrets set RESEND_API_KEY=... NOTIFY_FROM="Wivo <noreply@your-domain>" APP_LINK="<link to the app>/job/{id}"`
+5. `supabase functions deploy send-notifications`
+6. Check: `curl -X POST "$URL/send-notifications?dry=1" -H "Authorization: Bearer $SERVICE_KEY"`
+   → `{"ok":true,"dry":true,"sent":N}`.
+Acceptance test (spec): share a job with the Riga test org → bell badge in Riga
+within seconds, e-mail within a minute. APP_LINK: there is no web app yet; a
+link to the download page or the PWA (Phase 1b) is the honest choice for now.

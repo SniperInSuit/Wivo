@@ -59,12 +59,15 @@ Files
       (main reads only inside the chosen folder; same clean/upload path) — 99e8ed5
 - [x] Patient export: PDF + ZIP of their files, download logged (sql/074 one
       audit row + grants; PDF by Electron printToPDF with JS off; own ZIP
-      writer; treatment plans join in Phase 4) — COMMIT_EXPORT
+      writer; treatment plans join in Phase 4) — 5ece0af
 
 Communication and notifications
 - [x] Comments and questions on a job, on top of chat (job thread RPCs on the
       chat tables; thread in the job panel and the partner panel) — 85d4f73
-- [ ] Notifications: realtime badges, e-mail via Resend (code + link only)
+- [x] Notifications: realtime badges, e-mail via Resend (code + link only)
+      (sql/075–077; the other side only, never the actor; no patient data in a
+      row; Edge Function send-notifications; per-user e-mail toggle; deploying
+      the function + secrets → MORNING) — COMMIT_NOTIF
 - [ ] Audit log
 
 Other
