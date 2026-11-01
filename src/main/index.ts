@@ -9,6 +9,7 @@ import {
 } from './updater'
 import { currentLicence, installLicence, licensingEnforced } from './license'
 import { registerWatchFolder } from './watchFolder'
+import { initSentryMain } from './sentry'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
 app.commandLine.appendSwitch('lang', 'et-EE')
@@ -117,6 +118,7 @@ app.on('second-instance', () => {
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.wivo.dental')
+  await initSentryMain(app.getVersion())
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
   registerWatchFolder()

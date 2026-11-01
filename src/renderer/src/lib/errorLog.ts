@@ -10,6 +10,8 @@
  * also capped in length; the stack, which is code locations, is kept.
  */
 
+import { scrubPersonalData } from '@shared/privacy/scrub'
+
 export interface LoggedError {
   at: string
   message: string
@@ -19,13 +21,7 @@ export interface LoggedError {
 const MAX = 20
 const buffer: LoggedError[] = []
 
-export function scrubPersonalData(text: string): string {
-  return text
-    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email]')
-    .replace(/\b[1-6]\d{2}[01]\d[0-3]\d{5}\b/g, '[personal-code]')          // EE isikukood (11 digits)
-    .replace(/\b[0-3]\d[01]\d\d{2}-?[0-2]\d{4}\b/g, '[personal-code]')       // LV personas kods
-    .replace(/\+?\d[\d\s-]{6,}\d/g, '[number]')                               // phone numbers and the like
-}
+export { scrubPersonalData }
 
 function push(message: string, stack?: string): void {
   buffer.push({

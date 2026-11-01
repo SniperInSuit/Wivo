@@ -8,6 +8,8 @@ declare const __APP_VERSION__: string
 // Optional override for the synthetic login domain (see lib/supabase.ts).
 interface ImportMetaEnv {
   readonly VITE_USERNAME_DOMAIN?: string
+  /** Optional. Without it Sentry is not loaded at all. */
+  readonly VITE_SENTRY_DSN?: string
 }
 
 // Preload bridge (src/preload/index.ts). Optional: during `dev` the renderer can

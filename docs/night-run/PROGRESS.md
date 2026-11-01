@@ -87,7 +87,8 @@ Other
 Bug reports
 - [x] "Report a bug" button → `bug_report` (no screenshot unless the user adds one)
       (sql/079: platform table, RLS with no policy — clinics file, nobody reads;
-      errors scrubbed of e-mails, phones and personal codes) — COMMIT_BUG
+      errors scrubbed of e-mails, phones and personal codes) — 0a117ef
 - [x] `bug_report` row + e-mail to Kevin (same per-minute sender, to
-      BUG_REPORT_TO; deploying → MORNING) — COMMIT_BUG
-- [ ] Sentry in Electron with patient data filtered out
+      BUG_REPORT_TO; deploying → MORNING) — 0a117ef
+- [x] Sentry in Electron with patient data filtered out (both processes, only
+      with a DSN; shared/privacy/scrub.ts tested; EU region → MORNING) — COMMIT_SENTRY

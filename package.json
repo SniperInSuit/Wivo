@@ -14,6 +14,7 @@
     "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir --config.forceCodeSigning=false"
   },
   "dependencies": {
+    "@sentry/electron": "^5.12.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.56.0",
     "@tanstack/react-query-devtools": "^5.56.0",

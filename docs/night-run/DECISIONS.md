@@ -136,3 +136,17 @@ MORNING.md. Database-level enforcement on every table (a restrictive aal2
 policy) would lock out everyone who has not enrolled at the moment it is
 applied, so it is not in a migration tonight; partnership and admin RPCs
 already require aal2 in the database.
+
+## D13. Sentry: @sentry/electron 5.12.0, off without a DSN
+
+New dependency for the spec's "Sentry in Electron". 5.12 rather than the
+latest 8.x: 5.x is the line whose support for Electron 32 (this app) is
+established; moving to 8.x belongs with the next Electron upgrade.
+Both processes initialise it only when a DSN is set at BUILD time
+(`MAIN_VITE_SENTRY_DSN`, `VITE_SENTRY_DSN`); without one, Vite removes the
+import and the build contains no Sentry code (checked in the output).
+Every event and breadcrumb goes through `shared/privacy/scrub.ts` first:
+user, request bodies, `extra`, stack-frame variables, console and typed-input
+breadcrumbs are dropped; URLs lose their query strings (Supabase filters live
+there); text loses e-mails, phone numbers and personal codes. The bug report's
+"recent errors" use the same scrubber.

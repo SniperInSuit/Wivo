@@ -94,3 +94,11 @@ or via the service role) and the private `bug-reports` bucket. Then
 Test: sidebar → Report a bug → write something → Send → row in `bug_report`,
 e-mail within a minute. With a screenshot attached the e-mail says so; the
 image stays in the bucket.
+
+### Sentry (optional, when you want it)
+Create the Sentry organisation in the **EU data region** (spec: data in the
+EU), one project of type Electron. Put the DSN in `.env` as both
+`MAIN_VITE_SENTRY_DSN=` and `VITE_SENTRY_DSN=` and rebuild. Without them the
+build contains no Sentry at all. In Sentry → Project settings → Security &
+Privacy, also turn on "Data scrubber" and "Prevent storing of IP addresses"
+as a second wall behind `shared/privacy/scrub.ts`.
