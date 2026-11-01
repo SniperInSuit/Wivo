@@ -1479,6 +1479,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'overview.noChange': "Muutus puudub",
 
   // ── patients ──────────────────────────────────────────────────────────────
+  'patients.exportHelp': "PDF nende andmete ja töödega ning nende failid ühes ZIP-is. Eksport logitakse.",
+  'patients.exportForPatient': "Ekspordi patsiendile",
   'patients.iNVOICES': "ARVED",
   'patients.invoiced': "Arveldatud",
   'patients.paid': "Makstud",
@@ -2973,5 +2975,22 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'unsorted.noFolder': "Kausta pole valitud",
   'unsorted.unsorted': "Sorteerimata",
   'unsorted.desktopOnly': "Skanneri kaust töötab töölauarakenduses.",
+
+  // ── patientExport ─────────────────────────────────────────────────────────
+  'patientExport.none': "Puuduvad.",
+  'patientExport.files': "Failid",
+  'patientExport.due': "Tähtaeg",
+  'patientExport.shade': "Toon",
+  'patientExport.material': "Materjal",
+  'patientExport.teeth': "Hambad",
+  'patientExport.work': "Töö",
+  'patientExport.received': "Saabunud",
+  'patientExport.code': "Kood",
+  'patientExport.jobs': "Tööd",
+  'patientExport.email': "E-post",
+  'patientExport.phone': "Telefon",
+  'patientExport.dateOfBirth': "Sünniaeg",
+  'patientExport.details': "Andmed",
+  'patientExport.madeBy': "Koostas {clinic}, {date}",
 
 }

@@ -1492,6 +1492,8 @@ export const en = {
   'overview.noChange': "No change",
 
   // ── patients ──────────────────────────────────────────────────────────────
+  'patients.exportHelp': "A PDF of their record and jobs, and their files, in one ZIP. The export is logged.",
+  'patients.exportForPatient': "Export for the patient",
   'patients.iNVOICES': "INVOICES",
   'patients.invoiced': "Invoiced",
   'patients.paid': "Paid",
@@ -2987,6 +2989,23 @@ export const en = {
   'unsorted.noFolder': "No folder chosen",
   'unsorted.unsorted': "Unsorted",
   'unsorted.desktopOnly': "The scanner folder works in the desktop app.",
+
+  // ── patientExport ─────────────────────────────────────────────────────────
+  'patientExport.none': "None.",
+  'patientExport.files': "Files",
+  'patientExport.due': "Due",
+  'patientExport.shade': "Shade",
+  'patientExport.material': "Material",
+  'patientExport.teeth': "Teeth",
+  'patientExport.work': "Work",
+  'patientExport.received': "Received",
+  'patientExport.code': "Code",
+  'patientExport.jobs': "Work",
+  'patientExport.email': "E-mail",
+  'patientExport.phone': "Phone",
+  'patientExport.dateOfBirth': "Date of birth",
+  'patientExport.details': "Details",
+  'patientExport.madeBy': "Prepared by {clinic} on {date}",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

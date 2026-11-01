@@ -56,8 +56,10 @@ Files
       job code (lib/fileClean.ts, tested on synthetic JPEG/DICOM; HEIC photos
       are not cleaned yet, see MORNING) — 9c05bd8
 - [x] Folder watcher in Electron: scanner export folder → "Unsorted" → job
-      (main reads only inside the chosen folder; same clean/upload path) — COMMIT_WATCH
-- [ ] Patient export: PDF + ZIP of their files, download logged
+      (main reads only inside the chosen folder; same clean/upload path) — 99e8ed5
+- [x] Patient export: PDF + ZIP of their files, download logged (sql/074 one
+      audit row + grants; PDF by Electron printToPDF with JS off; own ZIP
+      writer; treatment plans join in Phase 4) — COMMIT_EXPORT
 
 Communication and notifications
 - [x] Comments and questions on a job, on top of chat (job thread RPCs on the

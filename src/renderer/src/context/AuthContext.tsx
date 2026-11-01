@@ -9,6 +9,10 @@ import {
 export interface Clinic {
   id: string
   name: string
+  /** sql/070. Absent until that migration runs. */
+  country?: string
+  default_language?: 'en' | 'et' | 'ru'
+  code_prefix?: string | null
   address: string | null
   city: string | null
   postal_code: string | null

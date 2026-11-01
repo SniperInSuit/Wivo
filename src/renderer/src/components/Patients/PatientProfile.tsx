@@ -7,6 +7,7 @@ import { useUpdatePatient, useDeletePatient } from '../../hooks/usePatients'
 import { jobsForPatient, buildOrderRefs, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { PatientHeaderCard } from './PatientHeaderCard'
+import { PatientExport } from './PatientExport'
 import { PatientStatStrip } from './PatientStatStrip'
 import { RavikaartPanel } from './RavikaartPanel'
 import { ToothStatusPanel } from './ToothStatusPanel'
@@ -229,6 +230,8 @@ export function PatientProfile({
             <PatientStatStrip stats={stats} />
           </div>
         </div>
+
+        <PatientExport patient={patient} jobs={jobs} />
 
         {/* The three working surfaces, side by side: medical | production |
             anatomy — 30/40/30. Job history gets the widest column because that

@@ -208,3 +208,21 @@ describe('previews (sql/073)', () => {
     expect(await errorAs(db, { id: C.ownerId }, `select * from public.request_job_previews($1)`, [jobId])).toMatch(/not found/)
   })
 })
+
+describe('export for the patient (sql/074)', () => {
+  it('lists the patient\'s live files, grants them, and logs one export row', async () => {
+    const { rows: [p] } = await db.query<{ id: string }>(`insert into public.patients (clinic_id, nimi) values ($1, 'Export Person') returning id`, [A.clinicId])
+    await db.query(`update public.jobs set patient_id = $1 where id = $2`, [p.id, jobId])
+    const files = await rowsAs<{ storage_path: string }>(db, { id: A.ownerId }, `select * from public.patient_export($1)`, [p.id])
+    expect(files.length).toBeGreaterThan(0)
+    expect(await canSeeObject({ id: A.ownerId }, files[0].storage_path)).toBe(true)
+    const { rows } = await db.query<{ detail: { files: number } }>(
+      `select detail from public.audit_log where action = 'export' and object = $1`, ['patient:' + p.id])
+    expect(rows).toEqual([{ detail: { files: files.length } }])
+  })
+
+  it('another clinic cannot export someone else\'s patient', async () => {
+    const { rows: [p] } = await db.query<{ id: string }>(`insert into public.patients (clinic_id, nimi) values ($1, 'Private') returning id`, [A.clinicId])
+    expect(await errorAs(db, { id: B.ownerId }, `select * from public.patient_export($1)`, [p.id])).toMatch(/not found/)
+  })
+})

@@ -120,6 +120,21 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
   registerWatchFolder()
+
+  /**
+   * HTML → PDF for documents made in the renderer (the patient export). A
+   * hidden, sandboxed window with JavaScript OFF: the HTML is data, built from
+   * patient records, and never gets to run anything.
+   */
+  ipcMain.handle('wivo:html-to-pdf', async (_e, html: string) => {
+    const win = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true } })
+    try {
+      await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+      return new Uint8Array(await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true }))
+    } finally {
+      win.destroy()
+    }
+  })
   ipcMain.handle('wivo:teeth-model', () => readTeethModel())
 
   // Licence lives in the main process — see license.ts for why.

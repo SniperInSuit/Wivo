@@ -33,6 +33,7 @@ interface Window {
     onSplashState: (
       cb: (s: import('../../types/update').UpdaterSplashState) => void
     ) => () => void
+    htmlToPdf?: (html: string) => Promise<Uint8Array>
     // The scanner export folder — src/main/watchFolder.ts.
     watchFolder?: {
       get: () => Promise<string | null>

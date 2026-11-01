@@ -67,6 +67,9 @@ const wivoAPI = {
     ipcRenderer.invoke('wivo:license-install', token),
   licenseEnforced: (): Promise<boolean> => ipcRenderer.invoke('wivo:license-enforced'),
 
+  /** A PDF of an HTML document, rendered by Chromium in a sandboxed window. */
+  htmlToPdf: (html: string): Promise<Uint8Array> => ipcRenderer.invoke('wivo:html-to-pdf', html),
+
   // ── Scanner export folder (src/main/watchFolder.ts) ──────────────────────
   watchFolder: {
     get: (): Promise<string | null> => ipcRenderer.invoke('wivo:watch-folder-get'),
