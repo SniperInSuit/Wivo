@@ -6,3 +6,7 @@
 Closes the cross-tenant holes in phase0-report.md §2. Run it in the SQL editor,
 then `notify pgrst, 'reload schema';`. Check after: you can still log in, see
 jobs, add a worker, remove and restore a worker.
+
+### Apply sql/069 (chat hardening) after 068
+Same procedure. Nothing uses the chat yet, so there is nothing to check in the
+app; `sql/test/chat.test.ts` is the check.
