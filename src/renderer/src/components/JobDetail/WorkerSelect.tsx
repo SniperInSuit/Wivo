@@ -9,6 +9,7 @@
  */
 import { UserRound } from 'lucide-react'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
+import { t } from '@/lib/i18n'
 
 export interface WorkerSelectProps {
   label: string
@@ -36,9 +37,9 @@ export function WorkerSelect({ label, value, onChange, emptyLabel = '—', dark,
         className={`input ${dark ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-accent' : ''}`}
       >
         <option value="">{emptyLabel}</option>
-        {showNone && <option value={WORKER_NONE}>Tühi (ei tasustata)</option>}
+        {showNone && <option value={WORKER_NONE}>{t('Tühi (ei tasustata)', 'Empty (not paid)')}</option>}
         {workers.map(w => (
-          <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
+          <option key={w.id} value={w.id}>{w.full_name || t('Nimeta', 'Unnamed')}</option>
         ))}
       </select>
     </div>

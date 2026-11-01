@@ -9,6 +9,7 @@ import { jobsForPatient, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { exportCsv, PATIENT_MARKETING_COLUMNS } from '../../lib/exports'
 import { mayMarket } from '../../types/patient'
+import { t } from '@/lib/i18n'
 
 export type SortKey = 'nimi' | 'tood' | 'viimane' | 'tasumata'
 
@@ -130,7 +131,7 @@ export function PatientSearchPage({
           <input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
-            placeholder="Otsi nime, arsti, kliiniku, telefoni või e-posti järgi…"
+            placeholder={t('Otsi nime, arsti, kliiniku, telefoni või e-posti järgi…', 'Search by name, dentist, clinic, phone or email…')}
             autoFocus
             className="input pl-10 py-2.5 text-sm"
           />
@@ -138,7 +139,7 @@ export function PatientSearchPage({
             <button
               onClick={() => onSearchChange('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink"
-              title="Tühjenda"
+              title={t('Tühjenda', 'Clear')}
             >
               <X size={14} />
             </button>
@@ -152,17 +153,17 @@ export function PatientSearchPage({
           disabled={marketable.length === 0}
           title={
             marketable.length === 0
-              ? 'Ükski patsient ei ole turundusnõusolekut andnud'
-              : `${marketable.length} kontakti · ${patients.length - marketable.length} jäetakse välja`
+              ? t('Ükski patsient ei ole turundusnõusolekut andnud', 'No patient has given marketing consent')
+              : t(`${marketable.length} kontakti · ${patients.length - marketable.length} jäetakse välja`, `${marketable.length} ${marketable.length === 1 ? 'contact' : 'contacts'} · ${patients.length - marketable.length} left out`)
           }
           className="btn-ghost border border-ink-faint/25 flex-shrink-0 disabled:opacity-40"
         >
           <Download size={14} />
-          Turunduskontaktid ({marketable.length})
+          {t('Turunduskontaktid', 'Marketing contacts')} ({marketable.length})
         </button>
         <button onClick={onNew} disabled={creating} className="btn-primary flex-shrink-0">
           {creating ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-          Uus patsient
+          {t('Uus patsient', 'New patient')}
         </button>
       </div>
 
@@ -170,33 +171,33 @@ export function PatientSearchPage({
       <div className="card p-3 flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted uppercase tracking-wider mr-1">
           <SlidersHorizontal size={12} />
-          Filtrid
+          {t('Filtrid', 'Filters')}
         </span>
 
         <select value={arstFilter} onChange={e => setArstFilter(e.target.value)} className="input py-1.5 text-sm w-auto">
-          <option value="">Kõik arstid</option>
+          <option value="">{t('Kõik arstid', 'All dentists')}</option>
           {arstOptions.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
 
         <select value={kliinikFilter} onChange={e => setKliinikFilter(e.target.value)} className="input py-1.5 text-sm w-auto">
-          <option value="">Kõik kliinikud</option>
+          <option value="">{t('Kõik kliinikud', 'All clinics')}</option>
           {kliinikOptions.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <Toggle active={onlyUnpaid} onClick={() => setOnlyUnpaid(v => !v)} label="Ainult tasumata" />
-        <Toggle active={onlyWithoutJobs} onClick={() => setOnlyWithoutJobs(v => !v)} label="Ilma töödeta" />
+        <Toggle active={onlyUnpaid} onClick={() => setOnlyUnpaid(v => !v)} label={t('Ainult tasumata', 'Unpaid only')} />
+        <Toggle active={onlyWithoutJobs} onClick={() => setOnlyWithoutJobs(v => !v)} label={t('Ilma töödeta', 'Without jobs')} />
 
         <div className="ml-auto flex items-center gap-2">
           <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} className="input py-1.5 text-sm w-auto">
-            <option value="nimi">Sorteeri: nimi</option>
-            <option value="tood">Sorteeri: töid kokku</option>
-            <option value="viimane">Sorteeri: viimane töö</option>
-            <option value="tasumata">Sorteeri: tasumata</option>
+            <option value="nimi">{t('Sorteeri: nimi', 'Sort: name')}</option>
+            <option value="tood">{t('Sorteeri: töid kokku', 'Sort: total jobs')}</option>
+            <option value="viimane">{t('Sorteeri: viimane töö', 'Sort: latest job')}</option>
+            <option value="tasumata">{t('Sorteeri: tasumata', 'Sort: unpaid')}</option>
           </select>
           {filtersActive && (
             <button onClick={clearFilters} className="btn-ghost text-xs">
               <X size={12} />
-              Tühjenda
+              {t('Tühjenda', 'Clear')}
             </button>
           )}
         </div>
@@ -207,10 +208,10 @@ export function PatientSearchPage({
           onClick={onBackfill}
           disabled={backfilling}
           className="btn-ghost text-xs border border-dashed border-accent/40 text-accent hover:bg-accent/10"
-          title="Loob patsiendikaardid olemasolevate tööde nimedest ja seob tööd nendega"
+          title={t('Loob patsiendikaardid olemasolevate tööde nimedest ja seob tööd nendega', 'Creates patient records from the names on existing jobs and links the jobs to them')}
         >
           {backfilling ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-          Seo {unlinkedCount} tööd patsientidega
+          {t(`Seo ${unlinkedCount} tööd patsientidega`, `Link ${unlinkedCount} ${unlinkedCount === 1 ? 'job' : 'jobs'} to patients`)}
         </button>
       )}
       {backfillMsg && <p className="text-xs text-accent font-medium">{backfillMsg}</p>}
@@ -221,7 +222,7 @@ export function PatientSearchPage({
           <div className="min-w-0 flex-1">
             <p className="text-xs text-red-800 font-medium break-words">{actionError}</p>
           </div>
-          <button onClick={onDismissError} className="text-[10px] text-red-600 underline flex-shrink-0">Sulge</button>
+          <button onClick={onDismissError} className="text-[10px] text-red-600 underline flex-shrink-0">{t('Sulge', 'Close')}</button>
         </div>
       )}
 
@@ -229,22 +230,25 @@ export function PatientSearchPage({
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-faint/15">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-            {visible.length} patsienti
-            {visible.length !== patients.length && ` (${patients.length} kokku)`}
+            {t(`${visible.length} patsienti`, `${visible.length} ${visible.length === 1 ? 'patient' : 'patients'}`)}
+            {visible.length !== patients.length && t(` (${patients.length} kokku)`, ` (${patients.length} total)`)}
           </p>
         </div>
 
-        {loading && <p className="p-6 text-sm text-ink-muted">Laen…</p>}
+        {loading && <p className="p-6 text-sm text-ink-muted">{t('Laen…', 'Loading…')}</p>}
 
         {!loading && visible.length === 0 && (
           <div className="p-6 space-y-2">
             <p className="text-sm text-ink-muted">
-              {patients.length === 0 ? 'Patsiente pole veel.' : 'Ükski patsient ei vasta filtritele.'}
+              {patients.length === 0 ? t('Patsiente pole veel.', 'No patients yet.') : t('Ükski patsient ei vasta filtritele.', 'No patients match the filters.')}
             </p>
             {patients.length === 0 && unlinkedCount > 0 && (
               <p className="text-xs text-ink-faint leading-relaxed">
-                Sul on {unlinkedCount} tööd patsiendinimedega — vajuta „Seo tööd patsientidega".
-                Kui midagi ei juhtu, pole <code>sql/002_patients_rls.sql</code> veel käivitatud.
+                {t(
+                  `Sul on ${unlinkedCount} tööd patsiendinimedega — vajuta „Seo tööd patsientidega".`,
+                  `You have ${unlinkedCount} ${unlinkedCount === 1 ? 'job' : 'jobs'} with patient names — click "Link jobs to patients".`
+                )}{' '}
+                {t('Kui midagi ei juhtu, pole', 'If nothing happens,')} <code>sql/002_patients_rls.sql</code> {t('veel käivitatud.', 'has not been run yet.')}
               </p>
             )}
           </div>
@@ -255,13 +259,13 @@ export function PatientSearchPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] font-semibold text-ink-muted uppercase tracking-wider border-b border-ink-faint/15">
-                  <th className="px-4 py-2">Patsient</th>
-                  <th className="px-4 py-2">Arst / kliinik</th>
-                  <th className="px-4 py-2 text-right">Tööd</th>
-                  <th className="px-4 py-2 text-right">Hambad</th>
-                  <th className="px-4 py-2">Viimane töö</th>
-                  <th className="px-4 py-2 text-right">Arveldatud</th>
-                  <th className="px-4 py-2 text-right">Tasumata</th>
+                  <th className="px-4 py-2">{t('Patsient', 'Patient')}</th>
+                  <th className="px-4 py-2">{t('Arst / kliinik', 'Dentist / clinic')}</th>
+                  <th className="px-4 py-2 text-right">{t('Tööd', 'Jobs')}</th>
+                  <th className="px-4 py-2 text-right">{t('Hambad', 'Teeth')}</th>
+                  <th className="px-4 py-2">{t('Viimane töö', 'Latest job')}</th>
+                  <th className="px-4 py-2 text-right">{t('Arveldatud', 'Invoiced')}</th>
+                  <th className="px-4 py-2 text-right">{t('Tasumata', 'Unpaid')}</th>
                   <th className="px-4 py-2 w-8" />
                 </tr>
               </thead>

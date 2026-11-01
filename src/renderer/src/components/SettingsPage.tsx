@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database
+import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database, Languages
 } from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import { ThemeEditor } from './Settings/ThemeEditor'
@@ -21,6 +21,7 @@ import { PublicServicesSection } from './Settings/PublicServicesSection'
 import { EmailSection } from './Settings/EmailSection'
 import { slugify } from '@shared/portal/publicService'
 import { MigrationStatus } from './Settings/MigrationStatus'
+import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -48,37 +49,37 @@ const PERSONAL_GROUPS: GroupKey[] = ['profiil', 'kasutajaliides']
 // (team, notifications, templates, integrations) has nothing behind it yet.
 const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: typeof User }[] }[] = [
   {
-    title: 'Minu eelistused',
+    title: t('Minu eelistused', 'My preferences'),
     items: [
-      { key: 'profiil', label: 'Profiil', icon: User },
-      { key: 'kasutajaliides', label: 'Kasutajaliides', icon: Palette },
+      { key: 'profiil', label: t('Profiil', 'Profile'), icon: User },
+      { key: 'kasutajaliides', label: t('Kasutajaliides', 'Interface'), icon: Palette },
     ]
   },
   {
-    title: 'Kliinik',
+    title: t('Kliinik', 'Clinic'),
     items: [
-      { key: 'kliinik', label: 'Kliinik', icon: Building2 },
+      { key: 'kliinik', label: t('Kliinik', 'Clinic'), icon: Building2 },
       // Its own tab, NOT inside Hinnad. One list is what the lab charges the
       // clinic, the other is what the patient pays — the separation is the point.
-      { key: 'avalik', label: 'Patsiendi hinnakiri', icon: Globe },
+      { key: 'avalik', label: t('Patsiendi hinnakiri', 'Patient price list'), icon: Globe },
       // Its own tab because the question it answers is not "how do we look" but
       // "what is this system allowed to do with our mailbox".
-      { key: 'epost', label: 'E-post', icon: Mail },
-      { key: 'litsents', label: 'Litsents', icon: KeyRound },
+      { key: 'epost', label: t('E-post', 'Email'), icon: Mail },
+      { key: 'litsents', label: t('Litsents', 'Licence'), icon: KeyRound },
       // Migrations are run by hand, so "did I run that one" is answered by
       // memory. Memory is wrong, and the way it is wrong is a feature that
       // quietly keeps its data on one computer.
-      { key: 'andmebaas', label: 'Andmebaas', icon: Database },
+      { key: 'andmebaas', label: t('Andmebaas', 'Database'), icon: Database },
     ]
   },
   {
-    title: 'Töö ja tootmine',
+    title: t('Töö ja tootmine', 'Jobs and production'),
     items: [
-      { key: 'etapid', label: 'Töö etapid', icon: Layers },
-      { key: 'valikud', label: 'Valikud', icon: ListChecks },
-      { key: 'masinad', label: 'Masinad', icon: Cpu },
-      { key: 'hinnad', label: 'Hinnad', icon: Pencil },
-      { key: 'kalender', label: 'Kalender', icon: CalendarClock },
+      { key: 'etapid', label: t('Töö etapid', 'Job stages'), icon: Layers },
+      { key: 'valikud', label: t('Valikud', 'Options'), icon: ListChecks },
+      { key: 'masinad', label: t('Masinad', 'Machines'), icon: Cpu },
+      { key: 'hinnad', label: t('Hinnad', 'Prices'), icon: Pencil },
+      { key: 'kalender', label: t('Kalender', 'Calendar'), icon: CalendarClock },
     ]
   }
 ]
@@ -184,7 +185,7 @@ function OptionListEditor({
                 type="button"
                 onClick={() => { setEditing(item); setEditDraft(item) }}
                 className="hover:text-accent transition-colors"
-                title="Klõpsa ümbernimetamiseks"
+                title={t('Klõpsa ümbernimetamiseks', 'Click to rename')}
               >
                 {item}
               </button>
@@ -192,7 +193,7 @@ function OptionListEditor({
                 type="button"
                 onClick={() => onRemove(item)}
                 className="text-ink-faint hover:text-red-500 transition-colors p-0.5 rounded"
-                title="Eemalda"
+                title={t('Eemalda', 'Remove')}
               >
                 <Trash2 size={11} />
               </button>
@@ -215,18 +216,18 @@ function OptionListEditor({
           disabled={!draft.trim() || duplicate}
           className="btn-ghost border border-ink-faint/25 disabled:opacity-40"
         >
-          <Plus size={13} /> Lisa
+          <Plus size={13} /> {t('Lisa', 'Add')}
         </button>
         <button
           type="button"
           onClick={onReset}
           className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors ml-auto"
         >
-          <RotateCcw size={11} /> Lähtesta
+          <RotateCcw size={11} /> {t('Lähtesta', 'Reset')}
         </button>
       </div>
       {duplicate && draft.trim() && (
-        <p className="text-[10px] text-orange-500 mt-1.5">"{draft.trim()}" on juba loendis.</p>
+        <p className="text-[10px] text-orange-500 mt-1.5">{t(`"${draft.trim()}" on juba loendis.`, `"${draft.trim()}" is already in the list.`)}</p>
       )}
     </div>
   )
@@ -285,7 +286,7 @@ function StageRow({
       <button
         type="button"
         onClick={() => setPicking(v => !v)}
-        title="Muuda värvi"
+        title={t('Muuda värvi', 'Change colour')}
         className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-1 ring-inset ring-black/10 hover:scale-110 transition-transform"
         style={{ backgroundColor: stage.hex }}
       />
@@ -317,7 +318,7 @@ function StageRow({
                 onChange={e => onRecolor(stage.key, e.target.value)}
                 className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
               />
-              Oma värv
+              {t('Oma värv', 'Custom colour')}
             </label>
           </div>
         </>
@@ -344,7 +345,7 @@ function StageRow({
           type="button"
           onClick={() => { setDraft(stage.label); setEditing(true) }}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-ink transition-colors"
-          title="Nimeta ümber"
+          title={t('Nimeta ümber', 'Rename')}
         >
           <Pencil size={11} />
         </button>
@@ -369,7 +370,7 @@ function StageRow({
           onClick={() => (!isLast && canRemove) && onRemove(stage.key)}
           disabled={isLast || !canRemove}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title={isLast ? 'Viimast etappi ei saa kustutada' : undefined}
+          title={isLast ? t('Viimast etappi ei saa kustutada', 'The last stage can’t be deleted') : undefined}
         >
           <Trash2 size={11} />
         </button>
@@ -409,7 +410,7 @@ function WorkTypeRow({
       <button
         type="button"
         onClick={() => setPicking(v => !v)}
-        title="Muuda värvi"
+        title={t('Muuda värvi', 'Change colour')}
         className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-1 ring-inset ring-black/10 hover:scale-110 transition-transform"
         style={{ backgroundColor: type.hex }}
       />
@@ -439,7 +440,7 @@ function WorkTypeRow({
                 onChange={e => onRecolor(e.target.value)}
                 className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
               />
-              Oma värv
+              {t('Oma värv', 'Custom colour')}
             </label>
           </div>
         </>
@@ -464,14 +465,14 @@ function WorkTypeRow({
               showing them stops a renamed built-in from looking broken. */}
           {(type.match?.length ?? 0) > 0 && (
             <span className="text-[10px] text-ink-faint truncate">
-              ka: {type.match!.join(', ')}
+              {t('ka:', 'also:')} {type.match!.join(', ')}
             </span>
           )}
           {/* Read-only here: priced in Hinnad, shown here so the type list is a
               complete picture of a type rather than half of one. */}
           {type.hind != null && (
             <span className="text-[10px] font-semibold text-accent ml-auto flex-shrink-0">
-              {type.hind.toFixed(2)} €/töö
+              {type.hind.toFixed(2)} {t('€/töö', '€/job')}
             </span>
           )}
         </span>
@@ -482,7 +483,7 @@ function WorkTypeRow({
           type="button"
           onClick={() => { setDraft(type.nimi); setEditing(true) }}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-ink transition-colors"
-          title="Nimeta ümber"
+          title={t('Nimeta ümber', 'Rename')}
         >
           <Pencil size={11} />
         </button>
@@ -491,7 +492,7 @@ function WorkTypeRow({
           onClick={() => onMove('up')}
           disabled={isFirst}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Liiguta ette (sobitatakse varem)"
+          title={t('Liiguta ette (sobitatakse varem)', 'Move up (matched earlier)')}
         >
           <ChevronUp size={11} />
         </button>
@@ -500,7 +501,7 @@ function WorkTypeRow({
           onClick={() => onMove('down')}
           disabled={isLast}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Liiguta taha"
+          title={t('Liiguta taha', 'Move down')}
         >
           <ChevronDown size={11} />
         </button>
@@ -508,7 +509,7 @@ function WorkTypeRow({
           type="button"
           onClick={onRemove}
           className="p-1 rounded hover:bg-bg-card text-ink-faint hover:text-red-500 transition-colors"
-          title="Eemalda"
+          title={t('Eemalda', 'Remove')}
         >
           <Trash2 size={11} />
         </button>
@@ -537,13 +538,13 @@ function AddWorkTypeRow({ onAdd }: { onAdd: (nimi: string, hex: string) => void 
         value={hex}
         onChange={e => setHex(e.target.value)}
         className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0 flex-shrink-0"
-        title="Uue tüübi värv"
+        title={t('Uue tüübi värv', 'Colour for the new type')}
       />
       <input
         value={nimi}
         onChange={e => setNimi(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
-        placeholder="nt Implantaadi sild"
+        placeholder={t('nt Implantaadi sild', 'e.g. Implant bridge')}
         className="input py-1.5 text-sm w-52"
       />
       <button
@@ -552,7 +553,7 @@ function AddWorkTypeRow({ onAdd }: { onAdd: (nimi: string, hex: string) => void 
         disabled={!nimi.trim()}
         className="btn-ghost border border-ink-faint/25 disabled:opacity-40"
       >
-        <Plus size={13} /> Lisa
+        <Plus size={13} /> {t('Lisa', 'Add')}
       </button>
     </div>
   )
@@ -569,7 +570,7 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
         value={label}
         onChange={e => setLabel(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit() }}
-        placeholder="Uus etapp…"
+        placeholder={t('Uus etapp…', 'New stage…')}
         className="input flex-1 text-sm py-1.5"
       />
       <button
@@ -578,7 +579,7 @@ function AddStageRow({ onAdd }: { onAdd: (label: string) => void }) {
         disabled={!label.trim()}
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold bg-accent text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
       >
-        <Plus size={13} /> Lisa
+        <Plus size={13} /> {t('Lisa', 'Add')}
       </button>
     </div>
   )
@@ -606,13 +607,13 @@ function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, 
       {/* Sell price header + rows (same for all machines) */}
       <div className="overflow-x-auto">
         <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 mb-2 px-1 min-w-[340px]">
-          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">Materjal</span>
-          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind väike</span>
-          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">Hind suur</span>
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide">{t('Materjal', 'Material')}</span>
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">{t('Hind väike', 'Price small')}</span>
+          <span className="text-[10px] font-semibold text-ink-muted uppercase tracking-wide text-center">{t('Hind suur', 'Price large')}</span>
         </div>
         <div className="space-y-1.5 mb-4">
           {materjalid.length === 0 && (
-            <p className="text-xs text-ink-faint">Materjale ei ole. Lisa need Seaded → Valikud alt.</p>
+            <p className="text-xs text-ink-faint">{t('Materjale ei ole. Lisa need Seaded → Valikud alt.', 'No materials. Add them under Settings → Options.')}</p>
           )}
           {materjalid.map(material => {
             const p = materialPrices[material] ?? { small: 0, large: 0 }
@@ -630,7 +631,7 @@ function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, 
       {/* Cost section with machine tabs */}
       <div className="border-t border-ink-faint/15 pt-3">
         <p className="text-[10px] font-semibold text-accent uppercase tracking-wide mb-2">
-          Omahind (materjali kulu)
+          {t('Omahind (materjali kulu)', 'Cost (material cost)')}
         </p>
         {masinad.length > 0 && (
           <div className="flex items-center gap-1 mb-3">
@@ -645,21 +646,22 @@ function MaterialCostTabs({ materjalid, masinad, materialPrices, materialCosts, 
                     : 'bg-bg-sidebar text-ink-muted hover:text-ink'
                 }`}
               >
-                {tab === 'base' ? 'Vaikimisi' : tab}
+                {tab === 'base' ? t('Vaikimisi', 'Default') : tab}
               </button>
             ))}
           </div>
         )}
         {costTab !== 'base' && (
           <p className="text-[10px] text-ink-faint mb-2">
-            Kulu masinal <strong>{costTab}</strong>. Kui tühi, kasutatakse vaikimisi hinda.
+            {t('Kulu masinal', 'Cost on machine')} <strong>{costTab}</strong>.{' '}
+            {t('Kui tühi, kasutatakse vaikimisi hinda.', 'If empty, the default price is used.')}
           </p>
         )}
         <div className="overflow-x-auto">
           <div className="grid grid-cols-[minmax(140px,1fr)_80px_80px] gap-x-2 mb-2 px-1 min-w-[340px]">
-            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">Materjal</span>
-            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind väike</span>
-            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">Omahind suur</span>
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">{t('Materjal', 'Material')}</span>
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">{t('Omahind väike', 'Cost small')}</span>
+            <span className="text-[10px] font-semibold text-accent uppercase tracking-wide text-center">{t('Omahind suur', 'Cost large')}</span>
           </div>
           <div className="space-y-1.5">
             {materjalid.map(material => {
@@ -713,27 +715,27 @@ function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
     <section>
       <div className="flex items-center gap-2 mb-3">
         <User size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Sinu profiil</h3>
-        {saved && <span className="text-[10px] text-emerald-600 font-medium">Salvestatud ✓</span>}
+        <h3 className="text-sm font-semibold text-ink">{t('Sinu profiil', 'Your profile')}</h3>
+        {saved && <span className="text-[10px] text-emerald-600 font-medium">{t('Salvestatud ✓', 'Saved ✓')}</span>}
       </div>
-      <label className="label" htmlFor="kasutaja-nimi">Nimi märkuste autorina</label>
+      <label className="label" htmlFor="kasutaja-nimi">{t('Nimi märkuste autorina', 'Name shown as note author')}</label>
       <input
         id="kasutaja-nimi"
         value={name}
         onChange={e => setName(e.target.value)}
-        placeholder="nt Kevin Treial"
+        placeholder={t('nt Kevin Treial', 'e.g. Kevin Treial')}
         className="input py-1.5 text-sm max-w-xs"
       />
       <p className="text-xs text-ink-faint mt-2 leading-relaxed">
-        Lisatakse autorina iga patsiendi märkuse juurde. Salvestatakse sinu kontole.
+        {t('Lisatakse autorina iga patsiendi märkuse juurde. Salvestatakse sinu kontole.', 'Added as the author of every patient note. Saved to your account.')}
       </p>
       {auth.user?.email && (
         <p className="text-xs text-ink-muted mt-1">
           {/* Never show the synthetic @wivo.invalid address — it is an
               implementation detail and looks like a broken account. */}
-          {auth.profile?.username ? 'Kasutajanimi' : 'E-post'}:{' '}
+          {auth.profile?.username ? t('Kasutajanimi', 'Username') : t('E-post', 'Email')}:{' '}
           {displayIdentity(auth.user.email, auth.profile?.username)}
-          {' · '}Roll: {auth.profile?.role ?? '—'}
+          {' · '}{t('Roll', 'Role')}: {auth.profile?.role ?? '—'}
         </p>
       )}
       {dirty && (
@@ -742,7 +744,7 @@ function ProfileSection({ auth }: { auth: ReturnType<typeof useAuth> }) {
           disabled={saving}
           className="btn-primary mt-3 disabled:opacity-50"
         >
-          {saving ? 'Salvestab…' : 'Salvesta'}
+          {saving ? t('Salvestab…', 'Saving…') : t('Salvesta', 'Save')}
         </button>
       )}
     </section>
@@ -760,7 +762,7 @@ function WorkTypePriceCard({ type, onPatch }: {
   const [showFile, setShowFile] = useState(false)
   const img = workTypeImage(type.nimi, type.pilt)
   const mode: PriceMode = type.hinnaTyyp ?? 'too'
-  const suffix = mode === 'hammas' ? '€/hammas' : '€/töö'
+  const suffix = mode === 'hammas' ? t('€/hammas', '€/tooth') : t('€/töö', '€/job')
 
   const kulud = type.kulud ?? []
   const patchCost = (i: number, patch: Partial<WorkTypeCost>) =>
@@ -771,8 +773,8 @@ function WorkTypePriceCard({ type, onPatch }: {
   const perJob = kulud.filter(k => k.tyyp === 'too').reduce((s, k) => s + k.summa, 0)
   const perTooth = kulud.filter(k => k.tyyp === 'hammas').reduce((s, k) => s + k.summa, 0)
   const costTotalHint = kulud.length === 0 ? null : [
-    perJob > 0 ? `${perJob.toFixed(2)} € / töö` : null,
-    perTooth > 0 ? `${perTooth.toFixed(2)} € / hammas` : null,
+    perJob > 0 ? t(`${perJob.toFixed(2)} € / töö`, `${perJob.toFixed(2)} € / job`) : null,
+    perTooth > 0 ? t(`${perTooth.toFixed(2)} € / hammas`, `${perTooth.toFixed(2)} € / tooth`) : null,
   ].filter(Boolean).join(' + ')
 
   return (
@@ -805,8 +807,8 @@ function WorkTypePriceCard({ type, onPatch }: {
         {/* Charging mode */}
         <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5">
           {([
-            { key: 'too', label: 'Töö kohta' },
-            { key: 'hammas', label: 'Hamba kohta' },
+            { key: 'too', label: t('Töö kohta', 'Per job') },
+            { key: 'hammas', label: t('Hamba kohta', 'Per tooth') },
           ] as const).map(m => (
             <button
               key={m.key}
@@ -824,10 +826,10 @@ function WorkTypePriceCard({ type, onPatch }: {
         {/* Named, because the card carries two kinds of number and the costs
             below are NOT added to these. Someone reading "400" next to "300"
             reasonably assumes the client is billed 700. They are billed 400. */}
-        <p className="text-[10px] font-semibold text-ink-soft">Kliendi hind</p>
+        <p className="text-[10px] font-semibold text-ink-soft">{t('Kliendi hind', 'Client price')}</p>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] font-medium text-ink-muted mb-0.5">Täishind</label>
+            <label className="block text-[10px] font-medium text-ink-muted mb-0.5">{t('Täishind', 'Full price')}</label>
             <div className="relative">
               <input
                 type="number" min="0" step="0.5"
@@ -840,7 +842,7 @@ function WorkTypePriceCard({ type, onPatch }: {
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-medium text-accent mb-0.5">Soodushind</label>
+            <label className="block text-[10px] font-medium text-accent mb-0.5">{t('Soodushind', 'Discount price')}</label>
             <div className="relative">
               <input
                 type="number" min="0" step="0.5"
@@ -861,11 +863,14 @@ function WorkTypePriceCard({ type, onPatch }: {
             all six at that rate, which is how the price gets quoted on the
             phone and therefore the only way the form can be checked. */}
         <div className="pt-1.5 border-t border-ink-faint/15">
-          <p className="text-[10px] font-semibold text-ink-soft">Kogusehind</p>
+          <p className="text-[10px] font-semibold text-ink-soft">{t('Kogusehind', 'Volume price')}</p>
           <p className="text-[10px] text-ink-faint mb-1">
-            Alates sellest {mode === 'hammas' ? 'hammaste' : 'hammaste'} arvust kehtib teine
-            ühikuhind — <strong className="text-ink-muted">kogu tööle</strong>, mitte ainult
-            ületavatele.
+            {t(
+              `Alates sellest ${mode === 'hammas' ? 'hammaste' : 'hammaste'} arvust kehtib teine ühikuhind —`,
+              'From this number of teeth on, a different unit price applies —',
+            )}{' '}
+            <strong className="text-ink-muted">{t('kogu tööle', 'to the whole job')}</strong>
+            {t(', mitte ainult ületavatele.', ', not just the teeth above it.')}
           </p>
 
           {/* Edited against the RAW array, never the sorted-and-cleaned one.
@@ -875,7 +880,7 @@ function WorkTypePriceCard({ type, onPatch }: {
               settled at READ time (`tierFor`) and on load, not while typing. */}
           {(type.astmed ?? []).map((tier, i) => (
             <div key={`${tier.alates}-${i}`} className="flex items-center gap-1 mb-1">
-              <span className="text-[10px] text-ink-faint w-8 flex-shrink-0">alates</span>
+              <span className="text-[10px] text-ink-faint w-8 flex-shrink-0">{t('alates', 'from')}</span>
               <input
                 type="number" min="2" step="1"
                 value={tier.alates}
@@ -901,7 +906,7 @@ function WorkTypePriceCard({ type, onPatch }: {
               </div>
               <button
                 type="button"
-                title="Eemalda aste"
+                title={t('Eemalda aste', 'Remove tier')}
                 onClick={() => onPatch({
                   astmed: (type.astmed ?? []).filter((_, j) => j !== i),
                 })}
@@ -928,23 +933,24 @@ function WorkTypePriceCard({ type, onPatch }: {
             }}
             className="text-[10px] font-medium text-accent hover:underline"
           >
-            + Lisa kogusehind
+            {t('+ Lisa kogusehind', '+ Add volume price')}
           </button>
         </div>
 
         {/* Consumables — a cost, not a price. Never reaches an invoice. */}
         <div className="pt-1.5 border-t border-ink-faint/15">
-          <p className="text-[10px] font-semibold text-ink-soft">Meie kulu</p>
+          <p className="text-[10px] font-semibold text-ink-soft">{t('Meie kulu', 'Our cost')}</p>
           <p className="text-[10px] text-ink-faint mb-1">
-            Tarvikud, mis see töö alati vajab. <strong className="text-ink-muted">Ei lisandu
-            kliendi hinnale</strong> — lahutatakse marginaalist.
+            {t('Tarvikud, mis see töö alati vajab.', 'Supplies this job always needs.')}{' '}
+            <strong className="text-ink-muted">{t('Ei lisandu kliendi hinnale', 'Not added to the client price')}</strong>{' '}
+            {t('— lahutatakse marginaalist.', '— taken off the margin.')}
           </p>
           {(type.kulud ?? []).map((k, i) => (
             <div key={`${k.nimi}-${i}`} className="flex items-center gap-1 mb-1">
               <input
                 value={k.nimi}
                 onChange={e => patchCost(i, { nimi: e.target.value })}
-                placeholder="Kruvi"
+                placeholder={t('Kruvi', 'Screw')}
                 className="input py-0.5 text-[11px] flex-1 min-w-0"
               />
               <input
@@ -955,10 +961,10 @@ function WorkTypePriceCard({ type, onPatch }: {
               <button
                 type="button"
                 onClick={() => patchCost(i, { tyyp: k.tyyp === 'hammas' ? 'too' : 'hammas' })}
-                title="Töö kohta / hamba kohta"
+                title={t('Töö kohta / hamba kohta', 'Per job / per tooth')}
                 className="text-[9px] px-1 py-0.5 rounded bg-bg-sidebar text-ink-muted hover:text-accent transition-colors flex-shrink-0"
               >
-                {k.tyyp === 'hammas' ? '/hammas' : '/töö'}
+                {k.tyyp === 'hammas' ? t('/hammas', '/tooth') : t('/töö', '/job')}
               </button>
               <button
                 type="button"
@@ -974,7 +980,7 @@ function WorkTypePriceCard({ type, onPatch }: {
             onClick={addCost}
             className="text-[10px] text-accent hover:underline"
           >
-            + Lisa kulu
+            {t('+ Lisa kulu', '+ Add cost')}
           </button>
           {costTotalHint && (
             <p className="text-[9px] text-ink-faint mt-0.5">{costTotalHint}</p>
@@ -997,7 +1003,7 @@ function WorkTypePriceCard({ type, onPatch }: {
             onClick={() => setShowFile(true)}
             className="text-[10px] text-ink-faint hover:text-accent transition-colors"
           >
-            {type.pilt ? `Pilt: ${type.pilt}` : 'Määra pildi fail'}
+            {type.pilt ? t(`Pilt: ${type.pilt}`, `Image: ${type.pilt}`) : t('Määra pildi fail', 'Set image file')}
           </button>
         )}
       </div>
@@ -1021,11 +1027,14 @@ function ClinicSyncBanner({ canEdit }: { canEdit: boolean }) {
       <div className="flex items-start gap-2 text-xs rounded-xl border border-orange-200 bg-orange-50 text-orange-800 px-3 py-2">
         <Building2 size={13} className="flex-shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong>Sinu kontol ei ole kliinikut.</strong> Kuni see nii on, kehtivad
-          seaded ainult selles arvutis ja arveid ega töötasusid salvestada ei saa.
+          <strong>{t('Sinu kontol ei ole kliinikut.', 'Your account has no clinic.')}</strong>{' '}
+          {t(
+            'Kuni see nii on, kehtivad seaded ainult selles arvutis ja arveid ega töötasusid salvestada ei saa.',
+            'Until it does, settings apply only on this computer and invoices and payroll can’t be saved.',
+          )}
           {auth.role === 'owner'
-            ? ' Logi välja ja sisse tagasi — häälestusviisard küsib kliiniku andmed.'
-            : ' Palu omanikul lisada sind kliiniku juurde (Meeskond).'}
+            ? t(' Logi välja ja sisse tagasi — häälestusviisard küsib kliiniku andmed.', ' Sign out and back in — the setup wizard will ask for the clinic’s details.')
+            : t(' Palu omanikul lisada sind kliiniku juurde (Meeskond).', ' Ask the owner to add you to the clinic (Team).')}
         </p>
       </div>
     )
@@ -1036,9 +1045,10 @@ function ClinicSyncBanner({ canEdit }: { canEdit: boolean }) {
       <div className="flex items-start gap-2 text-xs rounded-xl border border-orange-200 bg-orange-50 text-orange-800 px-3 py-2">
         <Building2 size={13} className="flex-shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          Kliinik on olemas, kuid selle andmeid ei õnnestunud laadida. Seaded
-          sünkroonivad edasi. Vaata konsooli veateadet — tavaliselt on põhjuseks
-          käivitamata migratsioon või puuduv õigus.
+          {t(
+            'Kliinik on olemas, kuid selle andmeid ei õnnestunud laadida. Seaded sünkroonivad edasi. Vaata konsooli veateadet — tavaliselt on põhjuseks käivitamata migratsioon või puuduv õigus.',
+            'The clinic exists, but its details could not be loaded. Settings keep syncing. Check the console error — the usual cause is a migration that hasn’t been run or a missing permission.',
+          )}
         </p>
       </div>
     )
@@ -1068,25 +1078,35 @@ function ClinicSyncBanner({ canEdit }: { canEdit: boolean }) {
 
   const [tone, text] = ((): [string, string] => {
     if (sync.status === 'loading') {
-      return ['text-ink-muted bg-bg-sidebar border-ink-faint/20', 'Laen kliiniku seadeid…']
+      return ['text-ink-muted bg-bg-sidebar border-ink-faint/20', t('Laen kliiniku seadeid…', 'Loading clinic settings…')]
     }
     if (sync.status === 'local') {
       return [
         'text-orange-700 bg-orange-50 border-orange-200',
-        `Muudatused jäävad ainult sellesse arvutisse — ${sync.reason}. `
-        + `Käivita ${migrationFor(sync.reason)}.`,
+        t(
+          `Muudatused jäävad ainult sellesse arvutisse — ${sync.reason}. `
+          + `Käivita ${migrationFor(sync.reason)}.`,
+          `Changes stay on this computer only — ${sync.reason}. `
+          + `Run ${migrationFor(sync.reason)}.`,
+        ),
       ]
     }
     if (sync.status === 'synced') {
-      const when = sync.at ? new Date(sync.at).toLocaleString('et-EE') : null
+      const when = sync.at ? new Date(sync.at).toLocaleString(intlLocale) : null
       return [
         'text-emerald-700 bg-emerald-50 border-emerald-200',
         canEdit
-          ? `Need seaded kehtivad kogu kliinikule ja jõuavad kohe teistesse arvutitesse.${when ? ` Viimati muudetud ${when}.` : ''}`
-          : `Need on kliiniku ühised seaded — muuta saab omanik.${when ? ` Viimati muudetud ${when}.` : ''}`
+          ? t(
+            `Need seaded kehtivad kogu kliinikule ja jõuavad kohe teistesse arvutitesse.${when ? ` Viimati muudetud ${when}.` : ''}`,
+            `These settings apply to the whole clinic and reach the other computers straight away.${when ? ` Last changed ${when}.` : ''}`,
+          )
+          : t(
+            `Need on kliiniku ühised seaded — muuta saab omanik.${when ? ` Viimati muudetud ${when}.` : ''}`,
+            `These are the clinic’s shared settings — the owner can change them.${when ? ` Last changed ${when}.` : ''}`,
+          )
       ]
     }
-    return ['text-ink-muted bg-bg-sidebar border-ink-faint/20', 'Kliinik puudub — seaded kehtivad ainult selles arvutis.']
+    return ['text-ink-muted bg-bg-sidebar border-ink-faint/20', t('Kliinik puudub — seaded kehtivad ainult selles arvutis.', 'No clinic — settings apply only on this computer.')]
   })()
 
   return (
@@ -1137,7 +1157,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err: unknown) {
-      setError((err as Error)?.message ?? 'Salvestamine ebaõnnestus')
+      setError((err as Error)?.message ?? t('Salvestamine ebaõnnestus', 'Saving failed'))
     } finally {
       setSaving(false)
     }
@@ -1164,22 +1184,22 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
     <section className="space-y-4">
       <div className="flex items-center gap-2 mb-1">
         <Building2 size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Kliiniku andmed</h3>
-        {saved && <span className="text-[10px] text-emerald-600 font-medium">Salvestatud ✓</span>}
+        <h3 className="text-sm font-semibold text-ink">{t('Kliiniku andmed', 'Clinic details')}</h3>
+        {saved && <span className="text-[10px] text-emerald-600 font-medium">{t('Salvestatud ✓', 'Saved ✓')}</span>}
       </div>
       {!isOwner && (
-        <p className="text-xs text-ink-faint">Ainult kliiniku omanik saab neid andmeid muuta.</p>
+        <p className="text-xs text-ink-faint">{t('Ainult kliiniku omanik saab neid andmeid muuta.', 'Only the clinic owner can change these details.')}</p>
       )}
       <div className="grid grid-cols-2 gap-3 max-w-lg">
-        <Field label="Kliiniku nimi" field="name" placeholder="Nimi" colSpan />
-        <Field label="Aadress" field="address" placeholder="Tänav, maja" colSpan />
-        <Field label="Linn" field="city" placeholder="Tallinn" />
-        <Field label="Postiindeks" field="postal_code" placeholder="10111" />
-        <Field label="Telefon" field="phone" placeholder="+372 5123 4567" />
-        <Field label="E-post" field="email" placeholder="info@kliinik.ee" />
-        <Field label="Registrikood" field="reg_code" placeholder="12345678" />
-        <Field label="KMKR number" field="vat_number" placeholder="EE123456789" />
-        <Field label="Pank" field="bank_name" placeholder="LHV, SEB…" />
+        <Field label={t('Kliiniku nimi', 'Clinic name')} field="name" placeholder={t('Nimi', 'Name')} colSpan />
+        <Field label={t('Aadress', 'Address')} field="address" placeholder={t('Tänav, maja', 'Street, number')} colSpan />
+        <Field label={t('Linn', 'City')} field="city" placeholder="Tallinn" />
+        <Field label={t('Postiindeks', 'Postcode')} field="postal_code" placeholder="10111" />
+        <Field label={t('Telefon', 'Phone')} field="phone" placeholder="+372 5123 4567" />
+        <Field label={t('E-post', 'Email')} field="email" placeholder={t('info@kliinik.ee', 'info@clinic.com')} />
+        <Field label={t('Registrikood', 'Registry code')} field="reg_code" placeholder="12345678" />
+        <Field label={t('KMKR number', 'VAT number')} field="vat_number" placeholder="EE123456789" />
+        <Field label={t('Pank', 'Bank')} field="bank_name" placeholder="LHV, SEB…" />
         <Field label="IBAN" field="bank_account" placeholder="EE00 1234 5678 9012 3456" />
       </div>
 
@@ -1188,7 +1208,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
           a public booking page at all. */}
       <div className="max-w-lg pt-3 border-t border-ink-faint/15">
         <label className="label flex items-center gap-1.5">
-          <Globe size={11} /> Veebilehe tunnus
+          <Globe size={11} /> {t('Veebilehe tunnus', 'Website ID')}
         </label>
         <input
           value={form.public_slug}
@@ -1199,9 +1219,10 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
           disabled={!isOwner}
         />
         <p className="text-[11px] text-ink-faint mt-1 leading-relaxed">
-          Lühike nimi, mille abil veebileht selle kliiniku hinnakirja küsib.
-          Tühjaks jättes avalikku broneerimist ei ole. Ainult tähed, numbrid ja
-          sidekriipsud — kirjapilt parandatakse automaatselt.
+          {t(
+            'Lühike nimi, mille abil veebileht selle kliiniku hinnakirja küsib. Tühjaks jättes avalikku broneerimist ei ole. Ainult tähed, numbrid ja sidekriipsud — kirjapilt parandatakse automaatselt.',
+            'A short name the website uses to ask for this clinic’s price list. Left empty, there is no public booking. Letters, numbers and hyphens only — the spelling is corrected automatically.',
+          )}
         </p>
       </div>
       {error && (
@@ -1213,7 +1234,7 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
           disabled={saving}
           className="btn-primary disabled:opacity-50"
         >
-          {saving ? 'Salvestab…' : 'Salvesta'}
+          {saving ? t('Salvestab…', 'Saving…') : t('Salvesta', 'Save')}
         </button>
       )}
     </section>
@@ -1221,6 +1242,50 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Each language is named IN ITSELF, never translated: someone who landed in
+ * the wrong one is looking for the word they can read.
+ */
+const LANGUAGES: { key: Lang; label: string }[] = [
+  { key: 'et', label: 'Eesti' },
+  { key: 'en', label: 'English' },
+]
+
+function LanguageSection() {
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-1">
+        <Languages size={14} className="text-accent" />
+        {/* Both words, whichever is active — this heading is the signpost. */}
+        <h3 className="text-sm font-semibold text-ink">Keel · Language</h3>
+      </div>
+      <p className="text-xs text-ink-faint mb-3">
+        {t(
+          'Kehtib sellel arvutil. Vahetamisel laetakse aken uuesti.',
+          'Applies to this computer. The window reloads when you switch.',
+        )}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {LANGUAGES.map(l => (
+          <button
+            key={l.key}
+            type="button"
+            onClick={() => setLang(l.key)}
+            aria-pressed={lang === l.key}
+            className={`px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all duration-100 ${
+              lang === l.key
+                ? 'bg-accent text-white border-accent'
+                : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
+            }`}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 export function SettingsPage() {
   const {
@@ -1257,9 +1322,9 @@ export function SettingsPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="px-6 py-6 space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-page-ink">Seaded</h1>
+          <h1 className="text-xl font-bold text-page-ink">{t('Seaded', 'Settings')}</h1>
           <p className="text-sm text-page-muted">
-            Halda oma töökoja andmeid, eelistusi ja süsteemi seadeid.
+            {t('Halda oma töökoja andmeid, eelistusi ja süsteemi seadeid.', 'Manage your workshop’s details, preferences and system settings.')}
           </p>
         </div>
 
@@ -1310,41 +1375,41 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <CalendarClock size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Tööpäev ja ajajooned</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Tööpäev ja ajajooned', 'Working day and timelines')}</h3>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <NumField
-                label="Nädalavaate algus" suffix="h" min={0} max={23}
+                label={t('Nädalavaate algus', 'Week view start')} suffix="h" min={0} max={23}
                 value={settings.nadalAlgus}
                 onChange={v => setNumber('nadalAlgus', v)}
-                hint="Vertikaalse nädalaruudustiku esimene tund."
+                hint={t('Vertikaalse nädalaruudustiku esimene tund.', 'The first hour of the vertical week grid.')}
               />
               <NumField
-                label="Nädalavaate lõpp" suffix="h" min={1} max={24}
+                label={t('Nädalavaate lõpp', 'Week view end')} suffix="h" min={1} max={24}
                 value={settings.nadalLopp}
                 onChange={v => setNumber('nadalLopp', v)}
-                hint="Väljaspool vahemikku olevad visiidid surutakse serva, mitte ei kao ära."
+                hint={t('Väljaspool vahemikku olevad visiidid surutakse serva, mitte ei kao ära.', 'Visits outside the range are pushed to the edge, not hidden.')}
               />
               <NumField
-                label="Ajajoone algus" suffix="h" min={0} max={23}
+                label={t('Ajajoone algus', 'Timeline start')} suffix="h" min={0} max={23}
                 value={settings.ajajoonAlgus}
                 onChange={v => setNumber('ajajoonAlgus', v)}
-                hint="Horisontaalne rööbas Ülevaates ja Kombineeritud vaates."
+                hint={t('Horisontaalne rööbas Ülevaates ja Kombineeritud vaates.', 'The horizontal track in Overview and the Combined view.')}
               />
               <NumField
-                label="Ajajoone lõpp" suffix="h" min={1} max={24}
+                label={t('Ajajoone lõpp', 'Timeline end')} suffix="h" min={1} max={24}
                 value={settings.ajajoonLopp}
                 onChange={v => setNumber('ajajoonLopp', v)}
               />
               <NumField
-                label="Lohistamise samm" suffix="min" min={5} max={60} step={5}
+                label={t('Lohistamise samm', 'Drag step')} suffix="min" min={5} max={60} step={5}
                 value={settings.ajaSamm}
                 onChange={v => setNumber('ajaSamm', v)}
-                hint="Nädalavaates visiiti lohistades klapsub algusaeg selle sammu peale."
+                hint={t('Nädalavaates visiiti lohistades klapsub algusaeg selle sammu peale.', 'When you drag a visit in the week view, its start time snaps to this step.')}
               />
               {settings.kliinilineRezhiim && (
                 <NumField
-                  label="Visiidi vaikimisi kestus" suffix="min" min={5} max={600} step={5}
+                  label={t('Visiidi vaikimisi kestus', 'Default visit length')} suffix="min" min={5} max={600} step={5}
                   value={settings.visiidiKestus}
                   onChange={v => setNumber('visiidiKestus', v)}
                 />
@@ -1355,15 +1420,18 @@ export function SettingsPage() {
                 rather than hidden in an advanced pane: someone who wants the
                 patient record back must be able to find it. */}
             <div className="mt-6 pt-5 border-t border-ink-faint/15">
-              <h4 className="text-sm font-semibold text-ink mb-1">Režiim</h4>
+              <h4 className="text-sm font-semibold text-ink mb-1">{t('Režiim', 'Mode')}</h4>
               <p className="text-xs text-ink-muted leading-relaxed mb-3 max-w-xl">
-                Kumb pool rakendusest on kasutusel. Väljalülitatud pool ei kustuta
-                midagi — read jäävad andmebaasi alles ja tulevad tagasi, kui selle
-                uuesti sisse lülitad.
+                {t(
+                  'Kumb pool rakendusest on kasutusel. Väljalülitatud pool ei kustuta midagi — read jäävad andmebaasi alles ja tulevad tagasi, kui selle uuesti sisse lülitad.',
+                  'Which side of the app is in use. Turning a side off deletes nothing — the rows stay in the database and come back when you turn it on again.',
+                )}
                 <br />
-                <strong>Kliiniline pool</strong> (patsiendikaart, ravikaart, visiidid)
-                on vaikimisi väljas: terviseandmed on GDPR-i eriliigilised andmed,
-                mida ei ole mõtet koguda, kui neid vaja ei lähe.
+                <strong>{t('Kliiniline pool', 'The clinical side')}</strong>{' '}
+                {t(
+                  '(patsiendikaart, ravikaart, visiidid) on vaikimisi väljas: terviseandmed on GDPR-i eriliigilised andmed, mida ei ole mõtet koguda, kui neid vaja ei lähe.',
+                  '(patient record, treatment chart, visits) is off by default: health data is a special category under GDPR, and there is no point collecting it if it isn’t needed.',
+                )}
               </p>
               {/* Three buttons, not two checkboxes: two checkboxes can both be
                   unticked, and an app with neither half is a blank window. */}
@@ -1393,9 +1461,9 @@ export function SettingsPage() {
                 })}
               </div>
               <p className="text-[11px] text-ink-faint mt-2 max-w-xl leading-relaxed">
-                <strong>WivoLab</strong> — labor: tööd, tahvel, tellijad, arved.{' '}
-                <strong>WivoDental</strong> — kliinik: patsiendid, visiidid, arved.{' '}
-                <strong>WivoX</strong> — mõlemad: kliinik oma laboriga.
+                <strong>WivoLab</strong> — {t('labor: tööd, tahvel, tellijad, arved.', 'lab: jobs, board, clients, invoices.')}{' '}
+                <strong>WivoDental</strong> — {t('kliinik: patsiendid, visiidid, arved.', 'clinic: patients, visits, invoices.')}{' '}
+                <strong>WivoX</strong> — {t('mõlemad: kliinik oma laboriga.', 'both: a clinic with its own lab.')}
               </p>
             </div>
           </section>
@@ -1413,37 +1481,43 @@ export function SettingsPage() {
         {activeGroup === 'avalik' && !settings.kliinilineRezhiim && (
           <section>
             <p className="text-sm text-ink-muted max-w-xl leading-relaxed">
-              Patsiendi hinnakiri on veebilehe jaoks ja eeldab kliinilist poolt.
-              Lülita see sisse Seaded → Kalender → Režiim (WivoDental või WivoX).
+              {t(
+                'Patsiendi hinnakiri on veebilehe jaoks ja eeldab kliinilist poolt. Lülita see sisse Seaded → Kalender → Režiim (WivoDental või WivoX).',
+                'The patient price list is for the website and needs the clinical side. Turn it on under Settings → Calendar → Mode (WivoDental or WivoX).',
+              )}
             </p>
           </section>
         )}
+
+        {/* Language. First in the tab because it is the one setting someone
+            who cannot read the rest of the page has to be able to find. */}
+        {activeGroup === 'kasutajaliides' && <LanguageSection />}
 
         {/* Teema */}
         {activeGroup === 'kasutajaliides' && (
           <section>
           <div className="flex items-center gap-2 mb-3">
             <Palette size={14} className="text-accent" />
-            <h3 className="text-sm font-semibold text-ink">Teema</h3>
+            <h3 className="text-sm font-semibold text-ink">{t('Teema', 'Theme')}</h3>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {THEMES.map(t => {
+            {THEMES.map(theme => {
               // The custom tile shows the person's OWN colours. A fixed swatch
               // on this one would be the only tile in the row that lies about
               // what picking it does.
-              const preview = t.key === 'oma' && settings.omaTeema
+              const preview = theme.key === 'oma' && settings.omaTeema
                 ? {
-                  bg: settings.omaTeema['app-bg'] ?? t.preview.bg,
-                  card: settings.omaTeema['bg-card'] ?? t.preview.card,
+                  bg: settings.omaTeema['app-bg'] ?? theme.preview.bg,
+                  card: settings.omaTeema['bg-card'] ?? theme.preview.card,
                 }
-                : t.preview
+                : theme.preview
               return (
               <button
-                key={t.key}
+                key={theme.key}
                 type="button"
-                onClick={() => setTeema(t.key)}
+                onClick={() => setTeema(theme.key)}
                 className={`text-left rounded-xl border-2 overflow-hidden transition-all ${
-                  settings.teema === t.key
+                  settings.teema === theme.key
                     ? 'border-accent shadow-card'
                     : 'border-ink-faint/25 hover:border-accent/40'
                 }`}
@@ -1456,8 +1530,8 @@ export function SettingsPage() {
                   />
                 </span>
                 <span className="block px-2.5 py-2">
-                  <span className="block text-xs font-semibold text-ink">{t.label}</span>
-                  <span className="block text-[10px] text-ink-muted leading-tight">{t.hint}</span>
+                  <span className="block text-xs font-semibold text-ink">{theme.label}</span>
+                  <span className="block text-[10px] text-ink-muted leading-tight">{theme.hint}</span>
                 </span>
               </button>
               )
@@ -1476,11 +1550,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Type size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Teksti suurus</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Teksti suurus', 'Text size')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Suurendab kogu kasutajaliidest ühtlaselt — tekst, ikoonid ja vahed kasvavad koos,
-              nii et paigutus ei lagune. Kehtib kohe ja jääb meelde.
+              {t(
+                'Suurendab kogu kasutajaliidest ühtlaselt — tekst, ikoonid ja vahed kasvavad koos, nii et paigutus ei lagune. Kehtib kohe ja jääb meelde.',
+                'Scales the whole interface evenly — text, icons and spacing grow together, so the layout doesn’t break. Applies straight away and is remembered.',
+              )}
             </p>
 
             <div className="flex flex-wrap gap-2">
@@ -1541,16 +1617,16 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Layers size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Paneeli suund</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Paneeli suund', 'Panel direction')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Kuidas töö ja visiidi detailvaade avaneb.
+              {t('Kuidas töö ja visiidi detailvaade avaneb.', 'How the job and visit detail view opens.')}
             </p>
             <div className="flex gap-2">
               {([
-                { key: 'fullscreen' as const, label: 'Täisekraan', desc: 'Hambakaart keskel, andmed ümber' },
-                { key: 'side' as const, label: 'Külgpaneel', desc: 'Avaneb paremalt küljelt' },
-                { key: 'bottom' as const, label: 'Alumine paneel', desc: 'Avaneb alt üles' },
+                { key: 'fullscreen' as const, label: t('Täisekraan', 'Full screen'), desc: t('Hambakaart keskel, andmed ümber', 'Tooth chart in the middle, details around it') },
+                { key: 'side' as const, label: t('Külgpaneel', 'Side panel'), desc: t('Avaneb paremalt küljelt', 'Opens from the right') },
+                { key: 'bottom' as const, label: t('Alumine paneel', 'Bottom panel'), desc: t('Avaneb alt üles', 'Opens from the bottom') },
               ]).map(opt => (
                 <button
                   key={opt.key}
@@ -1587,11 +1663,13 @@ export function SettingsPage() {
               <section>
                 <div className="flex items-center gap-2 mb-2">
                   <Building2 size={14} className="text-accent" />
-                  <h3 className="text-sm font-semibold text-ink">Kliinik</h3>
+                  <h3 className="text-sm font-semibold text-ink">{t('Kliinik', 'Clinic')}</h3>
                 </div>
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  Kliiniku andmeid ei ole laetud. Arved vajavad kliiniku nime,
-                  registrikoodi ja IBAN-i, seega tuleb see korda saada enne esimest arvet.
+                  {t(
+                    'Kliiniku andmeid ei ole laetud. Arved vajavad kliiniku nime, registrikoodi ja IBAN-i, seega tuleb see korda saada enne esimest arvet.',
+                    'The clinic’s details have not loaded. Invoices need the clinic’s name, registry code and IBAN, so this has to be sorted out before the first invoice.',
+                  )}
                 </p>
               </section>
             )
@@ -1602,11 +1680,11 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Cpu size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Vaikimisi masin</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Vaikimisi masin', 'Default machine')}</h3>
             </div>
             <div className="flex gap-2 items-center flex-wrap">
               {settings.masinad.length === 0 && (
-                <p className="text-xs text-ink-faint">Masinaid ei ole lisatud.</p>
+                <p className="text-xs text-ink-faint">{t('Masinaid ei ole lisatud.', 'No machines added.')}</p>
               )}
               {settings.masinad.map(m => (
                 <button
@@ -1628,7 +1706,7 @@ export function SettingsPage() {
                   onClick={() => setDefaultMachine('')}
                   className="text-xs text-ink-faint hover:text-red-500 transition-colors px-2"
                 >
-                  Tühjenda
+                  {t('Tühjenda', 'Clear')}
                 </button>
               )}
             </div>
@@ -1640,16 +1718,18 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Cpu size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Masinad</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Masinad', 'Machines')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Need nupud on töö vormil "Masin" välja all. Nimetuse muutmine ei muuda
-              juba salvestatud töid — need jäävad vana nimega.
+              {t(
+                'Need nupud on töö vormil "Masin" välja all. Nimetuse muutmine ei muuda juba salvestatud töid — need jäävad vana nimega.',
+                'These buttons sit under the “Machine” field on the job form. Renaming one doesn’t change jobs already saved — they keep the old name.',
+              )}
             </p>
             <OptionListEditor
               items={settings.masinad}
-              placeholder="nt Pro 95S"
-              emptyHint="Masinaid ei ole. Töö vormil ei näidata ühtegi nuppu."
+              placeholder={t('nt Pro 95S', 'e.g. Pro 95S')}
+              emptyHint={t('Masinaid ei ole. Töö vormil ei näidata ühtegi nuppu.', 'No machines. The job form shows no buttons.')}
               onAdd={v => addOption('masinad', v)}
               onRemove={v => removeOption('masinad', v)}
               onRename={(a, b) => renameOption('masinad', a, b)}
@@ -1666,13 +1746,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Cpu size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Kapslimasinad</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Kapslimasinad', 'Capsule machines')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
-              Märgi masinad, mis prindivad kapslist. Nendel küsib töö vorm, mitu
-              kapslit kulus, ja valmis tööl on vastus kohustuslik — kaks hammast
-              ühel kapslil maksavad ühe kapsli, mida hambapõhine hind ei oska
-              öelda. Märkimata masinatel ei küsita midagi ja miski ei blokeeri.
+              {t(
+                'Märgi masinad, mis prindivad kapslist. Nendel küsib töö vorm, mitu kapslit kulus, ja valmis tööl on vastus kohustuslik — kaks hammast ühel kapslil maksavad ühe kapsli, mida hambapõhine hind ei oska öelda. Märkimata masinatel ei küsita midagi ja miski ei blokeeri.',
+                'Mark the machines that print from capsules. For those, the job form asks how many capsules were used, and a finished job must have the answer — two teeth on one capsule cost one capsule, which a per-tooth price can’t tell. Unmarked machines ask nothing and block nothing.',
+              )}
             </p>
             <div className="flex gap-2 items-center flex-wrap">
               {settings.masinad.map(m => {
@@ -1697,7 +1777,7 @@ export function SettingsPage() {
             </div>
             {settings.kapslimasinad.length === 0 && (
               <p className="text-[11px] text-ink-faint mt-2">
-                Ühtegi märgitud — kapslite arvu ei küsita kusagil.
+                {t('Ühtegi märgitud — kapslite arvu ei küsita kusagil.', 'None marked — the capsule count is never asked for.')}
               </p>
             )}
           </section>
@@ -1708,16 +1788,18 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <ListChecks size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Materjalid</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Materjalid', 'Materials')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Nupud töö ja muudatuse vormil. Iga uus materjal saab automaatselt rea
-              hinnatabelisse (Hinnad → Hind materjali järgi).
+              {t(
+                'Nupud töö ja muudatuse vormil. Iga uus materjal saab automaatselt rea hinnatabelisse (Hinnad → Hind materjali järgi).',
+                'Buttons on the job and revision forms. Every new material automatically gets a row in the price table (Prices → Price by material).',
+              )}
             </p>
             <OptionListEditor
               items={settings.materjalid}
-              placeholder="nt Zirkoon A2"
-              emptyHint="Materjale ei ole. Materjali saab töö vormil ikka vabalt kirjutada."
+              placeholder={t('nt Zirkoon A2', 'e.g. Zirconia A2')}
+              emptyHint={t('Materjale ei ole. Materjali saab töö vormil ikka vabalt kirjutada.', 'No materials. You can still type any material on the job form.')}
               onAdd={v => addOption('materjalid', v)}
               onRemove={v => removeOption('materjalid', v)}
               onRename={(a, b) => renameOption('materjalid', a, b)}
@@ -1731,34 +1813,38 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Layers size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Töö tüübid</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Töö tüübid', 'Work types')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-1">
-              Soovitused töö vormi "Töö" välja all. Väli ise jääb vabaks tekstiks —
-              siia lisamine ei piira, mida sinna kirjutada saab.
+              {t(
+                'Soovitused töö vormi "Töö" välja all. Väli ise jääb vabaks tekstiks — siia lisamine ei piira, mida sinna kirjutada saab.',
+                'Suggestions under the “Job” field on the job form. The field itself stays free text — adding types here doesn’t limit what can be typed there.',
+              )}
             </p>
             <p className="text-xs text-ink-faint mb-3">
-              <strong className="text-ink-muted">Värv</strong> on sama, mida kalender kasutab
-              kaardi täidiseks ja legendis. Järjekord on ka sobitamise järjekord: töö
-              nimi "Implantkroon" peab olema "Kroon" kohal, muidu satub ta krooni värvi alla.
+              <strong className="text-ink-muted">{t('Värv', 'Colour')}</strong>{' '}
+              {t(
+                'on sama, mida kalender kasutab kaardi täidiseks ja legendis. Järjekord on ka sobitamise järjekord: töö nimi "Implantkroon" peab olema "Kroon" kohal, muidu satub ta krooni värvi alla.',
+                'is the one the calendar uses to fill the card and in the legend. The order is also the matching order: a job named “Implantkroon” must be above “Kroon”, or it ends up in the crown colour.',
+              )}
             </p>
 
             <div className="space-y-0.5 mb-3">
               {settings.tooTuubid.length === 0 && (
                 <p className="text-xs text-ink-faint">
-                  Töö tüüpe ei ole. Kalendris on kõik tööd ühte värvi.
+                  {t('Töö tüüpe ei ole. Kalendris on kõik tööd ühte värvi.', 'No work types. All jobs are the same colour in the calendar.')}
                 </p>
               )}
-              {settings.tooTuubid.map((t, idx) => (
+              {settings.tooTuubid.map((workType, idx) => (
                 <WorkTypeRow
-                  key={t.nimi}
-                  type={t}
+                  key={workType.nimi}
+                  type={workType}
                   isFirst={idx === 0}
                   isLast={idx === settings.tooTuubid.length - 1}
-                  onRename={nimi => updateWorkType(t.nimi, { nimi })}
-                  onRecolor={hex => updateWorkType(t.nimi, { hex })}
-                  onRemove={() => removeWorkType(t.nimi)}
-                  onMove={dir => moveWorkType(t.nimi, dir)}
+                  onRename={nimi => updateWorkType(workType.nimi, { nimi })}
+                  onRecolor={hex => updateWorkType(workType.nimi, { hex })}
+                  onRemove={() => removeWorkType(workType.nimi)}
+                  onMove={dir => moveWorkType(workType.nimi, dir)}
                 />
               ))}
             </div>
@@ -1770,35 +1856,40 @@ export function SettingsPage() {
               <div className="mt-8 pt-5 border-t border-ink-faint/15">
                 <div className="flex items-center gap-2 mb-1">
                   <CalendarDays size={14} className="text-accent" />
-                  <h3 className="text-sm font-semibold text-ink">Visiidi tüübid</h3>
+                  <h3 className="text-sm font-semibold text-ink">{t('Visiidi tüübid', 'Visit types')}</h3>
                 </div>
                 <p className="text-xs text-ink-faint mb-1">
-                  Miks patsient tuleb — kontroll, jäljendi tegemine, täidis. Valitakse
-                  visiidi vormil; tüüpi ei ole kohustuslik määrata.
+                  {t(
+                    'Miks patsient tuleb — kontroll, jäljendi tegemine, täidis. Valitakse visiidi vormil; tüüpi ei ole kohustuslik määrata.',
+                    'Why the patient is coming — check-up, impression, filling. Chosen on the visit form; a type is not required.',
+                  )}
                 </p>
                 <p className="text-xs text-ink-faint mb-3">
-                  <strong className="text-ink-muted">Värv</strong> täidab visiidi kaardi
-                  kalendris ja ülevaate ajajoonel. Visiidi <em>staatus</em> (planeeritud,
-                  saabunud, tühistatud…) värvib kaardi serva — need on kaks eri asja ja
-                  mõlemad jäävad nähtavaks. Määramata tüüp on hall.
+                  <strong className="text-ink-muted">{t('Värv', 'Colour')}</strong>{' '}
+                  {t('täidab visiidi kaardi kalendris ja ülevaate ajajoonel. Visiidi', 'fills the visit card in the calendar and on the overview timeline. The visit’s')}{' '}
+                  <em>{t('staatus', 'status')}</em>{' '}
+                  {t(
+                    '(planeeritud, saabunud, tühistatud…) värvib kaardi serva — need on kaks eri asja ja mõlemad jäävad nähtavaks. Määramata tüüp on hall.',
+                    '(planned, arrived, cancelled…) colours the card’s edge — they are two different things and both stay visible. A visit with no type is grey.',
+                  )}
                 </p>
 
                 <div className="space-y-0.5 mb-3">
                   {settings.visiidiTyybid.length === 0 && (
                     <p className="text-xs text-ink-faint">
-                      Visiidi tüüpe ei ole. Kõik visiidid on hallid.
+                      {t('Visiidi tüüpe ei ole. Kõik visiidid on hallid.', 'No visit types. All visits are grey.')}
                     </p>
                   )}
-                  {settings.visiidiTyybid.map((t, idx) => (
+                  {settings.visiidiTyybid.map((visitType, idx) => (
                     <WorkTypeRow
-                      key={t.nimi}
-                      type={t}
+                      key={visitType.nimi}
+                      type={visitType}
                       isFirst={idx === 0}
                       isLast={idx === settings.visiidiTyybid.length - 1}
-                      onRename={nimi => updateVisitType(t.nimi, { nimi })}
-                      onRecolor={hex => updateVisitType(t.nimi, { hex })}
-                      onRemove={() => removeVisitType(t.nimi)}
-                      onMove={dir => moveVisitType(t.nimi, dir)}
+                      onRename={nimi => updateVisitType(visitType.nimi, { nimi })}
+                      onRecolor={hex => updateVisitType(visitType.nimi, { hex })}
+                      onRemove={() => removeVisitType(visitType.nimi)}
+                      onMove={dir => moveVisitType(visitType.nimi, dir)}
                     />
                   ))}
                 </div>
@@ -1810,12 +1901,13 @@ export function SettingsPage() {
                   onClick={resetVisitTypes}
                   className="mt-3 text-xs text-ink-muted hover:text-ink underline"
                 >
-                  Taasta vaikimisi tüübid
+                  {t('Taasta vaikimisi tüübid', 'Restore default types')}
                 </button>
                 <p className="text-[11px] text-ink-faint mt-2 max-w-xl leading-relaxed">
-                  Tüübi ümbernimetamine ei muuda juba salvestatud visiite — need jäävad
-                  vana nime kandma ja muutuvad halliks. Salvestatud kirjet ei kirjutata
-                  valikunimekirja muutmisega ümber.
+                  {t(
+                    'Tüübi ümbernimetamine ei muuda juba salvestatud visiite — need jäävad vana nime kandma ja muutuvad halliks. Salvestatud kirjet ei kirjutata valikunimekirja muutmisega ümber.',
+                    'Renaming a type doesn’t change visits already saved — they keep the old name and turn grey. Editing the list never rewrites a saved record.',
+                  )}
                 </p>
               </div>
             )}
@@ -1825,7 +1917,7 @@ export function SettingsPage() {
               onClick={resetWorkTypes}
               className="mt-3 flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors"
             >
-              <RotateCcw size={11} /> Lähtesta vaikimisi
+              <RotateCcw size={11} /> {t('Lähtesta vaikimisi', 'Reset to defaults')}
             </button>
           </section>
           )}
@@ -1846,11 +1938,12 @@ export function SettingsPage() {
                   and a 300 € abutment that does NOT reach the invoice. Reading
                   them as one list is how "so we bill 700" happens. */}
               <div>
-                <h2 className="text-base font-semibold text-ink mb-1">Kliendi hinnad</h2>
+                <h2 className="text-base font-semibold text-ink mb-1">{t('Kliendi hinnad', 'Client prices')}</h2>
                 <p className="text-xs text-ink-faint mb-3 max-w-2xl leading-relaxed">
-                  Mida klient maksab. Töö tüübi hind on peamine; ülejäänu siin on selle
-                  varuvariandid ja kordajad, mis rakenduvad siis, kui tüübil hinda ei ole
-                  või töö on kiirtöö.
+                  {t(
+                    'Mida klient maksab. Töö tüübi hind on peamine; ülejäänu siin on selle varuvariandid ja kordajad, mis rakenduvad siis, kui tüübil hinda ei ole või töö on kiirtöö.',
+                    'What the client pays. The work type price comes first; the rest here are its fallbacks and multipliers, which apply when the type has no price or the job is a rush job.',
+                  )}
                 </p>
             <div className="col-span-full grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4 items-start [&_section]:card [&_section]:p-4">
               <div className="space-y-4 min-w-0">
@@ -1862,33 +1955,37 @@ export function SettingsPage() {
                     <section>
             <div className="flex items-center gap-2 mb-1">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Tööde hinnad</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Tööde hinnad', 'Job prices')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-4">
-              Iga töö tüüp saab hinna kas <strong className="text-ink-muted">töö kohta</strong> või{' '}
-              <strong className="text-ink-muted">hamba kohta</strong> — sild ja disain on
-              hamba kohta, sest nende maksumus sõltub ulatusest. Soodushinna saab
-              töö vormil valida täishinna asemel. Tühi hind tähendab "hinnasta
-              materjali ja hammaste järgi".
+              {t('Iga töö tüüp saab hinna kas', 'Each work type is priced either')}{' '}
+              <strong className="text-ink-muted">{t('töö kohta', 'per job')}</strong> {t('või', 'or')}{' '}
+              <strong className="text-ink-muted">{t('hamba kohta', 'per tooth')}</strong>{' '}
+              {t(
+                '— sild ja disain on hamba kohta, sest nende maksumus sõltub ulatusest. Soodushinna saab töö vormil valida täishinna asemel. Tühi hind tähendab "hinnasta materjali ja hammaste järgi".',
+                '— bridges and design are per tooth, because their cost depends on the span. The discount price can be chosen on the job form instead of the full price. An empty price means “price by material and teeth”.',
+              )}
               <br />
-              Nimekiri on sama, mis <strong className="text-ink-muted">Valikud → Töö tüübid</strong> —
-              tüüpe lisa ja eemalda sealt. Pildid käivad kausta{' '}
-              <code className="px-1 rounded bg-bg-sidebar">src/renderer/src/assets/worktypes/</code>,
-              failinimi = tüübi nimi väiketähtedes (nt <code className="px-1 rounded bg-bg-sidebar">kroon.png</code>).
-              Vaata kausta README-d.
+              {t('Nimekiri on sama, mis', 'The list is the same as')}{' '}
+              <strong className="text-ink-muted">{t('Valikud → Töö tüübid', 'Options → Work types')}</strong>{' '}
+              {t('— tüüpe lisa ja eemalda sealt. Pildid käivad kausta', '— add and remove types there. Images go in the folder')}{' '}
+              <code className="px-1 rounded bg-bg-sidebar">src/renderer/src/assets/worktypes/</code>,{' '}
+              {t('failinimi = tüübi nimi väiketähtedes (nt', 'file name = the type name in lower case (e.g.')}{' '}
+              <code className="px-1 rounded bg-bg-sidebar">kroon.png</code>).{' '}
+              {t('Vaata kausta README-d.', 'See the folder’s README.')}
             </p>
 
             {settings.tooTuubid.length === 0 ? (
               <p className="text-xs text-ink-faint">
-                Töö tüüpe ei ole. Lisa need Valikud → Töö tüübid alt.
+                {t('Töö tüüpe ei ole. Lisa need Valikud → Töö tüübid alt.', 'No work types. Add them under Options → Work types.')}
               </p>
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                {settings.tooTuubid.map(t => (
+                {settings.tooTuubid.map(workType => (
                   <WorkTypePriceCard
-                    key={t.nimi}
-                    type={t}
-                    onPatch={patch => updateWorkType(t.nimi, patch)}
+                    key={workType.nimi}
+                    type={workType}
+                    onPatch={patch => updateWorkType(workType.nimi, patch)}
                   />
                 ))}
               </div>
@@ -1900,50 +1997,68 @@ export function SettingsPage() {
                     <section>
             <div className="flex items-center gap-2 mb-3">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Automaatarvutus</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Automaatarvutus', 'Automatic pricing')}</h3>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <NumField
-                label="Vaikimisi hind hamba kohta" suffix="€" min={0} max={500} step={0.5}
+                label={t('Vaikimisi hind hamba kohta', 'Default price per tooth')} suffix="€" min={0} max={500} step={0.5}
                 value={settings.hambaHind}
                 onChange={v => setNumber('hambaHind', v)}
-                hint="Kasutatakse siis, kui materjalil ei ole hinda määratud."
+                hint={t(
+                  'Kasutatakse siis, kui materjalil ei ole hinda määratud.',
+                  'Used when the material has no price set.',
+                )}
               />
               <NumField
-                label="Muudatuse hind hamba kohta" suffix="€" min={0} max={500} step={0.5}
+                label={t('Muudatuse hind hamba kohta', 'Revision price per tooth')} suffix="€" min={0} max={500} step={0.5}
                 value={settings.muudatusHambaHind}
                 onChange={v => setNumber('muudatusHambaHind', v)}
-                hint="Uue muudatuse hind arvutatakse selle järgi."
+                hint={t(
+                  'Uue muudatuse hind arvutatakse selle järgi.',
+                  'A new revision is priced from this.',
+                )}
               />
               <NumField
-                label="Kiirtöö kordaja" suffix="×" min={1} max={5} step={0.1}
+                label={t('Kiirtöö kordaja', 'Rush multiplier')} suffix="×" min={1} max={5} step={0.1}
                 value={settings.kiirtooKordaja}
                 onChange={v => setNumber('kiirtooKordaja', v)}
-                hint="Kiirtöö puhul korrutatakse arvutatud hind selle arvuga. See on KLIENDI hind — palju sellest töötasusse jõuab, määrad iga inimese juures Töötasud lehel."
+                hint={t(
+                  'Kiirtöö puhul korrutatakse arvutatud hind selle arvuga. See on KLIENDI hind — palju sellest töötasusse jõuab, määrad iga inimese juures Töötasud lehel.',
+                  'For a rush job the calculated price is multiplied by this. This is the CLIENT price — how much of it reaches pay is set for each person on the Payroll page.',
+                )}
               />
               <NumField
-                label="Mudeli hind" suffix="€" min={0} max={500} step={5}
+                label={t('Mudeli hind', 'Model price')} suffix="€" min={0} max={500} step={5}
                 value={settings.mudeliHind}
                 onChange={v => setNumber('mudeliHind', v)}
-                hint="Lisatakse hinnale, kui tööl on Kiirtöö kõrval Mudel märgitud. See on KLIENDI hind — tehniku tasu mudeli eest on eraldi tasureegel (Mille eest → Mudel)."
+                hint={t(
+                  'Lisatakse hinnale, kui tööl on Kiirtöö kõrval Mudel märgitud. See on KLIENDI hind — tehniku tasu mudeli eest on eraldi tasureegel (Mille eest → Mudel).',
+                  'Added to the price when Model is ticked next to Rush on the job. This is the CLIENT price — the technician’s pay for a model is a separate pay rule (For what → Model).',
+                )}
               />
               <NumField
-                label="Käibemaksumäär" suffix="%" min={0} max={30} step={0.5}
+                label={t('Käibemaksumäär', 'VAT rate')} suffix="%" min={0} max={30} step={0.5}
                 value={settings.kmMaar}
                 onChange={v => setNumber('kmMaar', v)}
-                hint="Uue arve vaikimisi määr. 0 = käibemaksu ei lisata. Kontrolli, milline määr sinu teenustele kehtib — arve salvestab oma määra, hilisem muutmine vanu arveid ümber ei arvuta."
+                hint={t(
+                  'Uue arve vaikimisi määr. 0 = käibemaksu ei lisata. Kontrolli, milline määr sinu teenustele kehtib — arve salvestab oma määra, hilisem muutmine vanu arveid ümber ei arvuta.',
+                  'The default rate for a new invoice. 0 = no VAT added. Check which rate applies to your services — each invoice saves its own rate, so changing it later doesn’t recalculate old invoices.',
+                )}
               />
               <NumField
-                label="Maksetähtaeg" suffix="p" min={0} max={180}
+                label={t('Maksetähtaeg', 'Payment terms')} suffix={t('p', 'd')} min={0} max={180}
                 value={settings.makseTahtaegPaevades}
                 onChange={v => setNumber('makseTahtaegPaevades', v)}
-                hint="Mitu päeva arve kuupäevast maksetähtajani."
+                hint={t('Mitu päeva arve kuupäevast maksetähtajani.', 'Days from the invoice date to the due date.')}
               />
               <NumField
-                label="Tööandja maksud" suffix="%" min={0} max={100} step={0.1}
+                label={t('Tööandja maksud', 'Employer taxes')} suffix="%" min={0} max={100} step={0.1}
                 value={settings.tooandjaMaksudProtsent}
                 onChange={v => setNumber('tooandjaMaksudProtsent', v)}
-                hint="Lisandub brutopalgale, et näha tegelikku tööjõukulu. Eestis on see sotsiaalmaks + tööandja töötuskindlustusmakse — kontrolli kehtivat määra ise, rakendus ei paku seda ette."
+                hint={t(
+                  'Lisandub brutopalgale, et näha tegelikku tööjõukulu. Eestis on see sotsiaalmaks + tööandja töötuskindlustusmakse — kontrolli kehtivat määra ise, rakendus ei paku seda ette.',
+                  'Added to gross pay to show the real cost of labour. In Estonia this is social tax + the employer’s unemployment insurance — check the current rate yourself, the app doesn’t suggest one.',
+                )}
               />
               {/* The employee side. Needed only when someone's pay is entered
                   NET — then bruto, and with it the clinic's real cost, has to
@@ -1951,35 +2066,47 @@ export function SettingsPage() {
                   nothing, and Töötasud says so rather than quietly showing a
                   gross equal to the net. */}
               <NumField
-                label="Tulumaks" suffix="%" min={0} max={100} step={0.1}
+                label={t('Tulumaks', 'Income tax')} suffix="%" min={0} max={100} step={0.1}
                 value={settings.tulumaksProtsent}
                 onChange={v => setNumber('tulumaksProtsent', v)}
-                hint="Töötajalt kinnipeetav tulumaks. Vaja ainult siis, kui mõne inimese tasu on sisestatud netona. Eestis 2026: 22%."
+                hint={t(
+                  'Töötajalt kinnipeetav tulumaks. Vaja ainult siis, kui mõne inimese tasu on sisestatud netona. Eestis 2026: 22%.',
+                  'Income tax withheld from the employee. Needed only when someone’s pay is entered as net. Estonia 2026: 22%.',
+                )}
               />
               <NumField
-                label="Maksuvaba tulu" suffix="€/kuus" min={0} max={5000} step={10}
+                label={t('Maksuvaba tulu', 'Tax-free allowance')} suffix={t('€/kuus', '€/month')} min={0} max={5000} step={10}
                 value={settings.maksuvabaTuluKuus}
                 onChange={v => setNumber('maksuvabaTuluKuus', v)}
-                hint="Kliiniku vaikeväärtus. Iga inimese juures saab üle kirjutada — nt 0, kui maksuvaba tulu kasutatakse teise tööandja juures. Eestis 2026: 700 €."
+                hint={t(
+                  'Kliiniku vaikeväärtus. Iga inimese juures saab üle kirjutada — nt 0, kui maksuvaba tulu kasutatakse teise tööandja juures. Eestis 2026: 700 €.',
+                  'The clinic default. It can be overridden for each person — e.g. 0 if the allowance is used with another employer. Estonia 2026: 700 €.',
+                )}
               />
               <NumField
-                label="Töötaja töötuskindlustus" suffix="%" min={0} max={10} step={0.1}
+                label={t('Töötaja töötuskindlustus', 'Employee unemployment insurance')} suffix="%" min={0} max={10} step={0.1}
                 value={settings.tootajaTootuskindlustusProtsent}
                 onChange={v => setNumber('tootajaTootuskindlustusProtsent', v)}
-                hint="Brutopalgast kinnipeetav osa. Eestis 2026: 1.6%. Tööandja enda 0.8% on ülal „Tööandja maksude“ sees."
+                hint={t(
+                  'Brutopalgast kinnipeetav osa. Eestis 2026: 1.6%. Tööandja enda 0.8% on ülal „Tööandja maksude“ sees.',
+                  'The share withheld from gross pay. Estonia 2026: 1.6%. The employer’s own 0.8% is included in “Employer taxes” above.',
+                )}
               />
               <NumField
-                label="Kogumispension (II sammas)" suffix="%" min={0} max={20} step={1}
+                label={t('Kogumispension (II sammas)', 'Funded pension (II pillar)')} suffix="%" min={0} max={20} step={1}
                 value={settings.kogumispensionProtsent}
                 onChange={v => setNumber('kogumispensionProtsent', v)}
-                hint="Vaikimisi määr. See on iga inimese enda valik (2/4/6% või üldse mitte) — konkreetse inimese määr on Töötasud → tema kaart → Maksuprofiil."
+                hint={t(
+                  'Vaikimisi määr. See on iga inimese enda valik (2/4/6% või üldse mitte) — konkreetse inimese määr on Töötasud → tema kaart → Maksuprofiil.',
+                  'The default rate. It is each person’s own choice (2/4/6% or none) — a given person’s rate is under Payroll → their card → Tax profile.',
+                )}
               />
             </div>
           </section>
                   <section>
             <div className="flex items-center gap-2 mb-3">
               <Pencil size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Disaini hind (€/töö)</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Disaini hind (€/töö)', 'Design price (€/job)')}</h3>
             </div>
             <div className="flex items-center gap-3">
               <PriceInput
@@ -1987,21 +2114,23 @@ export function SettingsPage() {
                 onChange={setDesignFee}
               />
               <p className="text-xs text-ink-faint leading-relaxed">
-                Lisa tööle, kui disain on tehtud kolmanda osapoole poolt või ise lisatav kulu.
+                {t('Lisa tööle, kui disain on tehtud kolmanda osapoole poolt või ise lisatav kulu.', 'Add to a job when the design was done by a third party, or as a cost you add yourself.')}
               </p>
             </div>
           </section>
           {/* Per-material pricing table */}
                     <section>
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-ink">Hind materjali järgi</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Hind materjali järgi', 'Price by material')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-4">
-              Väike hammas = positsioon 1–5 (lõikehambad, ümarik, väike purihambad).<br />
-              Suur hammas = positsioon 6–8 (suured purihambad).<br />
-              <strong className="text-ink-muted">Omahind</strong> on see, mis materjal
-              sulle maksab. Seda ei lisata kunagi arvele — sellest arvutatakse Statistika →
-              Rahandus all kate. Tühi tähendab "teadmata", mitte "tasuta".
+              {t('Väike hammas = positsioon 1–5 (lõikehambad, ümarik, väike purihambad).', 'Small tooth = positions 1–5 (incisors, canine, premolars).')}<br />
+              {t('Suur hammas = positsioon 6–8 (suured purihambad).', 'Large tooth = positions 6–8 (molars).')}<br />
+              <strong className="text-ink-muted">{t('Omahind', 'Cost')}</strong>{' '}
+              {t(
+                'on see, mis materjal sulle maksab. Seda ei lisata kunagi arvele — sellest arvutatakse Statistika → Rahandus all kate. Tühi tähendab "teadmata", mitte "tasuta".',
+                'is what the material costs you. It is never added to an invoice — it is used to work out the margin under Statistics → Finance. Empty means “unknown”, not “free”.',
+              )}
             </p>
 
             {/* Machine tab for cost pricing */}
@@ -2020,11 +2149,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Lisateenused (hinnakirja valik)</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Lisateenused (hinnakirja valik)', 'Extra services (price list options)')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Teenused mida saab tööle juurde lisada (nt ülesehitus, ajutine kroon, wax-up).
-              Ilmuvad töö vormil valitavate nuppudena.
+              {t(
+                'Teenused mida saab tööle juurde lisada (nt ülesehitus, ajutine kroon, wax-up). Ilmuvad töö vormil valitavate nuppudena.',
+                'Services that can be added to a job (e.g. build-up, temporary crown, wax-up). They appear as buttons on the job form.',
+              )}
             </p>
             <div className="space-y-1.5 mb-2">
               {settings.lisateenused.map((svc, idx) => (
@@ -2036,7 +2167,7 @@ export function SettingsPage() {
                       const next = settings.lisateenused.map((s, i) => i === idx ? { ...s, nimi: e.target.value } : s)
                       setLisateenused(next)
                     }}
-                    placeholder="Teenuse nimi"
+                    placeholder={t('Teenuse nimi', 'Service name')}
                     className="input py-1.5 text-sm flex-1"
                   />
                   <div className="relative w-24">
@@ -2068,14 +2199,17 @@ export function SettingsPage() {
               onClick={() => setLisateenused([...settings.lisateenused, { id: crypto.randomUUID(), nimi: '', hind: 0 }])}
               className="text-xs text-accent font-medium hover:underline"
             >
-              + Lisa teenus
+              {t('+ Lisa teenus', '+ Add service')}
             </button>
           </section>
 
           {/* Example */}
           <div className="p-3 bg-bg-sidebar rounded-xl text-xs text-ink-muted leading-relaxed">
-            <span className="font-semibold text-ink block mb-1">Näide autoarvutusest:</span>
-            OnX Tough 2 (väike 45€, suur 60€) + 3 väikest + 1 suur hammas + disain 20€<br />
+            <span className="font-semibold text-ink block mb-1">{t('Näide autoarvutusest:', 'Automatic pricing example:')}</span>
+            {t(
+              'OnX Tough 2 (väike 45€, suur 60€) + 3 väikest + 1 suur hammas + disain 20€',
+              'OnX Tough 2 (small 45€, large 60€) + 3 small + 1 large tooth + design 20€',
+            )}<br />
             = 3×45 + 1×60 + 20 = <span className="font-semibold text-ink">215.00 €</span>
           </div>
           </section>
@@ -2084,23 +2218,25 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <h2 className="text-base font-semibold text-ink mb-1">Kliiniku kulud</h2>
+                <h2 className="text-base font-semibold text-ink mb-1">{t('Kliiniku kulud', 'Clinic costs')}</h2>
                 <p className="text-xs text-ink-faint mb-3 max-w-2xl leading-relaxed">
-                  Mida töö meile maksma läheb. Ükski number siin ei jõua kliendi arvele —
-                  need lahutatakse marginaalist, et Rahandus näitaks kasumit, mitte käivet.
+                  {t(
+                    'Mida töö meile maksma läheb. Ükski number siin ei jõua kliendi arvele — need lahutatakse marginaalist, et Rahandus näitaks kasumit, mitte käivet.',
+                    'What the work costs us. None of these numbers reach the client’s invoice — they are taken off the margin so Finance shows profit, not turnover.',
+                  )}
                 </p>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start [&_section]:card [&_section]:p-4">
           {/* Monthly overheads — what makes the margin a profit */}
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Üldkulud</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Üldkulud', 'Overheads')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
-              Rent, liisingud, tarkvara, side, toit — kulud, mis kehtivad sõltumata sellest,
-              kas sel kuul töid tehti. Ilma nendeta näitab Rahandus katet, mitte kasumit.
-              Iga kulu juures saab valida, kui tihti ta tuleb; kõik taandatakse kuule ja
-              jagatakse perioodile päevade järgi, nii et lühem vaade ei näita terve kuu renti.
+              {t(
+                'Rent, liisingud, tarkvara, side, toit — kulud, mis kehtivad sõltumata sellest, kas sel kuul töid tehti. Ilma nendeta näitab Rahandus katet, mitte kasumit. Iga kulu juures saab valida, kui tihti ta tuleb; kõik taandatakse kuule ja jagatakse perioodile päevade järgi, nii et lühem vaade ei näita terve kuu renti.',
+                'Rent, leases, software, phone, food — costs that apply whether or not any jobs were done that month. Without them Finance shows margin, not profit. For each cost you can choose how often it falls due; everything is converted to a month and spread over the period by days, so a shorter view doesn’t show a whole month’s rent.',
+              )}
             </p>
             <div className="space-y-1.5 mb-2">
               {settings.yldkulud.map((o, idx) => (
@@ -2113,7 +2249,7 @@ export function SettingsPage() {
                       next[idx] = { ...next[idx], nimi: e.target.value }
                       setYldkulud(next)
                     }}
-                    placeholder="nt Rent"
+                    placeholder={t('nt Rent', 'e.g. Rent')}
                     className="input py-1.5 text-sm flex-1"
                   />
                   <div className="relative w-28">
@@ -2143,10 +2279,10 @@ export function SettingsPage() {
                     }}
                     className="input py-1.5 text-xs w-24"
                   >
-                    <option value="paev">/tööpäev</option>
-                    <option value="nadal">/nädal</option>
-                    <option value="kuu">/kuus</option>
-                    <option value="aasta">/aasta</option>
+                    <option value="paev">{t('/tööpäev', '/working day')}</option>
+                    <option value="nadal">{t('/nädal', '/week')}</option>
+                    <option value="kuu">{t('/kuus', '/month')}</option>
+                    <option value="aasta">{t('/aasta', '/year')}</option>
                   </select>
                   <button
                     type="button"
@@ -2163,7 +2299,7 @@ export function SettingsPage() {
                 number in a costs card is a number people distrust. */}
             {settings.yldkulud.some(o => o.periood === 'paev') && (
               <div className="flex items-center gap-2 mb-2 rounded-lg bg-bg-sidebar/60 px-2.5 py-2">
-                <span className="text-xs text-ink-muted">Tööpäevi nädalas</span>
+                <span className="text-xs text-ink-muted">{t('Tööpäevi nädalas', 'Working days per week')}</span>
                 <input
                   type="number" min={1} max={7} step={1}
                   value={settings.toopaevadNadalas}
@@ -2172,8 +2308,10 @@ export function SettingsPage() {
                   className="input py-1 text-sm w-16 text-right"
                 />
                 <span className="text-[11px] text-ink-faint">
-                  Ainult /tööpäev ridade jaoks — {(52 / 12 * settings.toopaevadNadalas).toFixed(1)} päeva kuus.
-                  Toitu ei osteta pühapäeval, seega ei jagata seda kalendripäevadega.
+                  {t(
+                    `Ainult /tööpäev ridade jaoks — ${(52 / 12 * settings.toopaevadNadalas).toFixed(1)} päeva kuus. Toitu ei osteta pühapäeval, seega ei jagata seda kalendripäevadega.`,
+                    `Only for /working day rows — ${(52 / 12 * settings.toopaevadNadalas).toFixed(1)} days a month. Nobody buys lunch on a Sunday, so it isn’t spread over calendar days.`,
+                  )}
                 </span>
               </div>
             )}
@@ -2182,20 +2320,20 @@ export function SettingsPage() {
               onClick={() => setYldkulud([...settings.yldkulud, { nimi: '', summa: 0, periood: 'kuu' }])}
               className="btn-ghost text-xs border border-ink-faint/25"
             >
-              <Plus size={12} /> Lisa üldkulu
+              <Plus size={12} /> {t('Lisa üldkulu', 'Add overhead')}
             </button>
             {settings.yldkulud.length > 0 && (
               <p className="text-xs text-ink-muted mt-2">
-                Kokku{' '}
+                {t('Kokku', 'Total')}{' '}
                 <strong className="text-ink tabular-nums">
                   {/* The SAME function Rahandus uses. A total computed
                       separately here would be a second implementation of the
                       conversion, and the two would drift. */}
                   {overheadsMonthly(settings.yldkulud, settings.toopaevadNadalas).toFixed(2)} €
                 </strong>{' '}
-                kuus
+                {t('kuus', 'a month')}
                 {settings.yldkulud.some(o => (o.periood ?? 'kuu') !== 'kuu') && (
-                  <span className="text-ink-faint"> · kõik taandatud kuule</span>
+                  <span className="text-ink-faint">{t(' · kõik taandatud kuule', ' · all converted to a month')}</span>
                 )}
               </p>
             )}
@@ -2205,10 +2343,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Euro size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Fikseeritud kulud töö kohta</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Fikseeritud kulud töö kohta', 'Fixed costs per job')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Lisatakse automaatselt iga töö kuludesse. Kindad, visiirid, desinfitseerimine jm väikesed kulud mis on iga patsiendiga.
+              {t(
+                'Lisatakse automaatselt iga töö kuludesse. Kindad, visiirid, desinfitseerimine jm väikesed kulud mis on iga patsiendiga.',
+                'Added automatically to every job’s costs. Gloves, visors, disinfection and other small costs that come with every patient.',
+              )}
             </p>
             <div className="space-y-1.5 mb-2">
               {settings.fixedCostsPerJob.map((cost, idx) => (
@@ -2221,7 +2362,7 @@ export function SettingsPage() {
                       next[idx] = { ...next[idx], nimi: e.target.value }
                       setFixedCosts(next)
                     }}
-                    placeholder="Kulu nimi"
+                    placeholder={t('Kulu nimi', 'Cost name')}
                     className="input py-1.5 text-sm flex-1"
                   />
                   <div className="relative w-24">
@@ -2239,7 +2380,7 @@ export function SettingsPage() {
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint">€</span>
                   </div>
-                  <span className="text-xs text-ink-faint">/töö</span>
+                  <span className="text-xs text-ink-faint">{t('/töö', '/job')}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -2261,11 +2402,11 @@ export function SettingsPage() {
               }}
               className="text-xs text-accent font-medium hover:underline"
             >
-              + Lisa kulu
+              {t('+ Lisa kulu', '+ Add cost')}
             </button>
             {settings.fixedCostsPerJob.length > 0 && (
               <p className="text-xs text-ink-muted mt-2">
-                Kokku: <strong className="tabular-nums">{settings.fixedCostsPerJob.reduce((s, c) => s + c.summa, 0).toFixed(2)} €</strong> / töö
+                {t('Kokku:', 'Total:')} <strong className="tabular-nums">{settings.fixedCostsPerJob.reduce((s, c) => s + c.summa, 0).toFixed(2)} €</strong> {t('/ töö', '/ job')}
               </p>
             )}
           </section>
@@ -2280,10 +2421,13 @@ export function SettingsPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Layers size={14} className="text-accent" />
-              <h3 className="text-sm font-semibold text-ink">Töövoog</h3>
+              <h3 className="text-sm font-semibold text-ink">{t('Töövoog', 'Workflow')}</h3>
             </div>
             <p className="text-xs text-ink-faint mb-3">
-              Lisa, eemalda või nimeta ümber pipeline etappe. Viimane etapp on alati "valmis"-etapp ja seda ei saa kustutada.
+              {t(
+                'Lisa, eemalda või nimeta ümber pipeline etappe. Viimane etapp on alati "valmis"-etapp ja seda ei saa kustutada.',
+                'Add, remove or rename pipeline stages. The last stage is always the “done” stage and can’t be deleted.',
+              )}
             </p>
 
             <div className="space-y-0.5">
@@ -2309,7 +2453,7 @@ export function SettingsPage() {
               onClick={resetToDefaults}
               className="mt-3 flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors"
             >
-              <RotateCcw size={11} /> Lähtesta vaikimisi
+              <RotateCcw size={11} /> {t('Lähtesta vaikimisi', 'Reset to defaults')}
             </button>
           </section>
           )}

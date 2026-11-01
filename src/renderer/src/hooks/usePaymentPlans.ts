@@ -5,6 +5,7 @@ import type { PaymentPlan, PaymentPlanInput } from '../types/paymentPlan'
 import { planShape } from '../types/paymentPlan'
 import { instalmentSchedule, scheduleProblems, splitAmount } from '@shared/billing/instalments'
 import type { CreateInvoiceInput } from './useInvoices'
+import { t } from '@/lib/i18n'
 
 const QUERY_KEY = ['payment_plans']
 
@@ -73,7 +74,7 @@ export function useCreatePaymentPlan() {
   return useMutation({
     mutationFn: async ({ plan, invoice, lines }: CreatePlanInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub — maksegraafikut ei saa luua.')
+      if (!clinicId) throw new Error(t('Kliinik puudub — maksegraafikut ei saa luua.', 'No clinic — the payment plan cannot be created.'))
 
       // Refuse a broken schedule rather than write a plausible wrong one — the
       // same rule publishProblems() and quoteJob's `unpriced` follow.
@@ -81,7 +82,7 @@ export function useCreatePaymentPlan() {
       if (problems.length > 0) throw new Error(problems.join(' '))
       const schedule = instalmentSchedule(planShape(plan))
       if (schedule.length !== plan.osamakseid) {
-        throw new Error('Maksegraafikut ei õnnestu koostada.')
+        throw new Error(t('Maksegraafikut ei õnnestu koostada.', 'The payment plan could not be put together.'))
       }
 
       const { data: userData } = await supabase.auth.getUser()

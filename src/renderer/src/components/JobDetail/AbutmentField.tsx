@@ -17,6 +17,7 @@
  */
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
+import { t } from '@/lib/i18n'
 
 export interface AbutmentFieldProps {
   item: WorkItem
@@ -33,7 +34,7 @@ export function AbutmentField({
   item, onChange, open, onToggleOpen, disabled, dark = false,
 }: AbutmentFieldProps) {
   const all = item.kruvi ?? ''
-  const teeth = item.hambad.split(',').map(t => t.trim()).filter(Boolean)
+  const teeth = item.hambad.split(',').map(tooth => tooth.trim()).filter(Boolean)
 
   const setTooth = (tooth: string, code: string) => {
     const next = { ...(item.kruvid ?? {}) }
@@ -44,8 +45,8 @@ export function AbutmentField({
 
   // Only a code that DIFFERS is an exception worth a badge — one that repeats
   // the field above says nothing.
-  const differing = teeth.filter(t => {
-    const own = (item.kruvid?.[t] ?? '').trim()
+  const differing = teeth.filter(tooth => {
+    const own = (item.kruvid?.[tooth] ?? '').trim()
     return !!own && own !== all.trim()
   }).length
 
@@ -57,14 +58,14 @@ export function AbutmentField({
   return (
     <div>
       <label className={`text-[10px] font-medium ${dark ? 'text-slate-400' : 'text-ink-muted'}`}>
-        Kruvi / abutment — {item.too}
+        {t('Kruvi / abutment', 'Screw / abutment')} — {item.too}
       </label>
       <input
         type="text"
         value={all}
         disabled={disabled}
         onChange={e => onChange({ kruvi: e.target.value || undefined })}
-        placeholder="Nt: MIS C1 3.75×11.5mm"
+        placeholder={t('Nt: MIS C1 3.75×11.5mm', 'E.g. MIS C1 3.75×11.5mm')}
         className={`${inputCls} mt-0.5`}
       />
       {teeth.length > 1 && (
@@ -77,10 +78,10 @@ export function AbutmentField({
             }`}
           >
             {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            Hammaste kaupa
+            {t('Hammaste kaupa', 'Per tooth')}
             {differing > 0 && (
               <span className="text-[9px] font-semibold text-accent bg-accent/10 px-1 py-0.5 rounded">
-                {differing} erineb
+                {t(`${differing} erineb`, `${differing} different`)}
               </span>
             )}
           </button>
@@ -98,7 +99,7 @@ export function AbutmentField({
                     onChange={e => setTooth(tooth, e.target.value)}
                     // The inherited code as the placeholder, so an empty row
                     // reads as "same as above" rather than "none".
-                    placeholder={all || 'Kood puudub'}
+                    placeholder={all || t('Kood puudub', 'No code')}
                     className={inputCls}
                   />
                 </div>

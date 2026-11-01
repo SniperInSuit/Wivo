@@ -4,6 +4,7 @@ import { differenceInYears, format, isValid, parseISO } from 'date-fns'
 import type { Patient, PatientInput } from '../../types/patient'
 import { CONSENT_LABEL } from '../../types/patient'
 import { patientInitials } from './derive'
+import { t } from '@/lib/i18n'
 
 interface PatientHeaderCardProps {
   patient: Patient
@@ -28,7 +29,7 @@ export function PatientHeaderCard({
   // an Invalid Date would render "NaN.NaN.NaN (NaN a)".
   const dob = patient.synniaeg ? parseISO(patient.synniaeg) : null
   const birth = dob && isValid(dob)
-    ? `${format(dob, 'dd.MM.yyyy')} (${differenceInYears(new Date(), dob)} a)`
+    ? `${format(dob, 'dd.MM.yyyy')} (${differenceInYears(new Date(), dob)} ${t('a', 'y')})`
     : null
 
   const referrer = [patient.arst, patient.kliinik].filter(Boolean).join(' · ') || null
@@ -45,7 +46,7 @@ export function PatientHeaderCard({
           {editing ? (
             <div className="space-y-3">
               <div>
-                <label className="label">Nimi</label>
+                <label className="label">{t('Nimi', 'Name')}</label>
                 <input
                   value={form.nimi}
                   onChange={e => onField('nimi', e.target.value)}
@@ -53,7 +54,7 @@ export function PatientHeaderCard({
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Sünniaeg" icon={Cake}>
+                <Field label={t('Sünniaeg', 'Date of birth')} icon={Cake}>
                   <input
                     type="date"
                     value={form.synniaeg ?? ''}
@@ -61,7 +62,7 @@ export function PatientHeaderCard({
                     className="input"
                   />
                 </Field>
-                <Field label="Telefon" icon={Phone}>
+                <Field label={t('Telefon', 'Phone')} icon={Phone}>
                   <input
                     value={form.telefon ?? ''}
                     onChange={e => onField('telefon', e.target.value || null)}
@@ -69,7 +70,7 @@ export function PatientHeaderCard({
                     className="input"
                   />
                 </Field>
-                <Field label="E-post" icon={Mail}>
+                <Field label={t('E-post', 'Email')} icon={Mail}>
                   <input
                     type="email"
                     value={form.email ?? ''}
@@ -77,14 +78,14 @@ export function PatientHeaderCard({
                     className="input"
                   />
                 </Field>
-                <Field label="Saatev arst" icon={Stethoscope}>
+                <Field label={t('Saatev arst', 'Referring dentist')} icon={Stethoscope}>
                   <input
                     value={form.arst ?? ''}
                     onChange={e => onField('arst', e.target.value || null)}
                     className="input"
                   />
                 </Field>
-                <Field label="Kliinik">
+                <Field label={t('Kliinik', 'Clinic')}>
                   <input
                     value={form.kliinik ?? ''}
                     onChange={e => onField('kliinik', e.target.value || null)}
@@ -94,7 +95,7 @@ export function PatientHeaderCard({
                 {/* Beside the contact details, because that is what it governs.
                     The address was given for treatment; using it for marketing
                     is a separate purpose and needs its own answer. */}
-                <Field label="Turundusnõusolek" icon={Mail}>
+                <Field label={t('Turundusnõusolek', 'Marketing consent')} icon={Mail}>
                   <select
                     value={form.turundusnousolek ?? 'kysimata'}
                     onChange={e => {
@@ -135,28 +136,28 @@ export function PatientHeaderCard({
                 className="btn-primary disabled:opacity-40"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                Salvesta
+                {t('Salvesta', 'Save')}
               </button>
               <button onClick={onCancel} disabled={saving} className="btn-ghost disabled:opacity-40">
                 <X size={14} />
-                Tühista
+                {t('Tühista', 'Cancel')}
               </button>
             </>
           ) : (
             <button onClick={onEdit} className="btn-ghost">
               <Pencil size={14} />
-              Muuda
+              {t('Muuda', 'Edit')}
             </button>
           )}
           {/* Two-step delete: the parent flips deleteConfirm on the first click
               and performs the delete on the second, so this stays stateless */}
           <button
             onClick={onDelete}
-            title="Kustuta patsient"
+            title={t('Kustuta patsient', 'Delete patient')}
             className={`btn-ghost ${deleteConfirm ? 'text-red-600 bg-red-50' : 'hover:text-red-600'}`}
           >
             <Trash2 size={14} />
-            {deleteConfirm ? 'Kinnita' : ''}
+            {deleteConfirm ? t('Kinnita', 'Confirm') : ''}
           </button>
         </div>
       </div>

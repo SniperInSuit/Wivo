@@ -25,6 +25,7 @@ import { employerCost, employerTaxAmount } from '../../lib/earnings'
 import { StatTile } from '../ui/StatTile'
 import type { Period, DateRange } from './useDashboardStats'
 import { periodMetrics, rangeFor, elapsedEndOf, unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
+import { t } from '@/lib/i18n'
 
 interface FinanceViewProps {
   jobs: Job[]
@@ -145,7 +146,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         <div className="card p-3 flex items-start gap-2">
           <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-ink-muted">
-            Arvete tabelit ei leitud — käibe numbrid on nullid. Käivita{' '}
+            {t('Arvete tabelit ei leitud — käibe numbrid on nullid. Käivita', 'Invoices table not found — the revenue figures are zero. Run')}{' '}
             <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>.
           </p>
         </div>
@@ -158,25 +159,25 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         const { income: totalIncome, labour: labourTotal, material: materialTotal,
                 costs: totalCosts, profit } = p
         const costParts = [
-          labourTotal > 0 ? `Tööjõud ${labourTotal.toFixed(0)}` : null,
-          materialTotal > 0 ? `Materjal ${materialTotal.toFixed(0)}` : null,
-          fin.fixedCostTotal > 0 ? `Fikseeritud ${fin.fixedCostTotal.toFixed(0)}` : null,
-          fin.overheadCost > 0 ? `Üldkulud ${fin.overheadCost.toFixed(0)}` : null,
+          labourTotal > 0 ? t(`Tööjõud ${labourTotal.toFixed(0)}`, `Labour ${labourTotal.toFixed(0)}`) : null,
+          materialTotal > 0 ? t(`Materjal ${materialTotal.toFixed(0)}`, `Material ${materialTotal.toFixed(0)}`) : null,
+          fin.fixedCostTotal > 0 ? t(`Fikseeritud ${fin.fixedCostTotal.toFixed(0)}`, `Fixed ${fin.fixedCostTotal.toFixed(0)}`) : null,
+          fin.overheadCost > 0 ? t(`Üldkulud ${fin.overheadCost.toFixed(0)}`, `Overheads ${fin.overheadCost.toFixed(0)}`) : null,
         ].filter(Boolean)
         return (
           <section>
             <div className="grid grid-cols-3 gap-3">
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">Kasum (tulu − kulu)</p>
+                <p className="text-xs text-ink-muted mb-1">{t('Kasum (tulu − kulu)', 'Profit (income − cost)')}</p>
                 <p className={`text-2xl font-bold tabular-nums ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {profit.toFixed(2)} €
                 </p>
                 <p className="text-[11px] text-ink-faint mt-1">
-                  Kate {totalIncome > 0 ? `${(profit / totalIncome * 100).toFixed(1)}%` : '—'}
+                  {t('Kate', 'Margin')} {totalIncome > 0 ? `${(profit / totalIncome * 100).toFixed(1)}%` : '—'}
                 </p>
               </div>
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">Tulu (tööde hinnad)</p>
+                <p className="text-xs text-ink-muted mb-1">{t('Tulu (tööde hinnad)', 'Income (job prices)')}</p>
                 <p className="text-2xl font-bold tabular-nums text-ink">{totalIncome.toFixed(2)} €</p>
                 {/* From the shared aggregator, not from summing the table
                     below: that table splits a multi-type job across its types,
@@ -184,36 +185,36 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                     off it is what made this screen say 19 where Tootmine said
                     15 for the same month. */}
                 <p className="text-[11px] text-ink-faint mt-1">
-                  {unitSplitLabel(m)} · {m.hambad} hammast
+                  {unitSplitLabel(m)} · {t(`${m.hambad} hammast`, `${m.hambad} ${m.hambad === 1 ? 'tooth' : 'teeth'}`)}
                 </p>
                 <p className="text-[11px] text-ink-faint">{teethSplitLabel(m)}</p>
               </div>
               <div className="card p-4">
-                <p className="text-xs text-ink-muted mb-1">Kulu kokku</p>
+                <p className="text-xs text-ink-muted mb-1">{t('Kulu kokku', 'Total cost')}</p>
                 <p className="text-2xl font-bold tabular-nums text-red-500">{totalCosts.toFixed(2)} €</p>
                 {costParts.length > 0 && (
                   <div className="mt-1.5 space-y-0.5">
                     {labourTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">Tööjõud + maksud</span>
+                        <span className="text-ink-faint">{t('Tööjõud + maksud', 'Labour + taxes')}</span>
                         <span className="tabular-nums text-ink-muted">{labourTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {materialTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">Materjal + tarvikud</span>
+                        <span className="text-ink-faint">{t('Materjal + tarvikud', 'Materials + supplies')}</span>
                         <span className="tabular-nums text-ink-muted">{materialTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {fin.fixedCostTotal > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">Fikseeritud</span>
+                        <span className="text-ink-faint">{t('Fikseeritud', 'Fixed')}</span>
                         <span className="tabular-nums text-ink-muted">{fin.fixedCostTotal.toFixed(2)} €</span>
                       </div>
                     )}
                     {fin.overheadCost > 0 && (
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-ink-faint">Üldkulud</span>
+                        <span className="text-ink-faint">{t('Üldkulud', 'Overheads')}</span>
                         <span className="tabular-nums text-ink-muted">{fin.overheadCost.toFixed(2)} €</span>
                       </div>
                     )}
@@ -228,34 +229,36 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── Money in ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingUp size={13} /> Sisse
+          <TrendingUp size={13} /> {t('Sisse', 'In')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatTile money size="sm" icon={Euro} label="Arveldatud" value={fin.billed} sub={MONEY_HINT.arveldatud} />
+          <StatTile money size="sm" icon={Euro} label={t('Arveldatud', 'Invoiced')} value={fin.billed} sub={MONEY_HINT.arveldatud} />
           {/* Same quantity Tootmine now shows under the same name. It used to
               show the list price of jobs whose legacy `makstud` boolean was
               ticked, which is why the two screens reported 12 800 and 21 980
               for one month. */}
-          <StatTile money size="sm" icon={Wallet} label="Laekunud" value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
+          <StatTile money size="sm" icon={Wallet} label={t('Laekunud', 'Received')} value={fin.received} sub={MONEY_HINT.laekunud} accent="#22C55E" />
           {/* Invoice-based, and it has to say so. A lab that settles jobs
               without invoicing has no invoices to owe against, so this reads
               0.00 € — "nobody owes anything" — while Arveldamata next to it
               says otherwise. The Ülevaade counts the same debt job by job and
               reaches a different number for exactly this reason. */}
-          <StatTile money size="sm" icon={Clock} label="Tasumata arvete järgi" value={fin.outstanding} accent="#F59E0B"
+          <StatTile money size="sm" icon={Clock} label={t('Tasumata arvete järgi', 'Unpaid by invoice')} value={fin.outstanding} accent="#F59E0B"
             sub={fin.overdue > 0
-              ? `${fin.overdue.toFixed(2)} € üle tähtaja`
-              : 'Ainult väljastatud arved. Arveta tööd on kõrval „Arveldamata" all.'} />
+              ? t(`${fin.overdue.toFixed(2)} € üle tähtaja`, `${fin.overdue.toFixed(2)} € overdue`)
+              : t('Ainult väljastatud arved. Arveta tööd on kõrval „Arveldamata" all.', 'Issued invoices only. Jobs without an invoice are alongside, under “Not invoiced”.')} />
           <StatTile money size="sm"
-            icon={FileWarning} label="Arveldamata" value={fin.unbilled} accent="#EF4444"
-            sub={`${fin.unbilledJobs} valmis tööd ilma arveta`}
+            icon={FileWarning} label={t('Arveldamata', 'Not invoiced')} value={fin.unbilled} accent="#EF4444"
+            sub={t(`${fin.unbilledJobs} valmis tööd ilma arveta`, `${fin.unbilledJobs} finished ${fin.unbilledJobs === 1 ? 'job' : 'jobs'} without an invoice`)}
           />
         </div>
         {fin.unbilled > 0 && (
           <p className="text-[11px] text-ink-faint mt-2 flex items-start gap-1.5">
             <Info size={11} className="flex-shrink-0 mt-0.5" />
-            "Arveldamata" on valmis töö, mille eest ei ole arvet tehtud — kulu on juba
-            kantud, tulu mitte. Kõige kiirem koht raha leidmiseks.
+            {t(
+              '"Arveldamata" on valmis töö, mille eest ei ole arvet tehtud — kulu on juba kantud, tulu mitte. Kõige kiirem koht raha leidmiseks.',
+              '"Not invoiced" is finished work with no invoice made for it — the cost is already booked, the income is not. The quickest place to find money.',
+            )}
           </p>
         )}
       </section>
@@ -263,82 +266,81 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── Money out ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <TrendingDown size={13} /> Välja
+          <TrendingDown size={13} /> {t('Välja', 'Out')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Gross, including the gross-up of anyone paid a net wage — the
               figure payroll taxes are actually charged on. */}
-          <StatTile money size="sm" icon={Users} label="Tööjõukulu (bruto)" value={fin.labourAccrued} accent="#8B5CF6"
-            coverage={fin.labourCoverage} coverageLabel="tööl on teostaja" />
+          <StatTile money size="sm" icon={Users} label={t('Tööjõukulu (bruto)', 'Labour cost (gross)')} value={fin.labourAccrued} accent="#8B5CF6"
+            coverage={fin.labourCoverage} coverageLabel={t('tööl on teostaja', 'jobs have an assignee')} />
           {/* Gross pay is not the cost of employing someone — the employer's
               share of payroll taxes is, and that is what has to be funded. */}
           <StatTile money size="sm"
             icon={Wallet}
-            label="Tööjõud + maksud + arve"
+            label={t('Tööjõud + maksud + arve', 'Labour + taxes + invoices')}
             value={fin.labourAccrued + employerTax}
             accent="#8B5CF6"
             sub={[
-              `Bruto ${fin.labourEmployeeGross.toFixed(2)} €`,
-              employerTax > 0 ? `Maksud ${employerTax.toFixed(2)} €` : null,
-              fin.labourContractor > 0 ? `Arve alusel ${fin.labourContractor.toFixed(2)} €` : null,
+              t(`Bruto ${fin.labourEmployeeGross.toFixed(2)} €`, `Gross ${fin.labourEmployeeGross.toFixed(2)} €`),
+              employerTax > 0 ? t(`Maksud ${employerTax.toFixed(2)} €`, `Taxes ${employerTax.toFixed(2)} €`) : null,
+              fin.labourContractor > 0 ? t(`Arve alusel ${fin.labourContractor.toFixed(2)} €`, `Contractor invoices ${fin.labourContractor.toFixed(2)} €`) : null,
             ].filter(Boolean).join(' · ') || (
-              settings.tooandjaMaksudProtsent > 0 ? undefined : 'tööandja maksude määr on 0%'
+              settings.tooandjaMaksudProtsent > 0 ? undefined : t('tööandja maksude määr on 0%', 'employer tax rate is 0%')
             )}
           />
-          <StatTile money size="sm" icon={Package} label="Materjal ja tarvikud" value={fin.materialCost + fin.consumableCost} accent="#F97316"
+          <StatTile money size="sm" icon={Package} label={t('Materjal ja tarvikud', 'Materials and supplies')} value={fin.materialCost + fin.consumableCost} accent="#F97316"
             sub={fin.consumableCost > 0
-              ? `sh. tarvikud ${fin.consumableCost.toFixed(2)} €`
+              ? t(`sh. tarvikud ${fin.consumableCost.toFixed(2)} €`, `incl. supplies ${fin.consumableCost.toFixed(2)} €`)
               : undefined}
-            coverage={fin.materialCoverage} coverageLabel="tööl on omahind" />
+            coverage={fin.materialCoverage} coverageLabel={t('tööl on omahind', 'jobs have a cost price')} />
           {fin.fixedCostTotal > 0 && (
-            <StatTile money size="sm" icon={Package} label="Fikseeritud kulud" value={fin.fixedCostTotal} accent="#8B5CF6"
+            <StatTile money size="sm" icon={Package} label={t('Fikseeritud kulud', 'Fixed costs')} value={fin.fixedCostTotal} accent="#8B5CF6"
               sub={`${settings.fixedCostsPerJob.map(c => c.nimi).join(', ')}`} />
           )}
           {fin.overheadCost > 0 && (
-            <StatTile money size="sm" icon={Building2} label="Üldkulud" value={fin.overheadCost} accent="#64748B"
-              sub={`${settings.yldkulud.map(o => o.nimi).join(', ')} — perioodi osa`} />
+            <StatTile money size="sm" icon={Building2} label={t('Üldkulud', 'Overheads')} value={fin.overheadCost} accent="#64748B"
+              sub={t(`${settings.yldkulud.map(o => o.nimi).join(', ')} — perioodi osa`, `${settings.yldkulud.map(o => o.nimi).join(', ')} — share for the period`)} />
           )}
-          <StatTile money size="sm" icon={Repeat} label="Muudatuste kahju" value={fin.revisionLossTotal} accent="#EC4899"
-            sub="tööjõud + materjal − tasutud" />
+          <StatTile money size="sm" icon={Repeat} label={t('Muudatuste kahju', 'Cost of revisions')} value={fin.revisionLossTotal} accent="#EC4899"
+            sub={t('tööjõud + materjal − tasutud', 'labour + material − charged')} />
         </div>
       </section>
 
       {/* ── By work type ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-1">
-          Kate töö tüübi järgi
+          {t('Kate töö tüübi järgi', 'Margin by work type')}
         </h3>
         {/* Said once, here, rather than left for the reader to deduce from a
             footer that does not add up to the headline. */}
         <p className="text-[11px] text-ink-faint mb-3 max-w-2xl leading-relaxed">
-          Ridade ühik on <strong className="text-ink-muted">tööosa</strong>, mitte töö:
-          mitme tööosaga töö jaguneb oma tüüpide vahel, seega on veerg „Tööosi" summa
-          suurem kui tööde arv ({unitSplitLabel(m)}). Muudatused lisavad hambaid ja kulu,
-          aga mitte tööosi — rida kujul „0 tööosa · hambaid · negatiivne kate" on
-          eelmisest perioodist pärit töö tasuta ümbertegemine ja on niimoodi õige.
+          {t('Ridade ühik on', 'The unit of each row is the')} <strong className="text-ink-muted">{t('tööosa', 'work item')}</strong>{t(
+            `, mitte töö: mitme tööosaga töö jaguneb oma tüüpide vahel, seega on veerg „Tööosi" summa suurem kui tööde arv (${unitSplitLabel(m)}). Muudatused lisavad hambaid ja kulu, aga mitte tööosi — rida kujul „0 tööosa · hambaid · negatiivne kate" on eelmisest perioodist pärit töö tasuta ümbertegemine ja on niimoodi õige.`,
+            `, not the job: a job with several work items is split across its types, so the “Work items” column adds up to more than the number of jobs (${unitSplitLabel(m)}). Revisions add teeth and cost but not work items — a row reading “0 work items · teeth · negative margin” is a free remake of a job from an earlier period, and that is correct.`,
+          )}
         </p>
         {fin.byWorkType.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-ink-faint">Andmed puuduvad</div>
+          <div className="card p-6 text-center text-sm text-ink-faint">{t('Andmed puuduvad', 'No data')}</div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">Töö tüüp</th>
-                  <th className="px-3 py-2 font-semibold text-right">Tööosi</th>
-                  <th className="px-3 py-2 font-semibold text-right">Hambaid</th>
-                  <th className="px-3 py-2 font-semibold text-right">Tulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">Tööjõud</th>
-                  <th className="px-3 py-2 font-semibold text-right">Materjal</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kate</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kate %</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kesk. tulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kesk. kulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kesk. kate</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/hammas tulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/hammas kulu</th>
-                  <th className="px-3 py-2 font-semibold text-right">€/hammas kate</th>
+                  <th className="px-3 py-2 font-semibold">{t('Töö tüüp', 'Work type')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Tööosi', 'Work items')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Tulu', 'Income')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kulu', 'Cost')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Tööjõud', 'Labour')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Materjal', 'Material')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kate', 'Margin')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kate %', 'Margin %')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. tulu', 'Avg income')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. kulu', 'Avg cost')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kesk. kate', 'Avg margin')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas tulu', 'Income €/tooth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas kulu', 'Cost €/tooth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('€/hammas kate', 'Margin €/tooth')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,52 +348,52 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                     sorting it in place mutated the aggregator's own result mid-render. */}
                 {[...fin.byWorkType]
                   .sort((a, b) => b.revenue - a.revenue)
-                  .map(t => {
-                    const img = workTypeImage(t.name)
-                    const avgIncome = t.jobs > 0 ? t.income / t.jobs : 0
-                    const avgCost = t.jobs > 0 ? (t.labour + t.material + t.costs) / t.jobs : 0
+                  .map(type => {
+                    const img = workTypeImage(type.name)
+                    const avgIncome = type.jobs > 0 ? type.income / type.jobs : 0
+                    const avgCost = type.jobs > 0 ? (type.labour + type.material + type.costs) / type.jobs : 0
                     return (
-                      <tr key={t.name} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
+                      <tr key={type.name} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             {img
                               ? <img src={img} alt="" className="w-6 h-6 object-contain flex-shrink-0" />
-                              : <span className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(t.name) }} />
+                              : <span className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: wt.hex(type.name) }} />
                             }
-                            <span className="text-ink font-medium truncate">{t.name}</span>
+                            <span className="text-ink font-medium truncate">{type.name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.jobs}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-ink-faint">{t.teeth || '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-medium text-ink">{t.income.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.costs > 0 ? t.costs.toFixed(2) : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.labour.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{t.material.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{type.jobs}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-faint">{type.teeth || '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium text-ink">{type.income.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{type.costs > 0 ? type.costs.toFixed(2) : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{type.labour.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{type.material.toFixed(2)}</td>
                         <td className={`px-3 py-2 text-right tabular-nums font-semibold ${
-                          t.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {t.margin.toFixed(2)}
+                          type.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {type.margin.toFixed(2)}
                         </td>
                         <td className={`px-3 py-2 text-right tabular-nums ${
-                          t.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
-                          {t.income > 0 ? `${t.marginPct.toFixed(0)}%` : '—'}
+                          type.marginPct >= 0 ? 'text-ink-muted' : 'text-red-500'}`}>
+                          {type.income > 0 ? `${type.marginPct.toFixed(0)}%` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
-                          {t.jobs > 0 ? `${avgIncome.toFixed(0)} €` : '—'}
+                          {type.jobs > 0 ? `${avgIncome.toFixed(0)} €` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
-                          {t.jobs > 0 ? `${avgCost.toFixed(0)} €` : '—'}
+                          {type.jobs > 0 ? `${avgCost.toFixed(0)} €` : '—'}
                         </td>
-                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${t.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
-                          {t.jobs > 0 ? `${(t.margin / t.jobs).toFixed(0)} €` : '—'}
+                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${type.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                          {type.jobs > 0 ? `${(type.margin / type.jobs).toFixed(0)} €` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-emerald-600">
-                          {t.teeth > 0 ? `${(t.income / t.teeth).toFixed(2)}` : '—'}
+                          {type.teeth > 0 ? `${(type.income / type.teeth).toFixed(2)}` : '—'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-xs text-red-400">
-                          {t.teeth > 0 ? `${((t.labour + t.material + t.costs) / t.teeth).toFixed(2)}` : '—'}
+                          {type.teeth > 0 ? `${((type.labour + type.material + type.costs) / type.teeth).toFixed(2)}` : '—'}
                         </td>
-                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${t.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
-                          {t.teeth > 0 ? `${(t.margin / t.teeth).toFixed(2)}` : '—'}
+                        <td className={`px-3 py-2 text-right tabular-nums text-xs ${type.margin >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                          {type.teeth > 0 ? `${(type.margin / type.teeth).toFixed(2)}` : '—'}
                         </td>
                       </tr>
                     )
@@ -399,75 +401,75 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-ink-faint/20 bg-bg-sidebar/60 font-semibold text-xs">
-                  <td className="px-3 py-2 text-ink-muted">Kokku</td>
+                  <td className="px-3 py-2 text-ink-muted">{t('Kokku', 'Total')}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                    {fin.byWorkType.reduce((s, t) => s + t.jobs, 0)}
+                    {fin.byWorkType.reduce((s, type) => s + type.jobs, 0)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-faint">
-                    {fin.byWorkType.reduce((s, t) => s + t.teeth, 0)}
+                    {fin.byWorkType.reduce((s, type) => s + type.teeth, 0)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink">
-                    {fin.byWorkType.reduce((s, t) => s + t.income, 0).toFixed(2)}
+                    {fin.byWorkType.reduce((s, type) => s + type.income, 0).toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                    {fin.byWorkType.reduce((s, t) => s + t.costs, 0).toFixed(2)}
+                    {fin.byWorkType.reduce((s, type) => s + type.costs, 0).toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                    {fin.byWorkType.reduce((s, t) => s + t.labour, 0).toFixed(2)}
+                    {fin.byWorkType.reduce((s, type) => s + type.labour, 0).toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                    {fin.byWorkType.reduce((s, t) => s + t.material, 0).toFixed(2)}
+                    {fin.byWorkType.reduce((s, type) => s + type.material, 0).toFixed(2)}
                   </td>
                   <td className={`px-3 py-2 text-right tabular-nums font-bold ${
-                    fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {fin.byWorkType.reduce((s, t) => s + t.margin, 0).toFixed(2)}
+                    fin.byWorkType.reduce((s, type) => s + type.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {fin.byWorkType.reduce((s, type) => s + type.margin, 0).toFixed(2)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
                     {(() => {
-                      const totalIncome = fin.byWorkType.reduce((s, t) => s + t.income, 0)
-                      const totalMargin = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      const totalIncome = fin.byWorkType.reduce((s, type) => s + type.income, 0)
+                      const totalMargin = fin.byWorkType.reduce((s, type) => s + type.margin, 0)
                       return totalIncome > 0 ? `${(totalMargin / totalIncome * 100).toFixed(0)}%` : '—'
                     })()}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
                     {(() => {
-                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
-                      const ti = fin.byWorkType.reduce((s, t) => s + t.income, 0)
+                      const tj = fin.byWorkType.reduce((s, type) => s + type.jobs, 0)
+                      const ti = fin.byWorkType.reduce((s, type) => s + type.income, 0)
                       return tj > 0 ? `${(ti / tj).toFixed(0)} €` : '—'
                     })()}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-ink-muted">
                     {(() => {
-                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
-                      const tc = fin.byWorkType.reduce((s, t) => s + t.labour + t.material + t.costs, 0)
+                      const tj = fin.byWorkType.reduce((s, type) => s + type.jobs, 0)
+                      const tc = fin.byWorkType.reduce((s, type) => s + type.labour + type.material + type.costs, 0)
                       return tj > 0 ? `${(tc / tj).toFixed(0)} €` : '—'
                     })()}
                   </td>
-                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, type) => s + type.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
                     {(() => {
-                      const tj = fin.byWorkType.reduce((s, t) => s + t.jobs, 0)
-                      const tm = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      const tj = fin.byWorkType.reduce((s, type) => s + type.jobs, 0)
+                      const tm = fin.byWorkType.reduce((s, type) => s + type.margin, 0)
                       return tj > 0 ? `${(tm / tj).toFixed(0)} €` : '—'
                     })()}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-emerald-600">
                     {(() => {
-                      const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
-                      const ti = fin.byWorkType.reduce((s, t) => s + t.income, 0)
+                      const tt = fin.byWorkType.reduce((s, type) => s + type.teeth, 0)
+                      const ti = fin.byWorkType.reduce((s, type) => s + type.income, 0)
                       return tt > 0 ? (ti / tt).toFixed(2) : '—'
                     })()}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs text-red-400">
                     {(() => {
-                      const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
-                      const tc = fin.byWorkType.reduce((s, t) => s + t.labour + t.material + t.costs, 0)
+                      const tt = fin.byWorkType.reduce((s, type) => s + type.teeth, 0)
+                      const tc = fin.byWorkType.reduce((s, type) => s + type.labour + type.material + type.costs, 0)
                       return tt > 0 ? (tc / tt).toFixed(2) : '—'
                     })()}
                   </td>
-                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, t) => s + t.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
+                  <td className={`px-3 py-2 text-right tabular-nums text-xs ${fin.byWorkType.reduce((s, type) => s + type.margin, 0) >= 0 ? 'text-emerald-600' : 'text-red-400'}`}>
                     {(() => {
-                      const tt = fin.byWorkType.reduce((s, t) => s + t.teeth, 0)
-                      const tm = fin.byWorkType.reduce((s, t) => s + t.margin, 0)
+                      const tt = fin.byWorkType.reduce((s, type) => s + type.teeth, 0)
+                      const tm = fin.byWorkType.reduce((s, type) => s + type.margin, 0)
                       return tt > 0 ? (tm / tt).toFixed(2) : '—'
                     })()}
                   </td>
@@ -477,29 +479,31 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           </div>
         )}
         <p className="text-[11px] text-ink-faint mt-2">
-          Tühi "Arveldatud" tähendab, et selle tüübi töid ei ole veel arveldatud — kate on
-          siis negatiivne, sest kulu on olemas ja tulu mitte.
+          {t(
+            'Tühi "Arveldatud" tähendab, et selle tüübi töid ei ole veel arveldatud — kate on siis negatiivne, sest kulu on olemas ja tulu mitte.',
+            'An empty "Invoiced" means jobs of this type have not been invoiced yet — the margin is then negative, because the cost exists and the income does not.',
+          )}
         </p>
       </section>
 
       {/* ── Revision loss ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          Muudatuste kahju põhjuse järgi
+          {t('Muudatuste kahju põhjuse järgi', 'Cost of revisions by reason')}
         </h3>
         {fin.revisionLoss.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-ink-faint">Muudatusi ei olnud</div>
+          <div className="card p-6 text-center text-sm text-ink-faint">{t('Muudatusi ei olnud', 'There were no revisions')}</div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">Põhjus</th>
-                  <th className="px-3 py-2 font-semibold text-right">Kordi</th>
-                  <th className="px-3 py-2 font-semibold text-right">Tööjõud</th>
-                  <th className="px-3 py-2 font-semibold text-right">Materjal</th>
-                  <th className="px-3 py-2 font-semibold text-right">Tasutud</th>
-                  <th className="px-3 py-2 font-semibold text-right">Netokahju</th>
+                  <th className="px-3 py-2 font-semibold">{t('Põhjus', 'Reason')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Kordi', 'Times')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Tööjõud', 'Labour')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Materjal', 'Material')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Tasutud', 'Charged')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Netokahju', 'Net loss')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -521,20 +525,21 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
           </div>
         )}
         <p className="text-[11px] text-ink-faint mt-2 leading-relaxed">
-          Netokahju = mis ümbertegemine maksis, miinus see, mis selle eest küsiti.
-          Kui muudatused ei ole tasureeglis tasustatud, on tööjõukulu 0 — ümbertegemise
-          aeg läheb siis kaotsi tööajana, mitte rahana.
+          {t(
+            'Netokahju = mis ümbertegemine maksis, miinus see, mis selle eest küsiti. Kui muudatused ei ole tasureeglis tasustatud, on tööjõukulu 0 — ümbertegemise aeg läheb siis kaotsi tööajana, mitte rahana.',
+            'Net loss = what the remake cost, minus what was charged for it. If revisions are not paid under the pay rules, the labour cost is 0 — the remake time is then lost as working time, not as money.',
+          )}
         </p>
       </section>
 
       {/* ── How clients paid ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          Maksmise viis
+          {t('Maksmise viis', 'Payment method')}
         </h3>
         {fin.byPaymentMethod.length === 0 ? (
           <div className="card p-6 text-center text-sm text-ink-faint">
-            Sellel perioodil ei ole makseid registreeritud.
+            {t('Sellel perioodil ei ole makseid registreeritud.', 'No payments recorded in this period.')}
           </div>
         ) : (
           <div className="card p-4 space-y-2.5">
@@ -543,7 +548,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-ink font-medium">{m.label}</span>
                   <span className="text-ink-muted tabular-nums">
-                    {m.count} makset · <span className="font-semibold text-ink">{m.amount.toFixed(2)} €</span>
+                    {t(`${m.count} makset`, `${m.count} ${m.count === 1 ? 'payment' : 'payments'}`)} · <span className="font-semibold text-ink">{m.amount.toFixed(2)} €</span>
                     <span className="text-ink-faint"> · {m.share.toFixed(0)}%</span>
                   </span>
                 </div>
@@ -556,9 +561,10 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
               </div>
             ))}
             <p className="text-[11px] text-ink-faint pt-1 leading-relaxed">
-              Arvestatakse perioodil <strong className="text-ink-muted">laekunud</strong> makseid,
-              mitte väljastatud arveid — küsimus on, kuidas raha päriselt kohale jõuab.
-              Sisaldab nii arvete makseid kui ka töö juures "Makstud" märkimisi.
+              {t('Arvestatakse perioodil', 'Counts payments')} <strong className="text-ink-muted">{t('laekunud', 'received')}</strong>{t(
+                ' makseid, mitte väljastatud arveid — küsimus on, kuidas raha päriselt kohale jõuab. Sisaldab nii arvete makseid kui ka töö juures "Makstud" märkimisi.',
+                ' in the period, not invoices issued — the question is how the money actually arrives. Includes both invoice payments and jobs marked "Paid".',
+              )}
             </p>
           </div>
         )}
@@ -567,26 +573,26 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       {/* ── By worker ── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
-          Töötajate kaupa
+          {t('Töötajate kaupa', 'By employee')}
         </h3>
         {fin.byWorker.length === 0 ? (
           <div className="card p-6 text-center text-sm text-ink-faint">
-            Ühelegi tööle ei ole teostajat määratud.
+            {t('Ühelegi tööle ei ole teostajat määratud.', 'No job has an assignee.')}
           </div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                  <th className="px-3 py-2 font-semibold">Töötaja</th>
+                  <th className="px-3 py-2 font-semibold">{t('Töötaja', 'Employee')}</th>
                   {/* The engagement cell existed in every row but had no header,
                       so all five columns to its right were labelled with their
                       left-hand neighbour's name. */}
-                  <th className="px-3 py-2 font-semibold">Töösuhe</th>
-                  <th className="px-3 py-2 font-semibold text-right">Töid</th>
-                  <th className="px-3 py-2 font-semibold text-right">Hambaid</th>
-                  <th className="px-3 py-2 font-semibold text-right">Arvestatud</th>
-                  <th className="px-3 py-2 font-semibold text-right">Välja makstud</th>
+                  <th className="px-3 py-2 font-semibold">{t('Töösuhe', 'Employment')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Töid', 'Jobs')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Hambaid', 'Teeth')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Arvestatud', 'Earned')}</th>
+                  <th className="px-3 py-2 font-semibold text-right">{t('Välja makstud', 'Paid out')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -594,7 +600,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
                   <tr key={w.profileId} className="border-b border-ink-faint/10 last:border-0 even:bg-bg-sidebar/40">
                     <td className="px-3 py-2 text-ink">{w.name}</td>
                     <td className="px-3 py-2 text-ink-muted text-xs">
-                      {w.engagement === 'ettevote' ? 'Esitab arve' : 'Palgal'}
+                      {w.engagement === 'ettevote' ? t('Esitab arve', 'Contractor') : t('Palgal', 'On payroll')}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{w.jobs}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{w.teeth}</td>

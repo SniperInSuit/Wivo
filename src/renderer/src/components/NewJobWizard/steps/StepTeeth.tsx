@@ -29,6 +29,7 @@ import { WizardOdontogram } from '../teeth/WizardOdontogram'
 import { WorkTypeTabs, type WorkTypeTab } from '../teeth/WorkTypeTabs'
 import { AbutmentPicker } from '../teeth/AbutmentPicker'
 import { WIZARD_FALLBACK_HEX } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
   const { types } = useWorkTypes()
@@ -53,7 +54,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   )
 
   const colorMap = useMemo(
-    () => Object.fromEntries(types.map(t => [t.nimi, t.hex])),
+    () => Object.fromEntries(types.map(type => [type.nimi, type.hex])),
     [types]
   )
   const rulesByName = useMemo(
@@ -91,7 +92,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   const owners = useMemo(() => {
     const m = new Map<number, string>()
     for (const key of state.jobTypes) {
-      for (const t of (state.selectedTeeth[key] ?? [])) m.set(t, key)
+      for (const tooth of (state.selectedTeeth[key] ?? [])) m.set(tooth, key)
     }
     return m
   }, [state.jobTypes, state.selectedTeeth])
@@ -108,7 +109,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
    *  counting them would promise a Tühjenda that cannot remove them. */
   const pickedCount = useMemo(() => {
     const s = new Set<number>()
-    for (const key of toothTypeKeys) for (const t of (state.selectedTeeth[key] ?? [])) s.add(t)
+    for (const key of toothTypeKeys) for (const tooth of (state.selectedTeeth[key] ?? [])) s.add(tooth)
     return s.size
   }, [toothTypeKeys, state.selectedTeeth])
 
@@ -119,7 +120,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     const m = new Map<number, string>()
     for (const item of items) {
       if (rulesByName.get(item.too)?.toothMode !== 'arch') continue
-      for (const t of hambadToTeeth(item.hambad)) m.set(t, item.too)
+      for (const tooth of hambadToTeeth(item.hambad)) m.set(tooth, item.too)
     }
     return m
   }, [items, rulesByName])
@@ -166,7 +167,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
   function toggleTooth(fdi: number) {
     if (!activeType) return
     const cur = state.selectedTeeth[activeType] ?? []
-    setTeethFor(activeType, cur.includes(fdi) ? cur.filter(t => t !== fdi) : [...cur, fdi])
+    setTeethFor(activeType, cur.includes(fdi) ? cur.filter(tooth => tooth !== fdi) : [...cur, fdi])
   }
 
   /**
@@ -181,7 +182,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     const picked = state.selectedTeeth[activeType] ?? []
     if (!picked.includes(fdi)) return
     const cur = state.implantsByType[activeType] ?? []
-    const next = cur.includes(fdi) ? cur.filter(t => t !== fdi) : [...cur, fdi]
+    const next = cur.includes(fdi) ? cur.filter(tooth => tooth !== fdi) : [...cur, fdi]
     patch({ implantsByType: { ...state.implantsByType, [activeType]: sortTeeth(next) } })
   }
 
@@ -224,7 +225,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     if (!inArch.has(tooth)) return
     const current = state.selectedTeeth[key] ?? archTeeth(state.selectedArch)
     const next = current.includes(tooth)
-      ? current.filter(t => t !== tooth)
+      ? current.filter(other => other !== tooth)
       : [...current, tooth]
     patch({ selectedTeeth: { ...state.selectedTeeth, [key]: next } })
   }
@@ -291,7 +292,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
     return (
       <p className="flex items-start gap-2 rounded-xl bg-bg-sidebar p-4 text-base text-ink-soft">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" aria-hidden="true" />
-        Valitud tööd ei vaja hammaste märkimist. Võid kohe edasi minna.
+        {t('Valitud tööd ei vaja hammaste märkimist. Võid kohe edasi minna.', "The selected work doesn't need any teeth marked. You can go straight on.")}
       </p>
     )
   }
@@ -302,9 +303,9 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
       <div className="space-y-6">
         <p className="max-w-prose text-base text-ink-soft">
           {rules.archTypes.length === 1
-            ? `„${rules.archTypes[0]}" katab terve lõualuu, seega üksikuid hambaid märkima ei pea.`
-            : 'Valitud tööd katavad terve lõualuu, seega üksikuid hambaid märkima ei pea.'}{' '}
-          Vali, millist lõualuud see töö puudutab.
+            ? t(`„${rules.archTypes[0]}" katab terve lõualuu, seega üksikuid hambaid märkima ei pea.`, `“${rules.archTypes[0]}” covers the whole jaw, so you don't need to mark individual teeth.`)
+            : t('Valitud tööd katavad terve lõualuu, seega üksikuid hambaid märkima ei pea.', "The selected work covers the whole jaw, so you don't need to mark individual teeth.")}{' '}
+          {t('Vali, millist lõualuud see töö puudutab.', 'Choose which jaw this job is for.')}
         </p>
 
         <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
@@ -315,10 +316,10 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         {state.selectedArch && (
           <div className="space-y-2">
             <div>
-              <h3 className="text-sm font-semibold text-ink-soft">Hambad selles lõualuus</h3>
+              <h3 className="text-sm font-semibold text-ink-soft">{t('Hambad selles lõualuus', 'Teeth in this jaw')}</h3>
               <p className="text-base text-ink-muted">
-                Kõik on vaikimisi kaasas. Klõpsa hambal, mida see töö{' '}
-                <strong>ei</strong> puuduta — näiteks viimane molaar.
+                {t('Kõik on vaikimisi kaasas. Klõpsa hambal, mida see töö', 'All teeth are included by default. Click any tooth this job does')}{' '}
+                <strong>{t('ei', 'not')}</strong> {t('puuduta — näiteks viimane molaar.', 'cover — for example the last molar.')}
               </p>
             </div>
 
@@ -334,7 +335,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
               items={items.filter(i => i.too === (activeArchType ?? rules.archTypes[0]))}
               activeType={activeArchType ?? rules.archTypes[0]}
               colorMap={colorMap}
-              onToggleTooth={t => toggleArchTooth(activeArchType ?? rules.archTypes[0], t)}
+              onToggleTooth={tooth => toggleArchTooth(activeArchType ?? rules.archTypes[0], tooth)}
             />
           </div>
         )}
@@ -356,7 +357,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
         <div className="space-y-4">
           {tabs.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-ink-soft">Millisele tööle?</h3>
+              <h3 className="text-sm font-semibold text-ink-soft">{t('Millisele tööle?', 'Which work type?')}</h3>
               <WorkTypeTabs
                 tabs={tabs}
                 activeType={activeType}
@@ -377,7 +378,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
                 }}
               />
               <p className="text-xs text-ink-muted">
-                Üks hammas kuulub korraga ainult ühele tööle.
+                {t('Üks hammas kuulub korraga ainult ühele tööle.', 'A tooth can belong to only one work item at a time.')}
               </p>
             </div>
           )}
@@ -416,7 +417,7 @@ export const StepTeeth: WizardStepComponent = ({ state, patch, rules, errors, sh
           {rules.archTypes.length > 0 && (
             <div className="space-y-2 border-t border-ink-faint/30 pt-3">
               <h3 className="text-sm font-semibold text-ink-soft">
-                Lõualuu — {rules.archTypes.join(', ')}
+                {t('Lõualuu', 'Jaw')} — {rules.archTypes.join(', ')}
               </h3>
               <ArchSelector value={state.selectedArch} onChange={changeArch} invalid={archInvalid} />
             </div>

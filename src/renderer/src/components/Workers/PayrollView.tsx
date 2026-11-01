@@ -11,7 +11,7 @@ import {
   ChevronDown, ChevronRight, Euro, Lock, Download
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, addMonths, parseISO, isValid } from 'date-fns'
-import { et } from 'date-fns/locale'
+import { t, lang, dateLocale } from '@/lib/i18n'
 import type { Job } from '../../types/job'
 import { jobHasDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
@@ -118,7 +118,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     return {
       start: format(startOfMonth(base), 'yyyy-MM-dd'),
       end: format(endOfMonth(base), 'yyyy-MM-dd'),
-      label: format(base, 'LLLL yyyy', { locale: et }),
+      label: format(base, 'LLLL yyyy', { locale: dateLocale }),
     }
   }, [monthOffset])
 
@@ -278,7 +278,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     setActionError(null)
     const included = lines.filter(l => !excluded.has(l.key))
     if (included.length === 0) {
-      setActionError('Kõik read on välja jäetud — pole midagi kinnitada.')
+      setActionError(t('Kõik read on välja jäetud — pole midagi kinnitada.', 'All lines are excluded — nothing to confirm.'))
       return
     }
     try {
@@ -320,11 +320,11 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
         })
         done++
       }
-      if (done === 0) setActionError('Kõik vanad read on välja jäetud — pole midagi kinnitada.')
+      if (done === 0) setActionError(t('Kõik vanad read on välja jäetud — pole midagi kinnitada.', 'All earlier lines are excluded — nothing to confirm.'))
       else setExcluded(new Set())
     } catch (err) {
       setActionError(
-        `${describeError(err)}${done > 0 ? ` (${done} kuud jõudsid kinnituda)` : ''}`
+        `${describeError(err)}${done > 0 ? t(` (${done} kuud jõudsid kinnituda)`, ` (${done} ${done === 1 ? 'month was' : 'months were'} confirmed)`) : ''}`
       )
     }
   }
@@ -343,10 +343,10 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
         <div className="card p-4 flex items-start gap-2 max-w-2xl">
           <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-ink">Töötasude tabeleid ei leitud</p>
+            <p className="text-sm font-semibold text-ink">{t('Töötasude tabeleid ei leitud', 'Payroll tables not found')}</p>
             <p className="text-xs text-ink-muted">
-              Käivita <code className="px-1 rounded bg-bg-sidebar">sql/022_worker_pay.sql</code>{' '}
-              Supabase SQL-redaktoris (Wivo kinni).
+              {t('Käivita', 'Run')} <code className="px-1 rounded bg-bg-sidebar">sql/022_worker_pay.sql</code>{' '}
+              {t('Supabase SQL-redaktoris (Wivo kinni).', 'in the Supabase SQL editor (with Wivo closed).')}
             </p>
             <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
           </div>
@@ -359,7 +359,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-xl font-bold text-page-ink flex items-center gap-2">
-          <Wallet size={18} className="text-accent" /> Töötasud
+          <Wallet size={18} className="text-accent" /> {t('Töötasud', 'Payroll')}
         </h1>
 
         {/* The accountant's export. Two files rather than one: the summary is
@@ -371,9 +371,9 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             onClick={() => exportCsv('valjamaksed', payouts, payoutColumns(nameOf))}
             disabled={payouts.length === 0}
             className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
-            title="Väljamaksed kokku, CSV"
+            title={t('Väljamaksed kokku, CSV', 'Payout totals, CSV')}
           >
-            <Download size={13} /> Väljamaksed
+            <Download size={13} /> {t('Väljamaksed', 'Payouts')}
           </button>
           <button
             onClick={() => exportCsv(
@@ -383,9 +383,9 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             )}
             disabled={payouts.length === 0}
             className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
-            title="Iga väljamakse rida eraldi, CSV"
+            title={t('Iga väljamakse rida eraldi, CSV', 'Each payout line separately, CSV')}
           >
-            <Download size={13} /> Read
+            <Download size={13} /> {t('Read', 'Lines')}
           </button>
         </div>
 
@@ -400,7 +400,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             onClick={() => setMonthOffset(o => o + 1)}
             disabled={monthOffset >= 0}
             className="btn-ghost p-2 disabled:opacity-30"
-            title={monthOffset >= 0 ? 'Tulevikku ei arvestata' : undefined}
+            title={monthOffset >= 0 ? t('Tulevikku ei arvestata', 'Future months are not calculated') : undefined}
           >
             <ChevronRight size={14} />
           </button>
@@ -408,9 +408,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       </div>
 
       <p className="text-xs text-ink-faint max-w-3xl leading-relaxed">
-        Arvestatakse ainult <strong className="text-ink-muted">valmis</strong> töid, mille
-        teostaja või disainija on määratud. Väljamakse külmutab read: hilisem määra muutmine
-        juba makstud perioodi ümber ei arvuta.
+        {t('Arvestatakse ainult', 'Only')} <strong className="text-ink-muted">{t('valmis', 'done')}</strong> {t('töid, mille teostaja või disainija on määratud. Väljamakse külmutab read: hilisem määra muutmine juba makstud perioodi ümber ei arvuta.', 'jobs with an assigned technician or designer are counted. A payout freezes its lines: changing a rate later does not recalculate a period already paid.')}
       </p>
 
       {actionError && (
@@ -426,13 +424,13 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               <Euro size={16} className="text-accent" />
             </div>
             <div>
-              <p className="text-xs text-ink-muted">Palgal, bruto ({period.label})</p>
+              <p className="text-xs text-ink-muted">{t(`Palgal, bruto (${period.label})`, `Employees, gross (${period.label})`)}</p>
               <p className="text-xl font-bold text-ink tabular-nums">{employeeGross.toFixed(2)} €</p>
               {/* Only when somebody is on a net agreement. Otherwise it is a
                   derived figure nobody asked for, sitting under one they did. */}
               {hasNetWorkers && (
                 <p className="text-[10px] text-ink-faint tabular-nums">
-                  kätte {employeeNet.toFixed(2)} €
+                  {t('kätte', 'take-home')} {employeeNet.toFixed(2)} €
                 </p>
               )}
             </div>
@@ -441,7 +439,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           {/* Only the payroll half carries employer taxes. */}
           <div className="pl-6 border-l border-ink-faint/20">
             <p className="text-xs text-ink-muted">
-              Tööandja maksud ({settings.tooandjaMaksudProtsent}%)
+              {t('Tööandja maksud', 'Employer taxes')} ({settings.tooandjaMaksudProtsent}%)
             </p>
             <p className="text-base font-semibold text-ink tabular-nums">
               {employerTax.toFixed(2)} €
@@ -450,30 +448,29 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
 
           {contractorTotal > 0 && (
             <div className="pl-6 border-l border-ink-faint/20">
-              <p className="text-xs text-ink-muted">Arve alusel (ettevõtted)</p>
+              <p className="text-xs text-ink-muted">{t('Arve alusel (ettevõtted)', 'Invoiced (companies)')}</p>
               <p className="text-base font-semibold text-ink tabular-nums">
                 {contractorTotal.toFixed(2)} €
               </p>
-              <p className="text-[10px] text-ink-faint">tööandja makse ei lisandu</p>
+              <p className="text-[10px] text-ink-faint">{t('tööandja makse ei lisandu', 'no employer taxes added')}</p>
             </div>
           )}
 
           <div className="pl-6 border-l border-ink-faint/20">
-            <p className="text-xs text-ink-muted">Kogukulu kliinikule</p>
+            <p className="text-xs text-ink-muted">{t('Kogukulu kliinikule', 'Total cost to clinic')}</p>
             <p className="text-xl font-bold text-accent tabular-nums">
               {(employeeGross + employerTax + contractorTotal).toFixed(2)} €
             </p>
             {paidTotal > 0 && (
               <p className="text-[10px] text-emerald-600 flex items-center gap-1">
-                <Lock size={8} /> sh välja makstud {paidTotal.toFixed(2)} €
+                <Lock size={8} /> {t('sh välja makstud', 'incl. paid out')} {paidTotal.toFixed(2)} €
               </p>
             )}
           </div>
 
           {settings.tooandjaMaksudProtsent === 0 && employeeGross > 0 && (
             <p className="text-[11px] text-orange-500 max-w-xs leading-relaxed">
-              Tööandja maksude määr on 0% — määra see Seaded → Hinnad, muidu näitab
-              kogukulu palgalistel ainult brutopalka.
+              {t('Tööandja maksude määr on 0% — määra see Seaded → Hinnad, muidu näitab kogukulu palgalistel ainult brutopalka.', 'The employer tax rate is 0% — set it in Settings → Prices, otherwise the total cost for employees shows only gross pay.')}
             </p>
           )}
 
@@ -482,9 +479,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               than let the cost figure be quietly short by the tax wedge. */}
           {hasNetWorkers && settings.tulumaksProtsent === 0 && (
             <p className="text-[11px] text-orange-500 max-w-xs leading-relaxed">
-              Mõne inimese tasu on sisestatud netona, aga tulumaksu määr on 0% —
-              bruto arvutatakse netost samaks numbriks. Määra Seaded → Hinnad →
-              Palgamaksud.
+              {t('Mõne inimese tasu on sisestatud netona, aga tulumaksu määr on 0% — bruto arvutatakse netost samaks numbriks. Määra Seaded → Hinnad → Palgamaksud.', 'Someone\'s pay is entered as net, but the income tax rate is 0% — gross works out to the same number as net. Set it in Settings → Prices → Payroll taxes.')}
             </p>
           )}
         </div>
@@ -493,11 +488,10 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       {archivedIds.length > 0 && (
         <div className="card p-4">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-            Arhiveeritud ({archivedIds.length})
+            {t('Arhiveeritud', 'Archived')} ({archivedIds.length})
           </h3>
           <p className="text-[11px] text-ink-faint mb-2 leading-relaxed">
-            Meeskonnast eemaldatud inimesed, kellele on tehtud väljamakseid. Uut tasu
-            neile ei arvestata — ajalugu on siin selleks, et makstu jääks jälgitavaks.
+            {t('Meeskonnast eemaldatud inimesed, kellele on tehtud väljamakseid. Uut tasu neile ei arvestata — ajalugu on siin selleks, et makstu jääks jälgitavaks.', 'People removed from the team who have received payouts. No new pay is calculated for them — the history is here so that what was paid stays traceable.')}
           </p>
           <div className="space-y-1">
             {archivedIds.map(id => {
@@ -507,9 +501,9 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               return (
                 <div key={id} className="flex items-center gap-2 text-xs rounded-lg border border-ink-faint/15 px-3 py-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-ink truncate">{prof?.full_name || 'Tundmatu'}</p>
+                    <p className="text-ink truncate">{prof?.full_name || t('Tundmatu', 'Unknown')}</p>
                     <p className="text-[11px] text-ink-faint">
-                      {theirs.length} väljamakset · eemaldatud meeskonnast
+                      {t(`${theirs.length} väljamakset · eemaldatud meeskonnast`, `${theirs.length} ${theirs.length === 1 ? 'payout' : 'payouts'} · removed from team`)}
                     </p>
                   </div>
                   <span className="font-semibold text-ink tabular-nums">{total.toFixed(2)} €</span>
@@ -531,11 +525,10 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             <AlertTriangle size={13} className="text-orange-500 flex-shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-orange-800">
-                {unassigned.length} valmis tööd ilma teostaja ja disainijata — nende eest ei maksta kellelegi
+                {t(`${unassigned.length} valmis tööd ilma teostaja ja disainijata — nende eest ei maksta kellelegi`, `${unassigned.length} done ${unassigned.length === 1 ? 'job' : 'jobs'} with no technician or designer — nobody gets paid for ${unassigned.length === 1 ? 'it' : 'them'}`)}
               </p>
               <p className="text-[11px] text-orange-700/80 mt-0.5">
-                Ava töö ja määra Teostaja. Ilma selleta ei jõua töö ühelegi palgareale
-                ega ka ühegi töötaja hoiatuste alla.
+                {t('Ava töö ja määra Teostaja. Ilma selleta ei jõua töö ühelegi palgareale ega ka ühegi töötaja hoiatuste alla.', 'Open the job and set the Technician. Without one, the job reaches no pay line and no staff member\'s warnings either.')}
               </p>
               <p className="text-[11px] text-orange-700 mt-1">
                 {unassigned.slice(0, 5).map((u, i) => (
@@ -548,7 +541,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                         if (j && onOpenJob) onOpenJob(j)
                       }}
                       className="underline decoration-dotted underline-offset-2 hover:text-orange-900"
-                      title="Ava töö"
+                      title={t('Ava töö', 'Open job')}
                     >
                       {u.label}
                     </button>
@@ -564,7 +557,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       {perWorker.length === 0 ? (
         <div className="card p-8 text-center">
           <Wallet size={26} className="text-ink-faint mx-auto mb-2" />
-          <p className="text-sm text-ink-muted">Töötajaid ei ole.</p>
+          <p className="text-sm text-ink-muted">{t('Töötajaid ei ole.', 'No staff.')}</p>
         </div>
       ) : perWorker.map(({ worker, lines, backlog, total, gross, outstanding, paid, otherOpen, otherOpenTotal, owed, revalue, rates: workerRates, payouts: periodPayouts, issues, assignedDone }) => {
         const open = openWorker === worker.id
@@ -585,18 +578,18 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               {open ? <ChevronDown size={14} className="text-ink-faint" /> : <ChevronRight size={14} className="text-ink-faint" />}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-ink truncate flex items-center gap-1.5">
-                  {worker.full_name || 'Nimeta'}
-                  {worker.role === 'owner' && <span className="text-[10px] text-ink-faint font-normal">omanik</span>}
+                  {worker.full_name || t('Nimeta', 'Unnamed')}
+                  {worker.role === 'owner' && <span className="text-[10px] text-ink-faint font-normal">{t('omanik', 'owner')}</span>}
                   {worker.toosuhe === 'ettevote' && (
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">
-                      esitab arve
+                      {t('esitab arve', 'invoices')}
                     </span>
                   )}
                 </p>
                 <p className="text-[11px] text-ink-faint">
                   {workerRates.length === 0
-                    ? 'Tasureegleid ei ole määratud'
-                    : `${workerRates.length} reeglit · ${lines.length} arvestamata rida · ${assignedDone} määratud valmis tööd`}
+                    ? t('Tasureegleid ei ole määratud', 'No pay rules set')
+                    : t(`${workerRates.length} reeglit · ${lines.length} arvestamata rida · ${assignedDone} määratud valmis tööd`, `${workerRates.length} ${workerRates.length === 1 ? 'rule' : 'rules'} · ${lines.length} unpaid ${lines.length === 1 ? 'line' : 'lines'} · ${assignedDone} assigned done ${assignedDone === 1 ? 'job' : 'jobs'}`)}
                   {/* Only what somebody can DO something about. It used to add
                       up every issue, so a row reading "0 arvestamata rida"
                       ended with "40 tööd arvestamata" — and 37 of those forty
@@ -604,7 +597,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                       fault and not this period's business. */}
                   {openIssues > 0 && (
                     <span className="text-orange-500 font-medium">
-                      {' '}· {openIssues} tööd vajab tähelepanu
+                      {' '}· {t(`${openIssues} tööd vajab tähelepanu`, `${openIssues} ${openIssues === 1 ? 'job needs' : 'jobs need'} attention`)}
                     </span>
                   )}
                 </p>
@@ -615,12 +608,12 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                   as "nothing was earned" rather than "nothing is owed". */}
               {paid > 0 && (
                 <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                  <Lock size={9} /> Välja makstud {paid.toFixed(2)} €
+                  <Lock size={9} /> {t('Välja makstud', 'Paid out')} {paid.toFixed(2)} €
                 </span>
               )}
               {paid > 0 && outstanding > 0 && (
                 <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">
-                  Maksmata {outstanding.toFixed(2)} €
+                  {t('Maksmata', 'Unpaid')} {outstanding.toFixed(2)} €
                 </span>
               )}
               {/* Crosses periods, and says so, because every other number on
@@ -630,9 +623,9 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
               {owed > 0 && Math.abs(owed - outstanding) > 0.005 && (
                 <span
                   className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-orange-100 text-orange-700"
-                  title="Kõik, mis sellele inimesele praegu võlgu ollakse — selle kuu arvestamata töö pluss kõik kinnitatud, aga veel välja maksmata väljamaksed igast kuust"
+                  title={t('Kõik, mis sellele inimesele praegu võlgu ollakse — selle kuu arvestamata töö pluss kõik kinnitatud, aga veel välja maksmata väljamaksed igast kuust', 'Everything currently owed to this person — this month\'s unpaid work plus every confirmed but not yet paid payout from any month')}
                 >
-                  Maksmata kokku {owed.toFixed(2)} €
+                  {t('Maksmata kokku', 'Total unpaid')} {owed.toFixed(2)} €
                 </span>
               )}
               {/* The headline is always the number that was AGREED — the one
@@ -643,11 +636,11 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                   {total.toFixed(2)} €
                 </span>
                 <span className="block text-[10px] text-ink-faint">
-                  {worker.toosuhe === 'ettevote' ? 'arve summa' : netBasis ? 'neto (kätte)' : 'bruto'}
+                  {worker.toosuhe === 'ettevote' ? t('arve summa', 'invoice amount') : netBasis ? t('neto (kätte)', 'net (take-home)') : t('bruto', 'gross')}
                 </span>
                 {netBasis && gross > 0 && (
                   <span className="block text-[10px] text-ink-faint tabular-nums">
-                    bruto {gross.toFixed(2)} € · kulu{' '}
+                    {t('bruto', 'gross')} {gross.toFixed(2)} € · {t('kulu', 'cost')}{' '}
                     {employerCost(gross, settings.tooandjaMaksudProtsent).toFixed(2)} €
                   </span>
                 )}
@@ -719,14 +712,14 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                 {/* Earnings preview */}
                 <section>
                   <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-                    Arvestamata read ({lines.length})
+                    {t('Arvestamata read', 'Unpaid lines')} ({lines.length})
                   </h4>
 
                   {lines.length === 0 ? (
                     <p className="text-xs text-ink-faint">
                       {workerRates.length === 0
-                        ? 'Lisa tasureegel, et arvestus tekiks.'
-                        : 'Sellel perioodil ei ole arvestamata tööd.'}
+                        ? t('Lisa tasureegel, et arvestus tekiks.', 'Add a pay rule to start calculating.')
+                        : t('Sellel perioodil ei ole arvestamata tööd.', 'No unpaid work in this period.')}
                     </p>
                   ) : (
                     <div className="space-y-1">
@@ -748,7 +741,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                                 checked={!off}
                                 onChange={() => toggleLine(l.key)}
                                 className="accent-accent flex-shrink-0"
-                                title={off ? 'Kaasa väljamaksesse' : 'Jäta sellest väljamaksest välja'}
+                                title={off ? t('Kaasa väljamaksesse', 'Include in payout') : t('Jäta sellest väljamaksest välja', 'Leave out of this payout')}
                               />
                             )}
                             <span className="text-ink-faint tabular-nums w-20 flex-shrink-0">{fmtDate(l.earned_on)}</span>
@@ -772,8 +765,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                           <div className="flex items-center justify-end gap-3 pt-2 flex-wrap">
                             {left > 0 && (
                               <span className="text-[11px] text-orange-500 mr-auto">
-                                {left} rida välja jäetud — jäävad maksmata ja tulevad
-                                järgmisel perioodil uuesti ette
+                                {t(`${left} rida välja jäetud — jäävad maksmata ja tulevad järgmisel perioodil uuesti ette`, `${left} ${left === 1 ? 'line' : 'lines'} left out — ${left === 1 ? 'it stays' : 'they stay'} unpaid and ${left === 1 ? 'comes' : 'come'} up again next period`)}
                               </span>
                             )}
                             <span className="text-sm font-bold text-ink tabular-nums">{sum.toFixed(2)} €</span>
@@ -783,7 +775,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                               className="btn-primary disabled:opacity-50"
                             >
                               {createPayout.isPending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                              Kinnita väljamakse ({included.length})
+                              {t('Kinnita väljamakse', 'Confirm payout')} ({included.length})
                             </button>
                           </div>
                         )
@@ -806,7 +798,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                 {otherOpen.length > 0 && (
                   <section>
                     <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                      Muude kuude kinnitatud väljamaksed — veel maksmata
+                      {t('Muude kuude kinnitatud väljamaksed — veel maksmata', 'Confirmed payouts from other months — not yet paid')}
                     </h4>
                     <div className="space-y-1.5">
                       {otherOpen.map(p => (
@@ -822,7 +814,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                       ))}
                       <div className="flex items-center justify-end gap-3 pt-1">
                         <span className="mr-auto text-[11px] text-ink-muted">
-                          Klõpsa real, et näha, millised tööd selle sees on.
+                          {t('Klõpsa real, et näha, millised tööd selle sees on.', 'Click a row to see which jobs it contains.')}
                         </span>
                         <span className="text-sm font-bold tabular-nums text-ink">
                           {otherOpenTotal.toFixed(2)} €
@@ -836,7 +828,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                 {periodPayouts.length > 0 && (
                   <section>
                     <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-                      Selle perioodi väljamaksed
+                      {t('Selle perioodi väljamaksed', 'Payouts for this period')}
                     </h4>
                     {periodPayouts.map(p => (
                       <PayoutRow key={p.id} payout={p} isOwner={isOwner}
@@ -889,13 +881,13 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
   /** "august 2026" from '2026-08'. Unparseable months keep their raw form. */
   const monthLabel = (m: string): string => {
     const d = parseISO(`${m}-01`)
-    return isValid(d) ? format(d, 'LLLL yyyy', { locale: et }) : m
+    return isValid(d) ? format(d, 'LLLL yyyy', { locale: dateLocale }) : m
   }
 
   return (
     <section className="space-y-1.5">
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-        Miks mõni töö siin ei ole
+        {t('Miks mõni töö siin ei ole', 'Why some jobs are not here')}
       </h4>
 
       {actionable.map(iss => (
@@ -906,7 +898,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
           <AlertTriangle size={11} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
             <p className="text-orange-800">
-              <strong>{iss.count}</strong> tööd: {iss.label}
+              <strong>{iss.count}</strong> {t('tööd', iss.count === 1 ? 'job' : 'jobs')}: {iss.label}
             </p>
             <p className="text-orange-700/70 truncate">
               {iss.examples.map((ex, i) => (
@@ -917,7 +909,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
                       type="button"
                       onClick={() => openJob(ex.id)}
                       className="underline decoration-dotted underline-offset-2 hover:text-orange-900"
-                      title="Ava töö"
+                      title={t('Ava töö', 'Open job')}
                     >
                       {ex.label}
                     </button>
@@ -939,7 +931,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
         >
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-ink-muted">
-              <strong className="text-ink">{iss.count}</strong> tööd — {iss.label}
+              <strong className="text-ink">{iss.count}</strong> {t('tööd', iss.count === 1 ? 'job' : 'jobs')} — {iss.label}
             </span>
             {iss.months.slice(0, 4).map(m => (
               <button
@@ -947,7 +939,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
                 type="button"
                 onClick={() => onGoToMonth(m)}
                 className="text-accent hover:text-accent-dark font-medium underline decoration-dotted underline-offset-2"
-                title={`Ava ${monthLabel(m)} periood`}
+                title={t(`Ava ${monthLabel(m)} periood`, `Open the ${monthLabel(m)} period`)}
               >
                 {monthLabel(m)}
               </button>
@@ -958,7 +950,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
                 onClick={() => setOpen(o => !o)}
                 className="text-ink-faint hover:text-ink ml-auto"
               >
-                {open ? 'peida' : 'näita'}
+                {open ? t('peida', 'hide') : t('näita', 'show')}
               </button>
             )}
           </div>
@@ -972,7 +964,7 @@ function IssuesPanel({ issues, jobs, onOpenJob, onGoToMonth }: {
                       type="button"
                       onClick={() => openJob(ex.id)}
                       className="underline decoration-dotted underline-offset-2 hover:text-ink"
-                      title="Ava töö"
+                      title={t('Ava töö', 'Open job')}
                     >
                       {ex.label}
                     </button>
@@ -1030,17 +1022,17 @@ function BacklogPanel({
       >
         {open ? <ChevronDown size={14} className="text-ink-muted" /> : <ChevronRight size={14} className="text-ink-muted" />}
         <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-          Varasemast arveldamata
+          {t('Varasemast arveldamata', 'Unsettled from earlier')}
         </span>
         <span className="text-xs text-ink-muted">
-          {backlog.length} {backlog.length === 1 ? 'kuu' : 'kuud'}
+          {backlog.length} {backlog.length === 1 ? t('kuu', 'month') : t('kuud', 'months')}
         </span>
         <span className="ml-auto text-sm font-bold tabular-nums text-ink">{total.toFixed(2)} €</span>
       </button>
 
       {!open && (
         <p className="mt-1 pl-6 text-xs text-ink-muted">
-          Valmis tööd, mille eest ei ole kunagi väljamakset kinnitatud. Ava, et näha.
+          {t('Valmis tööd, mille eest ei ole kunagi väljamakset kinnitatud. Ava, et näha.', 'Done jobs that never had a payout confirmed. Open to see.')}
         </p>
       )}
 
@@ -1053,11 +1045,11 @@ function BacklogPanel({
                   type="button"
                   onClick={() => onGoToMonth(p.month)}
                   className="text-xs font-semibold text-accent hover:underline"
-                  title="Ava see kuu"
+                  title={t('Ava see kuu', 'Open this month')}
                 >
                   {p.month}
                 </button>
-                <span className="text-[11px] text-ink-faint">{p.lines.length} rida</span>
+                <span className="text-[11px] text-ink-faint">{p.lines.length} {t('rida', p.lines.length === 1 ? 'line' : 'lines')}</span>
                 <span className="ml-auto text-xs font-semibold tabular-nums text-ink">
                   {p.total.toFixed(2)} €
                 </span>
@@ -1075,7 +1067,7 @@ function BacklogPanel({
                         checked={!off}
                         onChange={() => onToggleLine(l.key)}
                         className="flex-shrink-0 accent-accent"
-                        title={off ? 'Kaasa väljamaksesse' : 'Jäta sellest väljamaksest välja'}
+                        title={off ? t('Kaasa väljamaksesse', 'Include in payout') : t('Jäta sellest väljamaksest välja', 'Leave out of this payout')}
                       />
                     )}
                     <span className="w-20 flex-shrink-0 tabular-nums text-ink-faint">{fmtDate(l.earned_on)}</span>
@@ -1096,8 +1088,7 @@ function BacklogPanel({
               {/* Said before the click, not after. Somebody settling from
                   October will otherwise look for the money in October. */}
               <span className="mr-auto text-[11px] text-ink-muted">
-                Iga kuu kohta tekib eraldi väljamakse selle kuu alla — nii jääb
-                iga kuu kulu sinna, kus töö tehti.
+                {t('Iga kuu kohta tekib eraldi väljamakse selle kuu alla — nii jääb iga kuu kulu sinna, kus töö tehti.', 'Each month gets its own payout under that month — so each month\'s cost stays where the work was done.')}
               </span>
               <span className="text-sm font-bold tabular-nums text-ink">{total.toFixed(2)} €</span>
               <button
@@ -1106,7 +1097,7 @@ function BacklogPanel({
                 className="btn-primary disabled:opacity-50"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                Arvelda vanad kuud ({included.length})
+                {t('Arvelda vanad kuud', 'Settle earlier months')} ({included.length})
               </button>
             </div>
           )}
@@ -1160,20 +1151,17 @@ function RevaluePanel({ groups, workerName }: {
       <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-2 text-left">
         {open ? <ChevronDown size={14} className="text-ink-muted" /> : <ChevronRight size={14} className="text-ink-muted" />}
         <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-          Varem makstud muudatused — ümberarvutus
+          {t('Varem makstud muudatused — ümberarvutus', 'Revisions paid earlier — recalculation')}
         </span>
         <span className="ml-auto text-xs text-ink-muted">
-          {groups.length} {groups.length === 1 ? 'määr' : 'määra'}
+          {groups.length} {groups.length === 1 ? t('määr', 'rate') : t('määra', 'rates')}
         </span>
       </button>
 
       {open && (
         <div className="mt-3 space-y-3">
           <p className="text-xs text-ink-muted">
-            Muudatused, mis on juba välja makstud, rühmitatud selle järgi, mida nende
-            eest tegelikult maksti. Sisesta õige määr ja vaata vahet. <strong>Midagi
-            ei muudeta</strong> — kinnitatud väljamakse jääb puutumata, see on ainult
-            arvutus.
+            {t('Muudatused, mis on juba välja makstud, rühmitatud selle järgi, mida nende eest tegelikult maksti. Sisesta õige määr ja vaata vahet.', 'Revisions already paid out, grouped by what was actually paid for them. Enter the correct rate and see the difference.')} <strong>{t('Midagi ei muudeta', 'Nothing is changed')}</strong> {t('— kinnitatud väljamakse jääb puutumata, see on ainult arvutus.', '— the confirmed payout stays untouched; this is only a calculation.')}
           </p>
 
           {rows.map(r => (
@@ -1183,13 +1171,13 @@ function RevaluePanel({ groups, workerName }: {
                   {r.g.rate.toFixed(2)} {RATE_KIND_SUFFIX[r.g.kind as RateKind] ?? r.g.kind}
                 </span>
                 <span className="text-ink-muted tabular-nums">
-                  {r.g.qty} × · {r.g.lines.length} rida
+                  {r.g.qty} × · {r.g.lines.length} {t('rida', r.g.lines.length === 1 ? 'line' : 'lines')}
                 </span>
                 <span className="text-ink-muted tabular-nums">
-                  makstud {r.g.paid.toFixed(2)} €
+                  {t('makstud', 'paid')} {r.g.paid.toFixed(2)} €
                 </span>
                 <label className="ml-auto flex items-center gap-1.5">
-                  <span className="text-ink-muted">Õige määr</span>
+                  <span className="text-ink-muted">{t('Õige määr', 'Correct rate')}</span>
                   <input
                     value={r.typed}
                     onChange={e => setCorrected(c => ({ ...c, [r.key]: e.target.value }))}
@@ -1201,16 +1189,16 @@ function RevaluePanel({ groups, workerName }: {
               </div>
               {r.difference !== 0 && (
                 <p className="mt-1.5 text-xs tabular-nums text-ink">
-                  Peaks olema <strong>{r.should.toFixed(2)} €</strong> —{' '}
+                  {t('Peaks olema', 'Should be')} <strong>{r.should.toFixed(2)} €</strong> —{' '}
                   <span className={r.difference > 0 ? 'font-bold text-orange-600' : 'font-bold text-emerald-600'}>
-                    {r.difference > 0 ? 'maksmata ' : 'ülemakstud '}
+                    {r.difference > 0 ? t('maksmata ', 'underpaid ') : t('ülemakstud ', 'overpaid ')}
                     {Math.abs(r.difference).toFixed(2)} €
                   </span>
                 </p>
               )}
               {!r.valid && (
                 <p className="mt-1.5 text-xs text-red-600">
-                  See ei ole number — vahe arvutamata.
+                  {t('See ei ole number — vahe arvutamata.', 'That is not a number — difference not calculated.')}
                 </p>
               )}
             </div>
@@ -1234,9 +1222,9 @@ function RevaluePanel({ groups, workerName }: {
               )}
               className="btn-ghost mr-auto border border-ink-faint/25 text-xs"
             >
-              <Download size={13} /> Laadi alla read
+              <Download size={13} /> {t('Laadi alla read', 'Download lines')}
             </button>
-            <span className="text-xs text-ink-muted">Kokku taotleda</span>
+            <span className="text-xs text-ink-muted">{t('Kokku taotleda', 'Total to claim')}</span>
             <span className="text-base font-bold tabular-nums text-ink">
               {totalDiff.toFixed(2)} €
             </span>
@@ -1250,7 +1238,7 @@ function RevaluePanel({ groups, workerName }: {
 /** 'august 2026' from a period start, or the raw value if it is not a date. */
 function monthLabel(periodStart: string): string {
   const d = parseISO(periodStart)
-  return isValid(d) ? format(d, 'LLLL yyyy', { locale: et }) : periodStart
+  return isValid(d) ? format(d, 'LLLL yyyy', { locale: dateLocale }) : periodStart
 }
 
 function monthsBetween(_periodStart: string, month: string): number {
@@ -1286,12 +1274,12 @@ function EngagementPicker({ profileId, value }: { profileId: string; value: Enga
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Töösuhe
+        {t('Töösuhe', 'Engagement')}
       </h4>
       <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
         {([
-          { key: 'tootaja', label: 'Palgal' },
-          { key: 'ettevote', label: 'Esitab arve' },
+          { key: 'tootaja', label: t('Palgal', 'Employee') },
+          { key: 'ettevote', label: t('Esitab arve', 'Invoices') },
         ] as const).map(o => (
           <button
             key={o.key}
@@ -1308,8 +1296,8 @@ function EngagementPicker({ profileId, value }: { profileId: string; value: Enga
       </div>
       <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
         {value === 'ettevote'
-          ? 'Summa on arve summa. Tööandja makse ei lisandu — maksud on arve esitaja enda asi.'
-          : 'Summa on brutopalk, millele lisanduvad tööandja maksud.'}
+          ? t('Summa on arve summa. Tööandja makse ei lisandu — maksud on arve esitaja enda asi.', 'The amount is the invoice amount. No employer taxes are added — taxes are the invoicer\'s own concern.')
+          : t('Summa on brutopalk, millele lisanduvad tööandja maksud.', 'The amount is gross pay, with employer taxes added on top.')}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
     </section>
@@ -1351,12 +1339,12 @@ function PayBasisPicker({ profileId, value }: { profileId: string; value: PayBas
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Tasureeglite summad on
+        {t('Tasureeglite summad on', 'Pay rule amounts are')}
       </h4>
       <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
         {([
-          { key: 'bruto', label: 'Bruto' },
-          { key: 'neto', label: 'Neto (kätte)' },
+          { key: 'bruto', label: t('Bruto', 'Gross') },
+          { key: 'neto', label: t('Neto (kätte)', 'Net (take-home)') },
         ] as const).map(o => (
           <button
             key={o.key}
@@ -1373,8 +1361,8 @@ function PayBasisPicker({ profileId, value }: { profileId: string; value: PayBas
       </div>
       <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
         {value === 'neto'
-          ? 'Sisestatud summa on see, mis inimesele kätte jõuab. Bruto ja tööandja kulu arvutatakse sellest tagurpidi — maksumäärad on Seaded → Hinnad → Palgamaksud.'
-          : 'Sisestatud summa on brutopalk. Kui lepite kokku kättesaadava summa, vali „Neto" — muidu jääb kliiniku kulust töötaja maksuosa välja.'}
+          ? t('Sisestatud summa on see, mis inimesele kätte jõuab. Bruto ja tööandja kulu arvutatakse sellest tagurpidi — maksumäärad on Seaded → Hinnad → Palgamaksud.', 'The amount entered is what the person takes home. Gross and employer cost are worked back from it — tax rates are in Settings → Prices → Payroll taxes.')
+          : t('Sisestatud summa on brutopalk. Kui lepite kokku kättesaadava summa, vali „Neto" — muidu jääb kliiniku kulust töötaja maksuosa välja.', 'The amount entered is gross pay. If you agree on a take-home amount, choose "Net" — otherwise the employee\'s share of tax is left out of the clinic\'s cost.')}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
     </section>
@@ -1419,15 +1407,15 @@ function TaxProfilePicker({ profileId, kogumispension, maksuvabaTulu }: {
     const raw = draft.trim()
     const next = raw === '' ? null : parseFloat(raw)
     if (next != null && !Number.isFinite(next)) {
-      setError('Sisesta summa eurodes, nt 700.'); return
+      setError(t('Sisesta summa eurodes, nt 700.', 'Enter an amount in euros, e.g. 700.')); return
     }
     if (next === maksuvabaTulu) return
     await save({ maksuvaba_tulu: next })
   }
 
   const options: { key: number | null; label: string }[] = [
-    { key: null, label: `Vaikimisi (${settings.kogumispensionProtsent}%)` },
-    { key: 0, label: 'Ei ole' },
+    { key: null, label: t(`Vaikimisi (${settings.kogumispensionProtsent}%)`, `Default (${settings.kogumispensionProtsent}%)`) },
+    { key: 0, label: t('Ei ole', 'None') },
     { key: 2, label: '2%' },
     { key: 4, label: '4%' },
     { key: 6, label: '6%' },
@@ -1436,11 +1424,11 @@ function TaxProfilePicker({ profileId, kogumispension, maksuvabaTulu }: {
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Maksuprofiil
+        {t('Maksuprofiil', 'Tax profile')}
       </h4>
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <p className="text-[10px] text-ink-faint mb-1">Kogumispension (II sammas)</p>
+          <p className="text-[10px] text-ink-faint mb-1">{t('Kogumispension (II sammas)', 'Funded pension (II pillar)')}</p>
           <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
             {options.map(o => (
               <button
@@ -1458,7 +1446,7 @@ function TaxProfilePicker({ profileId, kogumispension, maksuvabaTulu }: {
           </div>
         </div>
         <div>
-          <p className="text-[10px] text-ink-faint mb-1">Maksuvaba tulu</p>
+          <p className="text-[10px] text-ink-faint mb-1">{t('Maksuvaba tulu', 'Tax-free allowance')}</p>
           <div className="relative w-28">
             <input
               type="number" min="0" step="10" value={draft}
@@ -1475,9 +1463,7 @@ function TaxProfilePicker({ profileId, kogumispension, maksuvabaTulu }: {
         </div>
       </div>
       <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-        Mõjutab ainult netost brutosse arvutamist. Tühi lahter = kliiniku
-        vaikeväärtus ({settings.maksuvabaTuluKuus} €). Kirjuta 0, kui inimene
-        maksuvaba tulu siin ei kasuta — nt teise tööandja juures.
+        {t(`Mõjutab ainult netost brutosse arvutamist. Tühi lahter = kliiniku vaikeväärtus (${settings.maksuvabaTuluKuus} €). Kirjuta 0, kui inimene maksuvaba tulu siin ei kasuta — nt teise tööandja juures.`, `Only affects working gross out from net. Empty = the clinic default (${settings.maksuvabaTuluKuus} €). Enter 0 if the person does not use the tax-free allowance here — e.g. it is used with another employer.`)}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
     </section>
@@ -1497,18 +1483,18 @@ function PayslipPanel({ slip, rates, worker }: {
 }) {
   const ii = worker.kogumispensionProtsent ?? rates.kogumispensionProtsent
   const rows: { label: string; value: number; muted?: boolean }[] = [
-    { label: 'Bruto', value: slip.gross },
-    { label: `Kogumispension (${ii}%)`, value: -slip.kogumispension, muted: true },
-    { label: `Töötuskindlustus (${rates.tootajaTootuskindlustusProtsent}%)`, value: -slip.tootuskindlustus, muted: true },
-    { label: `Tulumaks (${rates.tulumaksProtsent}%)`, value: -slip.tulumaks, muted: true },
-    { label: 'Kätte', value: slip.net },
-    { label: `Tööandja maksud (${rates.tooandjaMaksudProtsent}%)`, value: slip.tooandjaMaksud, muted: true },
-    { label: 'Kulu kliinikule', value: slip.employerCost },
+    { label: t('Bruto', 'Gross'), value: slip.gross },
+    { label: t(`Kogumispension (${ii}%)`, `Funded pension (${ii}%)`), value: -slip.kogumispension, muted: true },
+    { label: t(`Töötuskindlustus (${rates.tootajaTootuskindlustusProtsent}%)`, `Unemployment insurance (${rates.tootajaTootuskindlustusProtsent}%)`), value: -slip.tootuskindlustus, muted: true },
+    { label: t(`Tulumaks (${rates.tulumaksProtsent}%)`, `Income tax (${rates.tulumaksProtsent}%)`), value: -slip.tulumaks, muted: true },
+    { label: t('Kätte', 'Take-home'), value: slip.net },
+    { label: t(`Tööandja maksud (${rates.tooandjaMaksudProtsent}%)`, `Employer taxes (${rates.tooandjaMaksudProtsent}%)`), value: slip.tooandjaMaksud, muted: true },
+    { label: t('Kulu kliinikule', 'Cost to clinic'), value: slip.employerCost },
   ]
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Palgaleht (arvestuslik)
+        {t('Palgaleht (arvestuslik)', 'Payslip (estimate)')}
       </h4>
       <div className="rounded-lg border border-ink-faint/15 divide-y divide-ink-faint/10 max-w-sm">
         {rows.map(r => (
@@ -1521,9 +1507,7 @@ function PayslipPanel({ slip, rates, worker }: {
         ))}
       </div>
       <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-        Arvutatud Seaded → Hinnad → Palgamaksud määradega. See ei ole
-        raamatupidamise palgateatis — sotsiaalmaksu miinimumkohustust ja
-        aastapõhiseid ümberarvestusi siin ei arvestata.
+        {t('Arvutatud Seaded → Hinnad → Palgamaksud määradega. See ei ole raamatupidamise palgateatis — sotsiaalmaksu miinimumkohustust ja aastapõhiseid ümberarvestusi siin ei arvestata.', 'Calculated with the rates in Settings → Prices → Payroll taxes. This is not an accounting payslip — the social tax minimum and annual recalculations are not taken into account here.')}
       </p>
     </section>
   )
@@ -1555,7 +1539,7 @@ function RushPicker({ profileId, value }: { profileId: string; value: number | n
     // unset rather than as a deliberate 1.00 somebody once typed.
     const next = raw === '' || parseFloat(raw) === 1 ? null : parseFloat(raw)
     if (raw !== '' && (!Number.isFinite(next as number) && next !== null)) {
-      setError('Sisesta kordaja, nt 2 või 1.5.'); return
+      setError(t('Sisesta kordaja, nt 2 või 1.5.', 'Enter a multiplier, e.g. 2 or 1.5.')); return
     }
     if (next === value) return
     setSaving(true); setError(null)
@@ -1572,7 +1556,7 @@ function RushPicker({ profileId, value }: { profileId: string; value: number | n
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Kiirtöö kordaja
+        {t('Kiirtöö kordaja', 'Rush job multiplier')}
       </h4>
       <div className="flex items-center gap-2">
         <div className="relative w-24">
@@ -1603,10 +1587,7 @@ function RushPicker({ profileId, value }: { profileId: string; value: number | n
         </div>
       </div>
       <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-        Kiirtööl korrutatakse selle inimese hamba- ja töötasu selle arvuga.
-        Tühi = 1×, ülekurssi ei maksta. Protsendireeglit ei korrutata — töö hind
-        kannab kliiniku kordajat ({settings.kiirtooKordaja}×) juba endas, nii et
-        protsent kasvab niigi.
+        {t(`Kiirtööl korrutatakse selle inimese hamba- ja töötasu selle arvuga. Tühi = 1×, ülekurssi ei maksta. Protsendireeglit ei korrutata — töö hind kannab kliiniku kordajat (${settings.kiirtooKordaja}×) juba endas, nii et protsent kasvab niigi.`, `On a rush job, this person's per-tooth and per-job pay is multiplied by this number. Empty = 1×, no rush premium is paid. Percentage rules are not multiplied — the job price already carries the clinic's multiplier (${settings.kiirtooKordaja}×), so the percentage grows anyway.`)}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
     </section>
@@ -1644,23 +1625,23 @@ function PayoutRow({ payout: p, isOwner, periodLabel, onMarkPaid, onUnmarkPaid, 
             )}
           </p>
           <p className="text-[11px] text-ink-faint">
-            {p.lines.length} rida · {p.status === 'makstud'
-              ? `makstud ${fmtDate(p.paid_at)}`
-              : 'kinnitatud, maksmata'}
+            {p.lines.length} {t('rida', p.lines.length === 1 ? 'line' : 'lines')} · {p.status === 'makstud'
+              ? t(`makstud ${fmtDate(p.paid_at)}`, `paid ${fmtDate(p.paid_at)}`)
+              : t('kinnitatud, maksmata', 'confirmed, unpaid')}
           </p>
         </div>
         {isOwner && (
           <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
             {p.status !== 'makstud' ? (
               <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/25">
-                Märgi makstuks
+                {t('Märgi makstuks', 'Mark as paid')}
               </button>
             ) : (
               <button onClick={onUnmarkPaid}
                 className="text-[11px] text-ink-faint hover:text-ink transition-colors"
-                title="Võta makstuks märkimine tagasi"
+                title={t('Võta makstuks märkimine tagasi', 'Undo marking as paid')}
               >
-                Võta tagasi
+                {t('Võta tagasi', 'Undo')}
               </button>
             )}
             <PayoutDeleteButton paid={p.status === 'makstud'} onDelete={onDelete} />
@@ -1671,10 +1652,10 @@ function PayoutRow({ payout: p, isOwner, periodLabel, onMarkPaid, onUnmarkPaid, 
       {expanded && p.lines.length > 0 && (
         <div className="border-t border-ink-faint/10 bg-bg-sidebar/30 px-3 py-2 space-y-1">
           <div className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[10px] font-semibold text-ink-faint uppercase mb-1">
-            <span>Kirjeldus</span>
-            <span className="text-right">Kogus</span>
-            <span className="text-right">Määr</span>
-            <span className="text-right">Summa</span>
+            <span>{t('Kirjeldus', 'Description')}</span>
+            <span className="text-right">{t('Kogus', 'Qty')}</span>
+            <span className="text-right">{t('Määr', 'Rate')}</span>
+            <span className="text-right">{t('Summa', 'Amount')}</span>
           </div>
           {p.lines.map(line => (
             <div key={line.id} className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[11px]">
@@ -1686,10 +1667,10 @@ function PayoutRow({ payout: p, isOwner, periodLabel, onMarkPaid, onUnmarkPaid, 
           ))}
           <div className="grid grid-cols-[1fr_50px_60px_70px] gap-1 text-[11px] border-t border-ink-faint/15 pt-1 mt-1">
             <span className="font-semibold text-ink">
-              Kokku
+              {t('Kokku', 'Total')}
               {teeth > 0 && (
                 <span className="ml-1.5 font-normal text-ink-faint tabular-nums">
-                  {teeth} hammast
+                  {teeth} {t('hammast', teeth === 1 ? 'tooth' : 'teeth')}
                 </span>
               )}
             </span>
@@ -1713,7 +1694,7 @@ function PayoutDeleteButton({ paid, onDelete }: { paid: boolean; onDelete: () =>
       <button
         onClick={() => setConfirm(true)}
         className="p-1 rounded text-ink-faint hover:text-red-500 transition-colors"
-        title="Kustuta väljamakse"
+        title={t('Kustuta väljamakse', 'Delete payout')}
       >
         <Trash2 size={11} />
       </button>
@@ -1722,15 +1703,15 @@ function PayoutDeleteButton({ paid, onDelete }: { paid: boolean; onDelete: () =>
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-[10px] text-red-600 font-medium">
-        {paid ? 'Makstud väljamakse — kustutada?' : 'Kustutada?'}
+        {paid ? t('Makstud väljamakse — kustutada?', 'Paid payout — delete?') : t('Kustutada?', 'Delete?')}
       </span>
       <button
         onClick={() => { onDelete(); setConfirm(false) }}
         className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded"
       >
-        Jah
+        {t('Jah', 'Yes')}
       </button>
-      <button onClick={() => setConfirm(false)} className="text-[10px] text-ink-faint">Ei</button>
+      <button onClick={() => setConfirm(false)} className="text-[10px] text-ink-faint">{t('Ei', 'No')}</button>
     </div>
   )
 }
@@ -1781,7 +1762,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
   async function add() {
     setError(null)
     const value = parseFloat(amount)
-    if (!Number.isFinite(value) || value <= 0) { setError('Sisesta summa.'); return }
+    if (!Number.isFinite(value) || value <= 0) { setError(t('Sisesta summa.', 'Enter an amount.')); return }
     try {
       await save.mutateAsync({
         profile_id: profileId,
@@ -1805,25 +1786,18 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-        Tasureeglid
+        {t('Tasureeglid', 'Pay rules')}
       </h4>
       <p className="text-[11px] text-ink-faint mb-2 leading-relaxed">
-        Töö tüübiga reegel on ülimuslik üldise reegli ees — nii saab "15 €/hammas, aga
-        Allon4 on 200 € töö kohta". Ühele reeglile võib valida mitu tüüpi, nii et
-        sama hinna jaoks ei pea kirjutama kümmet ühesugust reeglit.
+        {t('Töö tüübiga reegel on ülimuslik üldise reegli ees — nii saab "15 €/hammas, aga Allon4 on 200 € töö kohta". Ühele reeglile võib valida mitu tüüpi, nii et sama hinna jaoks ei pea kirjutama kümmet ühesugust reeglit.', 'A rule with a work type takes precedence over a general rule — so you can have "15 €/tooth, but Allon4 is 200 € per job". One rule can cover several types, so you don\'t have to write ten identical rules for the same price.')}
         <br />
-        <strong className="text-ink-muted">Mille eest</strong> ütleb, mida reegel katab:
-        teostatud töö, disain, muudatus või mudel. Muudatustele oma hinna panekuks lisa
-        eraldi reegel "Muudatus" — nt 8 €/hammas. Kui muudatuse reeglit ei ole, katab
-        tööreegel muudatused ainult siis, kui sellel on linnuke "Katab ka muudatused".
+        <strong className="text-ink-muted">{t('Mille eest', 'Paid for')}</strong> {t('ütleb, mida reegel katab: teostatud töö, disain, muudatus või mudel. Muudatustele oma hinna panekuks lisa eraldi reegel "Muudatus" — nt 8 €/hammas. Kui muudatuse reeglit ei ole, katab tööreegel muudatused ainult siis, kui sellel on linnuke "Katab ka muudatused".', 'says what the rule covers: the work done, design, a revision or a model. To give revisions their own price, add a separate "Revision" rule — e.g. 8 €/tooth. Without a revision rule, a job rule covers revisions only if "Also covers revisions" is ticked.')}
         <br />
-        <strong className="text-ink-muted">Mudel</strong> makstakse tööle, millel on
-        mudeli märge — lisandub tootmistasule, ei võistle sellega. Kõige tavalisem on
-        "Töö tasu (fikseeritud)", nt 5 € mudeli kohta.
+        <strong className="text-ink-muted">{t('Mudel', 'Model')}</strong> {t('makstakse tööle, millel on mudeli märge — lisandub tootmistasule, ei võistle sellega. Kõige tavalisem on "Töö tasu (fikseeritud)", nt 5 € mudeli kohta.', 'is paid on a job marked as having a model — it adds to the production pay rather than competing with it. The most common is "Job pay (fixed)", e.g. 5 € per model.')}
       </p>
 
       <div className="space-y-1 mb-3">
-        {rates.length === 0 && <p className="text-xs text-ink-faint">Reegleid ei ole.</p>}
+        {rates.length === 0 && <p className="text-xs text-ink-faint">{t('Reegleid ei ole.', 'No rules.')}</p>}
         {rates.map(r => (
           <div key={r.id} className="flex items-center gap-2 text-xs rounded-lg border border-ink-faint/20 px-2.5 py-1.5">
             {/* The rule's own name leads when it has one — that is the whole
@@ -1850,7 +1824,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
               <button
                 type="button"
                 onClick={() => startEdit(r)}
-                title="Muuda summat"
+                title={t('Muuda summat', 'Edit amount')}
                 className="tabular-nums font-semibold text-accent hover:underline decoration-dotted underline-offset-2"
               >
                 {Number(r.amount).toFixed(2)} {RATE_KIND_SUFFIX[r.kind]}
@@ -1858,32 +1832,32 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             )}
             {r.additive && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
-                lisandub
+                {t('lisandub', 'additive')}
               </span>
             )}
             {(r.applies_to ?? 'too') === 'disain' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                disaini eest
+                {t('disaini eest', 'for design')}
               </span>
             )}
             {(r.applies_to ?? 'too') === 'muudatus' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-700">
-                muudatuste eest
+                {t('muudatuste eest', 'for revisions')}
               </span>
             )}
             {(r.applies_to ?? 'too') === 'mudel' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                mudeli eest
+                {t('mudeli eest', 'for models')}
               </span>
             )}
             {r.kind === 'tund' && r.auto_hours && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">
-                auto {Number(r.hours_per_day ?? 0)} h/päev
+                auto {Number(r.hours_per_day ?? 0)} {t('h/päev', 'h/day')}
               </span>
             )}
             {(r.kind === 'tund' || r.kind === 'kuu') && r.work_days && r.work_days !== '12345' && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                {r.work_days.split('').map(d => ['', 'E', 'T', 'K', 'N', 'R', 'L', 'P'][parseInt(d)] ?? d).join('')}
+                {r.work_days.split('').map(d => (lang === 'en' ? ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['', 'E', 'T', 'K', 'N', 'R', 'L', 'P'])[parseInt(d)] ?? d).join('')}
               </span>
             )}
             {/* Through rateWorkTypes, never the raw column — it holds several
@@ -1895,13 +1869,13 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             ))}
             {r.pay_revisions && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                muudatused tasustatud
+                {t('muudatused tasustatud', 'revisions paid')}
               </span>
             )}
             <button
               onClick={() => remove.mutate(r.id)}
               className="ml-auto p-1 rounded text-ink-faint hover:text-red-500 transition-colors"
-              title="Kustuta reegel"
+              title={t('Kustuta reegel', 'Delete rule')}
             >
               <Trash2 size={11} />
             </button>
@@ -1911,13 +1885,13 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
 
       <div className="flex items-end gap-2 flex-wrap">
         <div>
-          <label className="label">Liik</label>
+          <label className="label">{t('Liik', 'Type')}</label>
           <select value={kind} onChange={e => setKind(e.target.value as RateKind)} className="input py-1.5 text-sm w-48">
             {KINDS.map(k => <option key={k} value={k}>{RATE_KIND_LABEL[k]}</option>)}
           </select>
         </div>
         <div>
-          <label className="label">Summa</label>
+          <label className="label">{t('Summa', 'Amount')}</label>
           <div className="relative w-28">
             <input
               type="number" min="0" step="0.01" value={amount}
@@ -1931,7 +1905,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         </div>
         {SCOPED_KINDS.includes(kind) && (
           <div>
-            <label className="label">Mille eest</label>
+            <label className="label">{t('Mille eest', 'Paid for')}</label>
             <select value={scope} onChange={e => setScope(e.target.value as RateScope)} className="input py-1.5 text-sm w-40">
               {SCOPES.map(sc => <option key={sc} value={sc}>{RATE_SCOPE_LABEL[sc]}</option>)}
             </select>
@@ -1940,11 +1914,11 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         {(kind === 'tund' || kind === 'kuu') && (
           <>
             <div>
-              <label className="label">Tööpäevad</label>
+              <label className="label">{t('Tööpäevad', 'Work days')}</label>
               <div className="flex gap-0.5">
                 {[
-                  { d: '1', l: 'E' }, { d: '2', l: 'T' }, { d: '3', l: 'K' },
-                  { d: '4', l: 'N' }, { d: '5', l: 'R' }, { d: '6', l: 'L' }, { d: '7', l: 'P' },
+                  { d: '1', l: t('E', 'M') }, { d: '2', l: t('T', 'T') }, { d: '3', l: t('K', 'W') },
+                  { d: '4', l: t('N', 'T') }, { d: '5', l: t('R', 'F') }, { d: '6', l: t('L', 'S') }, { d: '7', l: t('P', 'S') },
                 ].map(({ d, l }) => (
                   <button key={d} type="button"
                     onClick={() => setWorkDays(workDays.includes(d) ? workDays.replace(d, '') : [...workDays, d].sort().join(''))}
@@ -1965,11 +1939,11 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
                     onChange={e => setAutoHours(e.target.checked)}
                     className="accent-accent"
                   />
-                  Täida tunnid automaatselt
+                  {t('Täida tunnid automaatselt', 'Fill in hours automatically')}
                 </label>
                 {autoHours && (
                   <div>
-                    <label className="label">Tunde päevas</label>
+                    <label className="label">{t('Tunde päevas', 'Hours per day')}</label>
                     <input
                       type="number" min="0" max="24" step="0.5" value={hoursPerDay}
                       onChange={e => setHoursPerDay(e.target.value)}
@@ -1981,7 +1955,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
             )}
             {kind === 'kuu' && (
               <div>
-                <label className="label">Tunde päevas</label>
+                <label className="label">{t('Tunde päevas', 'Hours per day')}</label>
                 <input
                   type="number" min="0" max="24" step="0.5" value={hoursPerDay}
                   onChange={e => setHoursPerDay(e.target.value)}
@@ -1994,14 +1968,14 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         {SCOPED_KINDS.includes(kind) && (
           <label
             className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer"
-            title="Makstakse tootmistasu KÕRVALE, mitte selle asemel"
+            title={t('Makstakse tootmistasu KÕRVALE, mitte selle asemel', 'Paid IN ADDITION to production pay, not instead of it')}
           >
             <input
               type="checkbox" checked={additive}
               onChange={e => setAdditive(e.target.checked)}
               className="accent-accent"
             />
-            Lisandub
+            {t('Lisandub', 'Additive')}
           </label>
         )}
         {/* 'muudatus', not 'revision': RateScope has no such member, so this
@@ -2012,18 +1986,18 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
         {SCOPED_KINDS.includes(kind) && scope !== 'muudatus' && !additive && (
           <label
             className="flex items-center gap-1.5 text-xs text-ink-muted pb-2 cursor-pointer"
-            title="Kehtib ainult siis, kui eraldi 'Muudatus' reeglit ei ole"
+            title={t("Kehtib ainult siis, kui eraldi 'Muudatus' reeglit ei ole", "Applies only when there is no separate 'Revision' rule")}
           >
             <input
               type="checkbox" checked={payRevisions}
               onChange={e => setPayRevisions(e.target.checked)}
               className="accent-accent"
             />
-            Katab ka muudatused
+            {t('Katab ka muudatused', 'Also covers revisions')}
           </label>
         )}
         <button onClick={add} disabled={save.isPending} className="btn-ghost border border-ink-faint/25 mb-0.5 disabled:opacity-50">
-          <Plus size={13} /> Lisa reegel
+          <Plus size={13} /> {t('Lisa reegel', 'Add rule')}
         </button>
       </div>
 
@@ -2034,9 +2008,9 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
       {SCOPED_KINDS.includes(kind) && (
         <div className="mt-2">
           <label className="label">
-            Ainult töö tüüpidele
+            {t('Ainult töö tüüpidele', 'Only for work types')}
             {workTypes.length === 0 && (
-              <span className="font-normal text-ink-faint ml-1">— valimata tähendab kõiki töid</span>
+              <span className="font-normal text-ink-faint ml-1">{t('— valimata tähendab kõiki töid', '— none selected means all jobs')}</span>
             )}
           </label>
           <div className="flex flex-wrap gap-1">
@@ -2049,16 +2023,16 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
                   : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
               }`}
             >
-              Kõik tööd
+              {t('Kõik tööd', 'All jobs')}
             </button>
-            {wt.types.map(t => {
-              const picked = workTypes.includes(t.nimi)
+            {wt.types.map(type => {
+              const picked = workTypes.includes(type.nimi)
               return (
                 <button
-                  key={t.nimi}
+                  key={type.nimi}
                   type="button"
                   onClick={() => setWorkTypes(prev =>
-                    picked ? prev.filter(n => n !== t.nimi) : [...prev, t.nimi]
+                    picked ? prev.filter(n => n !== type.nimi) : [...prev, type.nimi]
                   )}
                   className={`flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg border transition-colors ${
                     picked
@@ -2066,8 +2040,8 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
                       : 'bg-bg-sidebar text-ink-muted border-ink-faint/30 hover:border-accent/40'
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: t.hex }} />
-                  {t.nimi}
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: type.hex }} />
+                  {type.nimi}
                 </button>
               )
             })}
@@ -2077,7 +2051,7 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
               discover at the end of the month. */}
           {additive && workTypes.length === 0 && (
             <p className="text-[10px] text-amber-600 mt-1">
-              Vali töötüübid — praegu lisanduks see tasu iga töö peale.
+              {t('Vali töötüübid — praegu lisanduks see tasu iga töö peale.', 'Pick work types — as it stands, this pay would be added to every job.')}
             </p>
           )}
           {/* "Mudel" is two different things in this app: a rate SCOPE and a
@@ -2088,14 +2062,13 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
               the moment it is written. */}
           {scope === 'too' && workTypes.some(n => /mudel|model/i.test(n)) && (
             <p className="text-[10px] text-amber-600 mt-1">
-              Mudelit märgitakse tööl Kiirtöö kõrval, mitte tööosana — see reegel
-              ei rakenduks. Vali pigem „Mille eest: Mudel".{' '}
+              {t('Mudelit märgitakse tööl Kiirtöö kõrval, mitte tööosana — see reegel ei rakenduks. Vali pigem „Mille eest: Mudel".', 'A model is marked on the job next to Rush, not as a work item — this rule would never apply. Choose "Paid for: Model" instead.')}{' '}
               <button
                 type="button"
                 onClick={() => { setScope('mudel'); setWorkTypes([]) }}
                 className="underline font-medium hover:text-amber-700"
               >
-                Sea ära
+                {t('Sea ära', 'Fix it')}
               </button>
             </p>
           )}
@@ -2106,22 +2079,22 @@ function RateEditor({ profileId, rates }: { profileId: string; rates: WorkerRate
           read. It follows the money onto the payslip line. */}
       {additive && (
         <div className="mt-2">
-          <label className="label">Nimi</label>
+          <label className="label">{t('Nimi', 'Name')}</label>
           <input
             value={label}
             onChange={e => setLabel(e.target.value)}
-            placeholder="nt Igeme disain"
+            placeholder={t('nt Igeme disain', 'e.g. Gum design')}
             className="input py-1.5 text-sm w-56"
           />
           <p className="text-[10px] text-ink-faint mt-1">
-            Kuvatakse töötasude real, et sarnaseid lisatasusid saaks eristada.
+            {t('Kuvatakse töötasude real, et sarnaseid lisatasusid saaks eristada.', 'Shown on the payroll line so similar extras can be told apart.')}
           </p>
         </div>
       )}
 
       <p className="text-[10px] text-ink-faint mt-1.5">
         {RATE_KIND_HINT[kind]}
-        {kind === 'tund' && autoHours && ' Esmaspäevast reedeni; käsitsi sisestatud päev on ülimuslik.'}
+        {kind === 'tund' && autoHours && t(' Esmaspäevast reedeni; käsitsi sisestatud päev on ülimuslik.', ' Monday to Friday; a manually entered day takes precedence.')}
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
     </section>
@@ -2145,7 +2118,7 @@ function HoursPanel({ profileId, canEdit }: { profileId: string; canEdit: boolea
   async function submit() {
     setError(null)
     const h = parseFloat(value)
-    if (!Number.isFinite(h) || h <= 0) { setError('Sisesta tundide arv.'); return }
+    if (!Number.isFinite(h) || h <= 0) { setError(t('Sisesta tundide arv.', 'Enter the number of hours.')); return }
     try {
       await add.mutateAsync({
         profile_id: profileId, work_date: date, hours: h,
@@ -2158,10 +2131,10 @@ function HoursPanel({ profileId, canEdit }: { profileId: string; canEdit: boolea
   return (
     <section>
       <h4 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
-        <Clock size={11} /> Töötunnid
+        <Clock size={11} /> {t('Töötunnid', 'Work hours')}
       </h4>
       {mine.length === 0 ? (
-        <p className="text-xs text-ink-faint mb-2">Tunde ei ole sisestatud.</p>
+        <p className="text-xs text-ink-faint mb-2">{t('Tunde ei ole sisestatud.', 'No hours entered.')}</p>
       ) : (
         <div className="space-y-0.5 mb-2">
           {mine.map(h => (
@@ -2184,11 +2157,11 @@ function HoursPanel({ profileId, canEdit }: { profileId: string; canEdit: boolea
       {canEdit && (
         <div className="flex items-end gap-2 flex-wrap">
           <div>
-            <label className="label">Kuupäev</label>
+            <label className="label">{t('Kuupäev', 'Date')}</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input py-1.5 text-sm w-36" />
           </div>
           <div>
-            <label className="label">Tunde</label>
+            <label className="label">{t('Tunde', 'Hours')}</label>
             <input
               type="number" min="0" max="24" step="0.25" value={value}
               onChange={e => setValue(e.target.value)}
@@ -2196,11 +2169,11 @@ function HoursPanel({ profileId, canEdit }: { profileId: string; canEdit: boolea
             />
           </div>
           <div className="flex-1 min-w-[140px]">
-            <label className="label">Märkus</label>
+            <label className="label">{t('Märkus', 'Note')}</label>
             <input value={note} onChange={e => setNote(e.target.value)} className="input py-1.5 text-sm" />
           </div>
           <button onClick={submit} disabled={add.isPending} className="btn-ghost border border-ink-faint/25 mb-0.5 disabled:opacity-50">
-            <Plus size={13} /> Lisa
+            <Plus size={13} /> {t('Lisa', 'Add')}
           </button>
         </div>
       )}

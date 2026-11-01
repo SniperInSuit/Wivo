@@ -16,6 +16,7 @@ import { workTypeImage, slugifyWorkType } from '@/lib/workTypeImages'
 import { SelectableCard } from '../ui/SelectableCard'
 import { WIZARD_BTN } from '../wizardTheme'
 import { ToothGlyph, toothGlyphFor } from './ToothGlyph'
+import { t } from '@/lib/i18n'
 
 /** How many cards show before "Näita rohkem". Two full rows on a wide screen. */
 const COLLAPSED_COUNT = 8
@@ -34,18 +35,18 @@ export interface WorkTypeCardGridProps {
 }
 
 /** Identity tokens of a type: its own name plus the synonyms Seaded stores. */
-const identityTokens = (t: WorkType): string[] =>
-  [t.nimi.toLowerCase(), ...(t.match ?? []).map(m => m.toLowerCase())]
+const identityTokens = (type: WorkType): string[] =>
+  [type.nimi.toLowerCase(), ...(type.match ?? []).map(m => m.toLowerCase())]
 
 /**
  * Diacritic-blind matching, so "taidis" finds "Täidis" and "kaitse splint"
  * finds "Kaitse / splint". slugifyWorkType already strips accents and collapses
  * punctuation to dashes — reusing it keeps search and image lookup in agreement.
  */
-function matchesSearch(t: WorkType, term: string): boolean {
+function matchesSearch(type: WorkType, term: string): boolean {
   const q = slugifyWorkType(term)
   if (!q) return true
-  const haystack = [slugifyWorkType(t.nimi), ...identityTokens(t).map(slugifyWorkType)]
+  const haystack = [slugifyWorkType(type.nimi), ...identityTokens(type).map(slugifyWorkType)]
   return haystack.some(h => h.includes(q))
 }
 
@@ -56,12 +57,12 @@ function matchesSearch(t: WorkType, term: string): boolean {
  * rule changes.
  */
 export const filterWorkTypes = (types: readonly WorkType[], search: string): WorkType[] =>
-  types.filter(t => matchesSearch(t, search))
+  types.filter(type => matchesSearch(type, search))
 
 /** Price line under the label, in the same shape as the Edit page's tooltip. */
-function priceLabel(t: WorkType): string | undefined {
-  if (t.hind == null) return undefined
-  return `${t.hind.toFixed(2)} € ${t.hinnaTyyp === 'hammas' ? '/ hammas' : '/ töö'}`
+function priceLabel(type: WorkType): string | undefined {
+  if (type.hind == null) return undefined
+  return `${type.hind.toFixed(2)} € ${type.hinnaTyyp === 'hammas' ? t('/ hammas', '/ tooth') : t('/ töö', '/ job')}`
 }
 
 export function WorkTypeCardGrid({
@@ -81,7 +82,7 @@ export function WorkTypeCardGrid({
   const visible = useMemo(() => {
     if (!collapsed) return filtered
     const head = filtered.slice(0, COLLAPSED_COUNT)
-    const strays = filtered.slice(COLLAPSED_COUNT).filter(t => selectedSet.has(t.nimi))
+    const strays = filtered.slice(COLLAPSED_COUNT).filter(type => selectedSet.has(type.nimi))
     return [...head, ...strays]
   }, [collapsed, filtered, selectedSet])
 
@@ -90,7 +91,7 @@ export function WorkTypeCardGrid({
   if (filtered.length === 0) {
     return (
       <p className="py-8 text-center text-base text-ink-muted">
-        Otsingule ei vastanud ükski töö tüüp. Proovi teist sõna.
+        {t('Otsingule ei vastanud ükski töö tüüp. Proovi teist sõna.', 'No work types match your search. Try another word.')}
       </p>
     )
   }
@@ -99,23 +100,23 @@ export function WorkTypeCardGrid({
     <div>
       <div
         role="group"
-        aria-label="Töö tüübid"
+        aria-label={t('Töö tüübid', 'Work types')}
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
       >
-        {visible.map(t => (
+        {visible.map(type => (
           <SelectableCard
-            key={t.nimi}
-            selected={selectedSet.has(t.nimi)}
-            onToggle={() => onToggle(t.nimi)}
-            label={t.nimi}
-            sublabel={priceLabel(t)}
-            hex={t.hex}
-            imageSrc={workTypeImage(t.nimi, t.pilt)}
+            key={type.nimi}
+            selected={selectedSet.has(type.nimi)}
+            onToggle={() => onToggle(type.nimi)}
+            label={type.nimi}
+            sublabel={priceLabel(type)}
+            hex={type.hex}
+            imageSrc={workTypeImage(type.nimi, type.pilt)}
             icon={
               <ToothGlyph
-                name={toothGlyphFor(identityTokens(t))}
+                name={toothGlyphFor(identityTokens(type))}
                 size={38}
-                style={{ color: t.hex }}
+                style={{ color: type.hex }}
               />
             }
             size="tile"
@@ -131,7 +132,7 @@ export function WorkTypeCardGrid({
           className={`${WIZARD_BTN} mt-4 flex items-center gap-2 border border-ink-faint/40 text-ink-soft hover:text-ink`}
         >
           <ChevronDown className="h-5 w-5" aria-hidden="true" />
-          Näita rohkem ({hiddenCount})
+          {t('Näita rohkem', 'Show more')} ({hiddenCount})
         </button>
       )}
 
@@ -142,7 +143,7 @@ export function WorkTypeCardGrid({
           className={`${WIZARD_BTN} mt-4 flex items-center gap-2 border border-ink-faint/40 text-ink-soft hover:text-ink`}
         >
           <ChevronUp className="h-5 w-5" aria-hidden="true" />
-          Näita vähem
+          {t('Näita vähem', 'Show less')}
         </button>
       )}
     </div>

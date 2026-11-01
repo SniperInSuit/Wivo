@@ -12,6 +12,7 @@
  */
 import type { Job } from '../types/job'
 import { jobWorkItems, revisionReasons } from '../types/job'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 /** Teeth in one adult mouth, for the only unit conversion anybody enjoys. */
 const TEETH_PER_MOUTH = 32
@@ -77,12 +78,12 @@ export function funFacts(jobs: Job[], doneStageKey: string): FunFacts {
   for (const j of jobs) {
     const own = toothList(j.hambad)
     let jobTeeth = own.length
-    own.forEach(t => positions.add(t))
+    own.forEach(tooth => positions.add(tooth))
 
     for (const rev of j.revisions ?? []) {
       const rt = toothList(rev.hambad)
       jobTeeth += rt.length
-      rt.forEach(t => positions.add(t))
+      rt.forEach(tooth => positions.add(tooth))
       for (const reason of revisionReasons(rev)) {
         reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
       }
@@ -90,7 +91,7 @@ export function funFacts(jobs: Job[], doneStageKey: string): FunFacts {
     teeth += jobTeeth
 
     if (!biggest || jobTeeth > biggest.value) {
-      biggest = { label: j.patsient || j.too || 'Töö', value: jobTeeth, detail: j.too ?? undefined }
+      biggest = { label: j.patsient || j.too || t('Töö', 'Job'), value: jobTeeth, detail: j.too ?? undefined }
     }
 
     if (j.kiirtoo) rush++

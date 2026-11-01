@@ -17,7 +17,7 @@
  *   not see, and the UI shows it next to the number.
  */
 import type { Job } from '../types/job'
-import { revisionReasons, jobWorkItems, implantCount, jobHardwareUnits } from '../types/job'
+import { revisionReasons, revisionReasonText, jobWorkItems, implantCount, jobHardwareUnits } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { MaterialPricing, FixedCost, Overhead } from '../stores/useSettings'
 import type { WorkType } from '../config/workTypes'
@@ -32,10 +32,11 @@ import type { WorkerPayout } from '../hooks/useWorkerPay'
 import { outstanding, paidAmount, PAYMENT_METHOD_LABEL } from '../types/invoice'
 import type { Payment as PaymentRow } from '../types/invoice'
 import { jobTotalValue } from './jobPayments'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const toothCount = (h: string | null | undefined) =>
-  (h ?? '').split(',').filter(t => t.trim()).length
+  (h ?? '').split(',').filter(tooth => tooth.trim()).length
 
 export interface Coverage {
   total: number
@@ -380,7 +381,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
     labourAccrued += grossPay
     byWorker.push({
       profileId: w.id,
-      name: w.full_name || 'Nimeta',
+      name: w.full_name || t('Nimeta', 'Unnamed'),
       engagement: w.toosuhe === 'ettevote' ? 'ettevote' : 'tootaja',
       jobs: jobsDone.length,
       teeth: jobsDone.reduce((s, j) => s + toothCount(j.hambad), 0),
@@ -435,8 +436,8 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
 
   const typeBuckets = new Map<string, WorkTypeFinance>()
   // Pre-seed all configured work types so every one shows in the table
-  for (const t of types) {
-    typeBuckets.set(t.nimi, { name: t.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
+  for (const type of types) {
+    typeBuckets.set(type.nimi, { name: type.nimi, jobs: 0, teeth: 0, income: 0, revenue: 0, costs: 0, labour: 0, material: 0, margin: 0, marginPct: 0 })
   }
   for (const j of done) {
     const items = jobWorkItems(j)
@@ -574,7 +575,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       // money is SPLIT between them — adding the full cost to every bucket
       // would inflate the total by the number of reasons someone happened to tick.
       const names = revisionReasons(r)
-      const reasons = names.length > 0 ? names : ['Määramata']
+      const reasons = names.length > 0 ? names : [t('Määramata', 'Unspecified')]
       const shareOf = (v: number) => v / reasons.length
       const revMat = r.materjal ?? j.materjal
       const revHambad = r.hambad ?? j.hambad
@@ -621,7 +622,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
       const job = jobs.find(x => x.id === l.job_id)
       const rev = job?.revisions?.find(r => r.id === l.revision_id)
       const names = rev ? revisionReasons(rev) : []
-      const reasons = names.length > 0 ? names : ['Määramata']
+      const reasons = names.length > 0 ? names : [t('Määramata', 'Unspecified')]
       for (const reason of reasons) {
         const b = reasonBuckets.get(reason)
         if (b) b.labour += l.amount / reasons.length
@@ -630,6 +631,7 @@ export function calculateFinance(input: FinanceInput): FinanceStats {
   }
   const revisionLoss = [...reasonBuckets.values()].map(b => ({
     ...b,
+    reason: revisionReasonText(b.reason),
     labour: round2(b.labour),
     material: round2(b.material),
     recovered: round2(b.recovered),
@@ -712,7 +714,7 @@ export interface ProfitBreakdown {
 }
 
 export function profitOf(fin: FinanceStats, employerTaxPct: number): ProfitBreakdown {
-  const income = round2(fin.byWorkType.reduce((s, t) => s + t.income, 0))
+  const income = round2(fin.byWorkType.reduce((s, type) => s + type.income, 0))
   const employerTax = round2(fin.labourEmployeeGross * (employerTaxPct || 0) / 100)
   const labour = round2(fin.labourAccrued + employerTax)
   const material = round2(fin.materialCost + fin.consumableCost)

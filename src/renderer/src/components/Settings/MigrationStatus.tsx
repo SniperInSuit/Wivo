@@ -21,6 +21,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X, HelpCircle, RefreshCw, Database } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { t } from '@/lib/i18n'
 
 interface Probe {
   fail: string
@@ -48,40 +49,49 @@ interface Probe {
 const PROBES: Probe[] = [
   { fail: 'sql/064_permission_rls.sql', table: 'rpc', column: 'has_perm',
     rpc: { fn: 'has_perm', args: { perm: 'jobs.read' } },
-    mis: 'Õiguste linnukesed kehtivad ka serveris — ilma selleta näeb iga '
-      + 'töötaja REST API kaudu kõike, ka siis kui linnuke on maas' },
+    mis: t(
+      'Õiguste linnukesed kehtivad ka serveris — ilma selleta näeb iga '
+        + 'töötaja REST API kaudu kõike, ka siis kui linnuke on maas',
+      'Permission ticks apply on the server too — without it every staff member '
+        + 'can see everything through the REST API, even with the tick cleared',
+    ) },
   { fail: 'sql/000_jobs.sql', table: 'jobs', column: 'revisions',
-    mis: 'Tööde tabel ise. `revisions` oli enne seda faili loodud MITTE KUSAGIL — '
-      + 'olemasolevas baasis on ta käsitsi lisatud, värskes puuduks ja ükski töö '
-      + 'ei salvestuks' },
+    mis: t(
+      'Tööde tabel ise. `revisions` oli enne seda faili loodud MITTE KUSAGIL — '
+        + 'olemasolevas baasis on ta käsitsi lisatud, värskes puuduks ja ükski töö '
+        + 'ei salvestuks',
+      'The jobs table itself. Before this file `revisions` was created NOWHERE — '
+        + 'in the existing database it was added by hand; a fresh one would lack it and no job '
+        + 'would save',
+    ) },
   { fail: 'sql/063_job_material_units.sql', table: 'jobs', column: 'materjali_yhikud',
-    mis: 'Mitu kapslit töö päriselt võttis (kapslihind materjalidel)' },
+    mis: t('Mitu kapslit töö päriselt võttis (kapslihind materjalidel)', 'How many capsules a job actually used (per-capsule material price)') },
   { fail: 'sql/062_visit_requests_realtime.sql', table: 'visit_requests', column: 'id',
-    mis: 'Taotlused reaalajas (sama tabel kui 059 — kontrollib olemasolu)' },
+    mis: t('Taotlused reaalajas (sama tabel kui 059 — kontrollib olemasolu)', 'Requests in real time (same table as 059 — checks that it exists)') },
   { fail: 'sql/061_visit_request_payment.sql', table: 'visit_requests', column: 'soovitud_algus',
-    mis: 'Visiiditasu ja veebist valitud aeg' },
+    mis: t('Visiiditasu ja veebist valitud aeg', 'Visit fee and the time picked on the website') },
   { fail: 'sql/059_visit_requests.sql', table: 'visit_requests', column: 'idempotency_key',
-    mis: 'Visiiditaotluste postkast' },
+    mis: t('Visiiditaotluste postkast', 'Visit request inbox') },
   { fail: 'sql/058_payout_line_key.sql', table: 'worker_payout_lines', column: 'line_key',
-    mis: 'Väljamakse rida mäletab, mis rida ta oli (topelt maksmine)' },
+    mis: t('Väljamakse rida mäletab, mis rida ta oli (topelt maksmine)', 'A payout line remembers which line it was (double payment)') },
   { fail: 'sql/057_job_cost_override.sql', table: 'jobs', column: 'kulu_yle',
-    mis: 'Omahinna käsitsi ülekirjutus' },
+    mis: t('Omahinna käsitsi ülekirjutus', 'Manual cost override') },
   { fail: 'sql/055_profile_ui_prefs.sql', table: 'profiles', column: 'ui_prefs',
-    mis: 'Isiklikud vaateseaded (Minu vaade)' },
+    mis: t('Isiklikud vaateseaded (Minu vaade)', 'Personal view settings (My view)') },
   { fail: 'sql/054_worker_net_pay.sql', table: 'profiles', column: 'tasu_arvestus',
-    mis: 'Neto/bruto palk ja maksuprofiil' },
+    mis: t('Neto/bruto palk ja maksuprofiil', 'Net/gross pay and tax profile') },
   { fail: 'sql/053_patient_marketing.sql', table: 'patients', column: 'turundusnousolek',
-    mis: 'Turundusnõusolek ja kontaktide eksport' },
+    mis: t('Turundusnõusolek ja kontaktide eksport', 'Marketing consent and contact export') },
   { fail: 'sql/051_email_settings.sql', table: 'clinic_settings', column: 'email',
-    mis: 'E-posti seaded ja saatmisõigused' },
+    mis: t('E-posti seaded ja saatmisõigused', 'Email settings and sending permissions') },
   { fail: 'sql/050_invoice_sending.sql', table: 'invoices', column: 'sent_at',
-    mis: 'Arvete saatmine (sent_at)' },
+    mis: t('Arvete saatmine (sent_at)', 'Invoice sending (sent_at)') },
   { fail: 'sql/049_payment_plans.sql', table: 'payment_plans', column: 'id',
-    mis: 'Maksegraafikud' },
+    mis: t('Maksegraafikud', 'Payment plans') },
   { fail: 'sql/061_visit_request_payment.sql', table: 'clinic_settings', column: 'broneering',
-    mis: 'Veebibroneeringu seaded (tööajad, visiiditasu)' },
+    mis: t('Veebibroneeringu seaded (tööajad, visiiditasu)', 'Online booking settings (opening hours, visit fee)') },
   { fail: 'sql/047_public_services.sql', table: 'clinic_settings', column: 'public_services',
-    mis: 'Patsiendi hinnakiri — ilma selleta jääb ta ainult sellesse arvutisse' },
+    mis: t('Patsiendi hinnakiri — ilma selleta jääb ta ainult sellesse arvutisse', 'Patient price list — without it the list stays on this computer only') },
 ]
 
 type State = 'ok' | 'missing' | 'unknown'
@@ -127,30 +137,41 @@ export function MigrationStatus() {
     <section>
       <div className="flex items-center gap-2 mb-1">
         <Database size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Migratsioonide seis</h3>
+        <h3 className="text-sm font-semibold text-ink">{t('Migratsioonide seis', 'Migration status')}</h3>
         <button
           type="button"
           onClick={check}
           disabled={busy}
           className="ml-auto btn-ghost text-xs border border-ink-faint/25 flex items-center gap-1.5"
         >
-          <RefreshCw size={11} className={busy ? 'animate-spin' : ''} /> Kontrolli
+          <RefreshCw size={11} className={busy ? 'animate-spin' : ''} /> {t('Kontrolli', 'Check')}
         </button>
       </div>
       <p className="text-xs text-ink-muted mb-3">
-        Küsitud andmebaasilt, mitte mälu järgi. Jooksutamata migratsioon ei anna
-        veateadet — funktsioon lihtsalt ei tööta, sageli vaikselt.
+        {t(
+          'Küsitud andmebaasilt, mitte mälu järgi. Jooksutamata migratsioon ei anna veateadet — funktsioon lihtsalt ei tööta, sageli vaikselt.',
+          'Asked of the database, not from memory. A migration that hasn’t been run gives no error — the feature just doesn’t work, often silently.',
+        )}
       </p>
 
       {files.length > 0 && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 mb-3">
           <p className="text-xs font-semibold text-orange-800 mb-1">
-            Jooksutamata: {files.length} fail{files.length === 1 ? '' : 'i'}
+            {t(
+              `Jooksutamata: ${files.length} fail${files.length === 1 ? '' : 'i'}`,
+              `Not run: ${files.length} ${files.length === 1 ? 'file' : 'files'}`,
+            )}
           </p>
           <p className="text-[11px] text-orange-700 mb-1.5">
-            Supabase SQL editoris, numbrilises järjekorras. Pärast veeru lisamist
-            jooksuta ka <code>notify pgrst, 'reload schema';</code> — PostgREST
-            hoiab skeemi vahemälus ega märka uut veergu kohe.
+            {t(
+              'Supabase SQL editoris, numbrilises järjekorras. Pärast veeru lisamist jooksuta ka',
+              'In the Supabase SQL editor, in numerical order. After adding a column, also run',
+            )}{' '}
+            <code>notify pgrst, 'reload schema';</code>{' '}
+            {t(
+              '— PostgREST hoiab skeemi vahemälus ega märka uut veergu kohe.',
+              '— PostgREST caches the schema and won’t notice a new column straight away.',
+            )}
           </p>
           <ul className="text-[11px] text-orange-800 font-mono space-y-0.5">
             {files.map(f => <li key={f}>{f}</li>)}
@@ -174,7 +195,7 @@ export function MigrationStatus() {
                 </p>
                 <p className="text-[10px] text-ink-faint font-mono">
                   {p.fail} · {p.table}.{p.column}
-                  {s === 'unknown' && ' · ei saanud kontrollida'}
+                  {s === 'unknown' && t(' · ei saanud kontrollida', ' · could not check')}
                 </p>
               </div>
             </div>

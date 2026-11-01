@@ -10,13 +10,14 @@
 import type { InvoiceFull, Payment } from './invoice'
 import { outstanding, paidAmount } from './invoice'
 import type { PaymentPlanShape } from '@shared/billing/instalments'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 export type PaymentPlanStatus = 'aktiivne' | 'lopetatud' | 'tuhistatud'
 
 export const PAYMENT_PLAN_STATUS_LABEL: Record<PaymentPlanStatus, string> = {
-  aktiivne:   'Aktiivne',
-  lopetatud:  'Lõpetatud',
-  tuhistatud: 'Tühistatud',
+  aktiivne:   t('Aktiivne', 'Active'),
+  lopetatud:  t('Lõpetatud', 'Completed'),
+  tuhistatud: t('Tühistatud', 'Cancelled'),
 }
 
 export const PAYMENT_PLAN_STATUS_HEX: Record<PaymentPlanStatus, string> = {

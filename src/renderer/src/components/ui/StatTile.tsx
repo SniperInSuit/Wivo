@@ -26,6 +26,7 @@
  */
 import { AlertTriangle } from 'lucide-react'
 import type { Coverage } from '../../lib/finance'
+import { t } from '@/lib/i18n'
 
 /** One side of the optional two-way split under the value. */
 export interface TileBreakdownSide {
@@ -124,7 +125,7 @@ export function StatTile({
       {coverage && missing > 0 && (
         <p className="text-[11px] text-orange-500 flex items-start gap-1">
           <AlertTriangle size={10} className="flex-shrink-0 mt-0.5" />
-          {coverage.covered}/{coverage.total} {coverageLabel} — {missing} tööd puudu
+          {coverage.covered}/{coverage.total} {coverageLabel} {t(`— ${missing} tööd puudu`, `— ${missing} ${missing === 1 ? 'job' : 'jobs'} missing`)}
         </p>
       )}
     </div>

@@ -1,6 +1,7 @@
 // A patient visit — someone arriving at a time, for a duration, referred by a
 // dentist. Introduced in 1.3.0 (migration 007); before that the calendar could
 // only show job deadlines.
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 export type VisitStatus =
   | 'planeeritud'   // booked, nothing has happened yet
   | 'saabunud'      // the patient is here now
@@ -40,11 +41,11 @@ export const EMPTY_VISIT: VisitInput = {
 }
 
 export const VISIT_STATUS_LABEL: Record<VisitStatus, string> = {
-  planeeritud: 'Planeeritud',
-  saabunud: 'Saabunud',
-  toimunud: 'Toimunud',
-  ei_tulnud: 'Ei tulnud',
-  tuhistatud: 'Tühistatud'
+  planeeritud: t('Planeeritud', 'Scheduled'),
+  saabunud: t('Saabunud', 'Arrived'),
+  toimunud: t('Toimunud', 'Completed'),
+  ei_tulnud: t('Ei tulnud', 'No-show'),
+  tuhistatud: t('Tühistatud', 'Cancelled')
 }
 
 // Colour per state. `ei_tulnud` is amber rather than red on purpose: it is not a
@@ -73,9 +74,9 @@ export const VISIT_ACTIONS: Record<VisitStatus, VisitStatus[]> = {
 
 // Verb form for the action button, which reads better than the state name
 export const VISIT_ACTION_LABEL: Record<VisitStatus, string> = {
-  planeeritud: 'Taasta',
-  saabunud: 'Saabus',
-  toimunud: 'Üle antud',
-  ei_tulnud: 'Ei tulnud',
-  tuhistatud: 'Tühista'
+  planeeritud: t('Taasta', 'Restore'),
+  saabunud: t('Saabus', 'Arrived'),
+  toimunud: t('Üle antud', 'Handed over'),
+  ei_tulnud: t('Ei tulnud', 'No-show'),
+  tuhistatud: t('Tühista', 'Cancel')
 }

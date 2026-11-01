@@ -10,6 +10,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, CheckCircle2, ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 /** Close when the click lands anywhere outside `ref`. */
 function useCloseOnOutside(open: boolean, close: () => void) {
@@ -131,7 +132,7 @@ export function MultiFilterMenu({
                   autoFocus
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder={`Otsi… (${options.length})`}
+                  placeholder={t(`Otsi… (${options.length})`, `Search… (${options.length})`)}
                   className="input py-1 pl-6 pr-2 text-xs w-full"
                 />
               </div>
@@ -139,9 +140,9 @@ export function MultiFilterMenu({
           )}
           <div className="overflow-y-auto">
             {options.length === 0 ? (
-              <p className="text-xs text-ink-faint px-3 py-2">Andmed puuduvad</p>
+              <p className="text-xs text-ink-faint px-3 py-2">{t('Andmed puuduvad', 'No data')}</p>
             ) : shown.length === 0 ? (
-              <p className="text-xs text-ink-faint px-3 py-2">Vastet ei leitud</p>
+              <p className="text-xs text-ink-faint px-3 py-2">{t('Vastet ei leitud', 'No matches')}</p>
             ) : shown.map(opt => (
               <button
                 key={opt}

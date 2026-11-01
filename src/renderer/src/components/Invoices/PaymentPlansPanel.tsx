@@ -19,6 +19,7 @@ import {
 } from '../../types/paymentPlan'
 import { usePaymentPlans, useCancelPaymentPlan } from '../../hooks/usePaymentPlans'
 import { describeError } from '../Patients/errors'
+import { t } from '@/lib/i18n'
 
 export interface PaymentPlansPanelProps {
   invoices: InvoiceFull[]
@@ -57,9 +58,9 @@ export function PaymentPlansPanel({ invoices, canWrite, onOpenInvoice }: Payment
         className="flex items-center gap-2 w-full text-left"
       >
         <CalendarClock size={15} className="text-accent flex-shrink-0" />
-        <span className="text-sm font-semibold text-ink">Maksegraafikud</span>
+        <span className="text-sm font-semibold text-ink">{t('Maksegraafikud', 'Payment plans')}</span>
         <span className="text-xs text-ink-faint">
-          {activeCount} aktiivne{sorted.length > activeCount ? ` · ${sorted.length - activeCount} lõpetatud` : ''}
+          {t(`${activeCount} aktiivne`, `${activeCount} active`)}{sorted.length > activeCount ? t(` · ${sorted.length - activeCount} lõpetatud`, ` · ${sorted.length - activeCount} ended`) : ''}
         </span>
         <span className="ml-auto text-ink-faint">
           {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
@@ -102,6 +103,10 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
   // are paid and the big one is not is not 80% done.
   const pct = p.billed > 0 ? Math.min(100, Math.round((p.paid / p.billed) * 100)) : 0
   const live = plan.staatus === 'aktiivne'
+  const unpaidCount = p.invoices.filter(i =>
+    i.status !== 'tuhistatud'
+    && (i.payments ?? []).reduce((s, x) => s + Number(x.amount), 0) <= 0.005
+  ).length
 
   return (
     <div className="rounded-xl border border-ink-faint/20 overflow-hidden">
@@ -117,15 +122,15 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
         />
         <span className="text-sm font-medium text-ink truncate">{plan.patsient}</span>
         <span className="text-[11px] text-ink-faint tabular-nums flex-shrink-0">
-          {p.settledCount}/{plan.osamakseid} tasutud
+          {t(`${p.settledCount}/${plan.osamakseid} tasutud`, `${p.settledCount}/${plan.osamakseid} paid`)}
         </span>
 
         {p.overdueCount > 0 && (
           <span
             className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-600 flex-shrink-0"
-            title={`${fmt(p.overdue)} € üle tähtaja`}
+            title={t(`${fmt(p.overdue)} € üle tähtaja`, `${fmt(p.overdue)} € overdue`)}
           >
-            <AlertTriangle size={9} /> {p.overdueCount} hilinenud
+            <AlertTriangle size={9} /> {t(`${p.overdueCount} hilinenud`, `${p.overdueCount} late`)}
           </span>
         )}
 
@@ -153,13 +158,13 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
       {expanded && (
         <div className="px-3 py-2.5 space-y-2 bg-bg-sidebar/40">
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-muted">
-            <span>{plan.osamakseid} osamakset</span>
-            <span>arve {plan.arve_paev ?? '—'}. kuupäeval</span>
-            <span>tähtaeg {plan.maksetahtaeg_paevi} p</span>
-            <span className="tabular-nums">laekumata {fmt(p.outstanding)} €</span>
+            <span>{t(`${plan.osamakseid} osamakset`, `${plan.osamakseid} ${plan.osamakseid === 1 ? 'instalment' : 'instalments'}`)}</span>
+            <span>{t(`arve ${plan.arve_paev ?? '—'}. kuupäeval`, `invoiced on day ${plan.arve_paev ?? '—'}`)}</span>
+            <span>{t(`tähtaeg ${plan.maksetahtaeg_paevi} p`, `term ${plan.maksetahtaeg_paevi} d`)}</span>
+            <span className="tabular-nums">{t(`laekumata ${fmt(p.outstanding)} €`, `outstanding ${fmt(p.outstanding)} €`)}</span>
             {p.next && (
               <span className="text-ink">
-                järgmine {p.next.instalment_no}/{plan.osamakseid} · {p.next.due_date}
+                {t('järgmine', 'next')} {p.next.instalment_no}/{plan.osamakseid} · {p.next.due_date}
               </span>
             )}
           </div>
@@ -193,7 +198,7 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
                         : 'text-orange-600'
                     }`}
                   >
-                    {cancelled ? 'tühistatud' : due <= 0.005 ? 'tasutud' : `${fmt(due)} €`}
+                    {cancelled ? t('tühistatud', 'cancelled') : due <= 0.005 ? t('tasutud', 'paid') : `${fmt(due)} €`}
                   </span>
                 </button>
               )
@@ -210,10 +215,10 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
                       is NOT a refund — a receipt cannot be reversed, so a paid
                       instalment is left exactly as it is. */}
                   <span className="text-[11px] text-ink-muted">
-                    Tühistab {p.invoices.filter(i =>
-                      i.status !== 'tuhistatud'
-                      && (i.payments ?? []).reduce((s, x) => s + Number(x.amount), 0) <= 0.005
-                    ).length} maksmata osamakset. Juba laekunut ei tagastata.
+                    {t(
+                      `Tühistab ${unpaidCount} maksmata osamakset. Juba laekunut ei tagastata.`,
+                      `Cancels ${unpaidCount} unpaid ${unpaidCount === 1 ? 'instalment' : 'instalments'}. Money already received is not refunded.`
+                    )}
                   </span>
                   <button
                     type="button"
@@ -226,14 +231,14 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
                     }}
                     className="text-[11px] font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
                   >
-                    Tühista graafik
+                    {t('Tühista graafik', 'Cancel plan')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirming(false)}
                     className="text-[11px] text-ink-muted hover:text-ink"
                   >
-                    Loobu
+                    {t('Loobu', 'Keep plan')}
                   </button>
                 </>
               ) : (
@@ -242,7 +247,7 @@ function PlanRow({ plan, invoices, canWrite, expanded, onToggle, onOpenInvoice }
                   onClick={() => setConfirming(true)}
                   className="flex items-center gap-1 text-[11px] text-ink-muted hover:text-red-600 transition-colors"
                 >
-                  <Ban size={11} /> Peata graafik
+                  <Ban size={11} /> {t('Peata graafik', 'Stop plan')}
                 </button>
               )}
             </div>

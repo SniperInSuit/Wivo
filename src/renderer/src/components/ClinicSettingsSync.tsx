@@ -28,6 +28,7 @@ import {
   fetchClinicSettings, seedClinicSettings, pushClinicSettings,
   subscribeClinicSettings, type ClinicPatch, type ClinicSettingsRow
 } from '../lib/clinicSettings'
+import { t } from '@/lib/i18n'
 
 export type SyncState =
   | { status: 'idle' }
@@ -93,7 +94,7 @@ export function ClinicSettingsSync(): null {
         // Owner-only update policy, offline, or the table is missing. The local
         // copy already holds the change, so the user is not blocked — but the
         // UI must not claim the clinic is in sync when it is not.
-        emit({ status: 'local', reason: (err as Error)?.message ?? 'salvestamine ebaõnnestus' })
+        emit({ status: 'local', reason: (err as Error)?.message ?? t('salvestamine ebaõnnestus', 'saving failed') })
       }
     }
 
@@ -118,7 +119,7 @@ export function ClinicSettingsSync(): null {
             // A worker on a clinic whose owner has not opened the app since the
             // migration. Keep the local copy rather than seeding a row the
             // policy will not accept.
-            emit({ status: 'local', reason: 'kliiniku seadeid pole veel serverisse salvestatud' })
+            emit({ status: 'local', reason: t('kliiniku seadeid pole veel serverisse salvestatud', 'clinic settings have not been saved to the server yet') })
           } else {
             row = await seedClinicSettings(clinicId, {
               ...clinicSliceOf(getSettingsSnapshot()),
@@ -140,7 +141,7 @@ export function ClinicSettingsSync(): null {
         }
       } catch (err) {
         if (!cancelled) {
-          emit({ status: 'local', reason: (err as Error)?.message ?? 'ühendus puudub' })
+          emit({ status: 'local', reason: (err as Error)?.message ?? t('ühendus puudub', 'no connection') })
         }
       }
     })()

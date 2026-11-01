@@ -2,6 +2,7 @@ import { Check } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { t } from '@/lib/i18n'
 
 interface JobTimelineProps {
   job: Job
@@ -77,7 +78,7 @@ export function JobTimeline({ job, status, finishedAt: finishedAtProp }: JobTime
 
       {isDone && finishedAt && isValid(finishedAt) && (
         <p className="text-center text-[11px] text-ink-muted mt-2">
-          Valmis {format(finishedAt, 'dd.MM.yyyy')} kell {format(finishedAt, 'HH:mm')}
+          {t(`Valmis ${format(finishedAt, 'dd.MM.yyyy')} kell ${format(finishedAt, 'HH:mm')}`, `Done ${format(finishedAt, 'dd.MM.yyyy')} at ${format(finishedAt, 'HH:mm')}`)}
         </p>
       )}
     </div>

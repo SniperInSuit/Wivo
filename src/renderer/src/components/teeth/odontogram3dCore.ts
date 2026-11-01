@@ -6,6 +6,7 @@
  * is decided here instead — node naming, camera angles, gesture routing — and
  * the component is left with little more than the drawing.
  */
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 /** Which preset the camera is sitting on. */
 export type ViewName = 'front' | 'top' | 'bottom' | 'left' | 'right'
@@ -55,13 +56,13 @@ export const CAMERA_VIEWS: Record<ViewName, readonly [number, number, number]> =
   right: [1, 0.2, 0.25],
 }
 
-/** Estonian labels for the preset buttons, in the order they are shown. */
+/** Labels for the preset buttons, in the order they are shown. */
 export const VIEW_LABELS: readonly { view: ViewName; label: string }[] = [
-  { view: 'front', label: 'Eest' },
-  { view: 'top', label: 'Pealt' },
-  { view: 'bottom', label: 'Alt' },
-  { view: 'left', label: 'Vasakult' },
-  { view: 'right', label: 'Paremalt' },
+  { view: 'front', label: t('Eest', 'Front') },
+  { view: 'top', label: t('Pealt', 'Top') },
+  { view: 'bottom', label: t('Alt', 'Bottom') },
+  { view: 'left', label: t('Vasakult', 'Left') },
+  { view: 'right', label: t('Paremalt', 'Right') },
 ]
 
 /**

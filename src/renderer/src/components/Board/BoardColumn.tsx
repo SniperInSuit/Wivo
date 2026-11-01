@@ -8,6 +8,7 @@ import { usePipeline } from '../../context/PipelineContext'
 import { JobCard } from './JobCard'
 import { RevisionBoardCard } from './RevisionBoardCard'
 import { MergedValmisCard } from './MergedValmisCard'
+import { t } from '@/lib/i18n'
 
 interface BoardColumnProps {
   stage: PipelineStage
@@ -89,7 +90,7 @@ export function BoardColumn({
           <div className="flex flex-col leading-tight min-w-0">
             <span className="font-semibold text-sm text-ink">{stage.label}</span>
             {totalCount !== undefined && (
-              <span className="text-[10px] text-ink-faint font-normal">see nädal · kokku {totalCount}</span>
+              <span className="text-[10px] text-ink-faint font-normal">{t(`see nädal · kokku ${totalCount}`, `this week · ${totalCount} total`)}</span>
             )}
           </div>
         </div>
@@ -196,7 +197,7 @@ export function BoardColumn({
 
         {entries.length === 0 && !isDragOver && (
           <div className={`flex items-center justify-center py-6 ${wide ? 'col-span-2' : ''}`}>
-            <p className="text-xs text-ink-faint text-center">Tühi</p>
+            <p className="text-xs text-ink-faint text-center">{t('Tühi', 'Empty')}</p>
           </div>
         )}
       </div>

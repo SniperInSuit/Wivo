@@ -3,6 +3,7 @@ import { User, UserPlus, Check, Loader2, Link2Off } from 'lucide-react'
 import { usePatients, useCreatePatient } from '../../hooks/usePatients'
 import { EMPTY_PATIENT } from '../../types/patient'
 import { describeError } from './errors'
+import { t } from '@/lib/i18n'
 
 interface PatientPickerProps {
   name: string                                   // current form.patsient
@@ -67,14 +68,14 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
   return (
     <div className="relative" ref={boxRef}>
       <label className="label flex items-center justify-between">
-        <span>Patsient {required && '*'}</span>
+        <span>{t('Patsient', 'Patient')} {required && '*'}</span>
         {linked ? (
           <span className="flex items-center gap-1 text-[10px] font-semibold text-accent">
-            <Check size={10} /> seotud
+            <Check size={10} /> {t('seotud', 'linked')}
           </span>
         ) : name.trim() && !isError ? (
           <span className="flex items-center gap-1 text-[10px] font-medium text-ink-faint">
-            <Link2Off size={10} /> sidumata
+            <Link2Off size={10} /> {t('sidumata', 'not linked')}
           </span>
         ) : null}
       </label>
@@ -84,7 +85,7 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
         value={name}
         onChange={e => handleType(e.target.value)}
         onFocus={() => setOpen(true)}
-        placeholder="Nimi või ID"
+        placeholder={t('Nimi või ID', 'Name or ID')}
         required={required}
         autoComplete="off"
         className="input"
@@ -122,7 +123,7 @@ export function PatientPicker({ name, patientId, onChange, required }: PatientPi
                 ? <Loader2 size={13} className="text-accent animate-spin" />
                 : <UserPlus size={13} className="text-accent" />}
               <span className="text-sm text-accent font-medium truncate">
-                Loo patsient „{name.trim()}"
+                {t(`Loo patsient „${name.trim()}"`, `Create patient "${name.trim()}"`)}
               </span>
             </button>
           )}

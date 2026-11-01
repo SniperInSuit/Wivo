@@ -21,6 +21,7 @@ import {
   type GaugeMetric,
 } from './metrics'
 import type { PanelCtx } from '../useStatsContext'
+import { t } from '@/lib/i18n'
 
 /** Degrees of sweep. 240° leaves the dial open at the bottom, like a dial. */
 const SWEEP = 240
@@ -74,7 +75,7 @@ export function Gauge({ metric, panelId, ctx }: {
           type="button"
           onClick={() => setEditing(e => !e)}
           className="flex-shrink-0 text-ink-faint transition-colors hover:text-ink"
-          title={editing ? 'Valmis' : 'Sea piirid'}
+          title={editing ? t('Valmis', 'Done') : t('Sea piirid', 'Set limits')}
         >
           {editing ? <Check size={13} /> : <Settings2 size={13} />}
         </button>
@@ -82,30 +83,29 @@ export function Gauge({ metric, panelId, ctx }: {
 
       {editing ? (
         <div className="mt-2 space-y-1.5">
-          <Field label="Alumine piir" value={cfg?.min} placeholder="0"
+          <Field label={t('Alumine piir', 'Lower limit')} value={cfg?.min} placeholder="0"
             onChange={n => setGaugeBounds(panelId, { min: n })} />
-          <Field label="Ülemine piir" value={cfg?.max} placeholder={String(metric.defaultMax)}
+          <Field label={t('Ülemine piir', 'Upper limit')} value={cfg?.max} placeholder={String(metric.defaultMax)}
             onChange={n => setGaugeBounds(panelId, { max: n })} />
-          <Field label="Eesmärk" value={cfg?.target} placeholder="puudub"
+          <Field label={t('Eesmärk', 'Target')} value={cfg?.target} placeholder={t('puudub', 'none')}
             onChange={n => setGaugeBounds(panelId, { target: n })} />
           {/* Said here rather than enforced in `gaugeBounds`, which runs while
               the number is still being typed — see its own note. */}
           {cfg?.max !== undefined && cfg.max <= (cfg.min ?? 0) && (
             <p className="text-[10px] text-orange-600">
-              Ülemine piir peab olema alumisest suurem — näidik kasutab seni vaikeulatust.
+              {t('Ülemine piir peab olema alumisest suurem — näidik kasutab seni vaikeulatust.', 'The upper limit must be greater than the lower — until then the gauge uses its default range.')}
             </p>
           )}
           <p className="text-[10px] leading-relaxed text-ink-faint">
-            Eesmärgita näidik on lihtsalt näit — värvi ta ei saa, sest ükski
-            väärtus ei ole siis hea ega halb.{' '}
-            {metric.higherIsBetter ? 'Suurem on parem.' : 'Väiksem on parem.'}
+            {t('Eesmärgita näidik on lihtsalt näit — värvi ta ei saa, sest ükski väärtus ei ole siis hea ega halb.', 'A gauge without a target is just a reading — it gets no colour, because no value is then good or bad.')}{' '}
+            {metric.higherIsBetter ? t('Suurem on parem.', 'Higher is better.') : t('Väiksem on parem.', 'Lower is better.')}
           </p>
         </div>
       ) : (
         <>
           <div className="relative mt-1 min-h-0 flex-1">
             <svg viewBox="0 0 100 78" className="h-full w-full" role="img"
-              aria-label={`${metric.label}: ${value === null ? 'andmeid ei ole' : formatMetric(value, metric.unit)}`}>
+              aria-label={`${metric.label}: ${value === null ? t('andmeid ei ole', 'no data') : formatMetric(value, metric.unit)}`}>
               <path d={arcPath(0, 1, 38)} fill="none" strokeLinecap="round"
                 className="stroke-ink-faint/20" strokeWidth={9} />
               {value !== null && fraction > 0 && (
@@ -127,7 +127,7 @@ export function Gauge({ metric, panelId, ctx }: {
               </span>
               {bounds.target !== null && (
                 <span className="text-[10px] text-ink-faint tabular-nums">
-                  eesmärk {formatMetric(bounds.target, metric.unit)}
+                  {t('eesmärk', 'target')} {formatMetric(bounds.target, metric.unit)}
                 </span>
               )}
             </div>
@@ -138,7 +138,7 @@ export function Gauge({ metric, panelId, ctx }: {
           </div>
           {value === null && (
             <p className="mt-1 text-center text-[10px] text-ink-faint">
-              Selle perioodi kohta ei saa seda arvutada.
+              {t('Selle perioodi kohta ei saa seda arvutada.', 'This cannot be calculated for this period.')}
             </p>
           )}
         </>

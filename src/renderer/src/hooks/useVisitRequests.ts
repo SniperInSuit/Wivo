@@ -14,14 +14,15 @@ import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, getActiveClinicId } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { t } from '@/lib/i18n'
 
 export type VisitRequestStatus = 'uus' | 'kinnitatud' | 'lykatud' | 'ramps'
 
 export const REQUEST_STATUS_LABEL: Record<VisitRequestStatus, string> = {
-  uus:        'Uus',
-  kinnitatud: 'Kinnitatud',
-  lykatud:    'Lükatud tagasi',
-  ramps:      'Rämps',
+  uus:        t('Uus', 'New'),
+  kinnitatud: t('Kinnitatud', 'Confirmed'),
+  lykatud:    t('Lükatud tagasi', 'Declined'),
+  ramps:      t('Rämps', 'Spam'),
 }
 
 export interface VisitRequest {
@@ -145,7 +146,7 @@ export function useCreateVisitRequest() {
       eelistatud_aeg?: string | null; sonum?: string | null
     }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub.')
+      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
       const { data, error } = await supabase
         .from('visit_requests')
         .insert({

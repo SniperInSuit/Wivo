@@ -17,6 +17,7 @@
  * therefore hand-rolled and works in UTC — `sql/044` is this project's proof
  * that letting a local timezone near a stored date costs a migration.
  */
+import { t } from '../i18n'
 
 /** What a plan needs to know to lay itself out. */
 export interface PaymentPlanShape {
@@ -61,8 +62,8 @@ function parseYmd(iso: string | null | undefined): Ymd | null {
   const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3])
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return null
   // Round-trip through UTC so 2026-02-30 is rejected rather than rolled into March.
-  const t = Date.UTC(y, mo - 1, d)
-  const back = new Date(t)
+  const ms = Date.UTC(y, mo - 1, d)
+  const back = new Date(ms)
   if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) {
     return null
   }
@@ -84,9 +85,9 @@ function addMonths({ y, m, d }: Ymd, k: number): Ymd {
 }
 
 function addDays(p: Ymd, n: number): Ymd {
-  const t = new Date(Date.UTC(p.y, p.m - 1, p.d))
-  t.setUTCDate(t.getUTCDate() + n)
-  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() }
+  const date = new Date(Date.UTC(p.y, p.m - 1, p.d))
+  date.setUTCDate(date.getUTCDate() + n)
+  return { y: date.getUTCFullYear(), m: date.getUTCMonth() + 1, d: date.getUTCDate() }
 }
 
 /**
@@ -118,27 +119,27 @@ export function splitAmount(total: number, count: number): number[] {
 export function scheduleProblems(plan: PaymentPlanShape): string[] {
   const out: string[] = []
   if (!Number.isFinite(plan.total) || plan.total <= 0) {
-    out.push('Kogusumma puudub või ei ole positiivne.')
+    out.push(t('Kogusumma puudub või ei ole positiivne.', 'The total is missing or not positive.'))
   }
   if (!Number.isInteger(plan.count) || plan.count < 1) {
-    out.push('Osamaksete arv peab olema vähemalt 1.')
+    out.push(t('Osamaksete arv peab olema vähemalt 1.', 'There must be at least 1 instalment.'))
   } else if (plan.count > 60) {
-    out.push('Osamakseid saab olla kuni 60.')
+    out.push(t('Osamakseid saab olla kuni 60.', 'There can be at most 60 instalments.'))
   }
   if (!parseYmd(plan.firstIssue)) {
-    out.push('Esimese arve kuupäev on puudu või vigane.')
+    out.push(t('Esimese arve kuupäev on puudu või vigane.', 'The first invoice date is missing or invalid.'))
   }
   if (plan.dayOfMonth !== undefined
     && (!Number.isInteger(plan.dayOfMonth) || plan.dayOfMonth < 1 || plan.dayOfMonth > 28)) {
     // 28 rather than 31 — see PaymentPlanShape.dayOfMonth.
-    out.push('Arve päev peab olema 1–28, et see kehtiks ka veebruaris.')
+    out.push(t('Arve päev peab olema 1–28, et see kehtiks ka veebruaris.', 'The invoice day must be 1–28, so that it also works in February.'))
   }
   if (!Number.isInteger(plan.termDays) || plan.termDays < 0) {
-    out.push('Maksetähtaeg peab olema päevades, 0 või rohkem.')
+    out.push(t('Maksetähtaeg peab olema päevades, 0 või rohkem.', 'The payment term must be in days, 0 or more.'))
   }
   // A part that rounds to nothing means the plan is finer than money is.
   if (out.length === 0 && plan.total / plan.count < 0.01) {
-    out.push('Osamakse jääks alla sendi — vähenda osamaksete arvu.')
+    out.push(t('Osamakse jääks alla sendi — vähenda osamaksete arvu.', 'An instalment would come to less than a cent — reduce the number of instalments.'))
   }
   return out
 }

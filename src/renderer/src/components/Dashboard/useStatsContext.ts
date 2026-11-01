@@ -44,6 +44,7 @@ import { customerStats, type CustomerStats } from '../../lib/customerStats'
 import { debtors, EMPTY_DEBTORS, type DebtorStats } from '../../lib/debtors'
 import { funFacts, type FunFacts } from '../../lib/funFacts'
 import type { PermissionKey } from '../../hooks/usePermissions'
+import { t } from '@/lib/i18n'
 
 /**
  * Which expensive slice a panel needs. See `PanelMeta.needs`.
@@ -277,7 +278,7 @@ export function useStatsContext(
   return {
     period,
     range,
-    rangeLabel: period === 'all' ? 'kogu aeg' : `${range.start} – ${range.end}`,
+    rangeLabel: period === 'all' ? t('kogu aeg', 'all time') : `${range.start} – ${range.end}`,
     m,
     stats,
     units,

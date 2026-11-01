@@ -7,6 +7,7 @@ import { MachinePicker } from '../production/MachinePicker'
 import { PriorityPicker } from '../production/PriorityPicker'
 import { DesignSplit } from '../production/DesignSplit'
 import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 /**
  * Step 4 — who makes it, on what, and by when.
@@ -29,16 +30,16 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
 
         <WizardWorkerSelect
           id="wizard-teostaja"
-          label="Teostaja"
-          help="Kes töö valmistab. Võib jääda määramata."
+          label={t('Teostaja', 'Technician')}
+          help={t('Kes töö valmistab. Võib jääda määramata.', 'Who makes the job. Can be left unassigned.')}
           value={state.technician}
           onChange={technician => patch({ technician })}
         />
 
         <WizardWorkerSelect
           id="wizard-disainija"
-          label="Disainija"
-          help="Kes töö disainib. Võib olla sama inimene või jääda määramata."
+          label={t('Disainija', 'Designer')}
+          help={t('Kes töö disainib. Võib olla sama inimene või jääda määramata.', 'Who designs the job. Can be the same person, or left unassigned.')}
           value={state.designer}
           onChange={designer => patch({ designer })}
         />
@@ -50,9 +51,9 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
         />
 
         <WizardField
-          label="Töö vastuvõtmise kuupäev"
+          label={t('Töö vastuvõtmise kuupäev', 'Date received')}
           htmlFor="wizard-kuupaev"
-          help="Kuupäev, mil töö laborisse jõudis."
+          help={t('Kuupäev, mil töö laborisse jõudis.', 'The date the job arrived at the lab.')}
         >
           <input
             id="wizard-kuupaev"
@@ -66,9 +67,9 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
         <div className="hidden md:block" aria-hidden="true" />
 
         <WizardField
-          label="Tähtaeg"
+          label={t('Tähtaeg', 'Due date')}
           htmlFor="wizard-tahtaeg"
-          help="Millal töö peab valmis olema."
+          help={t('Millal töö peab valmis olema.', 'When the job has to be done.')}
           error={deadlineError}
         >
           <input
@@ -81,9 +82,9 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
         </WizardField>
 
         <WizardField
-          label="Kellaaeg"
+          label={t('Kellaaeg', 'Time')}
           htmlFor="wizard-kellaaeg"
-          help="Kui täpne kellaaeg on kokku lepitud. Muidu jäta tühjaks."
+          help={t('Kui täpne kellaaeg on kokku lepitud. Muidu jäta tühjaks.', 'If an exact time was agreed. Otherwise leave it empty.')}
         >
           <input
             id="wizard-kellaaeg"
@@ -95,40 +96,40 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
         </WizardField>
 
         <WizardField
-          label="Print ID"
+          label={t('Print ID', 'Print ID')}
           htmlFor="wizard-print-id"
-          help="SprintRay töö number, kui see on juba teada."
+          help={t('SprintRay töö number, kui see on juba teada.', 'The SprintRay job number, if it is already known.')}
         >
           <input
             id="wizard-print-id"
             type="text"
             value={state.printId}
             onChange={e => patch({ printId: e.target.value })}
-            placeholder="Nt SR-10432"
+            placeholder={t('Nt SR-10432', 'e.g. SR-10432')}
             className={WIZARD_INPUT}
           />
         </WizardField>
 
         <WizardField
-          label="Disain ID"
+          label={t('Disain ID', 'Design ID')}
           htmlFor="wizard-disain-id"
-          help="Viide disainifailile või disainitarkvara numbrile."
+          help={t('Viide disainifailile või disainitarkvara numbrile.', 'A reference to the design file or the design software number.')}
         >
           <input
             id="wizard-disain-id"
             type="text"
             value={state.designId}
             onChange={e => patch({ designId: e.target.value })}
-            placeholder="Nt D-2291"
+            placeholder={t('Nt D-2291', 'e.g. D-2291')}
             className={WIZARD_INPUT}
           />
         </WizardField>
       </div>
 
       <section>
-        <h3 className="text-lg font-semibold text-ink">Prioriteet</h3>
+        <h3 className="text-lg font-semibold text-ink">{t('Prioriteet', 'Priority')}</h3>
         <p className={`${WIZARD_HELP} mb-3`}>
-          Vali, kas tegu on tavalise töö, kiirtöö või mudeliga.
+          {t('Vali, kas tegu on tavalise töö, kiirtöö või mudeliga.', 'Choose whether this is a standard job, a rush job or a model.')}
         </p>
         <PriorityPicker
           value={state.priority}
@@ -142,16 +143,16 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
         {state.priority === 'mudel' && (
           <div className="mt-4 max-w-sm">
             <WizardField
-              label="Mudel ID"
+              label={t('Mudel ID', 'Model ID')}
               htmlFor="wizard-mudel-id"
-              help="Mudeli töö number, kui see on juba teada."
+              help={t('Mudeli töö number, kui see on juba teada.', 'The model job number, if it is already known.')}
             >
               <input
                 id="wizard-mudel-id"
                 type="text"
                 value={state.modelId}
                 onChange={e => patch({ modelId: e.target.value })}
-                placeholder="Nt M-3310"
+                placeholder={t('Nt M-3310', 'e.g. M-3310')}
                 className={WIZARD_INPUT}
               />
             </WizardField>

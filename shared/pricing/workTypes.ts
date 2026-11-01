@@ -16,6 +16,7 @@
 // seed. Everything here is a pure function over a passed-in list: the colours a
 // component paints must come from the same snapshot React re-rendered with, or
 // the legend and the cards drift apart the moment a colour is edited.
+import { t } from '../i18n'
 
 /**
  * How a work type is priced.
@@ -138,14 +139,14 @@ const SEEDED_TYPES: { nimi: string; after: RegExp }[] = [
 
 /** Every name and synonym a seeded type answers to. */
 const claimsOf = (nimi: string): string[] => {
-  const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === nimi)
+  const seed = DEFAULT_WORK_TYPES.find(type => type.nimi === nimi)
   return seed ? [seed.nimi, ...(seed.match ?? [])].map(x => x.toLowerCase()) : []
 }
 
 /** Which seeded type this entry IS, if any — for "the lab deleted it" tracking. */
-export function seededTypeOf(t: WorkType | null | undefined): string | null {
-  if (!t) return null
-  const tokens = [t.nimi, ...(t.match ?? [])].map(x => x.toLowerCase())
+export function seededTypeOf(type: WorkType | null | undefined): string | null {
+  if (!type) return null
+  const tokens = [type.nimi, ...(type.match ?? [])].map(x => x.toLowerCase())
   return SEEDED_TYPES.find(s => claimsOf(s.nimi).some(c => tokens.includes(c)))?.nimi ?? null
 }
 
@@ -163,14 +164,14 @@ export function seedMissingTypes(list: WorkType[], removed: string[] = []): Work
   let out = list
   for (const { nimi, after } of SEEDED_TYPES) {
     if (removed.includes(nimi)) continue
-    const seed = DEFAULT_WORK_TYPES.find(t => t.nimi === nimi)
+    const seed = DEFAULT_WORK_TYPES.find(type => type.nimi === nimi)
     if (!seed) continue
     const claims = claimsOf(nimi)
-    const present = out.some(t =>
-      [t.nimi, ...(t.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
+    const present = out.some(type =>
+      [type.nimi, ...(type.match ?? [])].some(tok => claims.includes(tok.toLowerCase()))
     )
     if (present) continue
-    const at = out.findIndex(t => [t.nimi, ...(t.match ?? [])].some(tok => after.test(tok)))
+    const at = out.findIndex(type => [type.nimi, ...(type.match ?? [])].some(tok => after.test(tok)))
     const copy: WorkType = { ...seed }
     out = at < 0 ? [...out, copy] : [...out.slice(0, at + 1), copy, ...out.slice(at + 1)]
   }
@@ -194,11 +195,11 @@ export const WORK_TYPE_PALETTE = [
 export function workTypeConsumables(
   too: string | null | undefined, types: WorkType[], teeth: number
 ): { total: number; items: { nimi: string; summa: number }[] } {
-  const t = resolveWorkType(too, types)
-  const items = (t.kulud ?? [])
+  const type = resolveWorkType(too, types)
+  const items = (type.kulud ?? [])
     .filter(k => k.summa > 0)
     .map(k => ({
-      nimi: k.nimi || 'Kulu',
+      nimi: k.nimi || t('Kulu', 'Cost'),
       summa: Math.round((k.tyyp === 'hammas' ? k.summa * teeth : k.summa) * 100) / 100,
     }))
     .filter(k => k.summa > 0)
@@ -221,10 +222,10 @@ export function workTypeConsumables(
 export function abutmentUnitParts(
   too: string | null | undefined, types: WorkType[]
 ): { nimi: string; summa: number }[] {
-  const t = resolveWorkType(too, types)
-  return (t.kulud ?? [])
+  const type = resolveWorkType(too, types)
+  return (type.kulud ?? [])
     .filter(k => k.tyyp === 'hammas' && k.summa > 0)
-    .map(k => ({ nimi: k.nimi || 'Tarvik', summa: k.summa }))
+    .map(k => ({ nimi: k.nimi || t('Tarvik', 'Part'), summa: k.summa }))
 }
 
 export function abutmentUnitPrice(
@@ -244,11 +245,11 @@ export function abutmentUnitPrice(
  * Quantity 0 never matches: "no teeth picked yet" is not a quantity, and
  * letting it select a tier would price an empty job.
  */
-export function tierFor(t: Pick<WorkType, 'astmed'>, quantity: number): PriceTier | null {
-  if (!Array.isArray(t.astmed) || t.astmed.length === 0) return null
+export function tierFor(type: Pick<WorkType, 'astmed'>, quantity: number): PriceTier | null {
+  if (!Array.isArray(type.astmed) || type.astmed.length === 0) return null
   if (!Number.isFinite(quantity) || quantity <= 0) return null
   let best: PriceTier | null = null
-  for (const tier of t.astmed) {
+  for (const tier of type.astmed) {
     if (!tier || !Number.isFinite(tier.alates) || !(tier.hind > 0)) continue
     if (tier.alates > quantity) continue
     if (!best || tier.alates > best.alates) best = tier
@@ -260,24 +261,24 @@ export function tierFor(t: Pick<WorkType, 'astmed'>, quantity: number): PriceTie
  * The tiers worth showing, cleaned: junk dropped, sorted by quantity.
  * For the settings preview and for anything that lists them.
  */
-export function sortedTiers(t: Pick<WorkType, 'astmed'>): PriceTier[] {
-  return (t.astmed ?? [])
+export function sortedTiers(type: Pick<WorkType, 'astmed'>): PriceTier[] {
+  return (type.astmed ?? [])
     .filter(x => x && Number.isFinite(x.alates) && x.alates > 0 && x.hind > 0)
     .slice()
     .sort((a, b) => a.alates - b.alates)
 }
 
 export function resolveWorkType(too: string | null | undefined, types: WorkType[]): WorkType {
-  const t = (too ?? '').toLowerCase().trim()
-  if (!t) return UNKNOWN_WORK_TYPE
+  const needle = (too ?? '').toLowerCase().trim()
+  if (!needle) return UNKNOWN_WORK_TYPE
   // 1. Exact match (case-insensitive)
-  const exact = types.find(r => r.nimi.toLowerCase() === t)
+  const exact = types.find(r => r.nimi.toLowerCase() === needle)
   if (exact) return exact
   // 2. Longest name first — "Implantkroon" must match before "Kroon"
   const sorted = [...types].sort((a, b) => b.nimi.length - a.nimi.length)
   return sorted.find(r =>
-    t.includes(r.nimi.toLowerCase()) || r.nimi.toLowerCase().includes(t)
-    || (r.match ?? []).some(m => t.includes(m) || m.includes(t))
+    needle.includes(r.nimi.toLowerCase()) || r.nimi.toLowerCase().includes(needle)
+    || (r.match ?? []).some(m => needle.includes(m) || m.includes(needle))
   ) ?? UNKNOWN_WORK_TYPE
 }
 
@@ -294,8 +295,8 @@ export function workTypesPresentIn(
   types: WorkType[]
 ): { label: string; hex: string }[] {
   const seen = new Map<string, string>()
-  for (const t of toos) {
-    const r = resolveWorkType(t, types)
+  for (const too of toos) {
+    const r = resolveWorkType(too, types)
     if (!seen.has(r.nimi)) seen.set(r.nimi, r.hex)
   }
   return [...seen.entries()].map(([label, hex]) => ({ label, hex }))

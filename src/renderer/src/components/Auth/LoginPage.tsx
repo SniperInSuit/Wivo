@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Loader2, Lock, Eye, EyeOff, Mail } from 'lucide-react'
 import { signIn } from '../../lib/supabase'
 import wivoLogo from '../../assets/Wivo Logo.png'
+import { t } from '@/lib/i18n'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -19,9 +20,9 @@ export function LoginPage() {
       const { error } = await signIn(email, password)
       if (error) throw error
     } catch (err: unknown) {
-      const msg = (err as Error)?.message ?? 'Midagi läks valesti'
-      if (msg.includes('Invalid login credentials')) setError('Vale kasutajanimi või parool')
-      else if (msg.includes('valid email')) setError('Sisesta kehtiv kasutajanimi või e-posti aadress')
+      const msg = (err as Error)?.message ?? t('Midagi läks valesti', 'Something went wrong')
+      if (msg.includes('Invalid login credentials')) setError(t('Vale kasutajanimi või parool', 'Wrong username or password'))
+      else if (msg.includes('valid email')) setError(t('Sisesta kehtiv kasutajanimi või e-posti aadress', 'Enter a valid username or email address'))
       else setError(msg)
     } finally {
       setLoading(false)
@@ -34,19 +35,19 @@ export function LoginPage() {
         <div className="text-center space-y-2">
           <img src={wivoLogo} alt="Wivo" className="w-16 h-16 rounded-xl mx-auto" />
           <h1 className="text-xl font-bold text-ink">Wivo</h1>
-          <p className="text-sm text-ink-muted">Logi sisse oma kontoga</p>
+          <p className="text-sm text-ink-muted">{t('Logi sisse oma kontoga', 'Sign in with your account')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">Kasutajanimi või e-post</label>
+            <label className="label">{t('Kasutajanimi või e-post', 'Username or email')}</label>
             <div className="relative">
               <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
                 type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="tehnik või nimi@kliinik.ee"
+                placeholder={t('tehnik või nimi@kliinik.ee', 'technician or name@clinic.com')}
                 className="input pl-9"
                 required
                 autoCapitalize="none"
@@ -57,7 +58,7 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label className="label">Parool</label>
+            <label className="label">{t('Parool', 'Password')}</label>
             <div className="relative">
               <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <input
@@ -91,12 +92,12 @@ export function LoginPage() {
             disabled={loading}
             className="btn-primary w-full justify-center disabled:opacity-50"
           >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : 'Logi sisse'}
+            {loading ? <Loader2 size={16} className="animate-spin" /> : t('Logi sisse', 'Sign in')}
           </button>
         </form>
 
         <p className="text-center text-[10px] text-ink-faint">
-          Kontod loob kliiniku administraator
+          {t('Kontod loob kliiniku administraator', 'Accounts are created by the clinic administrator')}
         </p>
       </div>
     </div>

@@ -22,9 +22,10 @@ import {
   THEME_TOKENS, CONTRAST_CHECKS, checkContrast, parseTriple, rgbToHex, hexToRgb,
   type CustomTheme,
 } from '../../lib/customTheme'
+import { t } from '@/lib/i18n'
 
 /** Built-in themes, in picker order, that a custom theme can be seeded from. */
-const SEEDS = THEMES.filter(t => t.key !== 'oma')
+const SEEDS = THEMES.filter(seed => seed.key !== 'oma')
 
 /**
  * Every token's value as the stylesheet computes it for `theme`.
@@ -73,7 +74,7 @@ export function ThemeEditor() {
   // was checked".
   const unchecked = CONTRAST_CHECKS.length - results.length
 
-  const groups = [...new Set(THEME_TOKENS.map(t => t.group))]
+  const groups = [...new Set(THEME_TOKENS.map(token => token.group))]
 
   function start(from: ThemeKey) {
     setOmaTeema(seedFrom(from))
@@ -85,18 +86,19 @@ export function ThemeEditor() {
       <section>
         <div className="mb-1 flex items-center gap-2">
           <Palette size={14} className="text-accent" />
-          <h3 className="text-sm font-semibold text-ink">Oma teema</h3>
+          <h3 className="text-sm font-semibold text-ink">{t('Oma teema', 'Custom theme')}</h3>
         </div>
         <p className="mb-3 text-xs text-ink-muted">
-          Alusta olemasolevast teemast ja muuda seda. Nii näeb redaktor alguses
-          välja täpselt nii, nagu rakendus praegu — ja sa muudad ainult seda, mida
-          tahad.
+          {t(
+            'Alusta olemasolevast teemast ja muuda seda. Nii näeb redaktor alguses välja täpselt nii, nagu rakendus praegu — ja sa muudad ainult seda, mida tahad.',
+            'Start from an existing theme and change it. That way the editor starts out looking exactly like the app does now — and you change only what you want.',
+          )}
         </p>
         <div className="flex flex-wrap gap-2">
-          {SEEDS.map(t => (
-            <button key={t.key} type="button" onClick={() => start(t.key)}
+          {SEEDS.map(seed => (
+            <button key={seed.key} type="button" onClick={() => start(seed.key)}
               className="btn-ghost border border-ink-faint/25 text-xs">
-              Alusta: {t.label}
+              {t('Alusta:', 'Start from:')} {seed.label}
             </button>
           ))}
         </div>
@@ -108,20 +110,20 @@ export function ThemeEditor() {
     <section>
       <div className="mb-1 flex items-center gap-2">
         <Palette size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Oma teema</h3>
+        <h3 className="text-sm font-semibold text-ink">{t('Oma teema', 'Custom theme')}</h3>
         {settings.teema !== 'oma' && (
           <button type="button" onClick={() => setTeema('oma')}
             className="btn-ghost border border-accent/40 text-[11px] text-accent">
-            Lülita sisse
+            {t('Lülita sisse', 'Turn on')}
           </button>
         )}
         <button
           type="button"
           onClick={() => setOmaTeema(undefined)}
           className="ml-auto flex items-center gap-1 text-[11px] text-ink-faint transition-colors hover:text-ink"
-          title="Kustuta oma teema ja alusta uuesti"
+          title={t('Kustuta oma teema ja alusta uuesti', 'Delete the custom theme and start again')}
         >
-          <RotateCcw size={11} /> Algseisu
+          <RotateCcw size={11} /> {t('Algseisu', 'Reset')}
         </button>
       </div>
 
@@ -138,38 +140,44 @@ export function ThemeEditor() {
             : <Check size={13} className="flex-shrink-0 text-emerald-600" />}
           <p className="text-xs font-semibold text-ink">
             {failing.length > 0
-              ? `${failing.length} ${failing.length === 1 ? 'kombinatsioon' : 'kombinatsiooni'} on raskesti loetav`
-              : 'Kõik kontrollitud kombinatsioonid on loetavad'}
+              ? t(
+                `${failing.length} ${failing.length === 1 ? 'kombinatsioon' : 'kombinatsiooni'} on raskesti loetav`,
+                `${failing.length} ${failing.length === 1 ? 'combination is' : 'combinations are'} hard to read`,
+              )
+              : t('Kõik kontrollitud kombinatsioonid on loetavad', 'All checked combinations are readable')}
           </p>
         </div>
         {failing.length > 0 && (
           <ul className="mt-1.5 space-y-0.5">
             {failing.map(r => (
               <li key={`${r.fg}-${r.bg}`} className="text-[11px] text-ink-muted">
-                <span className="text-ink">{r.label}</span> — kontrast{' '}
-                <span className="font-semibold tabular-nums text-orange-600">{r.ratio.toFixed(2)} : 1</span>,
-                vaja vähemalt {r.min} : 1
+                <span className="text-ink">{r.label}</span> — {t('kontrast', 'contrast')}{' '}
+                <span className="font-semibold tabular-nums text-orange-600">{r.ratio.toFixed(2)} : 1</span>,{' '}
+                {t(`vaja vähemalt ${r.min} : 1`, `needs at least ${r.min} : 1`)}
               </li>
             ))}
           </ul>
         )}
         {unchecked > 0 && (
           <p className="mt-1.5 text-[11px] text-ink-faint">
-            {unchecked} paari ei kontrollitud — üks nende värvidest järgib veel
-            alusteemat.
+            {t(
+              `${unchecked} paari ei kontrollitud — üks nende värvidest järgib veel alusteemat.`,
+              `${unchecked} ${unchecked === 1 ? 'pair was' : 'pairs were'} not checked — one of the colours still follows the base theme.`,
+            )}
           </p>
         )}
         <p className="mt-1.5 text-[11px] text-ink-faint">
-          Mõõt on WCAG kontrastisuhe. 4,5 : 1 on tavateksti alampiir — just see
-          kontroll oleks ära hoidnud teemavea, kus lehe pealkirjad olid
-          1,06 : 1 ja praktiliselt nähtamatud.
+          {t(
+            'Mõõt on WCAG kontrastisuhe. 4,5 : 1 on tavateksti alampiir — just see kontroll oleks ära hoidnud teemavea, kus lehe pealkirjad olid 1,06 : 1 ja praktiliselt nähtamatud.',
+            'The measure is the WCAG contrast ratio. 4.5 : 1 is the minimum for body text — exactly the check that would have prevented the theme bug where page headings were 1.06 : 1 and practically invisible.',
+          )}
         </p>
       </div>
 
       <div className="space-y-2">
         {groups.map(group => {
           const open = openGroup === group
-          const tokens = THEME_TOKENS.filter(t => t.group === group)
+          const tokens = THEME_TOKENS.filter(token => token.group === group)
           return (
             <div key={group} className="overflow-hidden rounded-lg border border-ink-faint/20">
               <button
@@ -179,40 +187,40 @@ export function ThemeEditor() {
               >
                 <span className="text-xs font-semibold text-ink">{group}</span>
                 <span className="ml-auto flex gap-1">
-                  {tokens.map(t => (
+                  {tokens.map(token => (
                     <span
-                      key={t.key}
+                      key={token.key}
                       className="h-3.5 w-3.5 rounded-sm border border-ink-faint/30"
-                      style={{ background: theme[t.key] ?? 'transparent' }}
+                      style={{ background: theme[token.key] ?? 'transparent' }}
                     />
                   ))}
                 </span>
               </button>
               {open && (
                 <div className="space-y-1.5 border-t border-ink-faint/10 px-3 py-2">
-                  {tokens.map(t => (
-                    <div key={t.key} className="flex items-center gap-2">
+                  {tokens.map(token => (
+                    <div key={token.key} className="flex items-center gap-2">
                       <input
                         type="color"
-                        value={theme[t.key] ?? '#000000'}
-                        onChange={e => setOmaTeemaToken(t.key, e.target.value)}
+                        value={theme[token.key] ?? '#000000'}
+                        onChange={e => setOmaTeemaToken(token.key, e.target.value)}
                         className="h-7 w-10 flex-shrink-0 cursor-pointer rounded border border-ink-faint/30 bg-transparent"
-                        aria-label={t.label}
+                        aria-label={token.label}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs text-ink">{t.label}</p>
-                        {t.hint && <p className="truncate text-[10px] text-ink-faint">{t.hint}</p>}
+                        <p className="truncate text-xs text-ink">{token.label}</p>
+                        {token.hint && <p className="truncate text-[10px] text-ink-faint">{token.hint}</p>}
                       </div>
                       {/* Typed as well as picked: a brand colour arrives as a
                           hex code on a page, and retyping it into a colour
                           wheel by eye is not a thing anybody can do. */}
                       <input
-                        value={theme[t.key] ?? ''}
+                        value={theme[token.key] ?? ''}
                         onChange={e => {
                           const v = e.target.value
-                          if (hexToRgb(v)) setOmaTeemaToken(t.key, v.startsWith('#') ? v : `#${v}`)
+                          if (hexToRgb(v)) setOmaTeemaToken(token.key, v.startsWith('#') ? v : `#${v}`)
                         }}
-                        placeholder="alusteema"
+                        placeholder={t('alusteema', 'base theme')}
                         spellCheck={false}
                         className="input w-24 font-mono text-[11px]"
                       />

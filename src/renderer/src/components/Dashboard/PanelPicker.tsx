@@ -19,6 +19,7 @@ import {
 } from './panels/catalogue'
 import { PRESETS } from './panels/presets'
 import { isPanelVisible, type VisibilityInput } from './PanelGrid'
+import { t } from '@/lib/i18n'
 
 interface PanelPickerProps {
   /** Stored ids this person can actually see, in order. */
@@ -53,7 +54,7 @@ export function PanelPicker({
 
   const presetLabel = presetKey
     ? `${PRESETS.find(p => p.key === presetKey)?.label ?? presetKey}`
-    : 'Kohandatud'
+    : t('Kohandatud', 'Custom')
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -61,13 +62,13 @@ export function PanelPicker({
       <aside className="relative w-[420px] max-w-full h-full bg-bg-card shadow-card overflow-y-auto">
         <div className="sticky top-0 bg-bg-card border-b border-ink-faint/15 px-4 py-3 flex items-center gap-2 z-10">
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-ink">Kohanda vaadet</h2>
-            <p className="text-[11px] text-ink-faint truncate">{presetLabel} · {selected.length} paneeli</p>
+            <h2 className="text-sm font-semibold text-ink">{t('Kohanda vaadet', 'Customise view')}</h2>
+            <p className="text-[11px] text-ink-faint truncate">{presetLabel} · {t(`${selected.length} paneeli`, `${selected.length} ${selected.length === 1 ? 'panel' : 'panels'}`)}</p>
           </div>
-          <button onClick={onReset} className="btn-ghost text-xs" title="Tagasi rolli vaikevaatele">
-            <RotateCcw size={13} /> Vaikimisi
+          <button onClick={onReset} className="btn-ghost text-xs" title={t('Tagasi rolli vaikevaatele', 'Back to the default view for your role')}>
+            <RotateCcw size={13} /> {t('Vaikimisi', 'Default')}
           </button>
-          <button onClick={onClose} className="btn-ghost p-2" aria-label="Sulge">
+          <button onClick={onClose} className="btn-ghost p-2" aria-label={t('Sulge', 'Close')}>
             <X size={16} />
           </button>
         </div>
@@ -75,7 +76,7 @@ export function PanelPicker({
         {/* ── Presets ── */}
         <section className="px-4 py-3 border-b border-ink-faint/10">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-            Valmisvaated
+            {t('Valmisvaated', 'Preset views')}
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map(p => (
@@ -92,18 +93,18 @@ export function PanelPicker({
             ))}
           </div>
           <p className="text-[10px] text-ink-faint mt-2 leading-relaxed">
-            Valmisvaade on lähtepunkt, mitte lukk — iga muudatus pärast valimist jääb sinu omaks.
+            {t('Valmisvaade on lähtepunkt, mitte lukk — iga muudatus pärast valimist jääb sinu omaks.', 'A preset is a starting point, not a lock — every change after picking it stays yours.')}
           </p>
         </section>
 
         {/* ── Chosen, draggable ── */}
         <section className="px-4 py-3 border-b border-ink-faint/10">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-            Valitud ({selected.length})
+            {t('Valitud', 'Selected')} ({selected.length})
           </h3>
           {selected.length === 0 ? (
             <p className="text-[11px] text-ink-faint py-2">
-              Ühtegi paneeli ei ole valitud. Lisa allpool.
+              {t('Ühtegi paneeli ei ole valitud. Lisa allpool.', 'No panels selected. Add some below.')}
             </p>
           ) : (
             <Reorder.Group axis="y" values={selected} onReorder={onReorder} className="space-y-1.5">
@@ -122,14 +123,14 @@ export function PanelPicker({
         {/* ── Catalogue ── */}
         <section className="px-4 py-3">
           <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-            Lisa paneel
+            {t('Lisa paneel', 'Add panel')}
           </h3>
           <div className="relative mb-3">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
               value={q}
               onChange={e => setQ(e.target.value)}
-              placeholder="Otsi paneeli..."
+              placeholder={t('Otsi paneeli...', 'Search panels...')}
               className="input py-1.5 pl-8 text-sm"
             />
           </div>
@@ -196,9 +197,9 @@ function PickedRow({ id, meta, onRemove }: { id: string; meta?: PanelMeta; onRem
         {meta?.title ?? id}
       </span>
       <span className="text-[10px] text-ink-faint flex-shrink-0">
-        {meta ? PANEL_GROUP_LABEL[meta.group] : 'tundmatu'}
+        {meta ? PANEL_GROUP_LABEL[meta.group] : t('tundmatu', 'unknown')}
       </span>
-      <button onClick={onRemove} className="btn-ghost p-1 flex-shrink-0" aria-label="Eemalda">
+      <button onClick={onRemove} className="btn-ghost p-1 flex-shrink-0" aria-label={t('Eemalda', 'Remove')}>
         <X size={13} />
       </button>
     </Reorder.Item>

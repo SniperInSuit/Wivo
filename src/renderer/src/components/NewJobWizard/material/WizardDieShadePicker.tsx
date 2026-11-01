@@ -4,6 +4,7 @@ import { DIE_SHADES, dieShadeOf } from '@/config/dieShades'
 import { SelectableCard } from '../ui/SelectableCard'
 import { ToothSwatch } from '../jobtype/ToothGlyph'
 import { WIZARD_HELP, WIZARD_INPUT, WIZARD_BTN } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardDieShadePickerProps {
   /** state.dieShade — an ND code or free text. */
@@ -28,7 +29,7 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
 
   return (
     <div className="space-y-4">
-      <div role="radiogroup" aria-label="Köndivärvi toonid" className="flex flex-wrap gap-3">
+      <div role="radiogroup" aria-label={t('Köndivärvi toonid', 'Stump shades')} className="flex flex-wrap gap-3">
         {DIE_SHADES.map(s => (
           <SelectableCard
             key={s.code}
@@ -56,9 +57,9 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
           style={{ backgroundColor: known?.hex ?? 'transparent' }}
         />
         <div className="min-w-0">
-          <p className="text-base font-semibold text-ink-soft">Valitud köndivärv</p>
+          <p className="text-base font-semibold text-ink-soft">{t('Valitud köndivärv', 'Selected stump shade')}</p>
           <p className="text-base text-ink font-medium truncate" aria-live="polite">
-            {value ?? 'Ei ole teada'}
+            {value ?? t('Ei ole teada', 'Not known')}
           </p>
         </div>
         {value && (
@@ -68,14 +69,14 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
             className={`${WIZARD_BTN} ml-auto`}
           >
             <Eraser className="w-5 h-5" aria-hidden="true" />
-            Tühjenda
+            {t('Tühjenda', 'Clear')}
           </button>
         )}
       </div>
 
       <div>
         <label htmlFor="wizard-kondivarv-vaba" className={WIZARD_HELP}>
-          Või kirjelda sõnadega, kui skaalal vastet ei ole
+          {t('Või kirjelda sõnadega, kui skaalal vastet ei ole', "Or describe it in words if there's no match on the scale")}
         </label>
         <input
           id="wizard-kondivarv-vaba"
@@ -85,7 +86,7 @@ export function WizardDieShadePicker({ value, onChange }: WizardDieShadePickerPr
             setFreeText(e.target.value)
             onChange(e.target.value.trim() ? e.target.value : null)
           }}
-          placeholder="Nt titaanabutment, metallitihvt"
+          placeholder={t('Nt titaanabutment, metallitihvt', 'e.g. titanium abutment, metal post')}
           className={`${WIZARD_INPUT} mt-1`}
         />
       </div>

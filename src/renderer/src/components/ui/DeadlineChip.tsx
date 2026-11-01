@@ -1,6 +1,7 @@
 import { differenceInHours, differenceInCalendarDays, format, isPast, isToday, isTomorrow } from 'date-fns'
 import { Clock, AlertTriangle } from 'lucide-react'
 import { toDate } from '../../lib/dates'
+import { t } from '@/lib/i18n'
 
 interface DeadlineChipProps {
   deadline: string | null
@@ -36,15 +37,15 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
 
   const time = format(date, 'HH:mm')
   const label = overdue
-    ? 'Tähtaeg möödas'
+    ? t('Tähtaeg möödas', 'Overdue')
     : isDone
       ? format(date, 'dd.MM')
       : isToday(date)
-        ? `Täna ${time}`
+        ? t(`Täna ${time}`, `Today ${time}`)
         : isTomorrow(date)
-          ? `Homme ${time}`
+          ? t(`Homme ${time}`, `Tomorrow ${time}`)
           : calDays <= 7
-            ? `${calDays}p ${time}`
+            ? t(`${calDays}p ${time}`, `${calDays}d ${time}`)
             : `${format(date, 'dd.MM')} ${time}`
 
   if (compact) {
@@ -60,7 +61,7 @@ export function DeadlineChip({ deadline, compact = false, isDone = false }: Dead
     <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${colorClass}`}>
       <Icon size={12} />
       <span>{format(date, 'dd.MM.yyyy HH:mm')}</span>
-      {overdue && <span className="ml-0.5 font-semibold">• möödas</span>}
+      {overdue && <span className="ml-0.5 font-semibold">{t('• möödas', '• overdue')}</span>}
       {urgent && !overdue && <span className="ml-0.5">• {hoursLeft}h</span>}
     </span>
   )

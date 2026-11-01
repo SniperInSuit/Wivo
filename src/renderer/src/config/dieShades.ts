@@ -9,6 +9,8 @@
 //
 // ND1 is the lightest and the scale runs to grey/dark at ND9. Display colours
 // are approximate, exactly as in config/vita.ts.
+import { t } from '@/lib/i18n'
+
 export interface DieShade {
   code: string
   hex: string
@@ -17,15 +19,15 @@ export interface DieShade {
 }
 
 export const DIE_SHADES: DieShade[] = [
-  { code: 'ND1', hex: '#F7EFDF', note: 'Väga hele' },
-  { code: 'ND2', hex: '#F2E5CB', note: 'Hele' },
-  { code: 'ND3', hex: '#EBD9B4', note: 'Hele kollakas' },
-  { code: 'ND4', hex: '#E2CB9C', note: 'Kollakas' },
-  { code: 'ND5', hex: '#D5B884', note: 'Kollakaspruun' },
-  { code: 'ND6', hex: '#C0A170', note: 'Pruun' },
-  { code: 'ND7', hex: '#A78D66', note: 'Pruunikashall' },
-  { code: 'ND8', hex: '#8A7A66', note: 'Hall — nt surnud hammas' },
-  { code: 'ND9', hex: '#6E6459', note: 'Tume hall — nt metallitihvt' },
+  { code: 'ND1', hex: '#F7EFDF', note: t('Väga hele', 'Very light') },
+  { code: 'ND2', hex: '#F2E5CB', note: t('Hele', 'Light') },
+  { code: 'ND3', hex: '#EBD9B4', note: t('Hele kollakas', 'Light yellowish') },
+  { code: 'ND4', hex: '#E2CB9C', note: t('Kollakas', 'Yellowish') },
+  { code: 'ND5', hex: '#D5B884', note: t('Kollakaspruun', 'Yellowish brown') },
+  { code: 'ND6', hex: '#C0A170', note: t('Pruun', 'Brown') },
+  { code: 'ND7', hex: '#A78D66', note: t('Pruunikashall', 'Brownish grey') },
+  { code: 'ND8', hex: '#8A7A66', note: t('Hall — nt surnud hammas', 'Grey — e.g. non-vital tooth') },
+  { code: 'ND9', hex: '#6E6459', note: t('Tume hall — nt metallitihvt', 'Dark grey — e.g. metal post') },
 ]
 
 /** Look up a stump shade by code. Free text returns undefined. */

@@ -19,22 +19,23 @@ import { supabase, getActiveClinicId } from '../../lib/supabase'
 import { describeError } from '../Patients/errors'
 import type { BookingRules, OpenPeriod } from '@shared/portal/slots'
 import { openWindows, toClock } from '@shared/portal/slots'
+import { t, intlLocale } from '@/lib/i18n'
 
 /** "60 päeva" as a date somebody can recognise. Capped where the server caps. */
 function horizonDate(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + Math.min(Math.max(1, days), 120))
-  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString(intlLocale, { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const DAYS: { key: string; label: string }[] = [
-  { key: '1', label: 'Esmaspäev' },
-  { key: '2', label: 'Teisipäev' },
-  { key: '3', label: 'Kolmapäev' },
-  { key: '4', label: 'Neljapäev' },
-  { key: '5', label: 'Reede' },
-  { key: '6', label: 'Laupäev' },
-  { key: '7', label: 'Pühapäev' },
+  { key: '1', label: t('Esmaspäev', 'Monday') },
+  { key: '2', label: t('Teisipäev', 'Tuesday') },
+  { key: '3', label: t('Kolmapäev', 'Wednesday') },
+  { key: '4', label: t('Neljapäev', 'Thursday') },
+  { key: '5', label: t('Reede', 'Friday') },
+  { key: '6', label: t('Laupäev', 'Saturday') },
+  { key: '7', label: t('Pühapäev', 'Sunday') },
 ]
 
 /** Everything the website reads, in one column. */
@@ -68,7 +69,7 @@ export function BookingHoursSection({ value, onSaved }: {
     setSaving(true)
     try {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub.')
+      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
       // Merged, never written whole: the payment settings live in the same
       // column and a full overwrite from this screen would erase them.
       const { data: row } = await supabase
@@ -90,11 +91,15 @@ export function BookingHoursSection({ value, onSaved }: {
     <section className="space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
-          <Clock size={14} /> Veebibroneeringu ajad
+          <Clock size={14} /> {t('Veebibroneeringu ajad', 'Online booking hours')}
         </h3>
         <p className="text-xs text-ink-muted mt-1">
-          Millal veeb tohib aega pakkuda. <strong>Päev ilma kellaaegadeta on kinni</strong> —
-          unustatud laupäev ei tohi kunagi tähendada, et keegi tuleb lukus ukse taha.
+          {t('Millal veeb tohib aega pakkuda.', 'When the website may offer appointments.')}{' '}
+          <strong>{t('Päev ilma kellaaegadeta on kinni', 'A day with no hours is closed')}</strong>{' '}
+          {t(
+            '— unustatud laupäev ei tohi kunagi tähendada, et keegi tuleb lukus ukse taha.',
+            '— a forgotten Saturday must never mean someone arriving at a locked door.',
+          )}
         </p>
       </div>
 
@@ -111,7 +116,7 @@ export function BookingHoursSection({ value, onSaved }: {
               </span>
               <div className="flex-1 min-w-0 space-y-1">
                 {periods.length === 0 && (
-                  <span className="text-xs text-ink-faint">Kinni</span>
+                  <span className="text-xs text-ink-faint">{t('Kinni', 'Closed')}</span>
                 )}
                 {periods.map((p, i) => (
                   <div key={i} className="flex items-center gap-1.5">
@@ -148,7 +153,7 @@ export function BookingHoursSection({ value, onSaved }: {
                   onClick={() => setDay(d.key, [...periods, { algus: '09:00', lopp: '17:00' }])}
                   className="text-[11px] text-accent hover:text-accent/80 flex items-center gap-1"
                 >
-                  <Plus size={11} /> {periods.length ? 'Lisa aeg' : 'Ava päev'}
+                  <Plus size={11} /> {periods.length ? t('Lisa aeg', 'Add hours') : t('Ava päev', 'Open day')}
                 </button>
               </div>
               {/* What the rules actually produce for this day, after breaks. */}
@@ -156,7 +161,7 @@ export function BookingHoursSection({ value, onSaved }: {
                 <span className="text-[10px] text-ink-faint pt-1.5 w-32 text-right flex-shrink-0">
                   {openWindows(cfg, Number(d.key))
                     .map(w => `${toClock(w.algus)}–${toClock(w.lopp)}`)
-                    .join(', ') || 'paus katab kõik'}
+                    .join(', ') || t('paus katab kõik', 'break covers it all')}
                 </span>
               )}
             </div>
@@ -166,7 +171,7 @@ export function BookingHoursSection({ value, onSaved }: {
 
       {/* ── Breaks ────────────────────────────────────────────────────────── */}
       <div>
-        <label className="label">Igapäevased pausid</label>
+        <label className="label">{t('Igapäevased pausid', 'Daily breaks')}</label>
         <div className="space-y-1">
           {(cfg.pausid ?? []).map((p, i) => (
             <div key={i} className="flex items-center gap-1.5">
@@ -204,36 +209,36 @@ export function BookingHoursSection({ value, onSaved }: {
           onClick={() => patch({ pausid: [...(cfg.pausid ?? []), { algus: '12:00', lopp: '13:00' }] })}
           className="text-[11px] text-accent hover:text-accent/80 mt-1 flex items-center gap-1"
         >
-          <Plus size={11} /> Lisa paus
+          <Plus size={11} /> {t('Lisa paus', 'Add break')}
         </button>
       </div>
 
       {/* ── Grid and horizon ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
-          <label className="label">Aja samm (min)</label>
+          <label className="label">{t('Aja samm (min)', 'Time step (min)')}</label>
           <input type="number" min={5} step={5} value={cfg.samm ?? 15}
             onChange={e => patch({ samm: parseInt(e.target.value, 10) || 15 })}
             className="input text-sm" />
         </div>
         <div>
-          <label className="label">Kohti korraga</label>
+          <label className="label">{t('Kohti korraga', 'Places at once')}</label>
           <input type="number" min={1} value={cfg.kohti ?? 1}
             onChange={e => patch({ kohti: parseInt(e.target.value, 10) || 1 })}
             className="input text-sm" />
-          <p className="text-[10px] text-ink-faint mt-1">Toole või arste.</p>
+          <p className="text-[10px] text-ink-faint mt-1">{t('Toole või arste.', 'Chairs or dentists.')}</p>
         </div>
         <div>
-          <label className="label">Ette (päeva)</label>
+          <label className="label">{t('Ette (päeva)', 'Notice (days)')}</label>
           <input type="number" min={0} value={cfg.ette ?? 1}
             onChange={e => patch({ ette: parseInt(e.target.value, 10) || 0 })}
             className="input text-sm" />
           <p className="text-[10px] text-ink-faint mt-1">
-            0 = ka täna · alates {horizonDate(cfg.ette ?? 1)}
+            {t(`0 = ka täna · alates ${horizonDate(cfg.ette ?? 1)}`, `0 = today too · from ${horizonDate(cfg.ette ?? 1)}`)}
           </p>
         </div>
         <div>
-          <label className="label">Kuni (päeva)</label>
+          <label className="label">{t('Kuni (päeva)', 'Up to (days)')}</label>
           <input type="number" min={1} max={120} value={cfg.kuni ?? 60}
             onChange={e => patch({ kuni: parseInt(e.target.value, 10) || 60 })}
             className="input text-sm" />
@@ -241,21 +246,24 @@ export function BookingHoursSection({ value, onSaved }: {
               anyone can check by looking. A cap that silently disagreed with
               this field is exactly the bug this line makes visible. */}
           <p className="text-[10px] text-ink-faint mt-1">
-            Kuni {horizonDate(cfg.kuni ?? 60)}
-            {(cfg.kuni ?? 60) > 120 && ' · ülempiir on 120'}
+            {t(`Kuni ${horizonDate(cfg.kuni ?? 60)}`, `Until ${horizonDate(cfg.kuni ?? 60)}`)}
+            {(cfg.kuni ?? 60) > 120 && t(' · ülempiir on 120', ' · the maximum is 120')}
           </p>
         </div>
       </div>
 
       {/* ── Load control ──────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-ink-faint/25 bg-bg-sidebar/40 p-3">
-        <p className="text-xs font-semibold text-ink-soft mb-1">Koormus</p>
+        <p className="text-xs font-semibold text-ink-soft mb-1">{t('Koormus', 'Workload')}</p>
         <p className="text-[11px] text-ink-faint mb-2">
-          Päev, mille veeb saab täita nelja suure tööga, on päev, mida ei jõua ära teha.
+          {t(
+            'Päev, mille veeb saab täita nelja suure tööga, on päev, mida ei jõua ära teha.',
+            'A day the website can fill with four big jobs is a day nobody can get through.',
+          )}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">„Suur töö" alates (min)</label>
+            <label className="label">{t('„Suur töö" alates (min)', '“Big job” from (min)')}</label>
             <input type="number" min={0} step={15}
               value={cfg.koormus?.suurMin ?? ''}
               onChange={e => patch({
@@ -264,11 +272,11 @@ export function BookingHoursSection({ value, onSaved }: {
                   suuriPaevas: cfg.koormus?.suuriPaevas ?? 2,
                 },
               })}
-              placeholder="piiramata"
+              placeholder={t('piiramata', 'unlimited')}
               className="input text-sm" />
           </div>
           <div>
-            <label className="label">Suuri töid päevas kuni</label>
+            <label className="label">{t('Suuri töid päevas kuni', 'Max big jobs per day')}</label>
             <input type="number" min={0}
               value={cfg.koormus?.suuriPaevas ?? ''}
               onChange={e => patch({
@@ -293,22 +301,33 @@ export function BookingHoursSection({ value, onSaved }: {
           />
           <span className="min-w-0">
             <span className="text-xs font-semibold text-ink block">
-              Kinnita broneeringud automaatselt
+              {t('Kinnita broneeringud automaatselt', 'Confirm bookings automatically')}
             </span>
             <span className="text-[11px] text-ink-muted block mt-0.5 leading-relaxed">
-              Sees: veebist valitud aeg läheb <strong>kohe kalendrisse</strong>, keegi
-              ei vaata üle. Väljas: taotlus ootab „Taotlused" lehel ja keegi vajutab
-              „Broneeri".
+              {t('Sees: veebist valitud aeg läheb', 'On: a time picked on the website goes')}{' '}
+              <strong>{t('kohe kalendrisse', 'straight into the calendar')}</strong>
+              {t(
+                ', keegi ei vaata üle. Väljas: taotlus ootab „Taotlused" lehel ja keegi vajutab „Broneeri".',
+                ', with nobody checking it. Off: the request waits on the “Requests” page until someone presses “Book”.',
+              )}
             </span>
           </span>
         </label>
         {cfg.automaatKinnitus === true && (
           <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5 mt-2 leading-relaxed">
             {(cfg.visiiditasu ?? 0) > 0
-              ? 'Visiiditasu on sees — see on tugev filter, sest robot ei maksa. '
-                + 'Kalendrisse jõuab aeg alles pärast laekumist.'
-              : 'Visiiditasu ei küsita, nii et iga veebivormi täitja saab aja otse '
-                + 'kalendrisse. Kaalu tasu sisselülitamist või jäta kinnitamine käsitsi.'}
+              ? t(
+                'Visiiditasu on sees — see on tugev filter, sest robot ei maksa. '
+                  + 'Kalendrisse jõuab aeg alles pärast laekumist.',
+                'The visit fee is on — a strong filter, because a bot doesn’t pay. '
+                  + 'The appointment reaches the calendar only once payment arrives.',
+              )
+              : t(
+                'Visiiditasu ei küsita, nii et iga veebivormi täitja saab aja otse '
+                  + 'kalendrisse. Kaalu tasu sisselülitamist või jäta kinnitamine käsitsi.',
+                'No visit fee is charged, so anyone who fills in the web form goes straight '
+                  + 'into the calendar. Consider turning the fee on, or keep confirming by hand.',
+              )}
           </p>
         )}
       </div>
@@ -316,7 +335,7 @@ export function BookingHoursSection({ value, onSaved }: {
       {/* ── Closed dates ──────────────────────────────────────────────────── */}
       <div>
         <label className="label flex items-center gap-1.5">
-          <CalendarOff size={12} /> Suletud kuupäevad
+          <CalendarOff size={12} /> {t('Suletud kuupäevad', 'Closed dates')}
         </label>
         <div className="flex flex-wrap gap-1.5 mb-1.5">
           {(cfg.puhkused ?? []).map(d => (
@@ -353,7 +372,7 @@ export function BookingHoursSection({ value, onSaved }: {
         className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50"
       >
         {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-        {dirty ? 'Salvesta ajad' : 'Salvestatud'}
+        {dirty ? t('Salvesta ajad', 'Save hours') : t('Salvestatud', 'Saved')}
       </button>
     </section>
   )

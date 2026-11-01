@@ -12,10 +12,10 @@ import { jobDesigners } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { Customer } from '../types/customer'
 import type { Patient } from '../types/patient'
-import { CONSENT_LABEL } from '../types/patient'
+import { CONSENT_LABEL_ET } from '../types/patient'
 import type { WorkerPayout } from '../hooks/useWorkerPay'
-import { DELIVERY_LABEL } from '../types/customer'
-import { INVOICE_STATUS_LABEL, outstanding, paidAmount } from '../types/invoice'
+import { DELIVERY_LABEL_ET } from '../types/customer'
+import { INVOICE_STATUS_LABEL_ET, outstanding, paidAmount } from '../types/invoice'
 import { jobTotalValue } from './jobPayments'
 
 /** Trigger a download. The only part of exporting that touches the DOM. */
@@ -68,7 +68,7 @@ export function jobColumns(
     { header: 'Kiirtöö',       value: j => j.kiirtoo },
     { header: 'Tähtaeg',       value: j => j.valmis_aeg },
     { header: 'Valmis',        value: j => j.valmis_kuupaev },
-    { header: 'Väljastus',     value: j => DELIVERY_LABEL[j.delivery_status ?? 'labor'] },
+    { header: 'Väljastus',     value: j => DELIVERY_LABEL_ET[j.delivery_status ?? 'labor'] },
     { header: 'Üle antud',     value: j => j.delivered_at },
     { header: 'Hind',          value: j => j.hind },
     { header: 'Disaini hind',  value: j => j.disain_hind },
@@ -89,7 +89,7 @@ export const INVOICE_COLUMNS: CsvColumn<InvoiceFull>[] = [
   { header: 'Tähtaeg',     value: i => i.due_date },
   { header: 'Saaja',       value: i => i.patsient },
   { header: 'Saaja liik',  value: i => i.bill_to_kind === 'customer' ? 'Klient' : 'Patsient' },
-  { header: 'Staatus',     value: i => INVOICE_STATUS_LABEL[i.status] },
+  { header: 'Staatus',     value: i => INVOICE_STATUS_LABEL_ET[i.status] },
   { header: 'Netosumma',   value: i => Number(i.net_total) },
   { header: 'KM määr %',   value: i => Number(i.vat_rate) },
   { header: 'KM summa',    value: i => Number(i.vat_total) },
@@ -153,7 +153,7 @@ export const PATIENT_MARKETING_COLUMNS: CsvColumn<Patient>[] = [
   { header: 'Nimi',       value: p => p.nimi },
   { header: 'E-post',     value: p => p.email },
   { header: 'Telefon',    value: p => p.telefon },
-  { header: 'Nõusolek',   value: p => CONSENT_LABEL[p.turundusnousolek] },
+  { header: 'Nõusolek',   value: p => CONSENT_LABEL_ET[p.turundusnousolek] },
   { header: 'Nõusoleku aeg', value: p => p.nousoleku_aeg },
   // The referring practice is a business relationship, not health data, and it
   // is what a clinic segments a mailing by.

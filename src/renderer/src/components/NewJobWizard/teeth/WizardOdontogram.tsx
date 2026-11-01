@@ -43,6 +43,7 @@ import { ToothPicker } from '@/components/teeth/ToothPicker'
 import { FOCUS_RING, WIZARD_BLUSH, WIZARD_FALLBACK_HEX } from '../wizardTheme'
 import { teethCountLabel } from './WorkTypeTabs'
 import type { ToothLegendEntry } from './ToothControls'
+import { t } from '@/lib/i18n'
 
 export interface WizardOdontogramProps {
   /** wizardWorkItems(state, types) — built by the rules module, not here. */
@@ -81,7 +82,7 @@ export function WizardOdontogram({
   /** FDI → owning item id. Used to check if a tooth belongs to another item. */
   const owners = useMemo(() => {
     const m = new Map<number, string>()
-    for (const item of items) for (const t of hambadToTeeth(item.hambad)) m.set(t, item.id)
+    for (const item of items) for (const tooth of hambadToTeeth(item.hambad)) m.set(tooth, item.id)
     for (const [fdi, too] of reservedByArch ?? []) m.set(fdi, `arch:${too}`)
     return m
   }, [items, reservedByArch])
@@ -89,18 +90,21 @@ export function WizardOdontogram({
   function handleToggle(fdi: number) {
     if (disabled) return
     if (!activeType) {
-      setRefusal('Vali kõigepealt, millisele tööle hambaid märgid.')
+      setRefusal(t('Vali kõigepealt, millisele tööle hambaid märgid.', 'First choose which work type you are marking teeth for.'))
       return
     }
     const arch = reservedByArch?.get(fdi)
     if (arch && arch !== activeType) {
-      setRefusal(`Hammas ${fdi} kuulub juba tööle „${arch}" (terve lõualuu). Muuda lõualuu valikut või eemalda see töö tüüp.`)
+      setRefusal(t(
+        `Hammas ${fdi} kuulub juba tööle „${arch}" (terve lõualuu). Muuda lõualuu valikut või eemalda see töö tüüp.`,
+        `Tooth ${fdi} already belongs to “${arch}” (whole jaw). Change the jaw selection or remove that work type.`
+      ))
       return
     }
     const ownerId = owners.get(fdi)
     if (ownerId && ownerId !== activeItem?.id) {
       const ownerItem = items.find(i => i.id === ownerId)
-      setRefusal(`Hammas ${fdi} kuulub juba tööle „${ownerItem?.too ?? ownerId}".`)
+      setRefusal(t(`Hammas ${fdi} kuulub juba tööle „${ownerItem?.too ?? ownerId}".`, `Tooth ${fdi} already belongs to “${ownerItem?.too ?? ownerId}”.`))
       return
     }
     setRefusal(null)
@@ -132,8 +136,8 @@ export function WizardOdontogram({
                 <span className="font-medium">{l.nimi}</span>
                 <span className="text-slate-500">
                   {teethCountLabel(l.count)}
-                  {l.isBridge && ' · sild'}
-                  {l.fromArch && ' · terve lõualuu'}
+                  {l.isBridge && t(' · sild', ' · bridge')}
+                  {l.fromArch && t(' · terve lõualuu', ' · whole jaw')}
                 </span>
               </li>
             ))}
@@ -195,7 +199,7 @@ export function WizardOdontogram({
           className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3 text-base font-medium text-ink-soft hover:bg-bg-card ${FOCUS_RING}`}
         >
           <Keyboard className="h-5 w-5" aria-hidden="true" />
-          Vali numbriga
+          {t('Vali numbriga', 'Choose by number')}
           {gridOpen
             ? <ChevronUp className="h-5 w-5" aria-hidden="true" />
             : <ChevronDown className="h-5 w-5" aria-hidden="true" />}
@@ -231,11 +235,13 @@ function ToothNumberGrid({ owners, activeType, colorMap, onToggle, disabled }: T
   return (
     <div className="space-y-3">
       <p className="text-base text-ink-muted">
-        Sama valiku saab teha ka nuppudega — klaviatuuriga liigu Tab-klahviga ja
-        vali tühikuga.
+        {t(
+          'Sama valiku saab teha ka nuppudega — klaviatuuriga liigu Tab-klahviga ja vali tühikuga.',
+          'You can make the same choice with these buttons — on the keyboard, move with Tab and select with Space.'
+        )}
       </p>
       <ToothRow
-        label="Ülemine lõualuu"
+        label={t('Ülemine lõualuu', 'Upper jaw')}
         teeth={FDI_UPPER}
         owners={owners}
         activeType={activeType}
@@ -244,7 +250,7 @@ function ToothNumberGrid({ owners, activeType, colorMap, onToggle, disabled }: T
         disabled={disabled}
       />
       <ToothRow
-        label="Alumine lõualuu"
+        label={t('Alumine lõualuu', 'Lower jaw')}
         teeth={FDI_LOWER}
         owners={owners}
         activeType={activeType}
@@ -299,8 +305,8 @@ function ToothRow({ label, teeth, owners, activeType, colorMap, onToggle, disabl
             >
               <span>{fdi}</span>
               {mine && <Check className="h-3.5 w-3.5" style={hex ? { color: hex } : undefined} aria-hidden="true" />}
-              {mine && <span className="sr-only">Valitud.</span>}
-              {theirs && <span className="sr-only">Kuulub tööle {owner}.</span>}
+              {mine && <span className="sr-only">{t('Valitud.', 'Selected.')}</span>}
+              {theirs && <span className="sr-only">{t(`Kuulub tööle ${owner}.`, `Belongs to ${owner}.`)}</span>}
             </button>
           )
         })}

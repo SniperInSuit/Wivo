@@ -19,6 +19,7 @@
  */
 import type { PermissionKey } from '../../../hooks/usePermissions'
 import type { PanelCtx, PanelNeed } from '../useStatsContext'
+import { t } from '@/lib/i18n'
 
 export type MetricUnit = 'eur' | 'pct' | 'days' | 'count'
 
@@ -49,63 +50,63 @@ export interface GaugeMetric {
  */
 export const GAUGE_METRICS: GaugeMetric[] = [
   {
-    key: 'kasum', label: 'Kasum', unit: 'eur', higherIsBetter: true, defaultMax: 10000,
-    hint: 'Tööde hinnad miinus kõik kulud',
+    key: 'kasum', label: t('Kasum', 'Profit'), unit: 'eur', higherIsBetter: true, defaultMax: 10000,
+    hint: t('Tööde hinnad miinus kõik kulud', 'Job prices minus all costs'),
     read: ctx => ctx.profit.profit, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'kate_pct', label: 'Kasumimarginaal', unit: 'pct', higherIsBetter: true, defaultMax: 100,
-    hint: 'Kasum protsendina tulust',
+    key: 'kate_pct', label: t('Kasumimarginaal', 'Profit margin'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
+    hint: t('Kasum protsendina tulust', 'Profit as a percentage of income'),
     read: ctx => ctx.profit.profitPct, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'kaive', label: 'Käive', unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: 'Tööde hinnad koos muudatuste tasudega',
+    key: 'kaive', label: t('Käive', 'Revenue'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('Tööde hinnad koos muudatuste tasudega', 'Job prices plus revision charges'),
     read: ctx => ctx.m.money, perm: 'payments.read',
   },
   {
-    key: 'arveldatud', label: 'Arveldatud', unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: 'Arvetele pandud, käibemaksuta',
+    key: 'arveldatud', label: t('Arveldatud', 'Invoiced'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('Arvetele pandud, käibemaksuta', 'Put on invoices, excl. VAT'),
     read: ctx => ctx.fin.billed, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'laekunud', label: 'Laekunud', unit: 'eur', higherIsBetter: true, defaultMax: 20000,
-    hint: 'Arvetelt päriselt kontole jõudnud',
+    key: 'laekunud', label: t('Laekunud', 'Received'), unit: 'eur', higherIsBetter: true, defaultMax: 20000,
+    hint: t('Arvetelt päriselt kontole jõudnud', 'Money from invoices that actually reached the account'),
     read: ctx => ctx.fin.received, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'volg', label: 'Võlgu kokku', unit: 'eur', higherIsBetter: false, defaultMax: 5000,
-    hint: 'Tasumata arved, kogu aeg — mitte ainult valitud periood',
+    key: 'volg', label: t('Võlgu kokku', 'Total owed'), unit: 'eur', higherIsBetter: false, defaultMax: 5000,
+    hint: t('Tasumata arved, kogu aeg — mitte ainult valitud periood', 'Unpaid invoices, all time — not just the selected period'),
     read: ctx => ctx.debt.outstanding, perm: 'payments.read', needs: ['finance'],
   },
   {
-    key: 'tahtajas', label: 'Tähtajas valmis', unit: 'pct', higherIsBetter: true, defaultMax: 100,
-    hint: 'Osa töödest, mis jõudsid valmis tähtajaks',
+    key: 'tahtajas', label: t('Tähtajas valmis', 'Done on time'), unit: 'pct', higherIsBetter: true, defaultMax: 100,
+    hint: t('Osa töödest, mis jõudsid valmis tähtajaks', 'Share of jobs finished by their due date'),
     read: ctx => ctx.onTime.ratePct, needs: ['flow'],
   },
   {
-    key: 'labiaeg', label: 'Läbiaeg (mediaan)', unit: 'days', higherIsBetter: false, defaultMax: 14,
-    hint: 'Mediaan päevades saabumisest valmimiseni',
+    key: 'labiaeg', label: t('Läbiaeg (mediaan)', 'Turnaround (median)'), unit: 'days', higherIsBetter: false, defaultMax: 14,
+    hint: t('Mediaan päevades saabumisest valmimiseni', 'Median days from arrival to completion'),
     read: ctx => ctx.turnaround.median, needs: ['flow'],
   },
   {
-    key: 'tood', label: 'Valmis tööd', unit: 'count', higherIsBetter: true, defaultMax: 100,
-    hint: 'Tööde arv valitud perioodil',
+    key: 'tood', label: t('Valmis tööd', 'Finished jobs'), unit: 'count', higherIsBetter: true, defaultMax: 100,
+    hint: t('Tööde arv valitud perioodil', 'Number of jobs in the selected period'),
     read: ctx => ctx.m.yksused,
   },
   {
-    key: 'hambad', label: 'Hambad', unit: 'count', higherIsBetter: true, defaultMax: 500,
-    hint: 'Toodetud hambaid valitud perioodil',
+    key: 'hambad', label: t('Hambad', 'Teeth'), unit: 'count', higherIsBetter: true, defaultMax: 500,
+    hint: t('Toodetud hambaid valitud perioodil', 'Teeth produced in the selected period'),
     read: ctx => ctx.m.hambad,
   },
   {
-    key: 'kasum_too', label: 'Kasum töö kohta', unit: 'eur', higherIsBetter: true, defaultMax: 200,
-    hint: 'Kasum jagatud tööde arvuga',
+    key: 'kasum_too', label: t('Kasum töö kohta', 'Profit per job'), unit: 'eur', higherIsBetter: true, defaultMax: 200,
+    hint: t('Kasum jagatud tööde arvuga', 'Profit divided by the number of jobs'),
     read: ctx => ctx.unit.profitPerJob, perm: 'payments.read', needs: ['finance', 'unit'],
   },
   {
-    key: 'kate_hammas', label: 'Kate hamba kohta', unit: 'eur', higherIsBetter: true, defaultMax: 100,
-    hint: 'Tulu miinus kulu, hamba kohta',
+    key: 'kate_hammas', label: t('Kate hamba kohta', 'Margin per tooth'), unit: 'eur', higherIsBetter: true, defaultMax: 100,
+    hint: t('Tulu miinus kulu, hamba kohta', 'Income minus cost, per tooth'),
     read: ctx => ctx.unit.marginPerTooth, perm: 'payments.read', needs: ['finance', 'unit'],
   },
 ]
@@ -208,7 +209,7 @@ export function formatMetric(value: number, unit: MetricUnit): string {
   switch (unit) {
     case 'eur': return `${value.toFixed(2)} €`
     case 'pct': return `${value.toFixed(1)}%`
-    case 'days': return `${value} p`
+    case 'days': return t(`${value} p`, `${value} d`)
     case 'count': return String(value)
   }
 }

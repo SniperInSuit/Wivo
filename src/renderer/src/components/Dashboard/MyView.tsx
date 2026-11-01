@@ -21,6 +21,7 @@ import { PanelGrid, visiblePanels, neededSlices, type VisibilityInput } from './
 import { PanelPicker } from './PanelPicker'
 import { useStatsContext } from './useStatsContext'
 import type { Period, DateRange } from './useDashboardStats'
+import { t } from '@/lib/i18n'
 
 interface MyViewProps {
   jobs: Job[]
@@ -65,8 +66,8 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] text-ink-faint">
-          {panels.length} paneeli · {presetKey ? PRESET_BY_KEY[presetKey]?.label ?? 'Kohandatud' : 'Kohandatud'}
-          {editing && ' · lohista ümber või muuda suurust'}
+          {t(`${panels.length} paneeli`, `${panels.length} ${panels.length === 1 ? 'panel' : 'panels'}`)} · {presetKey ? PRESET_BY_KEY[presetKey]?.label ?? t('Kohandatud', 'Custom') : t('Kohandatud', 'Custom')}
+          {editing && t(' · lohista ümber või muuda suurust', ' · drag to rearrange or resize')}
         </p>
         <div className="flex items-center gap-1.5">
           <button
@@ -75,10 +76,10 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
               editing ? 'border-accent text-accent' : 'border-ink-faint/25'
             }`}
           >
-            {editing ? <><Check size={13} /> Valmis</> : <><LayoutGrid size={13} /> Paiguta</>}
+            {editing ? <><Check size={13} /> {t('Valmis', 'Done')}</> : <><LayoutGrid size={13} /> {t('Paiguta', 'Arrange')}</>}
           </button>
           <button onClick={() => setPicking(true)} className="btn-ghost text-xs border border-ink-faint/25">
-            <Sliders size={13} /> Kohanda
+            <Sliders size={13} /> {t('Kohanda', 'Customise')}
           </button>
         </div>
       </div>
@@ -135,9 +136,10 @@ export function MyView({ jobs, period, window, role }: MyViewProps) {
 
       {panels.length > 0 && (
         <p className="text-[10px] text-ink-faint leading-relaxed">
-          Kõik paneelid kasutavad ülal valitud perioodi. Paneel, mille kohta sul õigust ei ole,
-          ei ole nimekirjas ega renderdu — {PANEL_BY_ID['raha.kasum'].title.toLowerCase()} ja teised
-          rahanumbrid nõuavad eraldi õigust.
+          {t(
+            `Kõik paneelid kasutavad ülal valitud perioodi. Paneel, mille kohta sul õigust ei ole, ei ole nimekirjas ega renderdu — ${PANEL_BY_ID['raha.kasum'].title.toLowerCase()} ja teised rahanumbrid nõuavad eraldi õigust.`,
+            `Every panel uses the period selected above. A panel you have no permission for is not listed and does not render — ${PANEL_BY_ID['raha.kasum'].title.toLowerCase()} and other money figures need a separate permission.`,
+          )}
         </p>
       )}
     </div>

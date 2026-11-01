@@ -14,6 +14,7 @@ import type { PriceMode, WorkType } from './workTypes'
 import { resolveWorkType, tierFor } from './workTypes'
 import type { PriceTier } from './workTypes'
 import { countLargeTeeth, countSmallTeeth } from './teeth'
+import { t } from '../i18n'
 
 /** €/tooth for a material, split by FDI position class. */
 export interface MaterialPricing {
@@ -158,10 +159,10 @@ export function overheadsMonthly(overheads: Overhead[], toopaevi = 5): number {
 
 /** For labels: "/kuus", "/päev". One place, so screens cannot disagree. */
 export const OVERHEAD_PERIOOD_SILT: Record<OverheadPeriood, string> = {
-  paev:  '/tööpäev',
-  nadal: '/nädal',
-  kuu:   '/kuus',
-  aasta: '/aasta',
+  paev:  t('/tööpäev', '/working day'),
+  nadal: t('/nädal', '/week'),
+  kuu:   t('/kuus', '/month'),
+  aasta: t('/aasta', '/year'),
 }
 
 /** An add-on the customer can be charged for. Revenue, not cost. */
@@ -227,25 +228,25 @@ export function workTypePriceFor(
   teeth: number,
   useDiscount = false
 ): WorkTypePriceResult | null {
-  const t = resolveWorkType(too, types)
+  const type = resolveWorkType(too, types)
   // A volume tier REPLACES the base price at this quantity — flat, not
   // progressive: six crowns at the "6+" rate means all six at that rate. See
   // PriceTier for why. `hind` stays the price from quantity 1, so the tier list
   // only ever holds the exceptions to it.
-  const tier = tierFor(t, teeth)
-  const base = typeof t.hind === 'number' && t.hind > 0 ? t.hind : null
+  const tier = tierFor(type, teeth)
+  const base = typeof type.hind === 'number' && type.hind > 0 ? type.hind : null
   const full = tier ? tier.hind : base
   // A tier without its own discount falls back to the type's, rather than
   // silently losing the discount at higher volumes.
   const tierDiscount = tier && typeof tier.soodushind === 'number' && tier.soodushind > 0
     ? tier.soodushind
     : null
-  const typeDiscount = typeof t.soodushind === 'number' && t.soodushind > 0 ? t.soodushind : null
+  const typeDiscount = typeof type.soodushind === 'number' && type.soodushind > 0 ? type.soodushind : null
   const discount = tierDiscount ?? typeDiscount
   const unit = useDiscount && discount != null ? discount : full
   if (unit == null) return null
 
-  const mode: PriceMode = t.hinnaTyyp ?? 'too'
+  const mode: PriceMode = type.hinnaTyyp ?? 'too'
   // A per-tooth price with no teeth picked yet is not zero — it is "not known
   // yet", and returning 0 would stamp a free job onto the form.
   if (mode === 'hammas' && teeth <= 0) return null

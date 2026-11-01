@@ -12,6 +12,7 @@ import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
+import { t } from '@/lib/i18n'
 
 interface MergedValmisCardProps {
   job: Job
@@ -51,7 +52,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5
               rounded bg-slate-700 text-slate-100">
               <CornerDownLeft size={9} />
-              Muudatus #{revisions.length}
+              {t('Muudatus', 'Revision')} #{revisions.length}
             </span>
             {latest.kiirtoo && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5
@@ -103,7 +104,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
         {/* ── RIGHT: Original (context / smaller) ── */}
         <div className="flex-[2] p-3 flex flex-col gap-1" style={{ backgroundColor: `${typeHex}18` }}>
           <p className="text-[9px] font-bold text-ink-faint uppercase tracking-wider mb-0.5">
-            Originaal
+            {t('Originaal', 'Original')}
           </p>
           <p className="font-semibold text-xs text-ink-muted leading-tight">{job.patsient}</p>
           {job.too && (

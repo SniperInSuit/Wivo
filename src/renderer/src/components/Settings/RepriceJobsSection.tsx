@@ -13,6 +13,7 @@ import { useInvoices } from '../../hooks/useInvoices'
 import { useSettings } from '../../stores/useSettings'
 import { planReprice, type RepricePlan } from '../../lib/repriceJobs'
 import { describeError } from '../Patients/errors'
+import { t } from '@/lib/i18n'
 
 export function RepriceJobsSection() {
   const { data: jobs = [] } = useJobs()
@@ -92,15 +93,17 @@ export function RepriceJobsSection() {
     <section>
       <div className="flex items-center gap-2 mb-1">
         <RefreshCw size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Arvuta tööde hinnad ümber</h3>
+        <h3 className="text-sm font-semibold text-ink">{t('Arvuta tööde hinnad ümber', 'Recalculate job prices')}</h3>
       </div>
       <p className="text-xs text-ink-faint mb-3 leading-relaxed">
-        Kirjutab olemasolevate tööde hinnad praeguse hinnakirja järgi üle — töö tüübi
-        hind, siis materjali hind, siis €/hammas, ja kiirtöö kordaja peale.
-        <strong className="text-ink-muted"> Juba väljastatud arveid see ei muuda</strong> —
-        arve read on koopiad arveldamise hetkest.
+        {t(
+          'Kirjutab olemasolevate tööde hinnad praeguse hinnakirja järgi üle — töö tüübi hind, siis materjali hind, siis €/hammas, ja kiirtöö kordaja peale.',
+          'Overwrites existing job prices from the current price list — work type price, then material price, then €/tooth, with the rush multiplier on top.',
+        )}
+        <strong className="text-ink-muted"> {t('Juba väljastatud arveid see ei muuda', 'It does not change invoices already issued')}</strong>{' '}
+        {t('— arve read on koopiad arveldamise hetkest.', '— invoice lines are copies taken at the moment of billing.')}
         <br />
-        Tagasivõtmise nuppu ei ole. Vaata ülevaade enne kinnitamist üle.
+        {t('Tagasivõtmise nuppu ei ole. Vaata ülevaade enne kinnitamist üle.', 'There is no undo. Check the overview before confirming.')}
       </p>
 
       <label className="flex items-center gap-1.5 text-xs text-ink-muted mb-2 cursor-pointer">
@@ -109,19 +112,19 @@ export function RepriceJobsSection() {
           onChange={e => { setIncludeBilled(e.target.checked); setPlan(null) }}
           className="accent-accent"
         />
-        Kaasa ka tööd, mis on juba arvel
+        {t('Kaasa ka tööd, mis on juba arvel', 'Include jobs already on an invoice')}
       </label>
 
       {/* Revisions are priced independently of the job, so they are handled
           independently: a lab that stops charging for its own rework should not
           have to touch the client prices to do it. */}
       <div className="mb-3">
-        <p className="text-xs text-ink-muted mb-1">Muudatuste hinnad</p>
+        <p className="text-xs text-ink-muted mb-1">{t('Muudatuste hinnad', 'Revision prices')}</p>
         <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
           {([
-            { key: 'skip', label: 'Jäta puutumata' },
-            { key: 'zero', label: 'Nulli (0 €)' },
-            { key: 'recalc', label: `Arvuta ümber (${settings.muudatusHambaHind} €/hammas)` },
+            { key: 'skip', label: t('Jäta puutumata', 'Leave as is') },
+            { key: 'zero', label: t('Nulli (0 €)', 'Set to zero (0 €)') },
+            { key: 'recalc', label: t(`Arvuta ümber (${settings.muudatusHambaHind} €/hammas)`, `Recalculate (${settings.muudatusHambaHind} €/tooth)`) },
           ] as const).map(o => (
             <button
               key={o.key}
@@ -139,7 +142,7 @@ export function RepriceJobsSection() {
 
       {done != null && (
         <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-1.5">
-          <CheckCircle2 size={13} /> {done} tööd uuendatud.
+          <CheckCircle2 size={13} /> {t(`${done} tööd uuendatud.`, `${done} ${done === 1 ? 'job' : 'jobs'} updated.`)}
         </p>
       )}
       {error && (
@@ -150,30 +153,32 @@ export function RepriceJobsSection() {
 
       {!plan ? (
         <button onClick={preview} className="btn-ghost border border-ink-faint/25">
-          <RefreshCw size={13} /> Vaata ülevaadet
+          <RefreshCw size={13} /> {t('Vaata ülevaadet', 'Show overview')}
         </button>
       ) : (
         <div className="rounded-xl border border-ink-faint/20 overflow-hidden">
           <div className="px-3 py-2.5 bg-bg-sidebar grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Muutub" value={`${plan.changes.length} tööd`} />
-            <Stat label="Jääb samaks" value={`${plan.unchanged} tööd`} />
-            <Stat label="Praegu kokku" value={`${plan.oldTotal.toFixed(2)} €`} />
-            <Stat label="Uus kokku" value={`${plan.newTotal.toFixed(2)} €`} accent />
+            <Stat label={t('Muutub', 'Changing')} value={t(`${plan.changes.length} tööd`, `${plan.changes.length} ${plan.changes.length === 1 ? 'job' : 'jobs'}`)} />
+            <Stat label={t('Jääb samaks', 'Unchanged')} value={t(`${plan.unchanged} tööd`, `${plan.unchanged} ${plan.unchanged === 1 ? 'job' : 'jobs'}`)} />
+            <Stat label={t('Praegu kokku', 'Current total')} value={`${plan.oldTotal.toFixed(2)} €`} />
+            <Stat label={t('Uus kokku', 'New total')} value={`${plan.newTotal.toFixed(2)} €`} accent />
           </div>
 
           {plan.revisionChanges.length > 0 && (
             <div className="px-3 py-2 border-t border-ink-faint/15 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label="Muudatusi muutub" value={`${plan.revisionChanges.length}`} />
-              <Stat label="Muudatused praegu" value={`${plan.revisionOldTotal.toFixed(2)} €`} />
-              <Stat label="Muudatused uus" value={`${plan.revisionNewTotal.toFixed(2)} €`} accent />
+              <Stat label={t('Muudatusi muutub', 'Revisions changing')} value={`${plan.revisionChanges.length}`} />
+              <Stat label={t('Muudatused praegu', 'Revisions now')} value={`${plan.revisionOldTotal.toFixed(2)} €`} />
+              <Stat label={t('Muudatused uus', 'Revisions new')} value={`${plan.revisionNewTotal.toFixed(2)} €`} accent />
             </div>
           )}
 
           {plan.skipped.length > 0 && (
             <p className="px-3 py-2 text-[11px] text-orange-600 bg-orange-50 border-t border-orange-200 flex items-start gap-1.5">
               <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
-              {plan.skipped.length} tööd jäetakse vahele — hinda ei saa arvutada
-              (nt hambaid pole valitud ja töö tüübil pole hinda). Need jäävad muutmata.
+              {t(
+                `${plan.skipped.length} tööd jäetakse vahele — hinda ei saa arvutada (nt hambaid pole valitud ja töö tüübil pole hinda). Need jäävad muutmata.`,
+                `${plan.skipped.length} ${plan.skipped.length === 1 ? 'job is' : 'jobs are'} skipped — the price can’t be calculated (e.g. no teeth selected and the work type has no price). ${plan.skipped.length === 1 ? 'It stays' : 'They stay'} unchanged.`,
+              )}
             </p>
           )}
 
@@ -182,11 +187,11 @@ export function RepriceJobsSection() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-bg-card">
                   <tr className="text-left text-[10px] uppercase tracking-wide text-ink-muted border-b border-ink-faint/15">
-                    <th className="px-3 py-1.5 font-semibold">Töö</th>
-                    <th className="px-3 py-1.5 font-semibold">Patsient</th>
-                    <th className="px-3 py-1.5 font-semibold">Alus</th>
-                    <th className="px-3 py-1.5 font-semibold text-right">Praegu</th>
-                    <th className="px-3 py-1.5 font-semibold text-right">Uus</th>
+                    <th className="px-3 py-1.5 font-semibold">{t('Töö', 'Job')}</th>
+                    <th className="px-3 py-1.5 font-semibold">{t('Patsient', 'Patient')}</th>
+                    <th className="px-3 py-1.5 font-semibold">{t('Alus', 'Basis')}</th>
+                    <th className="px-3 py-1.5 font-semibold text-right">{t('Praegu', 'Now')}</th>
+                    <th className="px-3 py-1.5 font-semibold text-right">{t('Uus', 'New')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,7 +201,7 @@ export function RepriceJobsSection() {
                         {c.job.too ?? '—'}
                         {c.billed && (
                           <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-bg-sidebar text-ink-faint">
-                            arvel
+                            {t('arvel', 'invoiced')}
                           </span>
                         )}
                       </td>
@@ -210,7 +215,10 @@ export function RepriceJobsSection() {
               </table>
               {plan.changes.length > 200 && (
                 <p className="px-3 py-1.5 text-[11px] text-ink-faint">
-                  Näidatud esimesed 200 rida {plan.changes.length}-st. Kinnitamine puudutab kõiki.
+                  {t(
+                    `Näidatud esimesed 200 rida ${plan.changes.length}-st. Kinnitamine puudutab kõiki.`,
+                    `Showing the first 200 rows of ${plan.changes.length}. Confirming applies to all of them.`,
+                  )}
                 </p>
               )}
             </div>
@@ -223,10 +231,10 @@ export function RepriceJobsSection() {
               className="btn-primary disabled:opacity-50"
             >
               {running ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-              Kinnita ja kirjuta üle ({plan.changes.length + plan.revisionChanges.length})
+              {t('Kinnita ja kirjuta üle', 'Confirm and overwrite')} ({plan.changes.length + plan.revisionChanges.length})
             </button>
             <button onClick={() => setPlan(null)} disabled={running} className="btn-ghost border border-ink-faint/25">
-              Loobu
+              {t('Loobu', 'Cancel')}
             </button>
           </div>
         </div>

@@ -3,6 +3,7 @@
  * Teeth are arranged in upper and lower arches, click to select.
  * Selected → stored as comma-separated FDI numbers (e.g. "11,21,22")
  */
+import { t } from '@/lib/i18n'
 
 // ─── Arch geometry ────────────────────────────────────────────────────────────
 const W = 460, H = 330
@@ -79,7 +80,7 @@ interface OdontogramPickerProps {
 
 export function OdontogramPicker({ value, onChange, disabled }: OdontogramPickerProps) {
   const selected = new Set(
-    value.split(',').map(t => t.trim()).filter(Boolean)
+    value.split(',').map(tooth => tooth.trim()).filter(Boolean)
   )
 
   function toggle(num: number) {
@@ -244,10 +245,10 @@ export function OdontogramPicker({ value, onChange, disabled }: OdontogramPicker
       <div className="flex items-center justify-between">
         {count > 0 ? (
           <p className="text-xs text-accent font-semibold">
-            {count} hammas{count !== 1 ? 't' : ''} valitud: {[...selected].join(', ')}
+            {t(`${count} hammas${count !== 1 ? 't' : ''} valitud: ${[...selected].join(', ')}`, `${count} ${count === 1 ? 'tooth' : 'teeth'} selected: ${[...selected].join(', ')}`)}
           </p>
         ) : (
-          <p className="text-xs text-ink-faint">Vali hambad klõpsates</p>
+          <p className="text-xs text-ink-faint">{t('Vali hambad klõpsates', 'Click to select teeth')}</p>
         )}
         {count > 0 && (
           <button
@@ -256,7 +257,7 @@ export function OdontogramPicker({ value, onChange, disabled }: OdontogramPicker
             disabled={disabled}
             className="text-xs text-ink-muted hover:text-red-500 transition-colors"
           >
-            Tühjenda
+            {t('Tühjenda', 'Clear')}
           </button>
         )}
       </div>

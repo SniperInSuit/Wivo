@@ -1,5 +1,6 @@
 import { useCustomers } from '@/hooks/useCustomers'
 import { WizardSelect } from '../ui/WizardSelect'
+import { t } from '@/lib/i18n'
 
 export interface WizardCustomerSelectProps {
   id?: string
@@ -28,7 +29,7 @@ export function WizardCustomerSelect({ id, value, onChange, invalid }: WizardCus
     .filter(c => !c.archived_at || c.id === value)
     .map(c => ({
       value: c.id,
-      label: c.archived_at ? `${c.name} (arhiveeritud)` : c.name,
+      label: c.archived_at ? t(`${c.name} (arhiveeritud)`, `${c.name} (archived)`) : c.name,
     }))
 
   return (
@@ -37,7 +38,7 @@ export function WizardCustomerSelect({ id, value, onChange, invalid }: WizardCus
       value={value}
       onChange={onChange}
       options={options}
-      placeholder={isLoading ? 'Laen tellijaid…' : 'Tellija määramata'}
+      placeholder={isLoading ? t('Laen tellijaid…', 'Loading clients…') : t('Tellija määramata', 'No client selected')}
       disabled={isLoading}
       invalid={invalid}
     />

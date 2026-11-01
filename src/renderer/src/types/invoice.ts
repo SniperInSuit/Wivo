@@ -1,4 +1,5 @@
 import type { BillToKind } from './customer'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 // Invoicing (Phase 4, migration 020).
 //
 // An invoice line copies its description and price from the job at billing
@@ -8,6 +9,14 @@ import type { BillToKind } from './customer'
 export type InvoiceStatus = 'mustand' | 'saadetud' | 'makstud' | 'tuhistatud'
 
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
+  mustand:    t('Mustand', 'Draft'),
+  saadetud:   t('Saadetud', 'Sent'),
+  makstud:    t('Makstud', 'Paid'),
+  tuhistatud: t('Tühistatud', 'Cancelled'),
+}
+
+/** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
+export const INVOICE_STATUS_LABEL_ET: Record<InvoiceStatus, string> = {
   mustand:    'Mustand',
   saadetud:   'Saadetud',
   makstud:    'Makstud',
@@ -24,10 +33,10 @@ export const INVOICE_STATUS_HEX: Record<InvoiceStatus, string> = {
 export type PaymentMethod = 'ulekanne' | 'sularaha' | 'kaart' | 'muu'
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  ulekanne: 'Ülekanne',
-  sularaha: 'Sularaha',
-  kaart:    'Kaart',
-  muu:      'Muu',
+  ulekanne: t('Ülekanne', 'Bank transfer'),
+  sularaha: t('Sularaha', 'Cash'),
+  kaart:    t('Kaart', 'Card'),
+  muu:      t('Muu', 'Other'),
 }
 
 export interface InvoiceLine {

@@ -6,18 +6,19 @@
  * scoped BY `clinic_id`; it is not a clinic. The naming collision is historical
  * and `sql/035` says so at length.
  */
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 /** How this customer is billed. */
 export type BillingMode = 'per_job' | 'monthly'
 
 export const BILLING_MODE_LABEL: Record<BillingMode, string> = {
-  per_job: 'Töö kaupa',
-  monthly: 'Kuu koondarve',
+  per_job: t('Töö kaupa', 'Per job'),
+  monthly: t('Kuu koondarve', 'Monthly statement'),
 }
 
 export const BILLING_MODE_HINT: Record<BillingMode, string> = {
-  per_job: 'Iga töö arveldatakse eraldi, kui see valmis saab.',
-  monthly: 'Üks arve kuus, mis katab kõik selle kuu valminud tööd.',
+  per_job: t('Iga töö arveldatakse eraldi, kui see valmis saab.', 'Each job is invoiced separately when it is done.'),
+  monthly: t('Üks arve kuus, mis katab kõik selle kuu valminud tööd.', 'One invoice a month, covering every job finished that month.'),
 }
 
 export interface Customer {
@@ -70,6 +71,13 @@ export type BillToKind = 'patient' | 'customer'
 export type DeliveryStatus = 'labor' | 'teel' | 'yle_antud'
 
 export const DELIVERY_LABEL: Record<DeliveryStatus, string> = {
+  labor:     t('Laboris', 'In the lab'),
+  teel:      t('Teel', 'In transit'),
+  yle_antud: t('Üle antud', 'Delivered'),
+}
+
+/** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
+export const DELIVERY_LABEL_ET: Record<DeliveryStatus, string> = {
   labor:     'Laboris',
   teel:      'Teel',
   yle_antud: 'Üle antud',

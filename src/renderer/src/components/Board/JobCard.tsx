@@ -10,6 +10,7 @@ import { jobPaymentState } from '../../lib/jobPayments'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
+import { t } from '@/lib/i18n'
 
 interface JobCardProps {
   job: Job
@@ -71,22 +72,22 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
         <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
         <div className="flex items-center gap-1 flex-shrink-0">
           {job.mudel && (
-            <span title="Mudel" className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
+            <span title={t('Mudel', 'Model')} className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
               M
             </span>
           )}
           {job.kiirtoo && (
-            <span title="Kiirtöö">
+            <span title={t('Kiirtöö', 'Rush job')}>
               <Zap size={13} className="text-orange-500" />
             </span>
           )}
           {hasRevision && (
-            <span title="Muudatused">
+            <span title={t('Muudatused', 'Revisions')}>
               <MessageSquare size={13} className="text-amber-500" />
             </span>
           )}
           {job.hind != null && (
-            <span title={pay.settled ? `${job.hind} € makstud` : pay.partial ? `${pay.paid.toFixed(0)}/${job.hind} €` : `${job.hind} € maksmata`}
+            <span title={pay.settled ? t(`${job.hind} € makstud`, `${job.hind} € paid`) : pay.partial ? `${pay.paid.toFixed(0)}/${job.hind} €` : t(`${job.hind} € maksmata`, `${job.hind} € unpaid`)}
               className={`text-[9px] font-bold px-1 py-0.5 rounded ${
                 pay.settled
                   ? 'bg-emerald-100 text-emerald-700'
@@ -106,7 +107,7 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
         <div className="flex items-center gap-1 flex-wrap mb-2">
           {workItems.map(item => (
             <span key={item.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${wt.hex(item.too)}20`, color: wt.hex(item.too) }}>
-              {item.too}{item.bridge ? ' (sild)' : ''}
+              {item.too}{item.bridge ? t(' (sild)', ' (bridge)') : ''}
             </span>
           ))}
         </div>

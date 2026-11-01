@@ -7,6 +7,7 @@ import type { Profile } from '../../lib/supabase'
 import {
   ALL_PERMISSIONS, PERMISSION_LABELS, type PermissionKey
 } from '../../hooks/usePermissions'
+import { t } from '@/lib/i18n'
 
 interface WorkerWithPerms extends Profile {
   permissions: Map<string, boolean>
@@ -24,23 +25,23 @@ function DeleteWorkerButton({ name, busy, onDelete }: {
         onClick={() => setConfirm(true)}
         className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-600 transition-colors"
       >
-        <Trash2 size={12} /> Kustuta konto jäädavalt
+        <Trash2 size={12} /> {t('Kustuta konto jäädavalt', 'Delete account permanently')}
       </button>
     )
   }
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-xs text-red-600 font-medium">
-        Kustutada {name} jäädavalt? Kasutajanimi vabaneb.
+        {t(`Kustutada ${name} jäädavalt? Kasutajanimi vabaneb.`, `Delete ${name} permanently? The username becomes available again.`)}
       </span>
       <button
         onClick={() => { onDelete(); setConfirm(false) }}
         disabled={busy}
         className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-lg hover:bg-red-700 disabled:opacity-50"
       >
-        {busy ? 'Kustutab…' : 'Jah, kustuta'}
+        {busy ? t('Kustutab…', 'Deleting…') : t('Jah, kustuta', 'Yes, delete')}
       </button>
-      <button onClick={() => setConfirm(false)} className="btn-ghost text-xs">Loobu</button>
+      <button onClick={() => setConfirm(false)} className="btn-ghost text-xs">{t('Loobu', 'Cancel')}</button>
     </div>
   )
 }
@@ -57,21 +58,21 @@ function RemoveWorkerButton({ name, busy, onRemove }: {
         onClick={() => setConfirm(true)}
         className="flex items-center gap-1.5 text-xs text-ink-faint hover:text-red-500 transition-colors"
       >
-        <Trash2 size={12} /> Eemalda meeskonnast
+        <Trash2 size={12} /> {t('Eemalda meeskonnast', 'Remove from team')}
       </button>
     )
   }
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-red-600 font-medium">Eemaldada {name}?</span>
+      <span className="text-xs text-red-600 font-medium">{t(`Eemaldada ${name}?`, `Remove ${name}?`)}</span>
       <button
         onClick={() => { onRemove(); setConfirm(false) }}
         disabled={busy}
         className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-lg hover:bg-red-600 disabled:opacity-50"
       >
-        {busy ? 'Eemaldab…' : 'Jah, eemalda'}
+        {busy ? t('Eemaldab…', 'Removing…') : t('Jah, eemalda', 'Yes, remove')}
       </button>
-      <button onClick={() => setConfirm(false)} className="btn-ghost text-xs">Loobu</button>
+      <button onClick={() => setConfirm(false)} className="btn-ghost text-xs">{t('Loobu', 'Cancel')}</button>
     </div>
   )
 }
@@ -155,8 +156,8 @@ export function WorkersPage() {
   // write is its removal, so no extra column is needed to date it.
   const RESTORE_WINDOW_MS = 60_000
   const recentlyRemoved = removed.filter(r => {
-    const t = r.updated_at ? new Date(r.updated_at).getTime() : 0
-    return Date.now() - t < RESTORE_WINDOW_MS
+    const removedAt = r.updated_at ? new Date(r.updated_at).getTime() : 0
+    return Date.now() - removedAt < RESTORE_WINDOW_MS
   })
 
   // Never carry a typed password or a shown one across to another person.
@@ -185,7 +186,7 @@ export function WorkersPage() {
       if (selectedId === worker.id) setSelectedId(null)
       await loadWorkers()
     } catch (err) {
-      setRemoveError((err as Error)?.message ?? 'Eemaldamine ebaõnnestus')
+      setRemoveError((err as Error)?.message ?? t('Eemaldamine ebaõnnestus', 'Removal failed'))
     } finally {
       setRemoving(null)
     }
@@ -202,7 +203,7 @@ export function WorkersPage() {
   async function setWorkerPassword(worker: WorkerWithPerms) {
     setRemoveError(null); setPwDone(null)
     if (newPassword.trim().length < 6) {
-      setRemoveError('Parool peab olema vähemalt 6 tähemärki')
+      setRemoveError(t('Parool peab olema vähemalt 6 tähemärki', 'Password must be at least 6 characters'))
       return
     }
     setPwSaving(true)
@@ -215,7 +216,7 @@ export function WorkersPage() {
       setPwDone(newPassword.trim())
       setNewPassword('')
     } catch (err) {
-      setRemoveError((err as Error)?.message ?? 'Parooli määramine ebaõnnestus')
+      setRemoveError((err as Error)?.message ?? t('Parooli määramine ebaõnnestus', 'Setting the password failed'))
     } finally {
       setPwSaving(false)
     }
@@ -235,7 +236,7 @@ export function WorkersPage() {
       if (selectedId === worker.id) setSelectedId(null)
       await loadWorkers()
     } catch (err) {
-      setRemoveError((err as Error)?.message ?? 'Kustutamine ebaõnnestus')
+      setRemoveError((err as Error)?.message ?? t('Kustutamine ebaõnnestus', 'Deletion failed'))
     } finally {
       setDeleting(null)
     }
@@ -253,7 +254,7 @@ export function WorkersPage() {
       if (error) throw error
       await loadWorkers()
     } catch (err) {
-      setRemoveError((err as Error)?.message ?? 'Taastamine ebaõnnestus')
+      setRemoveError((err as Error)?.message ?? t('Taastamine ebaõnnestus', 'Restoring failed'))
     } finally {
       setRemoving(null)
     }
@@ -287,7 +288,7 @@ export function WorkersPage() {
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!inviteEmail.trim() || !invitePassword.trim()) return
-    if (invitePassword.length < 6) { setInviteError('Parool peab olema vähemalt 6 tähemärki'); return }
+    if (invitePassword.length < 6) { setInviteError(t('Parool peab olema vähemalt 6 tähemärki', 'Password must be at least 6 characters')); return }
     setInviteError(null)
     setInviting(true)
     try {
@@ -333,19 +334,24 @@ export function WorkersPage() {
       setInvited(true)
       await loadWorkers()
     } catch (err: unknown) {
-      const msg = (err as Error)?.message ?? 'Konto loomine ebaõnnestus'
+      const msg = (err as Error)?.message ?? t('Konto loomine ebaõnnestus', 'Creating the account failed')
       if (msg.includes('already registered')) setInviteError(
-        'See kasutajanimi on juba võetud. Kontot ei saa üle luua — kui see on '
-        + 'varem eemaldatud liige, lisa ta allpool tagasi ja määra talle uus parool.'
+        t('See kasutajanimi on juba võetud. Kontot ei saa üle luua — kui see on '
+        + 'varem eemaldatud liige, lisa ta allpool tagasi ja määra talle uus parool.',
+        'This username is already taken. The account cannot be created again — if this is '
+        + 'a previously removed member, add them back below and set a new password.')
       )
       else if (msg.toLowerCase().includes('rate limit')) {
         // Supabase's built-in SMTP allows only a couple of messages an hour, and
         // a signup only sends one at all when confirmation is switched on —
         // which it does not need to be for in-house accounts.
         setInviteError(
-          'Supabase e-kirjade piirang sai täis. Lülita Supabase → Authentication → '
+          t('Supabase e-kirjade piirang sai täis. Lülita Supabase → Authentication → '
           + 'Providers → Email alt "Confirm email" välja — majasiseseid kontosid ei ole '
-          + 'vaja kinnitada ja siis ei saadeta kirju üldse. Seejärel proovi uuesti.'
+          + 'vaja kinnitada ja siis ei saadeta kirju üldse. Seejärel proovi uuesti.',
+          'Supabase email limit reached. Turn off "Confirm email" under Supabase → Authentication → '
+          + 'Providers → Email — in-house accounts do not need confirming, and then no emails '
+          + 'are sent at all. Then try again.')
         )
       }
       else setInviteError(msg)
@@ -357,7 +363,7 @@ export function WorkersPage() {
   if (!isOwner) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-ink-muted">Ainult kliiniku omanik saab meeskonda hallata.</p>
+        <p className="text-ink-muted">{t('Ainult kliiniku omanik saab meeskonda hallata.', 'Only the clinic owner can manage the team.')}</p>
       </div>
     )
   }
@@ -367,10 +373,10 @@ export function WorkersPage() {
       <div className="px-6 py-6 space-y-5 max-w-4xl">
         <div>
           <h1 className="text-xl font-bold text-page-ink flex items-center gap-2">
-            <Users size={20} /> Meeskond
+            <Users size={20} /> {t('Meeskond', 'Team')}
           </h1>
           <p className="text-sm text-page-muted">
-            Halda töötajaid ja nende õigusi.
+            {t('Halda töötajaid ja nende õigusi.', 'Manage staff and their permissions.')}
           </p>
         </div>
 
@@ -397,7 +403,7 @@ export function WorkersPage() {
                 </p>
                 <p className="text-[11px] text-ink-faint flex items-center gap-1.5">
                   <Shield size={10} />
-                  {w.role === 'owner' ? 'Omanik' : 'Töötaja'}
+                  {w.role === 'owner' ? t('Omanik', 'Owner') : t('Töötaja', 'Staff member')}
                 </p>
               </button>
             ))}
@@ -408,7 +414,7 @@ export function WorkersPage() {
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-ink-faint/30 text-ink-muted hover:border-accent hover:text-accent transition-colors text-sm"
             >
               <UserPlus size={14} />
-              Lisa töötaja
+              {t('Lisa töötaja', 'Add staff member')}
             </button>
           </div>
 
@@ -417,20 +423,20 @@ export function WorkersPage() {
             {!selected ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
                 <Shield size={28} className="text-ink-faint" />
-                <p className="text-sm text-ink-muted">Vali töötaja, et näha ja muuta tema õigusi</p>
+                <p className="text-sm text-ink-muted">{t('Vali töötaja, et näha ja muuta tema õigusi', 'Pick a staff member to view and change their permissions')}</p>
               </div>
             ) : selected.role === 'owner' ? (
               <div className="card p-5">
                 <h2 className="text-base font-semibold text-ink mb-1">{selected.full_name}</h2>
                 <p className="text-sm text-ink-muted">
-                  Omanikul on kõik õigused. Neid ei saa piirata.
+                  {t('Omanikul on kõik õigused. Neid ei saa piirata.', 'The owner has all permissions. They cannot be restricted.')}
                 </p>
               </div>
             ) : (
               <div className="card p-5 space-y-4">
                 <div>
                   <h2 className="text-base font-semibold text-ink">{selected.full_name || '—'}</h2>
-                  <p className="text-xs text-ink-muted">Töötaja õigused</p>
+                  <p className="text-xs text-ink-muted">{t('Töötaja õigused', 'Staff permissions')}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -466,17 +472,17 @@ export function WorkersPage() {
                     a reset email, so this is the only way to fix a mistyped one. */}
                 <div className="pt-3 border-t border-ink-faint/15">
                   <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-                    Määra uus parool
+                    {t('Määra uus parool', 'Set a new password')}
                   </p>
                   {pwDone ? (
                     <div className="flex items-center gap-2 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                       <Check size={13} className="text-emerald-600 flex-shrink-0" />
-                      <span className="text-emerald-800">Uus parool:</span>
+                      <span className="text-emerald-800">{t('Uus parool:', 'New password:')}</span>
                       <span className="font-mono font-semibold text-ink">{pwDone}</span>
                       <button
                         onClick={() => navigator.clipboard.writeText(pwDone)}
                         className="ml-auto text-ink-faint hover:text-ink"
-                        title="Kopeeri"
+                        title={t('Kopeeri', 'Copy')}
                       >
                         <Copy size={12} />
                       </button>
@@ -489,7 +495,7 @@ export function WorkersPage() {
                           type="text"
                           value={newPassword}
                           onChange={e => setNewPassword(e.target.value)}
-                          placeholder="Vähemalt 6 tähemärki"
+                          placeholder={t('Vähemalt 6 tähemärki', 'At least 6 characters')}
                           className="input pl-8 py-1.5 text-sm"
                         />
                       </div>
@@ -498,13 +504,12 @@ export function WorkersPage() {
                         disabled={pwSaving || newPassword.trim().length < 6}
                         className="btn-ghost border border-ink-faint/25 disabled:opacity-50"
                       >
-                        {pwSaving ? 'Salvestab…' : 'Määra'}
+                        {pwSaving ? t('Salvestab…', 'Saving…') : t('Määra', 'Set')}
                       </button>
                     </div>
                   )}
                   <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-                    Kasutajanimega kontol ei ole postkasti, kuhu lähtestuskirja saata —
-                    parooli määrad sina ja annad selle töötajale edasi.
+                    {t('Kasutajanimega kontol ei ole postkasti, kuhu lähtestuskirja saata — parooli määrad sina ja annad selle töötajale edasi.', 'A username account has no mailbox to send a reset email to — you set the password and pass it on to the staff member.')}
                   </p>
                 </div>
 
@@ -519,21 +524,19 @@ export function WorkersPage() {
                     </p>
                   )}
                   <RemoveWorkerButton
-                    name={selected.full_name || 'see töötaja'}
+                    name={selected.full_name || t('see töötaja', 'this staff member')}
                     busy={removing === selected.id}
                     onRemove={() => removeFromClinic(selected)}
                   />
                   <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-                    Eemaldab kliinikust ja võtab kõik õigused. Kontot ennast ei kustutata
-                    ja tehtud tööd jäävad alles — nende juures on tema nimi endiselt näha.
-                    Vajadusel saab ta allpool tagasi lisada.
+                    {t('Eemaldab kliinikust ja võtab kõik õigused. Kontot ennast ei kustutata ja tehtud tööd jäävad alles — nende juures on tema nimi endiselt näha. Vajadusel saab ta allpool tagasi lisada.', 'Removes them from the clinic and revokes all permissions. The account itself is not deleted and their completed jobs stay — their name still shows on them. You can add them back below if needed.')}
                   </p>
 
                   {/* Permanent delete, for the mistyped duplicate. The database
                       refuses it for anyone with work, hours or payouts. */}
                   <div className="mt-2">
                     <DeleteWorkerButton
-                      name={selected.full_name || 'see konto'}
+                      name={selected.full_name || t('see konto', 'this account')}
                       busy={deleting === selected.id}
                       onDelete={() => deleteWorkerAccount(selected)}
                     />
@@ -551,11 +554,11 @@ export function WorkersPage() {
               <div className="card p-4 mt-4">
                 <h3 className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
                   {showAllRemoved
-                    ? `Kliinikust eemaldatud (${removed.length})`
-                    : `Äsja eemaldatud (${recentlyRemoved.length})`}
+                    ? t(`Kliinikust eemaldatud (${removed.length})`, `Removed from clinic (${removed.length})`)
+                    : t(`Äsja eemaldatud (${recentlyRemoved.length})`, `Just removed (${recentlyRemoved.length})`)}
                 </h3>
                 {!showAllRemoved && recentlyRemoved.length === 0 && (
-                  <p className="text-xs text-ink-faint mb-2">Viimase minuti jooksul ei ole kedagi eemaldatud.</p>
+                  <p className="text-xs text-ink-faint mb-2">{t('Viimase minuti jooksul ei ole kedagi eemaldatud.', 'Nobody has been removed in the last minute.')}</p>
                 )}
                 <div className="space-y-1">
                   {(showAllRemoved ? removed : recentlyRemoved).map(r => (
@@ -571,7 +574,7 @@ export function WorkersPage() {
                         disabled={removing === r.id}
                         className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-50"
                       >
-                        Lisa tagasi
+                        {t('Lisa tagasi', 'Add back')}
                       </button>
                     </div>
                   ))}
@@ -582,8 +585,8 @@ export function WorkersPage() {
                     className="text-[11px] text-ink-faint hover:text-accent transition-colors mt-2"
                   >
                     {showAllRemoved
-                      ? 'Näita ainult äsja eemaldatuid'
-                      : `Näita kõiki eemaldatuid (${removed.length})`}
+                      ? t('Näita ainult äsja eemaldatuid', 'Show only just removed')
+                      : t(`Näita kõiki eemaldatuid (${removed.length})`, `Show all removed (${removed.length})`)}
                   </button>
                 )}
               </div>
@@ -600,41 +603,41 @@ export function WorkersPage() {
                 {invited && createdCredentials ? (
                   <>
                     <h3 className="text-base font-semibold text-ink flex items-center gap-2">
-                      <Check size={16} className="text-emerald-500" /> Konto loodud!
+                      <Check size={16} className="text-emerald-500" /> {t('Konto loodud!', 'Account created!')}
                     </h3>
                     <p className="text-sm text-ink-muted">
-                      Anna need andmed töötajale sisselogimiseks:
+                      {t('Anna need andmed töötajale sisselogimiseks:', 'Give these details to the staff member to sign in:')}
                     </p>
                     <div className="bg-bg-sidebar rounded-xl p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] text-ink-faint uppercase font-semibold">Kasutajanimi</p>
+                          <p className="text-[10px] text-ink-faint uppercase font-semibold">{t('Kasutajanimi', 'Username')}</p>
                           <p className="text-sm font-mono text-ink">{createdCredentials.email}</p>
                         </div>
                         <button
                           onClick={() => navigator.clipboard.writeText(createdCredentials.email)}
                           className="p-1.5 text-ink-faint hover:text-accent transition-colors"
-                          title="Kopeeri"
+                          title={t('Kopeeri', 'Copy')}
                         >
                           <Copy size={13} />
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] text-ink-faint uppercase font-semibold">Parool</p>
+                          <p className="text-[10px] text-ink-faint uppercase font-semibold">{t('Parool', 'Password')}</p>
                           <p className="text-sm font-mono text-ink">{createdCredentials.password}</p>
                         </div>
                         <button
                           onClick={() => navigator.clipboard.writeText(createdCredentials.password)}
                           className="p-1.5 text-ink-faint hover:text-accent transition-colors"
-                          title="Kopeeri"
+                          title={t('Kopeeri', 'Copy')}
                         >
                           <Copy size={13} />
                         </button>
                       </div>
                     </div>
                     <p className="text-[11px] text-ink-faint">
-                      Töötaja saab parooli hiljem Seadetest muuta.
+                      {t('Töötaja saab parooli hiljem Seadetest muuta.', 'The staff member can change the password later in Settings.')}
                     </p>
                     <button
                       onClick={() => {
@@ -647,34 +650,34 @@ export function WorkersPage() {
                       }}
                       className="btn-primary w-full justify-center"
                     >
-                      Sulge
+                      {t('Sulge', 'Close')}
                     </button>
                   </>
                 ) : (
                   <>
                     <h3 className="text-base font-semibold text-ink flex items-center gap-2">
-                      <UserPlus size={16} /> Lisa töötaja
+                      <UserPlus size={16} /> {t('Lisa töötaja', 'Add staff member')}
                     </h3>
                     <form onSubmit={handleInvite} className="space-y-3">
                       <div>
-                        <label className="label">Nimi</label>
+                        <label className="label">{t('Nimi', 'Name')}</label>
                         <input
                           type="text"
                           value={inviteName}
                           onChange={e => setInviteName(e.target.value)}
-                          placeholder="Töötaja nimi"
+                          placeholder={t('Töötaja nimi', 'Staff member name')}
                           className="input"
                         />
                       </div>
                       <div>
-                        <label className="label">Kasutajanimi *</label>
+                        <label className="label">{t('Kasutajanimi *', 'Username *')}</label>
                         <div className="relative">
                           <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                           <input
                             type="text"
                             value={inviteEmail}
                             onChange={e => setInviteEmail(e.target.value)}
-                            placeholder="tehnik"
+                            placeholder={t('tehnik', 'technician')}
                             className="input pl-9"
                             autoCapitalize="none"
                             autoCorrect="off"
@@ -682,26 +685,24 @@ export function WorkersPage() {
                           />
                         </div>
                         <p className="text-[10px] text-ink-faint mt-1 leading-relaxed">
-                          E-posti ei ole vaja. Kui soovid, võid sisestada päris e-posti
-                          aadressi — siis saab see inimene ise parooli lähtestada.
-                          Kasutajanimega konto parooli lähtestab omanik.
+                          {t('E-posti ei ole vaja. Kui soovid, võid sisestada päris e-posti aadressi — siis saab see inimene ise parooli lähtestada. Kasutajanimega konto parooli lähtestab omanik.', 'No email needed. If you like, you can enter a real email address — then that person can reset their own password. For a username account, the owner resets the password.')}
                         </p>
                       </div>
                       <div>
-                        <label className="label">Parool *</label>
+                        <label className="label">{t('Parool *', 'Password *')}</label>
                         <div className="relative">
                           <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                           <input
                             type="text"
                             value={invitePassword}
                             onChange={e => setInvitePassword(e.target.value)}
-                            placeholder="Vähemalt 6 tähemärki"
+                            placeholder={t('Vähemalt 6 tähemärki', 'At least 6 characters')}
                             className="input pl-9"
                             required
                             minLength={6}
                           />
                         </div>
-                        <p className="text-[11px] text-ink-faint mt-1">Sina määrad parooli. Anna see töötajale.</p>
+                        <p className="text-[11px] text-ink-faint mt-1">{t('Sina määrad parooli. Anna see töötajale.', 'You set the password. Give it to the staff member.')}</p>
                       </div>
                       {inviteError && (
                         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{inviteError}</p>
@@ -712,14 +713,14 @@ export function WorkersPage() {
                           disabled={inviting}
                           className="btn-primary disabled:opacity-50"
                         >
-                          {inviting ? <Loader2 size={14} className="animate-spin" /> : 'Loo konto'}
+                          {inviting ? <Loader2 size={14} className="animate-spin" /> : t('Loo konto', 'Create account')}
                         </button>
                         <button
                           type="button"
                           onClick={() => { setShowInvite(false); setInviteError(null) }}
                           className="btn-ghost"
                         >
-                          Tühista
+                          {t('Tühista', 'Cancel')}
                         </button>
                       </div>
                     </form>

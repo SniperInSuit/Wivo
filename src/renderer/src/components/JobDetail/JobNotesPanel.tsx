@@ -5,6 +5,7 @@ import type { Job, JobNote } from '../../types/job'
 import { useUpdateJob } from '../../hooks/useJobs'
 import { useSettings } from '../../stores/useSettings'
 import { useAuth } from '../../context/AuthContext'
+import { t } from '@/lib/i18n'
 
 interface JobNotesPanelProps {
   job: Job
@@ -51,8 +52,8 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
       const e = err as { code?: string; message?: string }
       setError(
         e?.code === 'PGRST204' || e?.code === '42703'
-          ? 'Käivita sql/005_job_notes.sql Supabase SQL-redaktoris.'
-          : e?.message ?? 'Salvestamine ebaõnnestus'
+          ? t('Käivita sql/005_job_notes.sql Supabase SQL-redaktoris.', 'Run sql/005_job_notes.sql in the Supabase SQL editor.')
+          : e?.message ?? t('Salvestamine ebaõnnestus', 'Saving failed')
       )
     }
   }
@@ -73,7 +74,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
     <section className="bg-bg-card border border-ink-faint/20 rounded-xl px-3.5 py-3">
       <div className="flex items-center gap-1.5 mb-2.5">
         <MessageSquare size={12} className="text-accent" />
-        <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">Märkused</h3>
+        <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">{t('Märkused', 'Notes')}</h3>
         {!adding && (
           <button
             type="button"
@@ -81,7 +82,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
             className="ml-auto flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
           >
             <Plus size={11} />
-            Lisa märkus
+            {t('Lisa märkus', 'Add note')}
           </button>
         )}
       </div>
@@ -93,7 +94,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
       )}
 
       {sorted.length === 0 && !adding && (
-        <p className="text-sm text-ink-faint">Märkusi pole.</p>
+        <p className="text-sm text-ink-faint">{t('Märkusi pole.', 'No notes.')}</p>
       )}
 
       <ul className="space-y-2">
@@ -123,7 +124,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
                     disabled={updateJob.isPending}
                     className="text-[10px] font-semibold text-red-600 hover:underline disabled:opacity-40"
                   >
-                    Kustuta
+                    {t('Kustuta', 'Delete')}
                   </button>
                   <button type="button" onClick={() => setConfirmId(null)} className="text-ink-faint hover:text-ink">
                     <X size={11} />
@@ -133,7 +134,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmId(n.id)}
-                  title="Kustuta märkus"
+                  title={t('Kustuta märkus', 'Delete note')}
                   className="flex-shrink-0 mt-0.5 text-ink-faint hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                 >
                   <Trash2 size={11} />
@@ -151,7 +152,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
             onChange={e => setDraft(e.target.value)}
             rows={2}
             autoFocus
-            placeholder="Nt kontaktpunkt distaalselt veidi kõrgem…"
+            placeholder={t('Nt kontaktpunkt distaalselt veidi kõrgem…', 'E.g. distal contact point slightly higher…')}
             className="input resize-none text-sm"
           />
           <div className="flex items-center gap-1.5">
@@ -162,14 +163,14 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
               className="btn-primary text-xs py-1 px-2.5 disabled:opacity-40"
             >
               {updateJob.isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-              Lisa
+              {t('Lisa', 'Add')}
             </button>
             <button
               type="button"
               onClick={() => { setAdding(false); setDraft(''); setError(null) }}
               className="btn-ghost text-xs py-1 px-2"
             >
-              Tühista
+              {t('Tühista', 'Cancel')}
             </button>
           </div>
         </div>

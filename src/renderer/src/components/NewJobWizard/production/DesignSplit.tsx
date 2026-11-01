@@ -12,6 +12,7 @@
 import type { NewJobState } from '@shared/wizard'
 import { sortTeeth } from '@shared/wizard'
 import { WIZARD_HELP } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 interface Props {
   state: NewJobState
@@ -33,17 +34,19 @@ export function DesignSplit({ state, patch, toothTypes }: Props) {
     // Starts from ALL of them: until somebody says otherwise the designer had
     // the lot, so the first click takes one back rather than granting one.
     const from = cur && cur.length > 0 ? cur : picked
-    const next = from.includes(fdi) ? from.filter(t => t !== fdi) : [...from, fdi]
+    const next = from.includes(fdi) ? from.filter(tooth => tooth !== fdi) : [...from, fdi]
     const store = next.length === 0 || next.length === picked.length ? [] : sortTeeth(next)
     patch({ designByType: { ...state.designByType, [key]: store } })
   }
 
   return (
     <div className="md:col-span-2">
-      <p className="text-base font-medium text-ink">Disainija hambad</p>
+      <p className="text-base font-medium text-ink">{t('Disainija hambad', "Designer's teeth")}</p>
       <p className={WIZARD_HELP}>
-        Vaikimisi disainis disainija kõik hambad. Võta märge maha hammastelt,
-        mille tehnik ise disainis — disainitasu arvestatakse ainult märgitutelt.
+        {t(
+          'Vaikimisi disainis disainija kõik hambad. Võta märge maha hammastelt, mille tehnik ise disainis — disainitasu arvestatakse ainult märgitutelt.',
+          'By default the designer designed all the teeth. Untick the teeth the technician designed — the design fee is counted only for the ticked ones.'
+        )}
       </p>
       <div className="mt-2 space-y-2">
         {rows.map(({ key, teeth }) => {
@@ -52,22 +55,22 @@ export function DesignSplit({ state, patch, toothTypes }: Props) {
           return (
             <div key={key} className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-ink-soft min-w-[80px]">{key}</span>
-              {teeth.map(t => {
-                const on = mine.includes(t)
+              {teeth.map(tooth => {
+                const on = mine.includes(tooth)
                 return (
                   <button
-                    key={t}
+                    key={tooth}
                     type="button"
-                    onClick={() => toggle(key, t, teeth)}
+                    onClick={() => toggle(key, tooth, teeth)}
                     aria-pressed={on}
-                    title={on ? `${t} — disainija` : `${t} — tehnik disainis ise`}
+                    title={on ? t(`${tooth} — disainija`, `${tooth} — designer`) : t(`${tooth} — tehnik disainis ise`, `${tooth} — designed by the technician`)}
                     className={`min-h-[44px] min-w-[44px] rounded-xl border-2 px-2 text-base font-semibold tabular-nums transition-colors ${
                       on
                         ? 'border-violet-500 bg-violet-500 text-white'
                         : 'border-ink-faint/30 bg-bg-sidebar text-ink-muted'
                     }`}
                   >
-                    {t}
+                    {tooth}
                   </button>
                 )
               })}

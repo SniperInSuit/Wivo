@@ -13,6 +13,7 @@ import { FlipHorizontal2, Trash2, Bolt, PenTool } from 'lucide-react'
 import type { WorkItem } from '../../types/job'
 import type { ToothPickerProps } from '../teeth/toothPickerProps'
 import { useOdontogramMirror, setOdontogramMirror } from '../../stores/useUiPrefs'
+import { t } from '@/lib/i18n'
 
 /** The pre-1.94 machine-global choice. Read once, never written. */
 function legacyMirror(): boolean {
@@ -249,7 +250,7 @@ export function MultiOdontogramPicker({
               }`}
             >
               <Bolt size={12} />
-              Implantaadid
+              {t('Implantaadid', 'Implants')}
             </button>
           )}
           {onToggleDesign && (
@@ -263,28 +264,31 @@ export function MultiOdontogramPicker({
               }`}
             >
               <PenTool size={12} />
-              Disainija hambad
+              {t('Disainija hambad', 'Designer teeth')}
             </button>
           )}
           <button type="button" onClick={toggleMirror}
             className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
           >
             <FlipHorizontal2 size={12} />
-            {mirror ? 'Patsiendi vaade' : 'Arsti vaade'}
+            {mirror ? t('Patsiendi vaade', 'Patient view') : t('Arsti vaade', 'Dentist view')}
           </button>
         </div>
 
         {markMode === 'implant' && (
           <p className="text-[11px] text-slate-500 text-center mb-2">
-            Klõpsa valitud hammastel, mis istuvad implantaadil. Ülejäänud on
-            vahelülid. Kruvide kulu arvestatakse märgitud hammaste järgi.
+            {t(
+              'Klõpsa valitud hammastel, mis istuvad implantaadil. Ülejäänud on vahelülid. Kruvide kulu arvestatakse märgitud hammaste järgi.',
+              'Click the selected teeth that sit on an implant. The rest are pontics. Screw cost is counted by the marked teeth.',
+            )}
           </p>
         )}
         {markMode === 'design' && (
           <p className="text-[11px] text-violet-600 text-center mb-2">
-            Klõpsa hammastel, mille disainis <strong>disainija</strong>. Ülejäänud
-            tegi tehnik ise. Märkimata jätmine tähendab, et disainija tegi kõik —
-            disainitasu arvestatakse märgitud hammaste järgi.
+            {t('Klõpsa hammastel, mille disainis ', 'Click the teeth designed by the ')}<strong>{t('disainija', 'designer')}</strong>{t(
+              '. Ülejäänud tegi tehnik ise. Märkimata jätmine tähendab, et disainija tegi kõik — disainitasu arvestatakse märgitud hammaste järgi.',
+              '. The technician did the rest. Marking none means the designer did them all — the design fee is counted by the marked teeth.',
+            )}
           </p>
         )}
 
@@ -356,32 +360,32 @@ export function MultiOdontogramPicker({
           {totalTeeth > 0 ? (
             <span className="inline-flex items-center gap-1.5 text-xs">
               <span className="font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-md tabular-nums">{totalTeeth}</span>
-              <span className="text-ink-muted">hammast valitud</span>
+              <span className="text-ink-muted">{t('hammast valitud', totalTeeth === 1 ? 'tooth selected' : 'teeth selected')}</span>
             </span>
           ) : (
             <span className="text-xs text-ink-faint">
-              {activeItemId ? 'Klõpsa hambaid' : 'Vali tööosa'}
+              {activeItemId ? t('Klõpsa hambaid', 'Click teeth') : t('Vali tööosa', 'Choose a work item')}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button type="button" onClick={toggleMirror}
             className="p-1.5 rounded-lg text-ink-faint hover:text-ink-muted hover:bg-bg-sidebar transition-colors"
-            title="Peegelda"
+            title={t('Peegelda', 'Mirror')}
           >
             <FlipHorizontal2 size={14} />
           </button>
           {totalTeeth > 0 && (
             <button type="button"
               className="p-1.5 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-              title="Tühjenda"
+              title={t('Tühjenda', 'Clear')}
               onClick={() => {
                 // Clear all teeth from active item by toggling each one off
                 if (!activeItemId) return
                 const activeItem = items.find(i => i.id === activeItemId)
                 if (!activeItem) return
-                for (const t of activeItem.hambad.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))) {
-                  onToggleTooth(t)
+                for (const tooth of activeItem.hambad.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))) {
+                  onToggleTooth(tooth)
                 }
               }}
             >

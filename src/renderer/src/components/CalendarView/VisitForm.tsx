@@ -10,6 +10,7 @@ import { usePatients } from '../../hooks/usePatients'
 import { useSettings, useVisitTypes } from '../../stores/useSettings'
 import { describeError } from '../Patients/errors'
 import { toDate, toLocalInput, fromLocalInput } from '../../lib/dates'
+import { t } from '@/lib/i18n'
 
 interface VisitFormProps {
   visit: Visit | null      // null = create
@@ -126,7 +127,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
       algus: fromLocalInput(form.algus) ?? ''
     }
     if (!payload.algus) {
-      setError('Visiidi algusaeg on puudu või vigane.')
+      setError(t('Visiidi algusaeg on puudu või vigane.', 'The visit start time is missing or invalid.'))
       return
     }
     try {
@@ -173,7 +174,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-ink-faint/20 flex-shrink-0">
-          <h2 className="text-base font-semibold text-ink">{visit ? 'Muuda visiiti' : 'Uus visiit'}</h2>
+          <h2 className="text-base font-semibold text-ink">{visit ? t('Muuda visiiti', 'Edit visit') : t('Uus visiit', 'New visit')}</h2>
           <button type="button" onClick={onClose} className="btn-ghost p-2">
             <X size={15} />
           </button>
@@ -194,12 +195,12 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
                 className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
               >
                 <UserRound size={11} />
-                Ava patsiendi profiil
+                {t('Ava patsiendi profiil', 'Open patient profile')}
                 <ArrowUpRight size={11} />
               </button>
             ) : form.patsient.trim() ? (
               <p className="mt-1.5 text-[11px] text-ink-faint">
-                Vali nimekirjast patsient, et profiili avada.
+                {t('Vali nimekirjast patsient, et profiili avada.', 'Pick a patient from the list to open their profile.')}
               </p>
             ) : null}
           </div>
@@ -209,25 +210,25 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               and an untyped visit simply draws grey. */}
           {vt.types.length > 0 && (
             <div>
-              <label className="label">Visiidi tüüp</label>
+              <label className="label">{t('Visiidi tüüp', 'Visit type')}</label>
               <div className="flex flex-wrap gap-1.5">
-                {vt.types.map(t => {
-                  const active = form.tyyp === t.nimi
+                {vt.types.map(type => {
+                  const active = form.tyyp === type.nimi
                   return (
                     <button
-                      key={t.nimi}
+                      key={type.nimi}
                       type="button"
-                      onClick={() => set('tyyp', active ? null : t.nimi)}
+                      onClick={() => set('tyyp', active ? null : type.nimi)}
                       className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border-2 transition-all ${
                         active ? 'border-current' : 'border-transparent bg-bg-sidebar text-ink-muted hover:border-ink-faint/40'
                       }`}
-                      style={active ? { color: t.hex, backgroundColor: `${t.hex}1f` } : undefined}
+                      style={active ? { color: type.hex, backgroundColor: `${type.hex}1f` } : undefined}
                     >
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: t.hex }}
+                        style={{ backgroundColor: type.hex }}
                       />
-                      {t.nimi}
+                      {type.nimi}
                     </button>
                   )
                 })}
@@ -236,7 +237,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           )}
 
           <div>
-            <label className="label">Suunav arst</label>
+            <label className="label">{t('Suunav arst', 'Referring dentist')}</label>
             {/* Suggests the names already in use instead of inviting a new
                 spelling of one of them. Still a free field — a referral can
                 come from somebody who has never appeared here — but "Dr. Meeme
@@ -255,7 +256,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Algus</label>
+              <label className="label">{t('Algus', 'Start')}</label>
               <input
                 type="datetime-local"
                 value={form.algus}
@@ -265,7 +266,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               />
             </div>
             <div>
-              <label className="label">Kestus (min)</label>
+              <label className="label">{t('Kestus (min)', 'Duration (min)')}</label>
               <input
                 type="number"
                 min={5}
@@ -286,7 +287,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           </div>
 
           <div>
-            <label className="label">Staatus</label>
+            <label className="label">{t('Staatus', 'Status')}</label>
             <div className="flex flex-wrap items-center gap-1.5">
               {(Object.keys(VISIT_STATUS_LABEL) as VisitStatus[]).map(st => (
                 <button
@@ -313,7 +314,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
           </div>
 
           <div>
-            <label className="label">Märkus</label>
+            <label className="label">{t('Märkus', 'Note')}</label>
             {/* Four rows and resizable: a web booking arrives with three lines
                 already in it (phone, chosen time, the patient's own message),
                 so two rows with `resize-none` meant reading somebody's request
@@ -322,7 +323,7 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
               value={form.markus ?? ''}
               onChange={e => set('markus', e.target.value || null)}
               rows={4}
-              placeholder="Nt proovimine, üleandmine…"
+              placeholder={t('Nt proovimine, üleandmine…', 'E.g. try-in, handover…')}
               className="input resize-y min-h-[5rem]"
             />
           </div>
@@ -342,18 +343,18 @@ export function VisitForm({ visit, initialDate, initialDuration, onClose, onOpen
                 className={`btn-ghost ${confirmDelete ? 'text-red-600 bg-red-50' : 'hover:text-red-600'}`}
               >
                 <Trash2 size={14} />
-                {confirmDelete ? 'Kinnita' : 'Kustuta'}
+                {confirmDelete ? t('Kinnita', 'Confirm') : t('Kustuta', 'Delete')}
               </button>
             ) : <span />}
             <div className="flex items-center gap-2">
-              <button type="button" onClick={onClose} className="btn-ghost">Tühista</button>
+              <button type="button" onClick={onClose} className="btn-ghost">{t('Tühista', 'Cancel')}</button>
               <button
                 type="submit"
                 disabled={saving || !form.patsient.trim() || !form.algus}
                 className="btn-primary disabled:opacity-40"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                {visit ? 'Salvesta' : 'Loo visiit'}
+                {visit ? t('Salvesta', 'Save') : t('Loo visiit', 'Create visit')}
               </button>
             </div>
           </div>

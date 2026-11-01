@@ -17,6 +17,7 @@ import { LastModifiedPanel } from './LastModifiedPanel'
 import { VisitsPanel } from './VisitsPanel'
 import { VisitForm } from '../CalendarView/VisitForm'
 import type { Visit } from '../../types/visit'
+import { t } from '@/lib/i18n'
 
 interface PatientProfileProps {
   patient: Patient
@@ -97,8 +98,8 @@ export function PatientProfile({
   // deleting a patient also nulls patient_id on every one of their jobs.
   useEffect(() => {
     if (!deleteConfirm) return
-    const t = setTimeout(() => setDeleteConfirm(false), 5000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDeleteConfirm(false), 5000)
+    return () => clearTimeout(timer)
   }, [deleteConfirm])
 
   const patientJobs = useMemo(() => jobsForPatient(jobs, patient), [jobs, patient])
@@ -192,7 +193,7 @@ export function PatientProfile({
           className="flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-accent transition-colors"
         >
           <ArrowLeft size={15} />
-          Kõik patsiendid
+          {t('Kõik patsiendid', 'All patients')}
         </button>
 
         {actionError && (
@@ -201,7 +202,7 @@ export function PatientProfile({
             <p className="text-xs text-red-800 font-medium break-words flex-1">{actionError}</p>
             {onDismissError && (
               <button onClick={onDismissError} className="text-[10px] text-red-600 underline flex-shrink-0">
-                Sulge
+                {t('Sulge', 'Close')}
               </button>
             )}
           </div>

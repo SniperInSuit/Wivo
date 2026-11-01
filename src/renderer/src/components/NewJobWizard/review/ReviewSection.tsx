@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react'
 import { AlertCircle, Pencil } from 'lucide-react'
 import type { StepId, ValidationError } from '@shared/wizard'
 import { FOCUS_RING, WIZARD_HIT_MIN } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface ReviewSectionProps {
   title: string
@@ -44,13 +45,13 @@ export function ReviewSection({ title, step, onEdit, errors, children }: ReviewS
         <button
           type="button"
           onClick={() => onEdit(step)}
-          aria-label={`Muuda — ${title}`}
+          aria-label={t(`Muuda — ${title}`, `Edit — ${title}`)}
           className={`flex items-center gap-1.5 px-3 text-base font-medium text-accent
                       rounded-lg hover:bg-accent/10 transition-colors
                       ${WIZARD_HIT_MIN} ${FOCUS_RING}`}
         >
           <Pencil className="w-4 h-4" aria-hidden="true" />
-          Muuda
+          {t('Muuda', 'Edit')}
         </button>
       </div>
 

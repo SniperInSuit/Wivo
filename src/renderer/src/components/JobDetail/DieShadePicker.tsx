@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DIE_SHADES, dieShadeOf } from '../../config/dieShades'
+import { t } from '@/lib/i18n'
 
 interface DieShadePickerProps {
   value: string | null
@@ -50,7 +51,7 @@ export function DieShadePicker({ value, onChange, disabled }: DieShadePickerProp
       <div className="flex items-center gap-2">
         <input
           type="text"
-          placeholder="Vaba tekst (nt titaan)"
+          placeholder={t('Vaba tekst (nt titaan)', 'Free text (e.g. titanium)')}
           disabled={disabled}
           value={isCustom ? value : freeText}
           onChange={e => {
@@ -66,7 +67,7 @@ export function DieShadePicker({ value, onChange, disabled }: DieShadePickerProp
             disabled={disabled}
             className="text-xs text-ink-muted hover:text-red-500 transition-colors"
           >
-            Tühjenda
+            {t('Tühjenda', 'Clear')}
           </button>
         )}
       </div>

@@ -20,6 +20,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { sortTeeth } from '@shared/wizard'
 import { FOCUS_RING, WIZARD_HELP } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface AbutmentPickerProps {
   /** `too` keys that want an abutment, with the teeth currently on each. */
@@ -40,16 +41,18 @@ export function AbutmentPicker({
   types, byType, byTooth, onChangeType, onChangeTooth,
 }: AbutmentPickerProps) {
   const [openFor, setOpenFor] = useState<string | null>(null)
-  const withTeeth = types.filter(t => t.teeth.length > 0)
+  const withTeeth = types.filter(type => type.teeth.length > 0)
   if (withTeeth.length === 0) return null
 
   return (
     <div className="space-y-3 border-t border-ink-faint/30 pt-3">
       <div>
-        <h3 className="text-sm font-semibold text-ink-soft">Kruvi / abutment</h3>
+        <h3 className="text-sm font-semibold text-ink-soft">{t('Kruvi / abutment', 'Screw / abutment')}</h3>
         <p className={WIZARD_HELP}>
-          Kood kehtib kõigile selle töö hammastele. Kui mõni hammas erineb, ava
-          „hammaste kaupa“ ja täida ainult see.
+          {t(
+            'Kood kehtib kõigile selle töö hammastele. Kui mõni hammas erineb, ava „hammaste kaupa“ ja täida ainult see.',
+            'The code applies to every tooth on this job. If a tooth differs, open “Per tooth” and fill in just that one.'
+          )}
         </p>
       </div>
 
@@ -59,8 +62,8 @@ export function AbutmentPicker({
         const sorted = sortTeeth([...teeth])
         // Only the exceptions are worth a badge — a row that inherits says
         // nothing the field above it has not already said.
-        const overrides = sorted.filter(t => {
-          const own = (byTooth[String(t)] ?? '').trim()
+        const overrides = sorted.filter(fdi => {
+          const own = (byTooth[String(fdi)] ?? '').trim()
           return !!own && own !== all.trim()
         }).length
 
@@ -69,13 +72,13 @@ export function AbutmentPicker({
             <label className="flex items-center gap-1.5 text-sm font-medium text-ink-soft">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
               <span className="truncate">{too}</span>
-              <span className="text-ink-faint font-normal">{sorted.length} hammast</span>
+              <span className="text-ink-faint font-normal">{t(`${sorted.length} hammast`, `${sorted.length} ${sorted.length === 1 ? 'tooth' : 'teeth'}`)}</span>
             </label>
             <input
               type="text"
               value={all}
               onChange={e => onChangeType(too, e.target.value)}
-              placeholder="Nt MIS C1 3.75×11.5mm"
+              placeholder={t('Nt MIS C1 3.75×11.5mm', 'e.g. MIS C1 3.75×11.5mm')}
               className={INPUT}
             />
 
@@ -85,18 +88,18 @@ export function AbutmentPicker({
               className="flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
             >
               {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              Hammaste kaupa
+              {t('Hammaste kaupa', 'Per tooth')}
               {overrides > 0 && (
                 <span className="text-[11px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                  {overrides} erineb
+                  {t(`${overrides} erineb`, `${overrides} ${overrides === 1 ? 'differs' : 'differ'}`)}
                 </span>
               )}
             </button>
 
             {open && (
               <div className="space-y-1.5 pl-1">
-                {sorted.map(t => {
-                  const tooth = String(t)
+                {sorted.map(fdi => {
+                  const tooth = String(fdi)
                   return (
                     <div key={tooth} className="flex items-center gap-2">
                       <span className="w-9 flex-shrink-0 text-sm font-semibold tabular-nums text-ink-muted">
@@ -108,7 +111,7 @@ export function AbutmentPicker({
                         onChange={e => onChangeTooth(tooth, e.target.value)}
                         // The inherited value as the placeholder, so an empty
                         // row visibly means "same as above" rather than "none".
-                        placeholder={all || 'Kood puudub'}
+                        placeholder={all || t('Kood puudub', 'No code')}
                         className={INPUT + ' py-1.5 text-sm'}
                       />
                     </div>

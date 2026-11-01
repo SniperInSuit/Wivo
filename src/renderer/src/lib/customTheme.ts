@@ -17,6 +17,8 @@
  * the document — see `readLiveTokens` — and everything here takes them as input.
  */
 
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+
 /** One editable colour. `css` is the custom property the stylesheet reads. */
 export interface ThemeToken {
   key: string
@@ -37,41 +39,41 @@ export interface ThemeToken {
  * readable beats a gradient that is not.
  */
 export const THEME_TOKENS: ThemeToken[] = [
-  { key: 'accent', css: '--c-accent', group: 'Rõhuvärv', label: 'Rõhuvärv',
-    hint: 'Nupud, aktiivsed valikud, lingid' },
-  { key: 'accent-hover', css: '--c-accent-hover', group: 'Rõhuvärv', label: 'Rõhuvärv (hover)' },
-  { key: 'accent-light', css: '--c-accent-light', group: 'Rõhuvärv', label: 'Rõhuvärv (hele)' },
-  { key: 'accent-dark', css: '--c-accent-dark', group: 'Rõhuvärv', label: 'Rõhuvärv (tume)' },
+  { key: 'accent', css: '--c-accent', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv', 'Accent colour'),
+    hint: t('Nupud, aktiivsed valikud, lingid', 'Buttons, active selections, links') },
+  { key: 'accent-hover', css: '--c-accent-hover', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (hover)', 'Accent colour (hover)') },
+  { key: 'accent-light', css: '--c-accent-light', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (hele)', 'Accent colour (light)') },
+  { key: 'accent-dark', css: '--c-accent-dark', group: t('Rõhuvärv', 'Accent colour'), label: t('Rõhuvärv (tume)', 'Accent colour (dark)') },
 
-  { key: 'bg-card', css: '--c-bg-card', group: 'Taustad', label: 'Kaardi taust' },
-  { key: 'bg-sidebar', css: '--c-bg-sidebar', group: 'Taustad', label: 'Süvistatud pind',
-    hint: 'Sisestusväljad ja süvendid kaardi sees' },
-  { key: 'bg', css: '--c-bg', group: 'Taustad', label: 'Üldine taust' },
-  { key: 'app-bg', css: '--app-bg', group: 'Taustad', label: 'Lehe taust',
-    hint: 'See, mille peal kaardid hõljuvad' },
+  { key: 'bg-card', css: '--c-bg-card', group: t('Taustad', 'Backgrounds'), label: t('Kaardi taust', 'Card background') },
+  { key: 'bg-sidebar', css: '--c-bg-sidebar', group: t('Taustad', 'Backgrounds'), label: t('Süvistatud pind', 'Inset surface'),
+    hint: t('Sisestusväljad ja süvendid kaardi sees', 'Input fields and insets inside a card') },
+  { key: 'bg', css: '--c-bg', group: t('Taustad', 'Backgrounds'), label: t('Üldine taust', 'General background') },
+  { key: 'app-bg', css: '--app-bg', group: t('Taustad', 'Backgrounds'), label: t('Lehe taust', 'Page background'),
+    hint: t('See, mille peal kaardid hõljuvad', 'What the cards float on') },
 
-  { key: 'ink', css: '--c-ink', group: 'Tekst kaardil', label: 'Põhitekst' },
-  { key: 'ink-soft', css: '--c-ink-soft', group: 'Tekst kaardil', label: 'Pehme tekst' },
-  { key: 'ink-muted', css: '--c-ink-muted', group: 'Tekst kaardil', label: 'Vaikne tekst' },
-  { key: 'ink-faint', css: '--c-ink-faint', group: 'Tekst kaardil', label: 'Ääred ja vihjed' },
+  { key: 'ink', css: '--c-ink', group: t('Tekst kaardil', 'Text on cards'), label: t('Põhitekst', 'Body text') },
+  { key: 'ink-soft', css: '--c-ink-soft', group: t('Tekst kaardil', 'Text on cards'), label: t('Pehme tekst', 'Soft text') },
+  { key: 'ink-muted', css: '--c-ink-muted', group: t('Tekst kaardil', 'Text on cards'), label: t('Vaikne tekst', 'Muted text') },
+  { key: 'ink-faint', css: '--c-ink-faint', group: t('Tekst kaardil', 'Text on cards'), label: t('Ääred ja vihjed', 'Borders and hints') },
 
-  { key: 'page-ink', css: '--c-page-ink', group: 'Tekst lehe taustal', label: 'Lehe pealkiri',
-    hint: 'Otse lehe taustal, mitte kaardi sees' },
-  { key: 'page-ink-muted', css: '--c-page-ink-muted', group: 'Tekst lehe taustal', label: 'Lehe alltekst' },
+  { key: 'page-ink', css: '--c-page-ink', group: t('Tekst lehe taustal', 'Text on the page background'), label: t('Lehe pealkiri', 'Page title'),
+    hint: t('Otse lehe taustal, mitte kaardi sees', 'Directly on the page background, not inside a card') },
+  { key: 'page-ink-muted', css: '--c-page-ink-muted', group: t('Tekst lehe taustal', 'Text on the page background'), label: t('Lehe alltekst', 'Page subtitle') },
 
-  { key: 'nav-bg', css: '--c-nav-bg', group: 'Külgriba', label: 'Külgriba taust' },
-  { key: 'nav', css: '--c-nav', group: 'Külgriba', label: 'Külgriba tekst' },
-  { key: 'nav-muted', css: '--c-nav-muted', group: 'Külgriba', label: 'Külgriba vaikne tekst' },
+  { key: 'nav-bg', css: '--c-nav-bg', group: t('Külgriba', 'Sidebar'), label: t('Külgriba taust', 'Sidebar background') },
+  { key: 'nav', css: '--c-nav', group: t('Külgriba', 'Sidebar'), label: t('Külgriba tekst', 'Sidebar text') },
+  { key: 'nav-muted', css: '--c-nav-muted', group: t('Külgriba', 'Sidebar'), label: t('Külgriba vaikne tekst', 'Sidebar muted text') },
 
-  { key: 'chrome', css: '--c-chrome', group: 'Ülariba', label: 'Ülariba taust' },
-  { key: 'chrome-text', css: '--c-chrome-text', group: 'Ülariba', label: 'Ülariba tekst' },
-  { key: 'chrome-muted', css: '--c-chrome-muted', group: 'Ülariba', label: 'Ülariba vaikne tekst' },
-  { key: 'chrome-faint', css: '--c-chrome-faint', group: 'Ülariba', label: 'Ülariba ääred' },
+  { key: 'chrome', css: '--c-chrome', group: t('Ülariba', 'Top bar'), label: t('Ülariba taust', 'Top bar background') },
+  { key: 'chrome-text', css: '--c-chrome-text', group: t('Ülariba', 'Top bar'), label: t('Ülariba tekst', 'Top bar text') },
+  { key: 'chrome-muted', css: '--c-chrome-muted', group: t('Ülariba', 'Top bar'), label: t('Ülariba vaikne tekst', 'Top bar muted text') },
+  { key: 'chrome-faint', css: '--c-chrome-faint', group: t('Ülariba', 'Top bar'), label: t('Ülariba ääred', 'Top bar borders') },
 
-  { key: 'chip-plate', css: '--c-chip-plate', group: 'Muu', label: 'Logoplaat' },
+  { key: 'chip-plate', css: '--c-chip-plate', group: t('Muu', 'Other'), label: t('Logoplaat', 'Logo plate') },
 ]
 
-export const THEME_TOKEN_KEYS = THEME_TOKENS.map(t => t.key)
+export const THEME_TOKEN_KEYS = THEME_TOKENS.map(token => token.key)
 
 /** key → '#rrggbb'. Any key absent simply falls through to the base theme. */
 export type CustomTheme = Record<string, string>
@@ -152,17 +154,17 @@ export interface ContrastCheck {
  * with it. These are the pairs the stylesheet actually puts together.
  */
 export const CONTRAST_CHECKS: ContrastCheck[] = [
-  { fg: 'page-ink', bg: 'app-bg', label: 'Lehe pealkiri lehe taustal', min: 4.5 },
-  { fg: 'page-ink-muted', bg: 'app-bg', label: 'Lehe alltekst lehe taustal', min: 4.5 },
-  { fg: 'ink', bg: 'bg-card', label: 'Põhitekst kaardil', min: 4.5 },
-  { fg: 'ink-muted', bg: 'bg-card', label: 'Vaikne tekst kaardil', min: 4.5 },
-  { fg: 'ink-faint', bg: 'bg-card', label: 'Ääred ja vihjed kaardil', min: 3 },
-  { fg: 'ink', bg: 'bg-sidebar', label: 'Tekst sisestusväljal', min: 4.5 },
-  { fg: 'nav', bg: 'nav-bg', label: 'Külgriba tekst', min: 4.5 },
-  { fg: 'nav-muted', bg: 'nav-bg', label: 'Külgriba vaikne tekst', min: 4.5 },
-  { fg: 'chrome-text', bg: 'chrome', label: 'Ülariba tekst', min: 4.5 },
-  { fg: 'chrome-muted', bg: 'chrome', label: 'Ülariba vaikne tekst', min: 4.5 },
-  { fg: 'accent', bg: 'bg-card', label: 'Rõhuvärv kaardil', min: 3 },
+  { fg: 'page-ink', bg: 'app-bg', label: t('Lehe pealkiri lehe taustal', 'Page title on page background'), min: 4.5 },
+  { fg: 'page-ink-muted', bg: 'app-bg', label: t('Lehe alltekst lehe taustal', 'Page subtitle on page background'), min: 4.5 },
+  { fg: 'ink', bg: 'bg-card', label: t('Põhitekst kaardil', 'Body text on card'), min: 4.5 },
+  { fg: 'ink-muted', bg: 'bg-card', label: t('Vaikne tekst kaardil', 'Muted text on card'), min: 4.5 },
+  { fg: 'ink-faint', bg: 'bg-card', label: t('Ääred ja vihjed kaardil', 'Borders and hints on card'), min: 3 },
+  { fg: 'ink', bg: 'bg-sidebar', label: t('Tekst sisestusväljal', 'Text in input field'), min: 4.5 },
+  { fg: 'nav', bg: 'nav-bg', label: t('Külgriba tekst', 'Sidebar text'), min: 4.5 },
+  { fg: 'nav-muted', bg: 'nav-bg', label: t('Külgriba vaikne tekst', 'Sidebar muted text'), min: 4.5 },
+  { fg: 'chrome-text', bg: 'chrome', label: t('Ülariba tekst', 'Top bar text'), min: 4.5 },
+  { fg: 'chrome-muted', bg: 'chrome', label: t('Ülariba vaikne tekst', 'Top bar muted text'), min: 4.5 },
+  { fg: 'accent', bg: 'bg-card', label: t('Rõhuvärv kaardil', 'Accent colour on card'), min: 3 },
 ]
 
 export interface ContrastResult extends ContrastCheck {

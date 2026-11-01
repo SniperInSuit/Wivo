@@ -18,6 +18,7 @@ import {
   Y_LABEL_UPPER, Y_LABEL_LOWER, MIDLINE_X
 } from '../../config/teeth'
 import type { ToothStateStyle } from '../../config/teeth'
+import { t } from '@/lib/i18n'
 
 interface ToothChartProps {
   statuses: Record<number, ToothStatus>   // resolved 4-state map, all 32 keys present
@@ -70,7 +71,7 @@ function Tooth({ fdi, x, upper, style, manual, editable, onClick }: ToothProps) 
       {/* Native tooltip — the app has no tooltip component. The suffix is what
           lets the user tell a derived 'Töödeldud' from a manual override, which
           silently wins over it (risk R13). */}
-      <title>{`${fdi} — ${style.label}${manual ? ' — käsitsi määratud' : ''}`}</title>
+      <title>{`${fdi} — ${style.label}${manual ? t(' — käsitsi määratud', ' — set manually') : ''}`}</title>
 
       <rect x={-PITCH / 2} y={hitY} width={PITCH} height={hitH} fill="transparent" />
 

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Clock, User, Stethoscope } from 'lucide-react'
 import { format, parseISO, isValid, isSameDay, addDays } from 'date-fns'
-import { et } from 'date-fns/locale'
 import type { Job } from '../../types/job'
 import type { Patient } from '../../types/patient'
 import type { Visit } from '../../types/visit'
@@ -10,6 +9,7 @@ import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, useWorkTypes, useVisitTypes } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
 import { deadlinesOn, type Deadline } from '../../lib/deadlines'
+import { t, dateLocale } from '@/lib/i18n'
 
 // Rail hours come from Seaded → Kalender; they used to be constants here.
 
@@ -74,7 +74,7 @@ export function DayTimeline({
     return (job: Job): string => {
       const p = (job.patient_id ? byId.get(job.patient_id) : undefined)
         ?? byName.get((job.patsient ?? '').trim().toLowerCase())
-      return p?.arst?.trim() || p?.kliinik?.trim() || 'Määramata arst'
+      return p?.arst?.trim() || p?.kliinik?.trim() || t('Määramata arst', 'No dentist set')
     }
   }, [patients])
 
@@ -106,7 +106,7 @@ export function DayTimeline({
         hex: vt.hex(v.tyyp),
         minutes: d.getHours() * 60 + d.getMinutes(),
         label,
-        arst: v.patsient || 'Nimeta',
+        arst: v.patsient || t('Nimeta', 'Unnamed'),
         jobs: [],
         rows: [],
         visit: v,
@@ -146,19 +146,19 @@ export function DayTimeline({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-            {isSameDay(day, now) ? 'Tänane plaan' : 'Päeva plaan'} — {format(day, 'd. MMMM yyyy', { locale: et })}
+            {isSameDay(day, now) ? t('Tänane plaan', 'Today\'s plan') : t('Päeva plaan', 'Day plan')} — {format(day, t('d. MMMM yyyy', 'd MMMM yyyy'), { locale: dateLocale })}
           </h2>
           <p className="text-[11px] text-ink-faint mt-0.5">
             {totalJobs === 0 && totalVisits === 0
-              ? 'Sellel päeval ei ole ühtegi tähtaega ega visiiti'
+              ? t('Sellel päeval ei ole ühtegi tähtaega ega visiiti', 'No due dates or visits on this day')
               : [
-                  totalJobs > 0 ? `${totalJobs} tööd tähtajaga` : null,
-                  totalVisits > 0 ? `${totalVisits} visiiti` : null,
+                  totalJobs > 0 ? t(`${totalJobs} tööd tähtajaga`, `${totalJobs} ${totalJobs === 1 ? 'job' : 'jobs'} due`) : null,
+                  totalVisits > 0 ? t(`${totalVisits} visiiti`, `${totalVisits} ${totalVisits === 1 ? 'visit' : 'visits'}`) : null,
                 ].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button onClick={onOpenCalendar} className="btn-ghost text-xs border border-ink-faint/25">
-          Ava kalender
+          {t('Ava kalender', 'Open calendar')}
         </button>
       </div>
 
@@ -166,7 +166,7 @@ export function DayTimeline({
         <button
           onClick={() => onDayChange(addDays(day, -1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title="Eelmine päev"
+          title={t('Eelmine päev', 'Previous day')}
         >
           <ChevronLeft size={14} />
         </button>
@@ -276,8 +276,8 @@ export function DayTimeline({
                     </span>
                     <span className="text-[10px] truncate" style={{ color: s.hex }}>
                       {s.kind === 'visit'
-                        ? `${s.visit!.tyyp ?? 'Määramata'} · ${s.visit!.kestus_min} min`
-                        : `${s.jobs.length} ${s.jobs.length === 1 ? 'töö' : 'tööd'}`}
+                        ? `${s.visit!.tyyp ?? t('Määramata', 'Unspecified')} · ${s.visit!.kestus_min} min`
+                        : t(`${s.jobs.length} ${s.jobs.length === 1 ? 'töö' : 'tööd'}`, `${s.jobs.length} ${s.jobs.length === 1 ? 'job' : 'jobs'}`)}
                     </span>
 
                     {/* Hover detail: who, what, which stage */}
@@ -285,7 +285,7 @@ export function DayTimeline({
                       <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-[230px] card p-2.5 space-y-1.5 block text-left z-40">
                         <span className="flex items-center gap-1 text-[11px] font-medium text-ink">
                           <User size={9} className="text-ink-faint" />
-                          {s.visit!.patsient || 'Nimeta'}
+                          {s.visit!.patsient || t('Nimeta', 'Unnamed')}
                         </span>
                         {s.visit!.arst?.trim() && (
                           <span className="flex items-center gap-1 text-[10px] text-ink-muted pl-3.5">
@@ -295,7 +295,7 @@ export function DayTimeline({
                         )}
                         <span className="block text-[10px] text-ink-muted pl-3.5">
                           <span className="font-medium" style={{ color: s.hex }}>
-                            {s.visit!.tyyp ?? 'Määramata tüüp'}
+                            {s.visit!.tyyp ?? t('Määramata tüüp', 'Unspecified type')}
                           </span>
                           {' · '}{s.label} · {s.visit!.kestus_min} min
                         </span>
@@ -308,7 +308,7 @@ export function DayTimeline({
                           <span className="block text-[10px] text-ink-faint pl-3.5">{s.visit!.markus}</span>
                         )}
                         <span className="block text-[10px] text-ink-faint pt-0.5 border-t border-ink-faint/15">
-                          Klõpsa, et avada kalender
+                          {t('Klõpsa, et avada kalender', 'Click to open the calendar')}
                         </span>
                       </span>
                     )}
@@ -338,7 +338,7 @@ export function DayTimeline({
                           </span>
                         ))}
                         <span className="block text-[10px] text-ink-faint pt-0.5 border-t border-ink-faint/15">
-                          {s.rows[0]?.rev ? 'Klõpsa, et avada muudatus' : 'Klõpsa, et avada esimene töö'}
+                          {s.rows[0]?.rev ? t('Klõpsa, et avada muudatus', 'Click to open the revision') : t('Klõpsa, et avada esimene töö', 'Click to open the first job')}
                         </span>
                       </span>
                     )}
@@ -349,7 +349,7 @@ export function DayTimeline({
 
             {slots.length === 0 && (
               <p className="absolute inset-x-0 top-[60px] text-center text-sm text-ink-faint">
-                Sellel päeval ei ole midagi.
+                {t('Sellel päeval ei ole midagi.', 'Nothing on this day.')}
               </p>
             )}
           </div>
@@ -358,7 +358,7 @@ export function DayTimeline({
         <button
           onClick={() => onDayChange(addDays(day, 1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title="Järgmine päev"
+          title={t('Järgmine päev', 'Next day')}
         >
           <ChevronRight size={14} />
         </button>

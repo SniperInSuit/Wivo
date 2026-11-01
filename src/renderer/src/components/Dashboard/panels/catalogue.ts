@@ -16,22 +16,23 @@
 import type { PermissionKey } from '../../../hooks/usePermissions'
 import type { PanelNeed } from '../useStatsContext'
 import { GAUGE_METRICS, gaugePanelId } from './metrics'
+import { t } from '@/lib/i18n'
 
 export type PanelGroup = 'raha' | 'yhik' | 'tootmine' | 'inimesed' | 'lobus' | 'naidik'
 
 export const PANEL_GROUP_LABEL: Record<PanelGroup, string> = {
-  raha:     'Raha ja kasum',
-  yhik:     'Ühikumajandus',
-  tootmine: 'Tootmine ja tähtajad',
-  inimesed: 'Kliendid ja inimesed',
+  raha:     t('Raha ja kasum', 'Money and profit'),
+  yhik:     t('Ühikumajandus', 'Unit economics'),
+  tootmine: t('Tootmine ja tähtajad', 'Production and due dates'),
+  inimesed: t('Kliendid ja inimesed', 'Clients and people'),
   // Not decoration. These are the questions people actually ask each other in a
   // lab, and a dashboard that can only answer the ones an accountant asks is a
   // dashboard nobody opens on a Friday.
-  lobus:    'Lõbus teada',
+  lobus:    t('Lõbus teada', 'Fun facts'),
   // Generated from GAUGE_METRICS rather than written out below — see
   // GAUGE_PANEL_METAS. The same number as a tile elsewhere, asked a different
   // question: not "what is it" but "is it where it should be".
-  naidik:   'Näidikud',
+  naidik:   t('Näidikud', 'Gauges'),
 }
 
 /**
@@ -60,64 +61,64 @@ export interface PanelMeta {
 export const PANEL_CATALOGUE = [
   // ── Raha ja kasum ──────────────────────────────────────────────────────────
   {
-    id: 'raha.kasum', title: 'Kasum', group: 'raha', defaultSize: [1, 1],
-    hint: 'Tööde hinnad miinus tööjõud koos maksudega, materjal, fikseeritud kulud ja üldkulud',
+    id: 'raha.kasum', title: t('Kasum', 'Profit'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Tööde hinnad miinus tööjõud koos maksudega, materjal, fikseeritud kulud ja üldkulud', 'Job prices minus labour incl. taxes, materials, fixed costs and overheads'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.kulud', title: 'Kulu kokku', group: 'raha', defaultSize: [1, 1],
-    hint: 'Neli kulurida eraldi: tööjõud + maksud, materjal, fikseeritud, üldkulud',
+    id: 'raha.kulud', title: t('Kulu kokku', 'Total cost'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Neli kulurida eraldi: tööjõud + maksud, materjal, fikseeritud, üldkulud', 'Four cost lines separately: labour + taxes, materials, fixed, overheads'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.kate', title: 'Brutokate ja netokate', group: 'raha', defaultSize: [1, 1],
-    hint: 'Arveldatud miinus otsesed kulud; netokate lisaks miinus üldkulud',
+    id: 'raha.kate', title: t('Brutokate ja netokate', 'Gross and net margin'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Arveldatud miinus otsesed kulud; netokate lisaks miinus üldkulud', 'Invoiced minus direct costs; net margin also minus overheads'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.kaive', title: 'Käive', group: 'raha', defaultSize: [1, 1],
-    hint: 'Tööde hinnad koos muudatuste tasudega, kumbki oma kuupäeval',
+    id: 'raha.kaive', title: t('Käive', 'Revenue'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Tööde hinnad koos muudatuste tasudega, kumbki oma kuupäeval', 'Job prices plus revision charges, each on its own date'),
     perm: 'payments.read',
   },
   {
-    id: 'raha.arveldatud', title: 'Arveldatud', group: 'raha', defaultSize: [1, 1],
-    hint: 'Arvetele pandud, käibemaksuta', perm: 'payments.read', needs: ['finance'],
+    id: 'raha.arveldatud', title: t('Arveldatud', 'Invoiced'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Arvetele pandud, käibemaksuta', 'Put on invoices, excl. VAT'), perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.laekunud', title: 'Laekunud', group: 'raha', defaultSize: [1, 1],
-    hint: 'Raha, mis perioodil päriselt saabus', perm: 'payments.read', needs: ['finance'],
+    id: 'raha.laekunud', title: t('Laekunud', 'Received'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Raha, mis perioodil päriselt saabus', 'Money that actually came in during the period'), perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.tasumata', title: 'Tasumata arvete järgi', group: 'raha', defaultSize: [1, 1],
-    hint: 'Väljastatud ja maksmata. Arveta tehtud töö siin ei kajastu',
+    id: 'raha.tasumata', title: t('Tasumata arvete järgi', 'Unpaid by invoice'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Väljastatud ja maksmata. Arveta tehtud töö siin ei kajastu', 'Issued and not paid. Work done without an invoice does not show here'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.arveldamata', title: 'Arveldamata', group: 'raha', defaultSize: [1, 1],
-    hint: 'Valmis töö, millele ei ole arvet — kulu on kantud, tulu mitte',
+    id: 'raha.arveldamata', title: t('Arveldamata', 'Not invoiced'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Valmis töö, millele ei ole arvet — kulu on kantud, tulu mitte', 'Finished work with no invoice — the cost is booked, the income is not'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.toojoukulu', title: 'Tööjõukulu + maksud', group: 'raha', defaultSize: [1, 1],
-    hint: 'Bruto (netolepingud üles arvutatud) + tööandja maksud + arve alusel',
+    id: 'raha.toojoukulu', title: t('Tööjõukulu + maksud', 'Labour cost + taxes'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Bruto (netolepingud üles arvutatud) + tööandja maksud + arve alusel', 'Gross (net contracts grossed up) + employer taxes + contractor invoices'),
     perm: 'payroll.manage', needs: ['finance'],
   },
   {
-    id: 'raha.valjamakstud', title: 'Arvestatud vs välja makstud', group: 'raha', defaultSize: [1, 1],
-    hint: 'Mida periood teenis ja mis on juba välja makstud',
+    id: 'raha.valjamakstud', title: t('Arvestatud vs välja makstud', 'Earned vs paid out'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Mida periood teenis ja mis on juba välja makstud', 'What the period earned and what has already been paid out'),
     perm: 'payroll.manage', needs: ['finance'],
   },
   {
-    id: 'raha.kaive_kuude_kaupa', title: 'Käive kuude kaupa', group: 'raha', defaultSize: [2, 2],
-    hint: 'Viimased kuud tulpadena', perm: 'payments.read',
+    id: 'raha.kaive_kuude_kaupa', title: t('Käive kuude kaupa', 'Revenue by month'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Viimased kuud tulpadena', 'Recent months as bars'), perm: 'payments.read',
   },
   {
-    id: 'raha.maksmise_viis', title: 'Maksmise viis', group: 'raha', defaultSize: [2, 2],
-    hint: 'Sularaha, kaart, ülekanne — osakaaluga', perm: 'payments.read', needs: ['finance'],
+    id: 'raha.maksmise_viis', title: t('Maksmise viis', 'Payment method'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Sularaha, kaart, ülekanne — osakaaluga', 'Cash, card, bank transfer — with shares'), perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'raha.muudatuste_kahju', title: 'Muudatuste kahju', group: 'raha', defaultSize: [2, 2],
-    hint: 'Ümbertegemise netokahju põhjuse kaupa', perm: 'payments.read', needs: ['finance'],
+    id: 'raha.muudatuste_kahju', title: t('Muudatuste kahju', 'Cost of revisions'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Ümbertegemise netokahju põhjuse kaupa', 'Net loss from remakes, by reason'), perm: 'payments.read', needs: ['finance'],
   },
 
   // ── Võlglased ──────────────────────────────────────────────────────────────
@@ -125,249 +126,249 @@ export const PANEL_CATALOGUE = [
   // owed in September; a debt list that emptied itself with the date filter
   // would be a chasing list you cannot trust.
   {
-    id: 'raha.volglased_kokku', title: 'Võlglased kokku', group: 'raha', defaultSize: [1, 1],
-    hint: 'Tasumata tööde väärtus kogu aja peale, ja kui palju sellest on üle tähtaja',
+    id: 'raha.volglased_kokku', title: t('Võlglased kokku', 'Debtors total'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Tasumata tööde väärtus kogu aja peale, ja kui palju sellest on üle tähtaja', 'Value of unpaid jobs over all time, and how much of it is overdue'),
     perm: 'payments.read', needs: ['debtors'],
   },
   {
-    id: 'raha.volglased', title: 'Kes on võlgu', group: 'raha', defaultSize: [2, 2],
-    hint: 'Klient või patsient, tasumata summa ja mitu päeva üle tähtaja',
+    id: 'raha.volglased', title: t('Kes on võlgu', 'Who owes'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Klient või patsient, tasumata summa ja mitu päeva üle tähtaja', 'Client or patient, unpaid amount and days overdue'),
     perm: 'payments.read', needs: ['debtors'],
   },
   {
-    id: 'raha.volg_vanus', title: 'Võla vanus', group: 'raha', defaultSize: [2, 2],
-    hint: 'Üle tähtaja summad vanuse kaupa — arve maksetähtajast, mitte tänasest',
+    id: 'raha.volg_vanus', title: t('Võla vanus', 'Debt age'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Üle tähtaja summad vanuse kaupa — arve maksetähtajast, mitte tänasest', 'Overdue amounts by age — from the invoice due date, not from today'),
     perm: 'payments.read', needs: ['debtors'],
   },
 
   // ── Ühikumajandus ──────────────────────────────────────────────────────────
   {
-    id: 'yhik.hind_hamba_kohta', title: 'Hind hamba kohta', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Käive jagatud hammastega — mõlemad koos muudatustega',
+    id: 'yhik.hind_hamba_kohta', title: t('Hind hamba kohta', 'Price per tooth'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Käive jagatud hammastega — mõlemad koos muudatustega', 'Revenue divided by teeth — both including revisions'),
     perm: 'payments.read',
   },
   {
-    id: 'yhik.tulu_too_kohta', title: 'Ø hind / töö', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Käive jagatud sama ühikuarvuga, mida lugeja kokku loeb',
+    id: 'yhik.tulu_too_kohta', title: t('Ø hind / töö', 'Ø price / job'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Käive jagatud sama ühikuarvuga, mida lugeja kokku loeb', 'Revenue divided by the same unit count the job counter uses'),
     perm: 'payments.read',
   },
   {
-    id: 'yhik.kiirtoo_tasuvus', title: 'Kiirtöö tasuvus', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Kiirtööde osa käibest võrreldes nende osaga tööde arvust',
+    id: 'yhik.kiirtoo_tasuvus', title: t('Kiirtöö tasuvus', 'Rush job payoff'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Kiirtööde osa käibest võrreldes nende osaga tööde arvust', 'Rush jobs’ share of revenue compared with their share of the job count'),
     perm: 'payments.read',
   },
   {
-    id: 'yhik.kate_tootyybi_jargi', title: 'Kate töö tüübi järgi', group: 'yhik', defaultSize: [4, 2],
-    hint: 'Tulu, kulu, tööjõud, materjal ja kate iga töötüübi kohta',
+    id: 'yhik.kate_tootyybi_jargi', title: t('Kate töö tüübi järgi', 'Margin by work type'), group: 'yhik', defaultSize: [4, 2],
+    hint: t('Tulu, kulu, tööjõud, materjal ja kate iga töötüübi kohta', 'Income, cost, labour, materials and margin for each work type'),
     perm: 'payments.read', needs: ['finance'],
   },
   {
-    id: 'yhik.kahjumlikud', title: 'Kahjumlikud töö tüübid', group: 'yhik', defaultSize: [2, 2],
-    hint: 'Negatiivse kattega tüübid, halvim ees — number, mida keegi ise ei otsi',
+    id: 'yhik.kahjumlikud', title: t('Kahjumlikud töö tüübid', 'Loss-making work types'), group: 'yhik', defaultSize: [2, 2],
+    hint: t('Negatiivse kattega tüübid, halvim ees — number, mida keegi ise ei otsi', 'Types with a negative margin, worst first — a number nobody goes looking for'),
     perm: 'payments.read', needs: ['finance'],
   },
 
   // ── Tootmine ja tähtajad ───────────────────────────────────────────────────
   {
-    id: 'toot.tood_kokku', title: 'Töid kokku', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Tööd ja muudatused, jaotus nähtaval',
+    id: 'toot.tood_kokku', title: t('Töid kokku', 'Jobs total'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Tööd ja muudatused, jaotus nähtaval', 'Jobs and revisions, with the split shown'),
   },
   {
-    id: 'toot.hambaid', title: 'Hambaid toodetud', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Originaal ja muudatus eraldi',
+    id: 'toot.hambaid', title: t('Hambaid toodetud', 'Teeth produced'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Originaal ja muudatus eraldi', 'Original and revision separately'),
   },
   {
-    id: 'toot.tahtajast_yle', title: 'Tähtajast üle', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Lõpetamata tööd, mille tähtaeg on möödas — hetkeseis',
+    id: 'toot.tahtajast_yle', title: t('Tähtajast üle', 'Overdue'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Lõpetamata tööd, mille tähtaeg on möödas — hetkeseis', 'Unfinished jobs past their due date — as of now'),
   },
   {
-    id: 'toot.labiaeg', title: 'Ø läbiaeg', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Päevi vastuvõtust tegeliku valmimiseni',
+    id: 'toot.labiaeg', title: t('Ø läbiaeg', 'Ø turnaround'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Päevi vastuvõtust tegeliku valmimiseni', 'Days from receipt to actual completion'),
   },
   {
-    id: 'toot.muudatuste_maar', title: 'Revisjonimäär', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Muudatusega tööde osa kõigist töödest',
+    id: 'toot.muudatuste_maar', title: t('Revisjonimäär', 'Revision rate'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Muudatusega tööde osa kõigist töödest', 'Share of all jobs that had a revision'),
   },
   {
-    id: 'toot.wip', title: 'Töös etappide kaupa', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Praegu töös olevad tööd etapiti — hetkeseis, mitte periood',
+    id: 'toot.wip', title: t('Töös etappide kaupa', 'In progress by stage'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Praegu töös olevad tööd etapiti — hetkeseis, mitte periood', 'Jobs in progress right now, by stage — as of now, not the period'),
   },
   {
-    id: 'toot.valmis_kuude_kaupa', title: 'Valmis tööd kuude kaupa', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Läbilaskevõime joonena',
+    id: 'toot.valmis_kuude_kaupa', title: t('Valmis tööd kuude kaupa', 'Finished jobs by month'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Läbilaskevõime joonena', 'Throughput as a line'),
   },
   {
-    id: 'toot.muudatuste_pohjused', title: 'Muudatuste põhjused', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Kaks põhjust ühel muudatusel loevad mõlemad — ribade summa ületab muudatuste arvu',
+    id: 'toot.muudatuste_pohjused', title: t('Muudatuste põhjused', 'Revision reasons'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Kaks põhjust ühel muudatusel loevad mõlemad — ribade summa ületab muudatuste arvu', 'Two reasons on one revision both count — the bars add up to more than the number of revisions'),
   },
   {
-    id: 'toot.tooliigid', title: 'Mida kõige rohkem teeme', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Töö liigid tehtud tööde arvu järgi, koos hammaste arvuga — mitte käibe järgi',
+    id: 'toot.tooliigid', title: t('Mida kõige rohkem teeme', 'What we make most'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Töö liigid tehtud tööde arvu järgi, koos hammaste arvuga — mitte käibe järgi', 'Work types by number of jobs done, with the tooth count — not by revenue'),
   },
   {
-    id: 'toot.tooliigid_hambad', title: 'Ühikuid töö liigi järgi', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Mitu krooni, silda, proteezi on päriselt tehtud — loetud tööosade, mitte tööde kaupa',
+    id: 'toot.tooliigid_hambad', title: t('Ühikuid töö liigi järgi', 'Units by work type'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Mitu krooni, silda, proteezi on päriselt tehtud — loetud tööosade, mitte tööde kaupa', 'How many crowns, bridges and dentures were actually made — counted by work item, not by job'),
   },
   {
-    id: 'toot.materjalid', title: 'Tööd materjali järgi', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Arv materjali kohta',
+    id: 'toot.materjalid', title: t('Tööd materjali järgi', 'Jobs by material'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Arv materjali kohta', 'Count per material'),
   },
   {
-    id: 'toot.masinad', title: 'Masinate koormus', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Tööd printeri kaupa', feature: 'lab',
+    id: 'toot.masinad', title: t('Masinate koormus', 'Machine load'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Tööd printeri kaupa', 'Jobs per printer'), feature: 'lab',
   },
 
   // ── Kliendid ja inimesed ───────────────────────────────────────────────────
   {
-    id: 'inim.tootajad', title: 'Töötajate kaupa', group: 'inimesed', defaultSize: [4, 2],
-    hint: 'Tööd, hambad, arvestatud ja välja makstud inimese kohta',
+    id: 'inim.tootajad', title: t('Töötajate kaupa', 'By employee'), group: 'inimesed', defaultSize: [4, 2],
+    hint: t('Tööd, hambad, arvestatud ja välja makstud inimese kohta', 'Jobs, teeth, earned and paid out per person'),
     perm: 'payroll.manage', needs: ['finance'],
   },
   {
-    id: 'inim.tootaja_tootlikkus', title: 'Töötajate koormus', group: 'inimesed', defaultSize: [2, 2],
-    hint: 'Tööd ja hambad inimese kohta — ilma rahata',
+    id: 'inim.tootaja_tootlikkus', title: t('Töötajate koormus', 'Employee workload'), group: 'inimesed', defaultSize: [2, 2],
+    hint: t('Tööd ja hambad inimese kohta — ilma rahata', 'Jobs and teeth per person — no money'),
     needs: ['finance'],
   },
   {
-    id: 'inim.katvus', title: 'Andmete katvus', group: 'inimesed', defaultSize: [1, 1],
-    hint: 'Mitmel valmis tööl puudub teostaja või omahind — iga kattenumbri usaldusväärsus',
+    id: 'inim.katvus', title: t('Andmete katvus', 'Data coverage'), group: 'inimesed', defaultSize: [1, 1],
+    hint: t('Mitmel valmis tööl puudub teostaja või omahind — iga kattenumbri usaldusväärsus', 'How many finished jobs lack an assignee or a cost price — how far each margin figure can be trusted'),
     needs: ['finance'],
   },
   {
-    id: 'inim.patsiendid', title: 'Patsiendid', group: 'inimesed', defaultSize: [1, 1],
-    hint: 'Kokku, uued, korduvad', perm: 'patients.read', feature: 'clinical',
+    id: 'inim.patsiendid', title: t('Patsiendid', 'Patients'), group: 'inimesed', defaultSize: [1, 1],
+    hint: t('Kokku, uued, korduvad', 'Total, new, returning'), perm: 'patients.read', feature: 'clinical',
   },
   {
-    id: 'inim.visiidid', title: 'Visiidid', group: 'inimesed', defaultSize: [1, 1],
-    hint: 'Kokku, ei tulnud, keskmine kestus', perm: 'visits.read', feature: 'clinical',
+    id: 'inim.visiidid', title: t('Visiidid', 'Visits'), group: 'inimesed', defaultSize: [1, 1],
+    hint: t('Kokku, ei tulnud, keskmine kestus', 'Total, no-shows, average length'), perm: 'visits.read', feature: 'clinical',
   },
   {
-    id: 'inim.arstid', title: 'Top suunavad arstid', group: 'inimesed', defaultSize: [2, 2],
-    hint: 'Käibe järgi', perm: 'payments.read', feature: 'clinical',
+    id: 'inim.arstid', title: t('Top suunavad arstid', 'Top referring dentists'), group: 'inimesed', defaultSize: [2, 2],
+    hint: t('Käibe järgi', 'By revenue'), perm: 'payments.read', feature: 'clinical',
   },
 
   // ── Raha: arvete pool ──────────────────────────────────────────────────────
   {
-    id: 'raha.vanus', title: 'Võlgnevuse vanus', group: 'raha', defaultSize: [2, 2],
-    hint: 'Tasumata summa selle järgi, kui kaua ta on üle tähtaja olnud',
+    id: 'raha.vanus', title: t('Võlgnevuse vanus', 'Outstanding by age'), group: 'raha', defaultSize: [2, 2],
+    hint: t('Tasumata summa selle järgi, kui kaua ta on üle tähtaja olnud', 'Unpaid amount by how long it has been overdue'),
     perm: 'payments.read', needs: ['invoices'],
   },
   {
-    id: 'raha.laekumisaeg', title: 'Keskmine laekumisaeg', group: 'raha', defaultSize: [1, 1],
-    hint: 'Mitu päeva arve väljastamisest rahani. Ainult perioodil lõplikult tasutud arved',
+    id: 'raha.laekumisaeg', title: t('Keskmine laekumisaeg', 'Average time to payment'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Mitu päeva arve väljastamisest rahani. Ainult perioodil lõplikult tasutud arved', 'Days from issuing an invoice to the money. Only invoices paid in full in the period'),
     perm: 'payments.read', needs: ['invoices'],
   },
   {
-    id: 'raha.kaibemaks', title: 'Käibemaks perioodis', group: 'raha', defaultSize: [1, 1],
-    hint: 'Väljastatud arvete käibemaks — riigile, mitte tulu',
+    id: 'raha.kaibemaks', title: t('Käibemaks perioodis', 'VAT in the period'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Väljastatud arvete käibemaks — riigile, mitte tulu', 'VAT on issued invoices — owed to the state, not income'),
     perm: 'payments.read', needs: ['invoices'],
   },
   {
-    id: 'raha.keskmine_arve', title: 'Keskmine arve', group: 'raha', defaultSize: [1, 1],
-    hint: 'Perioodil väljastatud arvete keskmine netosumma',
+    id: 'raha.keskmine_arve', title: t('Keskmine arve', 'Average invoice'), group: 'raha', defaultSize: [1, 1],
+    hint: t('Perioodil väljastatud arvete keskmine netosumma', 'Average net amount of invoices issued in the period'),
     perm: 'payments.read', needs: ['invoices'],
   },
 
   // ── Ühikumajandus: uued ────────────────────────────────────────────────────
   {
-    id: 'yhik.kasum_too_kohta', title: 'Kasum töö kohta', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Kasum jagatud TÖÖDEGA — mitte tööosade ega muudatustega',
+    id: 'yhik.kasum_too_kohta', title: t('Kasum töö kohta', 'Profit per job'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Kasum jagatud TÖÖDEGA — mitte tööosade ega muudatustega', 'Profit divided by JOBS — not by work items or revisions'),
     perm: 'payments.read', needs: ['unit'],
   },
   {
-    id: 'yhik.kate_hamba_kohta', title: 'Kate hamba kohta', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Tulu miinus kulu, jagatud hammastega',
+    id: 'yhik.kate_hamba_kohta', title: t('Kate hamba kohta', 'Margin per tooth'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Tulu miinus kulu, jagatud hammastega', 'Income minus cost, divided by teeth'),
     perm: 'payments.read', needs: ['unit'],
   },
   {
-    id: 'yhik.kulu_hamba_kohta', title: 'Kulu hamba kohta', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Kogu kulu jagatud hammastega',
+    id: 'yhik.kulu_hamba_kohta', title: t('Kulu hamba kohta', 'Cost per tooth'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Kogu kulu jagatud hammastega', 'Total cost divided by teeth'),
     perm: 'payments.read', needs: ['unit'],
   },
   {
-    id: 'yhik.osakaalud', title: 'Kulude osakaal tulust', group: 'yhik', defaultSize: [2, 2],
-    hint: 'Tööjõud, materjal ja üldkulud protsendina tööde väärtusest',
+    id: 'yhik.osakaalud', title: t('Kulude osakaal tulust', 'Costs as a share of income'), group: 'yhik', defaultSize: [2, 2],
+    hint: t('Tööjõud, materjal ja üldkulud protsendina tööde väärtusest', 'Labour, materials and overheads as a percentage of job value'),
     perm: 'payments.read', needs: ['unit'],
   },
   {
-    id: 'yhik.tulu_toopaeva_kohta', title: 'Tulu tööpäeva kohta', group: 'yhik', defaultSize: [1, 1],
-    hint: 'Käive jagatud möödunud tööpäevadega (E–R)',
+    id: 'yhik.tulu_toopaeva_kohta', title: t('Tulu tööpäeva kohta', 'Income per working day'), group: 'yhik', defaultSize: [1, 1],
+    hint: t('Käive jagatud möödunud tööpäevadega (E–R)', 'Revenue divided by working days so far (Mon–Fri)'),
     perm: 'payments.read', needs: ['unit'],
   },
 
   // ── Tootmine: uued ─────────────────────────────────────────────────────────
   {
-    id: 'toot.tahtajaks', title: 'Tähtajaks valmis', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Osa töödest, mis valmisid tähtajaks. Tähtajata tööd ei loe kummalegi poole',
+    id: 'toot.tahtajaks', title: t('Tähtajaks valmis', 'Done on time'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Osa töödest, mis valmisid tähtajaks. Tähtajata tööd ei loe kummalegi poole', 'Share of jobs finished by their due date. Jobs with no due date count for neither side'),
     needs: ['flow'],
   },
   {
-    id: 'toot.labiaeg_jaotus', title: 'Läbiaja jaotus', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Mediaan, 90. protsentiil, kiireim ja aeglaseim — keskmine üksi varjab saba',
+    id: 'toot.labiaeg_jaotus', title: t('Läbiaja jaotus', 'Turnaround spread'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Mediaan, 90. protsentiil, kiireim ja aeglaseim — keskmine üksi varjab saba', 'Median, 90th percentile, fastest and slowest — an average alone hides the tail'),
     needs: ['flow'],
   },
   {
-    id: 'toot.tarne', title: 'Tarne seis', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Laboris, teel, üle antud — valmis töö ei ole veel kohale jõudnud töö',
+    id: 'toot.tarne', title: t('Tarne seis', 'Delivery status'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Laboris, teel, üle antud — valmis töö ei ole veel kohale jõudnud töö', 'In the lab, on the way, handed over — finished work is not yet delivered work'),
     feature: 'lab', needs: ['flow'],
   },
   {
-    id: 'toot.tarneaeg', title: 'Tarneaeg', group: 'tootmine', defaultSize: [1, 1],
-    hint: 'Päevi valmimisest üleandmiseni', feature: 'lab', needs: ['flow'],
+    id: 'toot.tarneaeg', title: t('Tarneaeg', 'Delivery time'), group: 'tootmine', defaultSize: [1, 1],
+    hint: t('Päevi valmimisest üleandmiseni', 'Days from completion to handover'), feature: 'lab', needs: ['flow'],
   },
   {
-    id: 'toot.nadalapaevad', title: 'Koormus nädalapäeva järgi', group: 'tootmine', defaultSize: [2, 2],
-    hint: 'Mis päeval töö saabub ja mis päeval valmib', needs: ['flow'],
+    id: 'toot.nadalapaevad', title: t('Koormus nädalapäeva järgi', 'Load by weekday'), group: 'tootmine', defaultSize: [2, 2],
+    hint: t('Mis päeval töö saabub ja mis päeval valmib', 'Which day work arrives and which day it is finished'), needs: ['flow'],
   },
 
   // ── Kliendid ───────────────────────────────────────────────────────────────
   {
-    id: 'inim.kliendid_kaive', title: 'Top kliendid', group: 'inimesed', defaultSize: [2, 2],
-    hint: 'Milline praksis toob tööd ja raha. Kliendita tööd on „Määramata" all',
+    id: 'inim.kliendid_kaive', title: t('Top kliendid', 'Top clients'), group: 'inimesed', defaultSize: [2, 2],
+    hint: t('Milline praksis toob tööd ja raha. Kliendita tööd on „Määramata" all', 'Which practice brings work and money. Jobs without a client are under “Unassigned”'),
     perm: 'payments.read', needs: ['customers'], feature: 'lab',
   },
   {
-    id: 'inim.kliendid_seis', title: 'Kliendid perioodis', group: 'inimesed', defaultSize: [1, 1],
-    hint: 'Aktiivsed ja uued', needs: ['customers'], feature: 'lab',
+    id: 'inim.kliendid_seis', title: t('Kliendid perioodis', 'Clients in the period'), group: 'inimesed', defaultSize: [1, 1],
+    hint: t('Aktiivsed ja uued', 'Active and new'), needs: ['customers'], feature: 'lab',
   },
   {
-    id: 'inim.kliendid_magavad', title: 'Magavad kliendid', group: 'inimesed', defaultSize: [2, 2],
-    hint: 'Ei ole 90 päeva tellinud — nimekiri, millega helistada',
+    id: 'inim.kliendid_magavad', title: t('Magavad kliendid', 'Dormant clients'), group: 'inimesed', defaultSize: [2, 2],
+    hint: t('Ei ole 90 päeva tellinud — nimekiri, millega helistada', 'No orders in 90 days — a list to ring round'),
     needs: ['customers'], feature: 'lab',
   },
   {
-    id: 'inim.maksedistsipliin', title: 'Klientide maksedistsipliin', group: 'inimesed', defaultSize: [2, 2],
-    hint: 'Keskmine päevade arv arvest makseni, kliendi kaupa',
+    id: 'inim.maksedistsipliin', title: t('Klientide maksedistsipliin', 'Client payment discipline'), group: 'inimesed', defaultSize: [2, 2],
+    hint: t('Keskmine päevade arv arvest makseni, kliendi kaupa', 'Average days from invoice to payment, per client'),
     perm: 'payments.read', needs: ['customers'], feature: 'lab',
   },
 
   // ── Lõbus teada ────────────────────────────────────────────────────────────
   {
-    id: 'fun.hambad_kokku', title: 'Hambaid kokku', group: 'lobus', defaultSize: [1, 1],
-    hint: 'Kogu aeg, koos ümbertegemistega — ja mitu suutäit see teeb',
+    id: 'fun.hambad_kokku', title: t('Hambaid kokku', 'Teeth total'), group: 'lobus', defaultSize: [1, 1],
+    hint: t('Kogu aeg, koos ümbertegemistega — ja mitu suutäit see teeb', 'All time, remakes included — and how many mouthfuls that makes'),
     needs: ['fun'],
   },
   {
-    id: 'fun.rekordid', title: 'Rekordid', group: 'lobus', defaultSize: [2, 2],
-    hint: 'Suurim töö, tihedaim päev, kiireim ja aeglaseim läbiaeg',
+    id: 'fun.rekordid', title: t('Rekordid', 'Records'), group: 'lobus', defaultSize: [2, 2],
+    hint: t('Suurim töö, tihedaim päev, kiireim ja aeglaseim läbiaeg', 'Biggest job, busiest day, fastest and slowest turnaround'),
     needs: ['fun', 'flow'],
   },
   {
-    id: 'fun.seeria', title: 'Pikim veatu seeria', group: 'lobus', defaultSize: [1, 1],
-    hint: 'Mitu valmis tööd järjest ilma ühegi muudatuseta', needs: ['fun'],
+    id: 'fun.seeria', title: t('Pikim veatu seeria', 'Longest clean streak'), group: 'lobus', defaultSize: [1, 1],
+    hint: t('Mitu valmis tööd järjest ilma ühegi muudatuseta', 'How many finished jobs in a row without a single revision'), needs: ['fun'],
   },
   {
-    id: 'fun.lemmikud', title: 'Lemmikud', group: 'lobus', defaultSize: [2, 2],
-    hint: 'Sagedaseim värv, materjalide arv, hambakaardi katvus, lojaalseim patsient',
+    id: 'fun.lemmikud', title: t('Lemmikud', 'Favourites'), group: 'lobus', defaultSize: [2, 2],
+    hint: t('Sagedaseim värv, materjalide arv, hambakaardi katvus, lojaalseim patsient', 'Most common shade, number of materials, tooth chart coverage, most loyal patient'),
     needs: ['fun'],
   },
   {
-    id: 'fun.tempo', title: 'Tempo', group: 'lobus', defaultSize: [1, 1],
-    hint: 'Nädalavahetusel valminud tööd ja kiirtööde osakaal', needs: ['fun'],
+    id: 'fun.tempo', title: t('Tempo', 'Pace'), group: 'lobus', defaultSize: [1, 1],
+    hint: t('Nädalavahetusel valminud tööd ja kiirtööde osakaal', 'Jobs finished at the weekend and the share of rush jobs'), needs: ['fun'],
   },
   {
-    id: 'fun.algus', title: 'Kaua me juba teeme', group: 'lobus', defaultSize: [1, 1],
-    hint: 'Esimesest tööst tänaseni', needs: ['fun'],
+    id: 'fun.algus', title: t('Kaua me juba teeme', 'How long we’ve been at it'), group: 'lobus', defaultSize: [1, 1],
+    hint: t('Esimesest tööst tänaseni', 'From the first job to today'), needs: ['fun'],
   },
 ] as const satisfies readonly PanelMeta[]
 
@@ -391,7 +392,7 @@ export type PanelId = (typeof PANEL_CATALOGUE)[number]['id']
  */
 export const GAUGE_PANEL_METAS: PanelMeta[] = GAUGE_METRICS.map(m => ({
   id: gaugePanelId(m.key),
-  title: `Näidik: ${m.label}`,
+  title: t(`Näidik: ${m.label}`, `Gauge: ${m.label}`),
   hint: m.hint,
   group: 'naidik',
   defaultSize: [1, 2],

@@ -6,6 +6,7 @@ import { jobPeriodDate } from '../../types/job'
 import { revisionPeriodDate } from '../../lib/periodMetrics'
 import { usePipeline } from '../../context/PipelineContext'
 import { BoardColumn } from './BoardColumn'
+import { t, dateLocale } from '@/lib/i18n'
 
 // ── Discriminated union for board entries ─────────────────────────────────────
 export type BoardEntry =
@@ -38,7 +39,8 @@ export function Board({
   const baseDate  = addWeeks(new Date(), weekOffset)
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(baseDate,   { weekStartsOn: 1 })
-  const weekLabel = `${format(weekStart, 'd. MMM')} – ${format(weekEnd, 'd. MMM')}`
+  const weekFmt   = t('d. MMM', 'd MMM')
+  const weekLabel = `${format(weekStart, weekFmt, { locale: dateLocale })} – ${format(weekEnd, weekFmt, { locale: dateLocale })}`
   const isCurrentWeek = weekOffset === 0
 
   // ── Build per-stage entry lists ─────────────────────────────────────────────

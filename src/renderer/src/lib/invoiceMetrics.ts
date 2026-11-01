@@ -12,6 +12,7 @@
  */
 import type { InvoiceFull } from '../types/invoice'
 import { outstanding, paidAmount } from '../types/invoice'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -58,10 +59,10 @@ export interface InvoiceMetrics {
 }
 
 const BUCKETS: { label: string; from: number; to: number | null }[] = [
-  { label: '1–30 p',  from: 1,  to: 31 },
-  { label: '31–60 p', from: 31, to: 61 },
-  { label: '61–90 p', from: 61, to: 91 },
-  { label: '90+ p',   from: 91, to: null },
+  { label: t('1–30 p', '1–30 d'),  from: 1,  to: 31 },
+  { label: t('31–60 p', '31–60 d'), from: 31, to: 61 },
+  { label: t('61–90 p', '61–90 d'), from: 61, to: 91 },
+  { label: t('90+ p', '90+ d'),   from: 91, to: null },
 ]
 
 /**

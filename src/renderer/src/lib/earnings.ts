@@ -24,6 +24,7 @@
 import type { Job, Revision, WorkItem } from '../types/job'
 import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth, jobDesigners } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
 // to sit in this list, which is a category error — design is a kind of work, not
@@ -44,30 +45,30 @@ export type RateKind = 'tund' | 'hammas' | 'too' | 'protsent' | 'kuu'
 export type RateScope = 'too' | 'disain' | 'muudatus' | 'mudel'
 
 export const RATE_SCOPE_LABEL: Record<RateScope, string> = {
-  too:      'Teostatud töö',
-  disain:   'Disain',
-  muudatus: 'Muudatus (ümbertegemine)',
-  mudel:    'Mudel',
+  too:      t('Teostatud töö', 'Work done'),
+  disain:   t('Disain', 'Design'),
+  muudatus: t('Muudatus (ümbertegemine)', 'Revision (remake)'),
+  mudel:    t('Mudel', 'Model'),
 }
 
 export const RATE_KIND_LABEL: Record<RateKind, string> = {
-  tund:     'Tunnitasu',
-  hammas:   'Hamba tasu',
-  too:      'Töö tasu (fikseeritud)',
-  protsent: '% töö hinnast',
-  kuu:      'Kuutasu',
+  tund:     t('Tunnitasu', 'Hourly rate'),
+  hammas:   t('Hamba tasu', 'Per tooth'),
+  too:      t('Töö tasu (fikseeritud)', 'Per job (fixed)'),
+  protsent: t('% töö hinnast', '% of job price'),
+  kuu:      t('Kuutasu', 'Monthly salary'),
 }
 
 export const RATE_KIND_HINT: Record<RateKind, string> = {
-  tund:     'Korrutatakse tundidega. Saab lasta ka automaatselt tööpäevade järgi täita.',
-  hammas:   'Korrutatakse töö hammaste arvuga.',
-  too:      'Sama summa iga töö eest, sõltumata hammaste arvust.',
-  protsent: 'Protsent töö hinnast (koos disaini hinnaga).',
-  kuu:      'Fikseeritud summa iga arvestusperioodi kohta.',
+  tund:     t('Korrutatakse tundidega. Saab lasta ka automaatselt tööpäevade järgi täita.', 'Multiplied by hours. Can also be filled in automatically from working days.'),
+  hammas:   t('Korrutatakse töö hammaste arvuga.', 'Multiplied by the number of teeth on the job.'),
+  too:      t('Sama summa iga töö eest, sõltumata hammaste arvust.', 'The same amount for every job, whatever the number of teeth.'),
+  protsent: t('Protsent töö hinnast (koos disaini hinnaga).', 'A percentage of the job price (including the design price).'),
+  kuu:      t('Fikseeritud summa iga arvestusperioodi kohta.', 'A fixed amount for each pay period.'),
 }
 
 export const RATE_KIND_SUFFIX: Record<RateKind, string> = {
-  tund: '€/h', hammas: '€/hammas', too: '€/töö', protsent: '%', kuu: '€/kuu',
+  tund: '€/h', hammas: t('€/hammas', '€/tooth'), too: t('€/töö', '€/job'), protsent: '%', kuu: t('€/kuu', '€/month'),
 }
 
 /**
@@ -155,7 +156,7 @@ function eachDay(start: string, end: string): string[] {
   return out
 }
 const toothCount = (h: string | null | undefined) =>
-  (h ?? '').split(',').filter(t => t.trim()).length
+  (h ?? '').split(',').filter(tooth => tooth.trim()).length
 
 function activeOn(rate: WorkerRate, isoDate: string): boolean {
   if (rate.active_from && isoDate < rate.active_from) return false
@@ -302,6 +303,7 @@ export function pickRateFor(
 }
 
 /** Distinct work types, in order, for a line's description. */
+// Left Estonian, like additiveLabel below: payout line descriptions are stored and parsed back (useWorkerPay).
 const itemsLabel = (items: PayItem[]): string => {
   const names = [...new Set(items.map(i => i.too?.trim()).filter(Boolean))]
   return names.length > 0 ? names.join(' + ') : 'Töö'
@@ -406,7 +408,7 @@ function payProduction(
   for (const item of items) {
     const rate = pickRateFor(mine, item.too, isoDate, types, scope)
     if (!rate) {
-      unmatched.push(item.too?.trim() || 'Määramata töö')
+      unmatched.push(item.too?.trim() || t('Määramata töö', 'Unspecified work item'))
       continue
     }
     const teeth = toothCount(item.hambad)
@@ -854,7 +856,7 @@ export interface EarningsIssue {
  * from September's payout — it is in August's, and the only thing to do about
  * it is look at August.
  */
-const PERIOD_LABEL = 'Valmis, aga teisel perioodil — tasu arvestatakse seal'
+const PERIOD_LABEL = t('Valmis, aga teisel perioodil — tasu arvestatakse seal', 'Done, but in another period — paid there')
 
 /**
  * Finished jobs in this period that belong to NOBODY.
@@ -929,7 +931,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       // Only in the live period. In a closed month it is not a finding: the
       // work was not finished then and will be paid whenever it is.
       if (livePeriod) {
-        add('pooleli', 'Töö ei ole veel valmis-etapis — tasu arvestatakse alles siis', job)
+        add('pooleli', t('Töö ei ole veel valmis-etapis — tasu arvestatakse alles siis', 'Job is not in the done stage yet — pay is counted only then'), job)
       }
       continue
     }
@@ -944,7 +946,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       continue
     }
     if (alreadyPaid.has(`job:${job.id}`) || alreadyPaid.has(`design:${job.id}`)) {
-      add('makstud', 'Juba varasema väljamaksega kaetud', job)
+      add('makstud', t('Juba varasema väljamaksega kaetud', 'Already covered by an earlier payout'), job)
       continue
     }
     // Which month this pays into was decided by a FALLBACK, not by a recorded
@@ -955,8 +957,10 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     // this only reaches imported rows and ones finished before that existed.
     if (!job.valmis_kuupaev) {
       add('kuupaev',
-        `Valmimiskuupäev puudub — tasu läks ${job.valmis_aeg ? 'tähtaja' : 'saabumise'} `
-        + 'kuupäeva järgi sellesse kuusse. Ava töö ja märgi, millal see valmis sai',
+        t(`Valmimiskuupäev puudub — tasu läks ${job.valmis_aeg ? 'tähtaja' : 'saabumise'} `
+          + 'kuupäeva järgi sellesse kuusse. Ava töö ja märgi, millal see valmis sai',
+          `No completion date — pay went into this month by the ${job.valmis_aeg ? 'due' : 'arrival'} `
+          + 'date. Open the job and mark when it was finished'),
         job)
     }
     if (isTech) {
@@ -964,7 +968,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
       const pay = payProduction(mine, items, earnedOn, types, 'too', price)
       if (!pay) {
-        add('reegel', 'Ühtegi tasureeglit ei sobi selle tööga (kontrolli "Mille eest" ja "Ainult töö tüübile")', job)
+        add('reegel', t('Ühtegi tasureeglit ei sobi selle tööga (kontrolli "Mille eest" ja "Ainult töö tüübile")', 'No pay rule matches this job (check "Pays for" and "Only for work types")'), job)
         continue
       }
       // A job can now be PARTLY paid: the crowns match a rule and the bridge
@@ -973,7 +977,8 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       // looks plausible and is short by one work item.
       if (pay.unmatched.length > 0) {
         add('reegel',
-          `Osa tööosi jääb tasustamata — neile ei sobi ükski reegel: ${[...new Set(pay.unmatched)].join(', ')}`,
+          t(`Osa tööosi jääb tasustamata — neile ei sobi ükski reegel: ${[...new Set(pay.unmatched)].join(', ')}`,
+            `Some work items go unpaid — no rule matches them: ${[...new Set(pay.unmatched)].join(', ')}`),
           job)
       }
       // A model on the job with no rule to pay it is silent money: the job is
@@ -990,9 +995,11 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
           && rateWorkTypes(r).some(n => /mudel|model/i.test(n)))
         add('reegel',
           scopedToModelType
-            ? 'Mudeli reegel on piiratud töö tüübiga „Mudel", aga mudel on tööl '
-              + 'märkena Kiirtöö kõrval. Muuda reeglil „Mille eest" väärtuseks Mudel'
-            : 'Tööl on mudel, aga mudeli eest makstavat reeglit ei ole',
+            ? t('Mudeli reegel on piiratud töö tüübiga „Mudel", aga mudel on tööl '
+              + 'märkena Kiirtöö kõrval. Muuda reeglil „Mille eest" väärtuseks Mudel',
+              'The model rule is limited to a "Model" work type, but the model is marked on the job '
+              + 'with the flag next to Rush. Set the rule\'s "Pays for" to Model')
+            : t('Tööl on mudel, aga mudeli eest makstavat reeglit ei ole', 'The job has a model, but no rule pays for models'),
           job)
       }
       // The same confusion from the other side. A model could be recorded two
@@ -1006,15 +1013,17 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         && mine.some(r => (r.applies_to ?? 'too') === 'mudel')
         && items.some(i => /mudel|model/i.test(i.too ?? ''))) {
         add('reegel',
-          'Mudel on kirjas tööosana, mitte Mudel-märkena Kiirtöö kõrval — '
-          + 'mudeli tasu jääb arvestamata', job)
+          t('Mudel on kirjas tööosana, mitte Mudel-märkena Kiirtöö kõrval — '
+          + 'mudeli tasu jääb arvestamata',
+          'The model is entered as a work item, not with the Model flag next to Rush — '
+          + 'model pay is not counted'), job)
       }
       if (pay.amount === 0 && pay.kind === 'hammas') {
-        add('hambad', 'Tasu on hamba kohta, aga tööosadel ei ole hambaid valitud', job)
+        add('hambad', t('Tasu on hamba kohta, aga tööosadel ei ole hambaid valitud', 'Pay is per tooth, but no teeth are selected on the work items'), job)
         continue
       }
       if (pay.amount === 0 && pay.kind === 'protsent') {
-        add('hind', 'Tasu on protsent hinnast, aga tööl ei ole hinda', job)
+        add('hind', t('Tasu on protsent hinnast, aga tööl ei ole hinda', 'Pay is a percentage of the price, but the job has no price'), job)
         continue
       }
       // Revisions are diagnosed separately — they have their own status, their
@@ -1022,10 +1031,10 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       // have rework that silently earned nothing.
       for (const [i, rev] of (job.revisions ?? []).entries()) {
         if (rev.taspidev === false) continue  // explicitly non-billable
-        const label = `Muudatus #${i + 1}: ${job.too?.trim() || 'Töö'} · ${job.patsient}`
+        const label = t(`Muudatus #${i + 1}: ${job.too?.trim() || 'Töö'} · ${job.patsient}`, `Revision #${i + 1}: ${job.too?.trim() || 'Job'} · ${job.patsient}`)
         const revJob = { ...job, too: label } as Job
         if ((rev.status ?? '') !== doneStageKey) {
-          if (livePeriod) add('pooleli', 'Muudatus ei ole valmis-etapis', revJob)
+          if (livePeriod) add('pooleli', t('Muudatus ei ole valmis-etapis', 'Revision is not in the done stage'), revJob)
           continue
         }
         const revDate = revisionEarnedOn(rev)
@@ -1039,14 +1048,14 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         const revPay = payProduction(mine, revItems, revDate, types, 'muudatus', revPrice)
           ?? payProduction(mine.filter(r => r.pay_revisions), revItems, revDate, types, 'too', revPrice)
         if (!revPay) {
-          add('reegel', 'Muudatuste eest ei maksta — lisa "Muudatus" reegel või märgi tööreeglil "Muudatused tasustatud"', revJob)
+          add('reegel', t('Muudatuste eest ei maksta — lisa "Muudatus" reegel või märgi tööreeglil "Muudatused tasustatud"', 'Revisions are not paid — add a "Revision" rule or tick "Revisions paid" on the job rule'), revJob)
           continue
         }
         if (revPay.amount === 0 && revPay.kind === 'hammas') {
-          add('hambad', 'Muudatuse tasu on hamba kohta, aga hambaid ei ole valitud', revJob)
+          add('hambad', t('Muudatuse tasu on hamba kohta, aga hambaid ei ole valitud', 'Revision pay is per tooth, but no teeth are selected'), revJob)
         }
         if (revPay.amount === 0 && revPay.kind === 'protsent') {
-          add('hind', 'Muudatuse tasu on protsent hinnast, aga muudatusel ei ole hinda', revJob)
+          add('hind', t('Muudatuse tasu on protsent hinnast, aga muudatusel ei ole hinda', 'Revision pay is a percentage of the price, but the revision has no price'), revJob)
         }
       }
     } else if (isDesigner) {
@@ -1058,11 +1067,11 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
         * priceShare(payItemsOf(job), designItems)
       const design = payProduction(mine, designItems, earnedOn, types, 'disain', price)
       if (!design) {
-        add('reegel', 'Disainijaks on määratud, aga disaini eest makstavat reeglit ei ole', job)
+        add('reegel', t('Disainijaks on määratud, aga disaini eest makstavat reeglit ei ole', 'Assigned as designer, but no rule pays for design'), job)
         continue
       }
       if (design.amount === 0 && design.kind === 'hammas') {
-        add('hambad', 'Disaini tasu on hamba kohta, aga tööl ei ole hambaid valitud', job)
+        add('hambad', t('Disaini tasu on hamba kohta, aga tööl ei ole hambaid valitud', 'Design pay is per tooth, but no teeth are selected on the job'), job)
         continue
       }
     }

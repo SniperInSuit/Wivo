@@ -9,6 +9,7 @@ import { WizardShadePicker } from '../material/WizardShadePicker'
 import { WizardDieShadePicker } from '../material/WizardDieShadePicker'
 import { SelectableCard } from '../ui/SelectableCard'
 import { FOCUS_RING, WIZARD_BTN, WIZARD_ERROR, WIZARD_HELP } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 // The contract fixes `glaze` and `texture` as free strings but names no option
 // list, so these are the smallest set a finisher actually asks for. They stay
@@ -16,6 +17,18 @@ import { FOCUS_RING, WIZARD_BTN, WIZARD_ERROR, WIZARD_HELP } from '../wizardThem
 // lab that wants different words can type over them on the Edit page.
 const GLAZE_OPTIONS = ['Läikiv', 'Poolmatt', 'Matt'] as const
 const TEXTURE_OPTIONS = ['Sile', 'Loomulik', 'Tugev'] as const
+
+// Display only: the stored value stays the Estonian word above, because it is
+// written into kirjeldus (job content) verbatim.
+const FINISH_LABEL: Record<string, string> = {
+  Läikiv: t('Läikiv', 'Glossy'),
+  Poolmatt: t('Poolmatt', 'Semi-matte'),
+  Matt: t('Matt', 'Matte'),
+  Sile: t('Sile', 'Smooth'),
+  Loomulik: t('Loomulik', 'Natural'),
+  Tugev: t('Tugev', 'Pronounced'),
+}
+export const finishLabel = (value: string): string => FINISH_LABEL[value] ?? value
 
 function SectionHeading({ id, title, help }: { id: string; title: string; help: string }) {
   return (
@@ -41,7 +54,7 @@ function OptionRow({ label, options, value, onChange }: {
           selected={value === o}
           onToggle={() => onChange(value === o ? null : o)}
           multi={false}
-          label={o}
+          label={finishLabel(o)}
         />
       ))}
       {value && (
@@ -51,7 +64,7 @@ function OptionRow({ label, options, value, onChange }: {
           className={`${WIZARD_BTN} inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft`}
         >
           <Eraser className="w-4 h-4" aria-hidden="true" />
-          Tühjenda
+          {t('Tühjenda', 'Clear')}
         </button>
       )}
     </div>
@@ -88,17 +101,17 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
       <section>
         <SectionHeading
           id="wizard-materjal-label"
-          title="Materjal"
+          title={t('Materjal', 'Material')}
           help={multi
-            ? 'Iga tööosa võib olla eri materjalist. Vali ülalt tööosa ja siis selle materjal.'
-            : 'Vali materjal, millest töö valmistatakse.'}
+            ? t('Iga tööosa võib olla eri materjalist. Vali ülalt tööosa ja siis selle materjal.', 'Each work item can be in a different material. Choose a work item above, then its material.')
+            : t('Vali materjal, millest töö valmistatakse.', 'Choose the material the job is made from.')}
         />
 
         {/* One row per piece of work. Without it the wizard could only say what
             the WHOLE case was made of, so crowns in one material and bridges in
             another was unsayable — and priced at the first material's rate. */}
         {multi && (
-          <div role="tablist" aria-label="Tööosad" className="flex flex-wrap gap-2 mb-4">
+          <div role="tablist" aria-label={t('Tööosad', 'Work items')} className="flex flex-wrap gap-2 mb-4">
             {state.jobTypes.map(key => {
               const nimi = baseTypeName(key)
               const assigned = state.materialByType[key]?.trim()
@@ -123,7 +136,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
                   />
                   {nimi}
                   <span className={assigned ? 'text-accent font-medium' : 'text-ink-faint'}>
-                    {assigned ?? 'materjal valimata'}
+                    {assigned ?? t('materjal valimata', 'no material')}
                   </span>
                 </button>
               )
@@ -142,7 +155,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
             unassigned work is quoted with the job's first material. */}
         {multi && state.jobTypes.some(k => !state.materialByType[k]?.trim()) && (
           <p className={WIZARD_HELP}>
-            Määramata tööosad hinnastatakse esimese valitud materjali järgi.
+            {t('Määramata tööosad hinnastatakse esimese valitud materjali järgi.', 'Work items with no material are priced at the first selected material.')}
           </p>
         )}
         {materialError && (
@@ -156,8 +169,8 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-toon-label"
-            title="Värvitoon"
-            help="Üks toon kehtib kõigile selle töö hammastele. Üksiku hamba tooni saad hiljem töö lehel muuta."
+            title={t('Värvitoon', 'Shade')}
+            help={t('Üks toon kehtib kõigile selle töö hammastele. Üksiku hamba tooni saad hiljem töö lehel muuta.', "One shade applies to every tooth on this job. You can change a single tooth's shade later on the job page.")}
           />
           <WizardShadePicker
             value={state.defaultShade}
@@ -170,8 +183,8 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
           <div className="mt-6">
             <SectionHeading
               id="wizard-kondivarv-label"
-              title="Köndivärv"
-              help="Ihutud köndi enda toon (VITA ND). Läbipaistva keraamika all paistab see krooni läbi. Kui ei ole teada, jäta valimata."
+              title={t('Köndivärv', 'Stump shade')}
+              help={t('Ihutud köndi enda toon (VITA ND). Läbipaistva keraamika all paistab see krooni läbi. Kui ei ole teada, jäta valimata.', "The shade of the prepared stump itself (VITA ND). Under translucent ceramics it shows through the crown. If it isn't known, leave it unselected.")}
             />
             <WizardDieShadePicker
               value={state.dieShade}
@@ -184,7 +197,7 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         // a bug to someone who filled this form yesterday for a crown.
         <p className="flex items-start gap-2 text-base text-ink-muted">
           <Info className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
-          Valitud töö tüüpide juures värvitooni ei küsita.
+          {t('Valitud töö tüüpide juures värvitooni ei küsita.', "The selected work types don't need a shade.")}
         </p>
       )}
 
@@ -192,11 +205,11 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-glasuur-label"
-            title="Glasuur"
-            help="Kui glasuuri ei ole vaja, jäta valimata."
+            title={t('Glasuur', 'Glaze')}
+            help={t('Kui glasuuri ei ole vaja, jäta valimata.', "If no glaze is needed, leave it unselected.")}
           />
           <OptionRow
-            label="Glasuur"
+            label={t('Glasuur', 'Glaze')}
             options={GLAZE_OPTIONS}
             value={state.glaze}
             onChange={glaze => patch({ glaze })}
@@ -208,11 +221,11 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         <section>
           <SectionHeading
             id="wizard-tekstuur-label"
-            title="Tekstuur"
-            help="Pinna tekstuur. Vabatahtlik."
+            title={t('Tekstuur', 'Texture')}
+            help={t('Pinna tekstuur. Vabatahtlik.', 'Surface texture. Optional.')}
           />
           <OptionRow
-            label="Tekstuur"
+            label={t('Tekstuur', 'Texture')}
             options={TEXTURE_OPTIONS}
             value={state.texture}
             onChange={texture => patch({ texture })}

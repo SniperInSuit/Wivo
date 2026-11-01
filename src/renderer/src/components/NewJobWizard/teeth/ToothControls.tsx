@@ -23,6 +23,7 @@ import lowerImg from '@/assets/jobs/Lower.png'
 import { FDI_LOWER, FDI_UPPER, archIndex, archOf, sortTeeth } from '@shared/wizard'
 import { FOCUS_RING, WIZARD_BTN, WIZARD_HELP } from '../wizardTheme'
 import { teethCountLabel } from './WorkTypeTabs'
+import { t } from '@/lib/i18n'
 
 export interface ToothLegendEntry {
   nimi: string
@@ -75,16 +76,19 @@ export function ToothControls({
 
   /** Adds `teeth` to the active type, skipping what another type owns. */
   function addTeeth(teeth: readonly number[], what: string) {
-    const skipped = teeth.filter(t => blocked.has(t))
-    const added = teeth.filter(t => !blocked.has(t) && !activeTeeth.includes(t))
+    const skipped = teeth.filter(tooth => blocked.has(tooth))
+    const added = teeth.filter(tooth => !blocked.has(tooth) && !activeTeeth.includes(tooth))
     if (added.length === 0 && skipped.length === 0) return
     onSetActiveTeeth(sortTeeth([...activeTeeth, ...added]))
     setAnnouncement(
       added.length === 0
-        ? `${what}: kõik hambad kuuluvad juba teistele töödele.`
+        ? t(`${what}: kõik hambad kuuluvad juba teistele töödele.`, `${what}: all these teeth already belong to other work items.`)
         : skipped.length > 0
-          ? `${what}: lisatud ${teethCountLabel(added.length)}, ${teethCountLabel(skipped.length)} jäi vahele, sest kuulub teisele tööle.`
-          : `${what}: lisatud ${teethCountLabel(added.length)}.`
+          ? t(
+            `${what}: lisatud ${teethCountLabel(added.length)}, ${teethCountLabel(skipped.length)} jäi vahele, sest kuulub teisele tööle.`,
+            `${what}: added ${teethCountLabel(added.length)}, skipped ${teethCountLabel(skipped.length)} because ${skipped.length === 1 ? 'it belongs' : 'they belong'} to another work item.`
+          )
+          : t(`${what}: lisatud ${teethCountLabel(added.length)}.`, `${what}: added ${teethCountLabel(added.length)}.`)
     )
   }
 
@@ -101,7 +105,7 @@ export function ToothControls({
     return () => {
       if (disabled) return
       if (!activeType) {
-        setAnnouncement('Vali kõigepealt, millisele tööle hambaid märgid.')
+        setAnnouncement(t('Vali kõigepealt, millisele tööle hambaid märgid.', 'First choose which work type you are marking teeth for.'))
         return
       }
       run()
@@ -111,15 +115,15 @@ export function ToothControls({
   function selectArch(arch: 'upper' | 'lower') {
     addTeeth(
       arch === 'upper' ? FDI_UPPER : FDI_LOWER,
-      arch === 'upper' ? 'Ülemine lõualuu' : 'Alumine lõualuu'
+      arch === 'upper' ? t('Ülemine lõualuu', 'Upper jaw') : t('Alumine lõualuu', 'Lower jaw')
     )
   }
 
   function mirrorSelection() {
     const partners = activeTeeth
       .map(mirrorTooth)
-      .filter((t): t is number => t != null)
-    addTeeth(partners, 'Peegeldus')
+      .filter((tooth): tooth is number => tooth != null)
+    addTeeth(partners, t('Peegeldus', 'Mirror'))
   }
 
   const seg = [
@@ -136,7 +140,7 @@ export function ToothControls({
         className="inline-flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent"
         aria-live="polite"
       >
-        {total} hammast valitud
+        {t(`${total} hammast valitud`, `${total} ${total === 1 ? 'tooth' : 'teeth'} selected`)}
       </span>
 
       {/* Arch buttons — card style like work types */}
@@ -149,7 +153,7 @@ export function ToothControls({
           <span className="flex h-12 items-center justify-center p-1">
             <img src={upperImg} alt="" className="h-full object-contain" />
           </span>
-          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">Ülemine</span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('Ülemine', 'Upper')}</span>
         </button>
         <button type="button" onClick={guarded(() => selectArch('lower'))} aria-disabled={locked || undefined}
           className={`rounded-xl border-2 overflow-hidden text-center transition-all duration-150 aria-disabled:opacity-40 aria-disabled:cursor-not-allowed ${
@@ -159,7 +163,7 @@ export function ToothControls({
           <span className="flex h-12 items-center justify-center p-1">
             <img src={lowerImg} alt="" className="h-full object-contain" />
           </span>
-          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">Alumine</span>
+          <span className="block px-1 pb-1.5 text-[11px] font-semibold text-ink">{t('Alumine', 'Lower')}</span>
         </button>
       </div>
 
@@ -171,22 +175,22 @@ export function ToothControls({
           onClick={() => { if (!disabled) setConfirmClear(true) }}
           aria-disabled={Boolean(disabled) || undefined}
         >
-          <Eraser className="h-3.5 w-3.5" /> Tühjenda
+          <Eraser className="h-3.5 w-3.5" /> {t('Tühjenda', 'Clear')}
         </button>
       )}
 
       {activeType && (
         <p className="text-[11px] text-ink-muted">
-          Märgid hambaid tööle „{activeType}"
+          {t(`Märgid hambaid tööle „${activeType}"`, `Marking teeth for “${activeType}”`)}
         </p>
       )}
 
       {confirmClear && (
         <div role="alertdialog" className="flex items-center gap-2 rounded-lg border border-rose-400/40 bg-rose-50 px-2.5 py-1.5">
-          <span className="text-xs font-semibold text-rose-500">Tühjendada {teethCountLabel(total)}?</span>
+          <span className="text-xs font-semibold text-rose-500">{t(`Tühjendada ${teethCountLabel(total)}?`, `Clear ${teethCountLabel(total)}?`)}</span>
           <button type="button" className="text-xs font-semibold bg-rose-500 text-white px-2 py-0.5 rounded"
-            onClick={() => { onClearAll(); setConfirmClear(false); setAnnouncement('Tühjendatud.') }}>Jah</button>
-          <button type="button" className="text-xs text-ink-muted" onClick={() => setConfirmClear(false)}>Ei</button>
+            onClick={() => { onClearAll(); setConfirmClear(false); setAnnouncement(t('Tühjendatud.', 'Cleared.')) }}>{t('Jah', 'Yes')}</button>
+          <button type="button" className="text-xs text-ink-muted" onClick={() => setConfirmClear(false)}>{t('Ei', 'No')}</button>
         </div>
       )}
 

@@ -15,6 +15,7 @@
 import { parseISO, isValid, isSameDay, isBefore } from 'date-fns'
 import type { Job, Revision } from '../types/job'
 import { jobWorkItems } from '../types/job'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 export interface Deadline {
   /** Stable across renders; unique per job-or-revision. */
@@ -36,7 +37,7 @@ export interface Deadline {
 
 const labelOf = (job: Job): string => {
   const names = [...new Set(jobWorkItems(job).map(i => i.too).filter(Boolean))]
-  return names.join(' + ') || job.too || 'Määramata töö'
+  return names.join(' + ') || job.too || t('Määramata töö', 'Unspecified job')
 }
 
 /**
@@ -67,7 +68,7 @@ export function jobDeadlines(jobs: Job[]): Deadline[] {
         at: rev.deadline,
         // Its own stage, defaulting the way the rest of the app defaults it.
         status: rev.status ?? 'disain',
-        label: `Muudatus ${i + 1}: ${labelOf(job)}`,
+        label: t(`Muudatus ${i + 1}: ${labelOf(job)}`, `Revision ${i + 1}: ${labelOf(job)}`),
         too: job.too ?? '',
       })
     }

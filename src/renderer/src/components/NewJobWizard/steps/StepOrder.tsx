@@ -5,6 +5,7 @@ import { fieldErrors } from '../types'
 import { WizardField } from '../ui/WizardField'
 import { WizardCustomerSelect } from '../patient/WizardCustomerSelect'
 import { WIZARD_INPUT, WIZARD_LABEL, WIZARD_HELP, WIZARD_ERROR } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 import { PatientPicker } from '@/components/Patients/PatientPicker'
 
 /**
@@ -30,7 +31,7 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
 
       {/* ── Kes ────────────────────────────────────────────────────────────── */}
       <section className="space-y-6">
-        <h3 className="text-base font-semibold text-ink">Kelle jaoks</h3>
+        <h3 className="text-base font-semibold text-ink">{t('Kelle jaoks', 'Who it is for')}</h3>
 
         {/* PatientPicker is reused verbatim — it owns the patient-record linking
             and the "Loo patsient" shortcut, and forking it here would give the
@@ -75,8 +76,10 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
             required
           />
           <p className={WIZARD_HELP}>
-            Kirjuta patsiendi nimi. Kui ta on juba olemas, vali ta nimekirjast — siis
-            seotakse töö tema kaardiga ja ajalugu jääb ühte kohta.
+            {t(
+              'Kirjuta patsiendi nimi. Kui ta on juba olemas, vali ta nimekirjast — siis seotakse töö tema kaardiga ja ajalugu jääb ühte kohta.',
+              "Type the patient's name. If they already exist, pick them from the list — the job is then linked to their record and the history stays in one place."
+            )}
           </p>
           {patientError && (
             <p className={WIZARD_ERROR} role="alert">
@@ -87,9 +90,9 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
         </div>
 
         <WizardField
-          label="Tellija"
+          label={t('Tellija', 'Client')}
           htmlFor={customerId}
-          help="Kliinik või arst, kes töö tellis. Võid selle ka hiljem lisada."
+          help={t('Kliinik või arst, kes töö tellis. Võid selle ka hiljem lisada.', 'The clinic or dentist who ordered the job. You can also add this later.')}
           error={customerError}
         >
           <WizardCustomerSelect
@@ -101,9 +104,9 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
         </WizardField>
 
         <WizardField
-          label="Tellija viide"
+          label={t('Tellija viide', 'Client reference')}
           htmlFor={refId}
-          help="Tellija enda tellimuse number. Jälgimislink näitab ainult seda viidet — patsiendi nime seal ei kuvata."
+          help={t("Tellija enda tellimuse number. Jälgimislink näitab ainult seda viidet — patsiendi nime seal ei kuvata.", "The client's own order number. The tracking link shows only this reference — the patient's name is not shown there.")}
           error={refError}
         >
           <input
@@ -111,7 +114,7 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
             type="text"
             value={state.customerReference}
             onChange={e => patch({ customerReference: e.target.value })}
-            placeholder="Nt 2024-118"
+            placeholder={t('Nt 2024-118', 'e.g. 2024-118')}
             autoComplete="off"
             className={WIZARD_INPUT}
           />
@@ -127,38 +130,38 @@ export const StepOrder: WizardStepComponent = ({ state, patch, errors, showError
 
       {/* ── Vaba tekst ─────────────────────────────────────────────────────── */}
       <section className="space-y-6">
-        <h3 className="text-base font-semibold text-ink">Kirjeldus ja märkused</h3>
+        <h3 className="text-base font-semibold text-ink">{t('Kirjeldus ja märkused', 'Description and notes')}</h3>
 
         <div>
-          <label htmlFor={descriptionId} className={WIZARD_LABEL}>Kirjeldus</label>
+          <label htmlFor={descriptionId} className={WIZARD_LABEL}>{t('Kirjeldus', 'Description')}</label>
           <textarea
             id={descriptionId}
             value={state.description}
             onChange={e => patch({ description: e.target.value })}
             rows={3}
-            placeholder="Mida täpselt tehakse"
+            placeholder={t('Mida täpselt tehakse', 'What exactly is being made')}
             className={WIZARD_INPUT + ' resize-y'}
           />
           <p className={WIZARD_HELP}>
-            Kirjuta nii, nagu seletaksid kolleegile. Näiteks eritingimused või kokkulepped arstiga.
+            {t('Kirjuta nii, nagu seletaksid kolleegile. Näiteks eritingimused või kokkulepped arstiga.', 'Write it as you would explain it to a colleague. For example, special conditions or agreements with the dentist.')}
           </p>
         </div>
 
         <div>
-          <label htmlFor={notesId} className={WIZARD_LABEL}>Märkused</label>
+          <label htmlFor={notesId} className={WIZARD_LABEL}>{t('Märkused', 'Notes')}</label>
           <textarea
             id={notesId}
             value={state.notes}
             onChange={e => patch({ notes: e.target.value })}
             rows={3}
-            placeholder="Lisainfo laborile"
+            placeholder={t('Lisainfo laborile', 'Extra information for the lab')}
             className={WIZARD_INPUT + ' resize-y'}
           />
           {/* Honest about where it lands: notes have no column of their own and
               are folded into the job description, so promising privacy here
               would be a lie the user finds out about on the job page. */}
           <p className={WIZARD_HELP}>
-            Lisainfo laborile. See läheb töö kirjelduse juurde ja on hiljem töö lehel nähtav.
+            {t('Lisainfo laborile. See läheb töö kirjelduse juurde ja on hiljem töö lehel nähtav.', "Extra information for the lab. It's added to the job description and will be visible on the job page.")}
           </p>
         </div>
       </section>

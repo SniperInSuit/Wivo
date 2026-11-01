@@ -1,3 +1,5 @@
+import { t } from '@/lib/i18n'
+
 interface ToothBadgesProps {
   hambad: string | null
   max?: number
@@ -13,7 +15,7 @@ interface ToothBadgesProps {
 }
 
 const split = (s: string | null | undefined): string[] =>
-  (s ?? '').split(',').map(t => t.trim()).filter(Boolean)
+  (s ?? '').split(',').map(part => part.trim()).filter(Boolean)
 
 export function ToothBadges({ hambad, max = 4, implantaadid }: ToothBadgesProps) {
   if (!hambad) return null
@@ -31,7 +33,7 @@ export function ToothBadges({ hambad, max = 4, implantaadid }: ToothBadgesProps)
         return (
           <span
             key={tooth}
-            title={isImplant ? `Hammas ${tooth} — implantaadil` : undefined}
+            title={isImplant ? t(`Hammas ${tooth} — implantaadil`, `Tooth ${tooth} — on an implant`) : undefined}
             className={`relative inline-block text-xs font-mono font-medium rounded px-1.5 py-0.5 leading-none ${
               isImplant
                 ? 'bg-slate-800 text-white'

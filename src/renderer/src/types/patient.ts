@@ -1,3 +1,5 @@
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+
 // A single dated note on the patient card. Mirrors the Revision shape on jobs
 // (types/job.ts:5-17) — same id/ts/free-text idiom, stored as JSONB.
 export interface PatientNote {
@@ -71,6 +73,13 @@ export const EMPTY_PATIENT: PatientInput = {
 }
 
 export const CONSENT_LABEL: Record<Patient['turundusnousolek'], string> = {
+  jah:      t('Tohib saata', 'Allowed'),
+  ei:       t('Ei soovi', 'Declined'),
+  kysimata: t('Küsimata', 'Not asked'),
+}
+
+/** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
+export const CONSENT_LABEL_ET: Record<Patient['turundusnousolek'], string> = {
   jah:      'Tohib saata',
   ei:       'Ei soovi',
   kysimata: 'Küsimata',

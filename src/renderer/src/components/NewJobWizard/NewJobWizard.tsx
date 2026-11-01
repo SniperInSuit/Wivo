@@ -29,6 +29,7 @@ import { WizardShell } from './WizardShell'
 import { WizardSuccess } from './WizardSuccess'
 import { WizardCloseDialog } from './WizardCloseDialog'
 import { describeError } from '../Patients/errors'
+import { t } from '@/lib/i18n'
 
 export interface NewJobWizardProps {
   /** App renders <AnimatePresence>{open && <NewJobWizard …/>}</AnimatePresence>. */
@@ -124,7 +125,7 @@ export function NewJobWizard({
       // describeError, not e.message: the most likely failure here by far is an
       // un-run migration, and PostgREST's raw "Could not find the 'x' column of
       // 'jobs' in the schema cache" tells the owner nothing they can act on.
-      setCreateError(`Töö loomine ebaõnnestus. ${describeError(e)}`)
+      setCreateError(t(`Töö loomine ebaõnnestus. ${describeError(e)}`, `Couldn't create the job. ${describeError(e)}`))
     } finally {
       inFlight.current = false
     }

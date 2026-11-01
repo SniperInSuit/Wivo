@@ -1,5 +1,6 @@
 // Turn a Supabase/PostgREST error into something actionable in Estonian.
 // 42501 = RLS denial, which otherwise just looks like "the button does nothing".
+import { t } from '@/lib/i18n'
 
 /**
  * Which migration adds a given column.
@@ -40,7 +41,7 @@ export function describeError(err: unknown): string {
   const msg = e?.message ?? ''
 
   if (e?.code === '42501' || /row-level security/i.test(msg)) {
-    return 'Andmebaas keeldus kirjutamast (RLS). Käivita sql/002_patients_rls.sql Supabase SQL-redaktoris.'
+    return t('Andmebaas keeldus kirjutamast (RLS). Käivita sql/002_patients_rls.sql Supabase SQL-redaktoris.', 'The database refused the write (RLS). Run sql/002_patients_rls.sql in the Supabase SQL editor.')
   }
   // Checked before 42P01: a missing column also says "does not exist", and the
   // fix is a different migration.
@@ -48,15 +49,15 @@ export function describeError(err: unknown): string {
     const col = missingColumn(msg)
     const file = col ? COLUMN_MIGRATION[col] : undefined
     if (col && file) {
-      return `Andmebaasis puudub veerg „${col}". Käivita ${file} Supabase SQL-redaktoris (Wivo kinni) ja proovi uuesti.`
+      return t(`Andmebaasis puudub veerg „${col}". Käivita ${file} Supabase SQL-redaktoris (Wivo kinni) ja proovi uuesti.`, `The database is missing the column "${col}". Run ${file} in the Supabase SQL editor (with Wivo closed) and try again.`)
     }
     if (col) {
-      return `Andmebaasis puudub veerg „${col}". Käivita puuduv migratsioon sql/ kaustast Supabase SQL-redaktoris.`
+      return t(`Andmebaasis puudub veerg „${col}". Käivita puuduv migratsioon sql/ kaustast Supabase SQL-redaktoris.`, `The database is missing the column "${col}". Run the missing migration from the sql/ folder in the Supabase SQL editor.`)
     }
-    return 'Andmebaasis puudub veerg. Käivita käivitamata migratsioonid sql/ kaustast Supabase SQL-redaktoris.'
+    return t('Andmebaasis puudub veerg. Käivita käivitamata migratsioonid sql/ kaustast Supabase SQL-redaktoris.', 'A database column is missing. Run the pending migrations from the sql/ folder in the Supabase SQL editor.')
   }
   if (e?.code === '42P01' || /does not exist/i.test(msg)) {
-    return 'Tabelit ei ole. Käivita käivitamata migratsioonid sql/ kaustast Supabase SQL-redaktoris.'
+    return t('Tabelit ei ole. Käivita käivitamata migratsioonid sql/ kaustast Supabase SQL-redaktoris.', 'The table does not exist. Run the pending migrations from the sql/ folder in the Supabase SQL editor.')
   }
-  return msg || 'Tundmatu viga'
+  return msg || t('Tundmatu viga', 'Unknown error')
 }

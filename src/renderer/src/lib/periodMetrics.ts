@@ -22,10 +22,11 @@
 import type { Job, Revision } from '../types/job'
 import { jobPeriodDate } from '../types/job'
 import type { InvoiceFull, Payment } from '../types/invoice'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const toothCount = (s: string | null | undefined) =>
-  (s ?? '').split(',').filter(t => t.trim()).length
+  (s ?? '').split(',').filter(tooth => tooth.trim()).length
 
 /** 'YYYY-MM-DD', both ends inclusive. */
 export interface Range { start: string; end: string }
@@ -44,18 +45,18 @@ export type DateAnchor = 'too' | 'arve' | 'laekumine'
 export type MoneyConcept = 'tulu' | 'kaive' | 'arveldatud' | 'laekunud'
 
 export const MONEY_LABEL: Record<MoneyConcept, string> = {
-  tulu: 'Tulu',
-  kaive: 'Käive',
-  arveldatud: 'Arveldatud',
-  laekunud: 'Laekunud',
+  tulu: t('Tulu', 'Income'),
+  kaive: t('Käive', 'Revenue'),
+  arveldatud: t('Arveldatud', 'Invoiced'),
+  laekunud: t('Laekunud', 'Received'),
 }
 
 /** One line of help per concept, shown under the number so the label is not alone. */
 export const MONEY_HINT: Record<MoneyConcept, string> = {
-  tulu: 'Tööde hinnad, muudatuste tasudeta',
-  kaive: 'Tööde hinnad koos muudatuste tasudega',
-  arveldatud: 'Arvetele kantud, käibemaksuta',
-  laekunud: 'Tegelikult laekunud raha',
+  tulu: t('Tööde hinnad, muudatuste tasudeta', 'Job prices, excluding revision fees'),
+  kaive: t('Tööde hinnad koos muudatuste tasudega', 'Job prices, including revision fees'),
+  arveldatud: t('Arvetele kantud, käibemaksuta', 'Put on invoices, excluding VAT'),
+  laekunud: t('Tegelikult laekunud raha', 'Money actually received'),
 }
 
 export interface MetricParams {
@@ -198,16 +199,16 @@ export function periodMetrics(input: MetricInput, params: MetricParams): PeriodM
  * ways, which is half of why 19 vs 15 was not self-explaining.
  */
 export function unitSplitLabel(m: Pick<PeriodMetrics, 'tood' | 'muudatused'>): string {
-  const parts = [`${m.tood} ${m.tood === 1 ? 'töö' : 'tööd'}`]
-  if (m.muudatused > 0) parts.push(`${m.muudatused} muudatust`)
+  const parts = [t(`${m.tood} ${m.tood === 1 ? 'töö' : 'tööd'}`, `${m.tood} ${m.tood === 1 ? 'job' : 'jobs'}`)]
+  if (m.muudatused > 0) parts.push(t(`${m.muudatused} muudatust`, `${m.muudatused} ${m.muudatused === 1 ? 'revision' : 'revisions'}`))
   return parts.join(' · ')
 }
 
 /** "108 originaal · 36 muudatused". Empty when there are no revision teeth. */
 export function teethSplitLabel(m: Pick<PeriodMetrics, 'hambadOriginaal' | 'hambadMuudatused'>): string {
   return m.hambadMuudatused > 0
-    ? `${m.hambadOriginaal} originaal · ${m.hambadMuudatused} muudatused`
-    : `${m.hambadOriginaal} originaal`
+    ? t(`${m.hambadOriginaal} originaal · ${m.hambadMuudatused} muudatused`, `${m.hambadOriginaal} original · ${m.hambadMuudatused} revisions`)
+    : t(`${m.hambadOriginaal} originaal`, `${m.hambadOriginaal} original`)
 }
 
 // ─── The period window ────────────────────────────────────────────────────────

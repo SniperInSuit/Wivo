@@ -16,20 +16,22 @@ import type { WorkItem } from '@/types/job'
 import { useSettings, useWorkTypes, priceBookOf } from '@/stores/useSettings'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useClinicProfiles } from '@/hooks/useClinicProfiles'
+import { t } from '@/lib/i18n'
+import { finishLabel } from './StepMaterial'
 
 // Three labels, duplicated from ArchSelector rather than exported through the
 // contract: the review page must be able to name an arch even if the arch
 // picker was never rendered (an All-on job where the arch came from a draft).
 const ARCH_LABEL: Record<ArchSelection, string> = {
-  upper: 'Ülemine lõualuu',
-  lower: 'Alumine lõualuu',
-  both:  'Mõlemad lõualuud',
+  upper: t('Ülemine lõualuu', 'Upper jaw'),
+  lower: t('Alumine lõualuu', 'Lower jaw'),
+  both:  t('Mõlemad lõualuud', 'Both jaws'),
 }
 
 // The rush multiplier is configurable (Seaded → Hinnad). Writing "×2" here
 // would tell a lab that charges 1.5× a number its own invoice contradicts.
 const priorityLabel = (p: WizardPriority, kordaja: number): string =>
-  p === 'kiirtoo' ? `Kiirtöö (hind ×${kordaja})` : p === 'mudel' ? 'Mudel' : 'Standard'
+  p === 'kiirtoo' ? t(`Kiirtöö (hind ×${kordaja})`, `Rush job (price ×${kordaja})`) : p === 'mudel' ? t('Mudel', 'Model') : t('Standard', 'Standard')
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
@@ -41,28 +43,28 @@ function fmtDate(iso: string | null): string {
 
 /** FDI numbers as separate badges — a comma list of 14 numbers is unreadable. */
 function ToothBadges({ hambad, implantaadid }: { hambad: string; implantaadid?: string }) {
-  const teeth = hambad.split(',').map(t => t.trim()).filter(Boolean)
+  const teeth = hambad.split(',').map(tooth => tooth.trim()).filter(Boolean)
   if (teeth.length === 0) return null
   // Its own copy of the chip rather than ui/ToothBadges: the wizard runs at a
   // larger type scale throughout. The implant mark has to be here too — this is
   // the screen where the job is confirmed, and a screw you cannot see here is
   // one you cannot check before it is on the invoice.
-  const implants = new Set((implantaadid ?? '').split(',').map(t => t.trim()).filter(Boolean))
+  const implants = new Set((implantaadid ?? '').split(',').map(tooth => tooth.trim()).filter(Boolean))
   return (
     <span className="flex flex-wrap gap-1">
-      {teeth.map(t => {
-        const isImplant = implants.has(t)
+      {teeth.map(tooth => {
+        const isImplant = implants.has(tooth)
         return (
           <span
-            key={t}
-            title={isImplant ? `Hammas ${t} — implantaadil` : undefined}
+            key={tooth}
+            title={isImplant ? t(`Hammas ${tooth} — implantaadil`, `Tooth ${tooth} — on an implant`) : undefined}
             className={`relative px-2 py-0.5 rounded-md border text-base font-medium tabular-nums ${
               isImplant
                 ? 'bg-slate-800 border-slate-800 text-white'
                 : 'bg-bg-sidebar border-ink-faint/25 text-ink'
             }`}
           >
-            {t}
+            {tooth}
             {isImplant && (
               <span
                 aria-hidden
@@ -120,8 +122,10 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
     return {
       ...rawQuote,
       unpriced: rawQuote.unpriced.map(reason => {
-        const hit = applianceTypes.find(t => reason.startsWith(`${t}: hambaid ei ole valitud`))
-        return hit ? `${hit}: töö tüübil pole hinda määratud (Seaded → Hinnad).` : reason
+        // Matched on the label alone, not the Estonian wording, which quote.ts now
+        // translates: an appliance item has no teeth, so its only reason is this one.
+        const hit = applianceTypes.find(type => reason.startsWith(`${type}: `))
+        return hit ? t(`${hit}: töö tüübil pole hinda määratud (Seaded → Hinnad).`, `${hit}: no price set for this work type (Settings → Prices).`) : reason
       }),
     }
   }, [rawQuote, rules])
@@ -129,7 +133,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
   /** Is there a soodushind to offer at all? Asked of the LIVE type list, and by
    *  exact name, exactly like every other jobTypes lookup in the wizard. */
   const discountAvailable = useMemo(
-    () => state.jobTypes.some(n => types.find(t => t.nimi === n)?.soodushind != null),
+    () => state.jobTypes.some(n => types.find(type => type.nimi === n)?.soodushind != null),
     [state.jobTypes, types]
   )
 
@@ -137,14 +141,14 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
   const blocking = errors.filter(e => e.severity === 'error')
 
   const workerName = (id: string | null): string =>
-    id ? workers.find(w => w.id === id)?.full_name || 'Nimeta' : ''
+    id ? workers.find(w => w.id === id)?.full_name || t('Nimeta', 'Unnamed') : ''
 
   const customerName = state.customer
-    ? customers.find(c => c.id === state.customer)?.name ?? 'Tundmatu tellija'
+    ? customers.find(c => c.id === state.customer)?.name ?? t('Tundmatu tellija', 'Unknown client')
     : ''
 
   const deadlineText = state.deadline
-    ? `${fmtDate(state.deadline)}${state.time ? ` kell ${state.time}` : ''}`
+    ? `${fmtDate(state.deadline)}${state.time ? t(` kell ${state.time}`, ` at ${state.time}`) : ''}`
     : ''
 
   const showShadeSection = rules.supportsShade || rules.supportsGlaze || rules.supportsTexture
@@ -160,7 +164,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
         <div className="rounded-xl border border-rose-400/70 bg-rose-500/10 p-4" role="alert">
           <p className="flex items-center gap-2 text-base font-semibold text-rose-500">
             <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-            Töö ei ole veel valmis loomiseks
+            {t('Töö ei ole veel valmis loomiseks', 'The job is not ready to be created yet')}
           </p>
           <ul className="mt-2 space-y-1">
             {blocking.map((e, i) => (
@@ -173,9 +177,9 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
       <div className="grid gap-4 lg:grid-cols-2">
 
         {/* ── 1. Töö tüüp ─────────────────────────────────────────────────── */}
-        <ReviewSection title="Töö tüüp" step={1} onEdit={goToStep} errors={pick('jobTypes')}>
+        <ReviewSection title={t('Töö tüüp', 'Work type')} step={1} onEdit={goToStep} errors={pick('jobTypes')}>
           <WizardSummaryRow
-            label="Valitud tööd"
+            label={t('Valitud tööd', 'Selected work')}
             empty={state.jobTypes.length === 0}
             value={
               <span className="flex flex-wrap gap-2">
@@ -202,24 +206,25 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
         {/* When no type on this job needs teeth, "Muuda" points at step 1: the
             only thing that could change the answer is the work type itself. */}
         <ReviewSection
-          title="Hambad"
+          title={t('Hambad', 'Teeth')}
           step={rules.needsTeethStep ? 2 : 1}
           onEdit={goToStep}
           errors={pick('teeth', 'arch')}
         >
           {!rules.needsTeethStep ? (
             <WizardSummaryRow
-              label="Hambad"
-              value="Selle töö puhul ei ole hambaid vaja valida."
+              label={t('Hambad', 'Teeth')}
+              value={t('Selle töö puhul ei ole hambaid vaja valida.', "This job doesn't need any teeth chosen.")}
             />
           ) : (
             <>
               {state.selectedArch && (
-                <WizardSummaryRow label="Lõualuu" value={ARCH_LABEL[state.selectedArch]} />
+                <WizardSummaryRow label={t('Lõualuu', 'Jaw')} value={ARCH_LABEL[state.selectedArch]} />
               )}
               {items.map((item, idx) => {
                 const sameType = items.filter(i => i.too === item.too)
                 const num = sameType.length > 1 ? ` ${sameType.indexOf(item) + 1}` : ''
+                const toothCount = item.hambad.split(',').filter(tooth => tooth.trim()).length
                 return (
                 <WizardSummaryRow
                   key={item.id}
@@ -230,12 +235,12 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                       <span className="flex flex-col gap-1">
                         <ToothBadges hambad={item.hambad} implantaadid={item.implantaadid} />
                         <span className="text-base text-ink-muted">
-                          {item.hambad.split(',').filter(t => t.trim()).length} hammast
-                          {item.bridge ? ' · sild' : ''}
+                          {t(`${toothCount} hammast`, `${toothCount} ${toothCount === 1 ? 'tooth' : 'teeth'}`)}
+                          {item.bridge ? t(' · sild', ' · bridge') : ''}
                         </span>
                       </span>
                     ) : (
-                      'Hambaid ei valitud'
+                      t('Hambaid ei valitud', 'No teeth chosen')
                     )
                   }
                 />
@@ -254,7 +259,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                 return (
                   <WizardSummaryRow
                     key={`abut:${item.id}`}
-                    label={`Kruvi / abutment — ${item.too}`}
+                    label={t(`Kruvi / abutment — ${item.too}`, `Screw / abutment — ${item.too}`)}
                     value={
                       <span className="flex flex-col gap-0.5">
                         {[...grouped.entries()].map(([code, teeth]) => (
@@ -275,10 +280,10 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
         {/* ── 3. Materjal ─────────────────────────────────────────────────── */}
         {/* One row per piece of work, because they can differ. A single-material
             job still reads as one line, which is the common case. */}
-        <ReviewSection title="Materjal" step={3} onEdit={goToStep} errors={pick('materials')}>
+        <ReviewSection title={t('Materjal', 'Material')} step={3} onEdit={goToStep} errors={pick('materials')}>
           {state.jobTypes.length <= 1 ? (
             <WizardSummaryRow
-              label="Materjal"
+              label={t('Materjal', 'Material')}
               value={materialsOf(state)[0] ?? ''}
               empty={materialsOf(state).length === 0}
             />
@@ -290,7 +295,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
                 <WizardSummaryRow
                   key={key}
                   label={displayName(key)}
-                  value={assigned || (fallback ? `${fallback} (esimese järgi)` : '')}
+                  value={assigned || (fallback ? t(`${fallback} (esimese järgi)`, `${fallback} (same as first)`) : '')}
                   empty={!assigned && !fallback}
                 />
               )
@@ -301,7 +306,7 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
         {/* ── 4. Värvitoon ────────────────────────────────────────────────── */}
         {showShadeSection && (
           <ReviewSection
-            title="Värvitoon"
+            title={t('Värvitoon', 'Shade')}
             step={3}
             onEdit={goToStep}
             errors={pick('defaultShade', 'glaze', 'texture')}
@@ -309,31 +314,31 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
             {rules.supportsShade && (
               <>
                 <WizardSummaryRow
-                  label="Värv"
+                  label={t('Värv', 'Shade')}
                   value={state.defaultShade ?? ''}
                   empty={!state.defaultShade}
                 />
                 {/* Shown even when blank — an unrecorded stump shade is worth
                     noticing before the job is created, not after. */}
                 <WizardSummaryRow
-                  label="Köndivärv"
+                  label={t('Köndivärv', 'Stump shade')}
                   value={state.dieShade ?? ''}
                   empty={!state.dieShade}
                 />
               </>
             )}
             {rules.supportsGlaze && (
-              <WizardSummaryRow label="Glasuur" value={state.glaze ?? ''} empty={!state.glaze} />
+              <WizardSummaryRow label={t('Glasuur', 'Glaze')} value={state.glaze ? finishLabel(state.glaze) : ''} empty={!state.glaze} />
             )}
             {rules.supportsTexture && (
-              <WizardSummaryRow label="Tekstuur" value={state.texture ?? ''} empty={!state.texture} />
+              <WizardSummaryRow label={t('Tekstuur', 'Texture')} value={state.texture ? finishLabel(state.texture) : ''} empty={!state.texture} />
             )}
           </ReviewSection>
         )}
 
         {/* ── 5. Tootmine ─────────────────────────────────────────────────── */}
         <ReviewSection
-          title="Tootmine"
+          title={t('Tootmine', 'Production')}
           step={4}
           onEdit={goToStep}
           errors={pick('machine', 'designer', 'technician', 'date', 'printId', 'designId', 'priority')}
@@ -344,95 +349,95 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
             state.jobTypes.map(key => (
               <WizardSummaryRow
                 key={key}
-                label={`Masin — ${baseTypeName(key)}`}
+                label={t(`Masin — ${baseTypeName(key)}`, `Machine — ${baseTypeName(key)}`)}
                 value={state.machineByType[key] ?? ''}
                 empty={!state.machineByType[key]}
               />
             ))
           ) : (
             <WizardSummaryRow
-              label="Masin"
+              label={t('Masin', 'Machine')}
               value={machinesOf(state)[0] ?? state.machine ?? ''}
               empty={!machinesOf(state)[0] && !state.machine}
             />
           )}
           <WizardSummaryRow
-            label="Disainija"
+            label={t('Disainija', 'Designer')}
             value={workerName(state.designer)}
             empty={!state.designer}
           />
           <WizardSummaryRow
-            label="Teostaja"
+            label={t('Teostaja', 'Technician')}
             value={workerName(state.technician)}
             empty={!state.technician}
           />
-          <WizardSummaryRow label="Töö vastu võetud" value={fmtDate(state.date)} empty={!state.date} />
-          <WizardSummaryRow label="Print ID" value={state.printId} empty={!state.printId.trim()} />
-          <WizardSummaryRow label="Disain ID" value={state.designId} empty={!state.designId.trim()} />
+          <WizardSummaryRow label={t('Töö vastu võetud', 'Job received')} value={fmtDate(state.date)} empty={!state.date} />
+          <WizardSummaryRow label={t('Print ID', 'Print ID')} value={state.printId} empty={!state.printId.trim()} />
+          <WizardSummaryRow label={t('Disain ID', 'Design ID')} value={state.designId} empty={!state.designId.trim()} />
           <WizardSummaryRow
-            label="Prioriteet"
+            label={t('Prioriteet', 'Priority')}
             value={priorityLabel(state.priority, settings.kiirtooKordaja)}
           />
           {/* Only for a Mudel job — the row is not stored on any other. */}
           {state.priority === 'mudel' && (
-            <WizardSummaryRow label="Mudel ID" value={state.modelId} empty={!state.modelId.trim()} />
+            <WizardSummaryRow label={t('Mudel ID', 'Model ID')} value={state.modelId} empty={!state.modelId.trim()} />
           )}
         </ReviewSection>
 
         {/* ── 6. Tähtaeg ──────────────────────────────────────────────────── */}
         <ReviewSection
-          title="Tähtaeg"
+          title={t('Tähtaeg', 'Due date')}
           step={4}
           onEdit={goToStep}
           errors={pick('deadline', 'time')}
         >
-          <WizardSummaryRow label="Tähtaeg" value={deadlineText} empty={!deadlineText} />
+          <WizardSummaryRow label={t('Tähtaeg', 'Due date')} value={deadlineText} empty={!deadlineText} />
           {!state.deadline && (
             <div>
               <p className="text-base text-ink-muted">
-                Tähtaega ei ole määratud. Töö luuakse ilma tähtajata ja seda saab hiljem lisada.
+                {t('Tähtaega ei ole määratud. Töö luuakse ilma tähtajata ja seda saab hiljem lisada.', 'No due date set. The job will be created without one, and you can add it later.')}
               </p>
             </div>
           )}
         </ReviewSection>
 
         {/* ── 7. Patsient ─────────────────────────────────────────────────── */}
-        <ReviewSection title="Patsient" step={5} onEdit={goToStep} errors={pick('patient')}>
+        <ReviewSection title={t('Patsient', 'Patient')} step={5} onEdit={goToStep} errors={pick('patient')}>
           <WizardSummaryRow
-            label="Nimi"
+            label={t('Nimi', 'Name')}
             value={state.patient?.name.trim() ?? ''}
             empty={!state.patient?.name.trim()}
           />
           <WizardSummaryRow
-            label="Patsiendikaart"
-            value={state.patient?.patientId ? 'Seotud olemasoleva patsiendiga' : 'Sidumata'}
+            label={t('Patsiendikaart', 'Patient record')}
+            value={state.patient?.patientId ? t('Seotud olemasoleva patsiendiga', 'Linked to an existing patient') : t('Sidumata', 'Not linked')}
           />
         </ReviewSection>
 
         {/* ── 8. Tellija ──────────────────────────────────────────────────── */}
         <ReviewSection
-          title="Tellija"
+          title={t('Tellija', 'Client')}
           step={5}
           onEdit={goToStep}
           errors={pick('customer', 'customerReference')}
         >
-          <WizardSummaryRow label="Tellija" value={customerName} empty={!customerName} />
+          <WizardSummaryRow label={t('Tellija', 'Client')} value={customerName} empty={!customerName} />
           <WizardSummaryRow
-            label="Tellija viide"
+            label={t('Tellija viide', 'Client reference')}
             value={state.customerReference}
             empty={!state.customerReference.trim()}
           />
         </ReviewSection>
 
         {/* ── 9. Kirjeldus ja märkused ────────────────────────────────────── */}
-        <ReviewSection title="Kirjeldus ja märkused" step={5} onEdit={goToStep} errors={[]}>
+        <ReviewSection title={t('Kirjeldus ja märkused', 'Description and notes')} step={5} onEdit={goToStep} errors={[]}>
           <WizardSummaryRow
-            label="Kirjeldus"
+            label={t('Kirjeldus', 'Description')}
             value={<span className="whitespace-pre-wrap">{state.description}</span>}
             empty={!state.description.trim()}
           />
           <WizardSummaryRow
-            label="Märkused"
+            label={t('Märkused', 'Notes')}
             value={<span className="whitespace-pre-wrap">{state.notes}</span>}
             empty={!state.notes.trim()}
           />

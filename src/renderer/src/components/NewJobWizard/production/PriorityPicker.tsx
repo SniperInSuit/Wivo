@@ -1,7 +1,8 @@
 import { AlertTriangle, Cpu, Timer, Zap } from 'lucide-react'
-import type { WizardPriority } from '@shared/wizard'
+import { WIZARD_STEPS, type WizardPriority } from '@shared/wizard'
 import { useSettings } from '@/stores/useSettings'
 import { SelectableCard } from '../ui/SelectableCard'
+import { t } from '@/lib/i18n'
 
 export interface PriorityPickerProps {
   value: WizardPriority
@@ -23,21 +24,21 @@ export function PriorityPicker({ value, onChange }: PriorityPickerProps) {
 
   return (
     <div className="space-y-4">
-      <div role="radiogroup" aria-label="Töö prioriteet" className="flex flex-wrap gap-3">
+      <div role="radiogroup" aria-label={t('Töö prioriteet', 'Job priority')} className="flex flex-wrap gap-3">
         <SelectableCard
           selected={value === 'standard'}
           onToggle={() => onChange('standard')}
           multi={false}
-          label="Standard"
-          sublabel="Tavaline järjekord ja hind"
+          label={t('Standard', 'Standard')}
+          sublabel={t('Tavaline järjekord ja hind', 'Normal queue and price')}
           icon={<Timer className="w-5 h-5 text-ink-muted" aria-hidden="true" />}
         />
         <SelectableCard
           selected={value === 'kiirtoo'}
           onToggle={() => onChange('kiirtoo')}
           multi={false}
-          label="Kiirtöö"
-          sublabel={`Hind × ${kordaja}`}
+          label={t('Kiirtöö', 'Rush job')}
+          sublabel={t(`Hind × ${kordaja}`, `Price × ${kordaja}`)}
           badge={`× ${kordaja}`}
           icon={<Zap className="w-5 h-5 text-orange-500" aria-hidden="true" />}
         />
@@ -45,11 +46,11 @@ export function PriorityPicker({ value, onChange }: PriorityPickerProps) {
           selected={value === 'mudel'}
           onToggle={() => onChange('mudel')}
           multi={false}
-          label="Mudel"
+          label={t('Mudel', 'Model')}
           // Safe to print now: quoteJob adds `book.mudeliHind` on the mudel
           // flag, so the number on this card is the number the created job
           // carries. It was deliberately hidden while nothing read that setting.
-          sublabel={settings.mudeliHind > 0 ? `Ainult mudel · ${settings.mudeliHind} €` : 'Ainult mudel'}
+          sublabel={settings.mudeliHind > 0 ? t(`Ainult mudel · ${settings.mudeliHind} €`, `Model only · ${settings.mudeliHind} €`) : t('Ainult mudel', 'Model only')}
           icon={<Cpu className="w-5 h-5 text-amber-500" aria-hidden="true" />}
         />
       </div>
@@ -67,10 +68,11 @@ export function PriorityPicker({ value, onChange }: PriorityPickerProps) {
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" aria-hidden="true" />
           <div>
             <p className="text-base font-semibold text-amber-500">
-              Kiirtöö korrutab tootmishinna {kordaja}×
+              {t(`Kiirtöö korrutab tootmishinna ${kordaja}×`, `A rush job multiplies the production price by ${kordaja}`)}
             </p>
             <p className="text-base text-ink-soft mt-0.5">
-              Lõpliku hinna näed enne töö loomist sammus „Kontroll“.
+              {/* The step's own label, so this follows whatever the tracker calls it. */}
+              {t(`Lõpliku hinna näed enne töö loomist sammus „${WIZARD_STEPS[5].short}“.`, `You'll see the final price in the “${WIZARD_STEPS[5].short}” step before the job is created.`)}
             </p>
           </div>
         </div>

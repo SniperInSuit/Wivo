@@ -13,6 +13,7 @@ import { AlertCircle } from 'lucide-react'
 import type { ArchSelection } from '@shared/wizard'
 import { SelectableCard } from '../ui/SelectableCard'
 import { WIZARD_ERROR } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 import upperImg from '@/assets/jobs/Upper.png'
 import lowerImg from '@/assets/jobs/Lower.png'
 
@@ -26,20 +27,20 @@ export interface ArchSelectorProps {
 const OPTIONS: { value: ArchSelection; label: string; sublabel: string; icon: ReactNode }[] = [
   {
     value: 'upper',
-    label: 'Ülemine lõualuu',
-    sublabel: 'Hambad 18–28',
+    label: t('Ülemine lõualuu', 'Upper jaw'),
+    sublabel: t('Hambad 18–28', 'Teeth 18–28'),
     icon: <img src={upperImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'lower',
-    label: 'Alumine lõualuu',
-    sublabel: 'Hambad 48–38',
+    label: t('Alumine lõualuu', 'Lower jaw'),
+    sublabel: t('Hambad 48–38', 'Teeth 48–38'),
     icon: <img src={lowerImg} alt="" className="h-10 w-10 object-contain" aria-hidden="true" />,
   },
   {
     value: 'both',
-    label: 'Mõlemad lõualuud',
-    sublabel: 'Kõik 32 hammast',
+    label: t('Mõlemad lõualuud', 'Both jaws'),
+    sublabel: t('Kõik 32 hammast', 'All 32 teeth'),
     icon: (
       <div className="flex flex-col items-center gap-0.5" aria-hidden="true">
         <img src={upperImg} alt="" className="h-7 w-7 object-contain" />
@@ -58,7 +59,7 @@ export function ArchSelector({ value, onChange, invalid }: ArchSelectorProps) {
     <div>
       <div
         role="radiogroup"
-        aria-label="Lõualuu"
+        aria-label={t('Lõualuu', 'Jaw')}
         aria-required="true"
         className="grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
@@ -78,7 +79,7 @@ export function ArchSelector({ value, onChange, invalid }: ArchSelectorProps) {
       {showError && (
         <p className={WIZARD_ERROR} role="alert">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Vali lõualuu: ülemine, alumine või mõlemad.
+          {t('Vali lõualuu: ülemine, alumine või mõlemad.', 'Choose the jaw: upper, lower or both.')}
         </p>
       )}
     </div>

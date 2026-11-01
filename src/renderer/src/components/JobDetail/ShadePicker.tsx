@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { VITA_SHADES, VITA_GROUPS } from '../../config/vita'
+import { t } from '@/lib/i18n'
 
 interface ShadePickerProps {
   value: string | null
@@ -59,7 +60,7 @@ export function ShadePicker({ value, onChange, disabled }: ShadePickerProps) {
       <div className="flex items-center gap-2 pt-1">
         <input
           type="text"
-          placeholder="Vaba tekst (nt Bleach 1)"
+          placeholder={t('Vaba tekst (nt Bleach 1)', 'Free text (e.g. Bleach 1)')}
           disabled={disabled}
           value={isCustom ? value : freeText}
           onChange={(e) => {
@@ -75,7 +76,7 @@ export function ShadePicker({ value, onChange, disabled }: ShadePickerProps) {
             disabled={disabled}
             className="text-xs text-ink-muted hover:text-red-500 transition-colors"
           >
-            Tühjenda
+            {t('Tühjenda', 'Clear')}
           </button>
         )}
       </div>

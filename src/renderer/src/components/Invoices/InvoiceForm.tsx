@@ -21,6 +21,7 @@ import type { BillToKind } from '../../types/customer'
 import { toDate } from '../../lib/dates'
 import { instalmentSchedule, scheduleProblems } from '@shared/billing/instalments'
 import { useCreatePaymentPlan } from '../../hooks/usePaymentPlans'
+import { t } from '@/lib/i18n'
 
 interface DraftLine {
   key: string
@@ -275,7 +276,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-ink-faint/15 flex-shrink-0">
           <h2 className="text-sm font-bold text-ink flex items-center gap-2">
-            <FileText size={15} className="text-accent" /> Uus arve
+            <FileText size={15} className="text-accent" /> {t('Uus arve', 'New invoice')}
           </h2>
           <button type="button" onClick={onClose} className="btn-ghost p-1.5"><X size={14} /></button>
         </div>
@@ -283,14 +284,14 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Saaja</label>
+              <label className="label">{t('Saaja', 'Bill to')}</label>
               {/* Switching clears the other side's selection: an invoice
                   addressed to a customer must not carry a patient_id, and the
                   DB refuses the row if it does. */}
               <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit mb-2">
                 {([
-                  { key: 'customer' as const, label: 'Klient' },
-                  { key: 'patient'  as const, label: 'Patsient' },
+                  { key: 'customer' as const, label: t('Klient', 'Client') },
+                  { key: 'patient'  as const, label: t('Patsient', 'Patient') },
                 ]).map(o => (
                   <button
                     key={o.key}
@@ -315,7 +316,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                   onChange={e => { setCustomerId(e.target.value || null); setLines([]) }}
                   className="input"
                 >
-                  <option value="">Vali klient…</option>
+                  <option value="">{t('Vali klient…', 'Select client…')}</option>
                   {customers.filter(c => !c.archived_at).map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -331,7 +332,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Kuupäev</label>
+                <label className="label">{t('Kuupäev', 'Date')}</label>
                 <input
                   type="date" value={issueDate}
                   onChange={e => setIssueDate(e.target.value)}
@@ -339,7 +340,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                 />
               </div>
               <div>
-                <label className="label">Maksetähtaeg</label>
+                <label className="label">{t('Maksetähtaeg', 'Payment due')}</label>
                 <input type="date" value={dueDate} readOnly className="input opacity-70" />
               </div>
             </div>
@@ -348,13 +349,13 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           {/* ── Unbilled work ── */}
           <div>
             <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mb-2">
-              Arveldamata töö {patientKey && `(${candidates.length})`}
+              {t('Arveldamata töö', 'Unbilled work')} {patientKey && `(${candidates.length})`}
             </p>
             {!patientKey ? (
-              <p className="text-xs text-ink-faint">Vali patsient, et näha tema arveldamata töid.</p>
+              <p className="text-xs text-ink-faint">{t('Vali patsient, et näha tema arveldamata töid.', 'Select a patient to see their unbilled jobs.')}</p>
             ) : candidates.length === 0 ? (
               <p className="text-xs text-ink-faint">
-                Arveldamata töid ei ole. Kõik selle patsiendi tööd on juba arvel.
+                {t('Arveldamata töid ei ole. Kõik selle patsiendi tööd on juba arvel.', "No unbilled jobs. All of this patient's jobs are already invoiced.")}
               </p>
             ) : (
               <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
@@ -379,21 +380,21 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">
-                Arve read ({lines.length})
+                {t('Arve read', 'Invoice lines')} ({lines.length})
               </p>
               <button type="button" onClick={addBlank} className="btn-ghost text-xs border border-ink-faint/25">
-                <Plus size={12} /> Lisa rida
+                <Plus size={12} /> {t('Lisa rida', 'Add line')}
               </button>
             </div>
 
             {lines.length === 0 ? (
-              <p className="text-xs text-ink-faint">Ridu ei ole. Lisa ülalt või käsitsi.</p>
+              <p className="text-xs text-ink-faint">{t('Ridu ei ole. Lisa ülalt või käsitsi.', 'No lines. Add from above or by hand.')}</p>
             ) : (
               <div className="space-y-1.5">
                 <div className="grid grid-cols-[1fr_60px_90px_28px] gap-2 px-1">
-                  <span className="text-[10px] font-semibold text-ink-faint uppercase">Kirjeldus</span>
-                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-center">Kogus</span>
-                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-right">Hind</span>
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase">{t('Kirjeldus', 'Description')}</span>
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-center">{t('Kogus', 'Qty')}</span>
+                  <span className="text-[10px] font-semibold text-ink-faint uppercase text-right">{t('Hind', 'Price')}</span>
                   <span />
                 </div>
                 {lines.map(l => (
@@ -401,7 +402,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                     <input
                       value={l.description}
                       onChange={e => patchLine(l.key, { description: e.target.value })}
-                      placeholder="Kirjeldus"
+                      placeholder={t('Kirjeldus', 'Description')}
                       className="input py-1.5 text-sm"
                     />
                     <input
@@ -417,7 +418,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                     <button
                       type="button" onClick={() => removeLine(l.key)}
                       className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
-                      title="Eemalda rida"
+                      title={t('Eemalda rida', 'Remove line')}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -428,7 +429,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           </div>
 
           <div>
-            <label className="label">Jaga osamakseteks</label>
+            <label className="label">{t('Jaga osamakseteks', 'Split into instalments')}</label>
             <div className="flex items-center gap-2">
               <input
                 type="number" min="1" max="60" value={instalments}
@@ -437,8 +438,8 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
               />
               <span className="text-xs text-ink-muted">
                 {instalments > 1
-                  ? `${instalments} arvet, üks kuus, igaüks ${(gross / instalments).toFixed(2)} €`
-                  : 'kuud (1 = üks arve)'}
+                  ? t(`${instalments} arvet, üks kuus, igaüks ${(gross / instalments).toFixed(2)} €`, `${instalments} invoices, one a month, ${(gross / instalments).toFixed(2)} € each`)
+                  : t('kuud (1 = üks arve)', 'months (1 = one invoice)')}
               </span>
             </div>
 
@@ -446,7 +447,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
               <div className="mt-2 space-y-2 rounded-xl bg-bg-sidebar p-3">
                 <div className="flex items-end gap-3 flex-wrap">
                   <div>
-                    <label className="label">Arve päev</label>
+                    <label className="label">{t('Arve päev', 'Invoice day')}</label>
                     <input
                       type="number" min="1" max="28" value={planDay}
                       onChange={e => setPlanDay(Math.max(1, Math.min(28, parseInt(e.target.value) || 1)))}
@@ -454,7 +455,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                     />
                   </div>
                   <div>
-                    <label className="label">Maksetähtaeg</label>
+                    <label className="label">{t('Maksetähtaeg', 'Payment due')}</label>
                     <div className="relative w-24">
                       <input
                         type="number" min="0" max="180" value={planTerm}
@@ -462,7 +463,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                         className="input py-1.5 pr-8 text-sm text-right"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-ink-faint pointer-events-none">
-                        p
+                        {t('p', 'd')}
                       </span>
                     </div>
                   </div>
@@ -470,7 +471,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                       plan "on the 31st" would quietly become the 28th every
                       February and the 31st again in March. */}
                   <p className="text-[11px] text-ink-faint flex-1 min-w-[160px] leading-snug">
-                    Kuni 28, et kuupäev kehtiks ka veebruaris.
+                    {t('Kuni 28, et kuupäev kehtiks ka veebruaris.', 'Up to 28, so the date also exists in February.')}
                   </p>
                 </div>
 
@@ -489,7 +490,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                       <div key={part.no} className="flex items-center gap-2 text-[11px]">
                         <span className="w-8 text-ink-faint tabular-nums">{part.no}/{instalments}</span>
                         <span className="text-ink-muted tabular-nums">{part.issueDate}</span>
-                        <span className="text-ink-faint">tähtaeg</span>
+                        <span className="text-ink-faint">{t('tähtaeg', 'due')}</span>
                         <span className="text-ink-muted tabular-nums">{part.dueDate}</span>
                         <span className="ml-auto tabular-nums font-medium text-ink">
                           {part.amount.toFixed(2)} €
@@ -500,21 +501,19 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                 )}
 
                 <p className="text-[11px] text-ink-faint leading-relaxed">
-                  Kõik arved luuakse kohe, kuupäevadega kuu kaupa edasi — töölaua
-                  taga ei jookse midagi, kui Wivo on kinni, nii et reegel „loo
-                  järgmisel kuul" ei käivituks kunagi. <strong>Iga osamakse seob
-                  tööd oma osaga</strong>, nii et „Laekumata" kahaneb iga makse
-                  järel. Viimane arve võtab ümardusjäägi.
+                  {t('Kõik arved luuakse kohe, kuupäevadega kuu kaupa edasi — töölaua taga ei jookse midagi, kui Wivo on kinni, nii et reegel „loo järgmisel kuul" ei käivituks kunagi.', 'All invoices are created now, dated a month apart — nothing runs on the desktop while Wivo is closed, so a "create next month" rule would never fire.')}{' '}
+                  <strong>{t('Iga osamakse seob tööd oma osaga', 'Each instalment links the work to its share')}</strong>
+                  {t(', nii et „Laekumata" kahaneb iga makse järel. Viimane arve võtab ümardusjäägi.', ', so "Outstanding" goes down with every payment. The last invoice takes the rounding remainder.')}
                 </p>
               </div>
             )}
           </div>
 
           <div>
-            <label className="label">Märkus arvel</label>
+            <label className="label">{t('Märkus arvel', 'Note on invoice')}</label>
             <textarea
               value={note} onChange={e => setNote(e.target.value)} rows={2}
-              placeholder="Nähtav arvel…" className="input resize-none"
+              placeholder={t('Nähtav arvel…', 'Shown on the invoice…')} className="input resize-none"
             />
           </div>
         </div>
@@ -529,7 +528,7 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
           <div className="flex items-end justify-between gap-4">
             <div className="flex items-end gap-3">
               <div>
-                <label className="label">KM %</label>
+                <label className="label">{t('KM %', 'VAT %')}</label>
                 <input
                   type="number" min="0" max="30" step="0.5" value={vatRate}
                   onChange={e => setVatRate(parseFloat(e.target.value) || 0)}
@@ -537,10 +536,10 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
                 />
               </div>
               <div className="text-xs text-ink-muted space-y-0.5 pb-1">
-                <div className="flex gap-3 justify-between"><span>Summa</span><span className="tabular-nums font-medium text-ink">{net.toFixed(2)} €</span></div>
-                <div className="flex gap-3 justify-between"><span>KM</span><span className="tabular-nums font-medium text-ink">{vat.toFixed(2)} €</span></div>
+                <div className="flex gap-3 justify-between"><span>{t('Summa', 'Net')}</span><span className="tabular-nums font-medium text-ink">{net.toFixed(2)} €</span></div>
+                <div className="flex gap-3 justify-between"><span>{t('KM', 'VAT')}</span><span className="tabular-nums font-medium text-ink">{vat.toFixed(2)} €</span></div>
                 <div className="flex gap-3 justify-between border-t border-ink-faint/20 pt-0.5">
-                  <span className="font-semibold text-ink">Kokku</span>
+                  <span className="font-semibold text-ink">{t('Kokku', 'Total')}</span>
                   <span className="tabular-nums font-bold text-accent">{gross.toFixed(2)} €</span>
                 </div>
               </div>
@@ -548,13 +547,13 @@ export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: Invoic
 
             <div className="flex items-center gap-2">
               <button type="button" onClick={onClose} className="btn-ghost border border-ink-faint/25">
-                Loobu
+                {t('Loobu', 'Cancel')}
               </button>
               <button type="submit" disabled={!canSave} className="btn-primary disabled:opacity-50">
                 {createInvoice.isPending || createPlan.isPending
                   ? <Loader2 size={13} className="animate-spin" />
                   : <FileText size={13} />}
-                Loo arve
+                {t('Loo arve', 'Create invoice')}
               </button>
             </div>
           </div>

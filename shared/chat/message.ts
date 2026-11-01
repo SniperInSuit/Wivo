@@ -16,6 +16,7 @@
  * as something a person can act on rather than as mojibake. The same message
  * seen by a client that cannot resolve the job still says a job was meant.
  */
+import { t } from '../i18n'
 
 /** A UUID as Postgres writes it. Deliberately strict — see `jobIdsIn`. */
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
@@ -103,7 +104,7 @@ export function hasContent(body: string): boolean {
  */
 export function previewOf(body: string, jobLabel?: (id: string) => string | null): string {
   return parseMessage(body)
-    .map(s => (s.kind === 'text' ? s.text : (jobLabel?.(s.jobId) ?? 'töö')))
+    .map(s => (s.kind === 'text' ? s.text : (jobLabel?.(s.jobId) ?? t('töö', 'job'))))
     .join('')
     .replace(/\s+/g, ' ')
     .trim()

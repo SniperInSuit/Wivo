@@ -29,6 +29,7 @@ import type { WizardStepComponent } from './types'
 import { WizardProgress } from './WizardProgress'
 import { WizardNavigation } from './WizardNavigation'
 import { FOCUS_RING, WIZARD_BLUSH } from './wizardTheme'
+import { t, intlLocale } from '@/lib/i18n'
 import { ToothGlyph } from './jobtype/ToothGlyph'
 import { StepJobType } from './steps/StepJobType'
 import { StepTeeth } from './steps/StepTeeth'
@@ -62,7 +63,7 @@ const hhmm = (iso: string): string => {
   const d = new Date(iso)
   return Number.isNaN(d.getTime())
     ? ''
-    : d.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' })
 }
 
 /** Everything inside the dialog that a Tab can land on. */
@@ -200,7 +201,7 @@ export function WizardShell({
                   <ToothGlyph name="tooth" size={22} />
                 </span>
                 <h1 id="wizard-title" className="text-lg font-semibold text-ink whitespace-nowrap">
-                  Lisa uus töö
+                  {t('Lisa uus töö', 'Add new job')}
                 </h1>
                 <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400 whitespace-nowrap">
                   {state.currentStep}/6
@@ -218,11 +219,11 @@ export function WizardShell({
                 type="button"
                 onClick={onRequestClose}
                 disabled={saving}
-                title="Sulge"
+                title={t('Sulge', 'Close')}
                 className={`flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS_RING}`}
               >
                 <X size={18} aria-hidden="true" />
-                <span className="sr-only">Sulge</span>
+                <span className="sr-only">{t('Sulge', 'Close')}</span>
               </button>
             </div>
           </header>
@@ -233,8 +234,8 @@ export function WizardShell({
               <div className="mb-6 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-[220px] space-y-1">
                   <p className="text-base text-ink-soft">
-                    Taastasime pooleli jäänud mustandi
-                    {wizard.draftSavedAt ? ` (salvestatud ${hhmm(wizard.draftSavedAt)})` : ''}.
+                    {t('Taastasime pooleli jäänud mustandi', 'We restored your unfinished draft')}
+                    {wizard.draftSavedAt ? t(` (salvestatud ${hhmm(wizard.draftSavedAt)})`, ` (saved ${hhmm(wizard.draftSavedAt)})`) : ''}.
                   </p>
                   {/* What the restore silently changed. Both of these used to
                       happen with no word said, and both change what the job is:
@@ -242,13 +243,13 @@ export function WizardShell({
                       clicked on the calendar being replaced by the draft's. */}
                   {wizard.droppedTypes.length > 0 && (
                     <p className="text-base font-medium text-amber-500">
-                      Need töö tüübid ei ole enam saadaval ja eemaldati:{' '}
-                      {wizard.droppedTypes.join(', ')}. Vali sammus 1 uued tüübid.
+                      {t('Need töö tüübid ei ole enam saadaval ja eemaldati:', 'These work types are no longer available and were removed:')}{' '}
+                      {wizard.droppedTypes.join(', ')}. {t('Vali sammus 1 uued tüübid.', 'Choose new types in step 1.')}
                     </p>
                   )}
                   {wizard.seededDeadline && (
                     <p className="text-base text-ink-soft">
-                      Tähtajaks märkisime kalendrist valitud kuupäeva
+                      {t('Tähtajaks märkisime kalendrist valitud kuupäeva', 'We set the due date to the date you picked in the calendar')}
                       {' '}({wizard.seededDeadline}).
                     </p>
                   )}
@@ -256,21 +257,21 @@ export function WizardShell({
                 {confirmDiscard ? (
                   <>
                     <span className="text-base font-medium text-rose-500">
-                      Kustutada mustand ja alustada algusest?
+                      {t('Kustutada mustand ja alustada algusest?', 'Delete the draft and start over?')}
                     </span>
                     <button
                       type="button"
                       onClick={() => { wizard.discardDraft(); setConfirmDiscard(false); setBannerOpen(false) }}
                       className={`min-h-[44px] px-4 rounded-xl text-base font-medium text-white bg-rose-600 hover:bg-rose-700 transition-colors ${FOCUS_RING}`}
                     >
-                      Jah, kustuta
+                      {t('Jah, kustuta', 'Yes, delete')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmDiscard(false)}
                       className={`min-h-[44px] px-4 rounded-xl text-base font-medium text-ink-muted hover:text-ink hover:bg-bg-card transition-colors ${FOCUS_RING}`}
                     >
-                      Ei
+                      {t('Ei', 'No')}
                     </button>
                   </>
                 ) : (
@@ -281,14 +282,14 @@ export function WizardShell({
                       className={`min-h-[44px] px-4 rounded-xl text-base font-medium text-ink-soft bg-bg-card border border-ink-faint/40 hover:bg-bg-sidebar transition-colors flex items-center gap-2 ${FOCUS_RING}`}
                     >
                       <RotateCcw size={16} aria-hidden="true" />
-                      Alusta algusest
+                      {t('Alusta algusest', 'Start over')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setBannerOpen(false)}
                       className={`min-h-[44px] px-4 rounded-xl text-base font-medium text-ink-muted hover:text-ink hover:bg-bg-card transition-colors ${FOCUS_RING}`}
                     >
-                      Jätka mustandiga
+                      {t('Jätka mustandiga', 'Continue with draft')}
                     </button>
                   </>
                 )}

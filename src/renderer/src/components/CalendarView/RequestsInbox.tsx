@@ -18,7 +18,7 @@ import {
   Inbox, Phone, Mail, Clock, Check, X, Ban, Trash2, MessageSquare, AlertTriangle,
 } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
-import { et } from 'date-fns/locale'
+import { t, dateLocale } from '@/lib/i18n'
 import {
   useVisitRequests, useUpdateVisitRequest, useDeleteVisitRequest,
   REQUEST_STATUS_LABEL, type VisitRequest, type VisitRequestStatus,
@@ -41,23 +41,23 @@ const STATUS_STYLE: Record<VisitRequestStatus, string> = {
  */
 const MAKSE_SILT: Record<string, { text: string; cls: string } | null> = {
   vaba:        null,   // no fee was asked for: nothing to say
-  ootel:       { text: 'Tasumata',   cls: 'bg-amber-100 text-amber-700' },
-  makstud:     { text: 'Tasutud',    cls: 'bg-emerald-100 text-emerald-700' },
-  ebaonnestus: { text: 'Makse tõrge', cls: 'bg-red-100 text-red-700' },
-  tuhistatud:  { text: 'Makse katkes', cls: 'bg-ink-faint/15 text-ink-muted' },
+  ootel:       { text: t('Tasumata', 'Unpaid'),   cls: 'bg-amber-100 text-amber-700' },
+  makstud:     { text: t('Tasutud', 'Paid'),    cls: 'bg-emerald-100 text-emerald-700' },
+  ebaonnestus: { text: t('Makse tõrge', 'Payment failed'), cls: 'bg-red-100 text-red-700' },
+  tuhistatud:  { text: t('Makse katkes', 'Payment cancelled'), cls: 'bg-ink-faint/15 text-ink-muted' },
 }
 
 const FILTERS: { key: VisitRequestStatus | 'all'; label: string }[] = [
-  { key: 'uus',        label: 'Uued' },
-  { key: 'kinnitatud', label: 'Kinnitatud' },
-  { key: 'lykatud',    label: 'Tagasi lükatud' },
-  { key: 'ramps',      label: 'Rämps' },
-  { key: 'all',        label: 'Kõik' },
+  { key: 'uus',        label: t('Uued', 'New') },
+  { key: 'kinnitatud', label: t('Kinnitatud', 'Confirmed') },
+  { key: 'lykatud',    label: t('Tagasi lükatud', 'Declined') },
+  { key: 'ramps',      label: t('Rämps', 'Spam') },
+  { key: 'all',        label: t('Kõik', 'All') },
 ]
 
 function fmt(iso: string): string {
   const d = parseISO(iso)
-  return isValid(d) ? format(d, 'dd.MM.yyyy HH:mm', { locale: et }) : '—'
+  return isValid(d) ? format(d, 'dd.MM.yyyy HH:mm', { locale: dateLocale }) : '—'
 }
 
 export function RequestsInbox() {
@@ -86,10 +86,9 @@ export function RequestsInbox() {
         <div className="card p-4 flex items-start gap-3">
           <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-ink">Taotluste tabelit ei ole veel</p>
+            <p className="text-sm font-semibold text-ink">{t('Taotluste tabelit ei ole veel', 'The requests table does not exist yet')}</p>
             <p className="text-xs text-ink-muted mt-1">
-              Jooksuta <code className="text-accent">sql/059_visit_requests.sql</code> Supabase
-              SQL editoris. Kuni seda ei ole, ei saa veebivorm kuhugi kirjutada.
+              {t('Jooksuta', 'Run')} <code className="text-accent">sql/059_visit_requests.sql</code> {t('Supabase SQL editoris. Kuni seda ei ole, ei saa veebivorm kuhugi kirjutada.', 'in the Supabase SQL editor. Until you do, the web form has nowhere to write.')}
             </p>
             <p className="text-[11px] text-ink-faint mt-2">{describeError(error)}</p>
           </div>
@@ -102,7 +101,7 @@ export function RequestsInbox() {
     <div className="p-5 space-y-4 overflow-auto h-full">
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
-          <Inbox size={15} /> Visiiditaotlused
+          <Inbox size={15} /> {t('Visiiditaotlused', 'Visit requests')}
         </h2>
         <div className="flex items-center gap-1">
           {FILTERS.map(f => (
@@ -126,8 +125,8 @@ export function RequestsInbox() {
       {shown.length === 0 ? (
         <p className="text-sm text-ink-faint py-10 text-center">
           {filter === 'uus'
-            ? 'Uusi taotlusi ei ole.'
-            : 'Selles vaates ei ole taotlusi.'}
+            ? t('Uusi taotlusi ei ole.', 'No new requests.')
+            : t('Selles vaates ei ole taotlusi.', 'No requests in this view.')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -183,11 +182,11 @@ export function RequestsInbox() {
                   {r.valik && r.valik.length > 0 && (
                     <div className="mt-1.5 rounded-lg bg-bg-sidebar px-2 py-1.5">
                       <p className="text-[11px] text-ink-soft">
-                        Veebis arvutatud:{' '}
+                        {t('Veebis arvutatud:', 'Calculated online:')}{' '}
                         <span className="font-semibold tabular-nums">
                           {r.hinnang != null ? `${Number(r.hinnang).toFixed(2)} €` : '—'}
                         </span>
-                        <span className="text-ink-faint"> · hinnanguline</span>
+                        <span className="text-ink-faint"> · {t('hinnanguline', 'estimate')}</span>
                       </p>
                       {r.valik.map((v, i) => (
                         <p key={i} className="text-[10px] text-ink-muted">
@@ -197,10 +196,10 @@ export function RequestsInbox() {
                     </div>
                   )}
                   <p className="text-[10px] text-ink-faint mt-1.5">
-                    Saadetud {fmt(r.created_at)}
-                    {r.service_id && ` · soovitud teenus: ${r.service_id}`}
+                    {t('Saadetud', 'Sent')} {fmt(r.created_at)}
+                    {r.service_id && t(` · soovitud teenus: ${r.service_id}`, ` · requested service: ${r.service_id}`)}
                     {r.kasitles && r.kasitletud_at
-                      && ` · käsitles ${nameOf(r.kasitles) || '—'} ${fmt(r.kasitletud_at)}`}
+                      && t(` · käsitles ${nameOf(r.kasitles) || '—'} ${fmt(r.kasitletud_at)}`, ` · handled by ${nameOf(r.kasitles) || '—'} ${fmt(r.kasitletud_at)}`)}
                   </p>
                 </div>
 
@@ -211,18 +210,18 @@ export function RequestsInbox() {
                         onClick={() => setConfirming(r)}
                         className="btn-primary text-xs px-2.5 py-1 flex items-center gap-1"
                       >
-                        <Check size={11} /> Broneeri
+                        <Check size={11} /> {t('Broneeri', 'Book')}
                       </button>
                       <button
                         onClick={() => setStatus(r, 'lykatud')}
-                        title="Ei sobi — jääb kirja, kustub 90 päeva pärast"
+                        title={t('Ei sobi — jääb kirja, kustub 90 päeva pärast', 'Not suitable — kept on record, deleted after 90 days')}
                         className="btn-ghost text-xs px-2 py-1 border border-ink-faint/30 flex items-center gap-1"
                       >
-                        <X size={11} /> Lükka tagasi
+                        <X size={11} /> {t('Lükka tagasi', 'Decline')}
                       </button>
                       <button
                         onClick={() => setStatus(r, 'ramps')}
-                        title="Rämps"
+                        title={t('Rämps', 'Spam')}
                         className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
                       >
                         <Ban size={12} />
@@ -235,11 +234,11 @@ export function RequestsInbox() {
                         onClick={() => setStatus(r, 'uus')}
                         className="btn-ghost text-xs px-2 py-1 border border-ink-faint/30"
                       >
-                        Tagasi uueks
+                        {t('Tagasi uueks', 'Back to new')}
                       </button>
                       <button
                         onClick={() => remove.mutate(r.id)}
-                        title="Kustuta jäädavalt"
+                        title={t('Kustuta jäädavalt', 'Delete permanently')}
                         className="p-1.5 rounded text-ink-faint hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={12} />

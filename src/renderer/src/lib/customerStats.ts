@@ -15,6 +15,7 @@ import type { Job } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import { paidAmount, outstanding } from '../types/invoice'
 import { jobTotalValue } from './jobPayments'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -75,7 +76,7 @@ export function customerStats(
     if (!r) {
       r = {
         id,
-        name: id === UNASSIGNED ? 'Määramata' : nameOf.get(id) ?? 'Tundmatu klient',
+        name: id === UNASSIGNED ? t('Määramata', 'Unassigned') : nameOf.get(id) ?? t('Tundmatu klient', 'Unknown client'),
         jobs: 0, teeth: 0, revenue: 0, billed: 0, outstanding: 0, daysToPay: null,
       }
       rows.set(id, r)

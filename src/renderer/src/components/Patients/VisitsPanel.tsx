@@ -7,6 +7,7 @@ import { VISIT_STATUS_LABEL, VISIT_STATUS_HEX } from '../../types/visit'
 import { useVisits } from '../../hooks/useVisits'
 import { stageChipStyle } from '../../config/pipeline'
 import { PanelCard } from './PanelCard'
+import { t } from '@/lib/i18n'
 
 interface VisitsPanelProps {
   patient: Patient
@@ -36,7 +37,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
 
   return (
     <PanelCard
-      title="VISIIDID"
+      title={t('VISIIDID', 'VISITS')}
       icon={CalendarClock}
       action={
         <button
@@ -44,23 +45,23 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
           className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
         >
           <Plus size={11} />
-          Lisa visiit
+          {t('Lisa visiit', 'Add visit')}
         </button>
       }
     >
       {isError ? (
         <p className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-2">
-          Visiitide tabelit pole. Käivita sql/007_visits.sql Supabase SQL-redaktoris.
+          {t('Visiitide tabelit pole. Käivita sql/007_visits.sql Supabase SQL-redaktoris.', 'No visits table. Run sql/007_visits.sql in the Supabase SQL editor.')}
         </p>
       ) : mine.length === 0 ? (
-        <p className="text-sm text-ink-muted">Visiite pole.</p>
+        <p className="text-sm text-ink-muted">{t('Visiite pole.', 'No visits.')}</p>
       ) : (
         <div className="space-y-2.5">
           {/* The next appointment is the one thing worth surfacing above the list */}
           {next && (
             <div className="rounded-xl bg-accent/10 border border-accent/30 px-2.5 py-2">
               <p className="text-[10px] font-semibold text-accent uppercase tracking-wider">
-                Järgmine visiit
+                {t('Järgmine visiit', 'Next visit')}
               </p>
               <p className="text-sm font-bold text-ink tabular-nums">
                 {format(parseISO(next.algus), 'dd.MM.yyyy HH:mm')}
@@ -74,7 +75,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
           {noShows > 0 && (
             <p className="flex items-center gap-1.5 text-[11px] text-amber-700">
               <AlertTriangle size={11} />
-              {noShows}× ei tulnud kohale
+              {t(`${noShows}× ei tulnud kohale`, `${noShows}× no-show`)}
             </p>
           )}
 

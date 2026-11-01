@@ -5,6 +5,7 @@ import { SelectableCard } from '../ui/SelectableCard'
 import { WizardField } from '../ui/WizardField'
 import { ToothSwatch } from '../jobtype/ToothGlyph'
 import { FOCUS_RING, WIZARD_HELP, WIZARD_INPUT, WIZARD_BTN } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardShadePickerProps {
   /** state.defaultShade — a VITA code or free text. */
@@ -13,10 +14,10 @@ export interface WizardShadePickerProps {
 }
 
 const GROUP_HELP: Record<(typeof VITA_GROUPS)[number], string> = {
-  A: 'Punakaspruunid toonid',
-  B: 'Kollakad toonid',
-  C: 'Hallikad toonid',
-  D: 'Punakashallid toonid',
+  A: t('Punakaspruunid toonid', 'Reddish-brown shades'),
+  B: t('Kollakad toonid', 'Yellowish shades'),
+  C: t('Hallikad toonid', 'Greyish shades'),
+  D: t('Punakashallid toonid', 'Reddish-grey shades'),
 }
 
 /**
@@ -43,7 +44,7 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
   return (
     <div className="space-y-4">
       {/* Group tabs */}
-      <div role="tablist" aria-label="VITA värvigrupid" className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label={t('VITA värvigrupid', 'VITA shade groups')} className="flex flex-wrap gap-2">
         {VITA_GROUPS.map(g => {
           const active = group === g
           return (
@@ -62,8 +63,8 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
                   : 'border-ink-faint/40 bg-bg-card text-ink-muted font-medium hover:border-ink-faint'
               }`}
             >
-              Grupp {g}
-              {selected?.group === g && <span className="sr-only"> — sisaldab valitud tooni</span>}
+              {t('Grupp', 'Group')} {g}
+              {selected?.group === g && <span className="sr-only">{t(' — sisaldab valitud tooni', ' — contains the selected shade')}</span>}
             </button>
           )
         })}
@@ -73,7 +74,7 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
       {/* radiogroup and not group: the cards inside announce themselves as
           radios, and a radio outside a radiogroup is invalid ARIA — the reader
           cannot say "1 of 6". */}
-      <div role="radiogroup" aria-label={`Grupi ${group} toonid`} className="flex flex-wrap gap-3">
+      <div role="radiogroup" aria-label={t(`Grupi ${group} toonid`, `Group ${group} shades`)} className="flex flex-wrap gap-3">
         {shades.map(s => (
           <SelectableCard
             key={s.code}
@@ -109,9 +110,9 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
           style={{ backgroundColor: selected?.hex ?? 'transparent' }}
         />
         <div className="min-w-0">
-          <p className="text-base font-semibold text-ink-soft">Valitud toon</p>
+          <p className="text-base font-semibold text-ink-soft">{t('Valitud toon', 'Selected shade')}</p>
           <p className="text-base text-ink font-medium truncate" aria-live="polite">
-            {value ?? 'Toon on valimata'}
+            {value ?? t('Toon on valimata', 'No shade selected')}
           </p>
         </div>
         {value && (
@@ -121,15 +122,15 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
             className={`${WIZARD_BTN} ml-auto shrink-0 inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft`}
           >
             <Eraser className="w-4 h-4" aria-hidden="true" />
-            Tühjenda
+            {t('Tühjenda', 'Clear')}
           </button>
         )}
       </div>
 
       <WizardField
-        label="Muu toon"
+        label={t('Muu toon', 'Other shade')}
         htmlFor="wizard-shade-free"
-        help="Kui toon pole VITA skaalal — näiteks Bleach 1 — kirjuta see siia."
+        help={t('Kui toon pole VITA skaalal — näiteks Bleach 1 — kirjuta see siia.', "If the shade isn't on the VITA scale — for example Bleach 1 — type it here.")}
       >
         <input
           id="wizard-shade-free"
@@ -141,7 +142,7 @@ export function WizardShadePicker({ value, onChange }: WizardShadePickerProps) {
             // "no shade" rather than leaving a stale VITA code behind.
             onChange(e.target.value.trim() === '' ? null : e.target.value)
           }}
-          placeholder="Nt Bleach 1"
+          placeholder={t('Nt Bleach 1', 'e.g. Bleach 1')}
           className={WIZARD_INPUT}
         />
       </WizardField>

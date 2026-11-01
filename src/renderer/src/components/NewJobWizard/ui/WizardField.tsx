@@ -9,6 +9,7 @@
 import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { WIZARD_ERROR, WIZARD_HELP, WIZARD_LABEL } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardFieldProps {
   /** Rendered as a real <label htmlFor={htmlFor}> ABOVE the control. */
@@ -63,7 +64,7 @@ export function WizardField({
           {required && (
             <>
               <span aria-hidden="true" className="text-rose-500"> *</span>
-              <span className="sr-only"> (kohustuslik)</span>
+              <span className="sr-only">{t(' (kohustuslik)', ' (required)')}</span>
             </>
           )}
         </label>
@@ -73,7 +74,7 @@ export function WizardField({
           {required && (
             <>
               <span aria-hidden="true" className="text-rose-500"> *</span>
-              <span className="sr-only"> (kohustuslik)</span>
+              <span className="sr-only">{t(' (kohustuslik)', ' (required)')}</span>
             </>
           )}
         </div>

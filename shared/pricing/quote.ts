@@ -26,6 +26,7 @@
 import type { PriceBook } from './priceBook'
 import { calcProduction, workTypePriceFor } from './priceBook'
 import { toothCount } from './teeth'
+import { t } from '../i18n'
 
 /** One piece of work: a type, the teeth it covers, and what it is made of. */
 export interface QuoteItem {
@@ -145,13 +146,13 @@ export function quoteJob(input: QuoteInput, book: PriceBook): Quote {
   let priced = 0
 
   for (const item of input.items) {
-    const label = item.too?.trim() || 'Määramata töö'
+    const label = item.too?.trim() || t('Määramata töö', 'Unspecified job')
     const result = priceItem(item, input.materjal, book, useDiscount)
     if (!result) {
       unpriced.push(
         toothCount(item.hambad) === 0
-          ? `${label}: hambaid ei ole valitud ja töö tüübil pole hinda`
-          : `${label}: hinda ei õnnestu arvutada`
+          ? t(`${label}: hambaid ei ole valitud ja töö tüübil pole hinda`, `${label}: no teeth selected and the work type has no price`)
+          : t(`${label}: hinda ei õnnestu arvutada`, `${label}: the price cannot be worked out`)
       )
       continue
     }
@@ -169,7 +170,7 @@ export function quoteJob(input: QuoteInput, book: PriceBook): Quote {
   let production = round2(base)
   if (rush && production > 0) {
     const uplift = round2(production * book.kiirtooKordaja - production)
-    lines.push({ source: 'kiirtöö', label: `Kiirtöö ×${book.kiirtooKordaja}`, amount: uplift })
+    lines.push({ source: 'kiirtöö', label: t(`Kiirtöö ×${book.kiirtooKordaja}`, `Rush ×${book.kiirtooKordaja}`), amount: uplift })
     production = round2(production * book.kiirtooKordaja)
   }
 
@@ -182,19 +183,19 @@ export function quoteJob(input: QuoteInput, book: PriceBook): Quote {
   // printing one takes what it takes however urgent the case is.
   if (input.mudel && book.mudeliHind > 0) {
     const amount = round2(book.mudeliHind)
-    lines.push({ source: 'mudel', label: 'Mudel', amount })
+    lines.push({ source: 'mudel', label: t('Mudel', 'Model'), amount })
     production = round2(production + amount)
   }
 
   const disain = round2(Number(input.disainHind ?? 0))
-  if (disain > 0) lines.push({ source: 'disain', label: 'Disain', amount: disain })
+  if (disain > 0) lines.push({ source: 'disain', label: t('Disain', 'Design'), amount: disain })
 
   let lisateenused = 0
   for (const e of input.extras ?? []) {
     const amount = round2(Number(e.hind ?? 0))
     if (amount === 0) continue
     lisateenused = round2(lisateenused + amount)
-    lines.push({ source: 'lisateenus', label: e.nimi || 'Lisateenus', amount })
+    lines.push({ source: 'lisateenus', label: e.nimi || t('Lisateenus', 'Extra service'), amount })
   }
 
   return {

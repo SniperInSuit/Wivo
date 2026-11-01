@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { Trash2, AlertTriangle, Info, ChevronDown, ChevronUp } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 interface LogEntry {
   id: number
@@ -74,7 +75,7 @@ export function DebugConsole() {
         <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
           <AlertTriangle size={14} className="text-accent" />
           Debug Console
-          <span className="text-[10px] text-ink-faint font-normal">({logs.length} kirjet)</span>
+          <span className="text-[10px] text-ink-faint font-normal">({t(`${logs.length} kirjet`, `${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`)})</span>
           {logs.some(l => l.level === 'error') && (
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           )}
@@ -83,7 +84,7 @@ export function DebugConsole() {
           <button
             onClick={e => { e.stopPropagation(); logs.length = 0; notify() }}
             className="text-ink-faint hover:text-red-500 p-1 transition-colors"
-            title="Tühjenda"
+            title={t('Tühjenda', 'Clear')}
           >
             <Trash2 size={12} />
           </button>
@@ -94,7 +95,7 @@ export function DebugConsole() {
       {expanded && (
         <div className="max-h-[400px] overflow-y-auto space-y-0.5 font-mono text-[11px]">
           {logs.length === 0 && (
-            <p className="text-ink-faint py-4 text-center text-xs font-sans">Logi on tühi</p>
+            <p className="text-ink-faint py-4 text-center text-xs font-sans">{t('Logi on tühi', 'Log is empty')}</p>
           )}
           {logs.map(entry => (
             <div key={entry.id}

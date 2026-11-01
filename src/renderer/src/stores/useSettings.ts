@@ -28,6 +28,7 @@ import { workTypePriceFor } from '@shared/pricing/priceBook'
 import type { MailPolicy } from '@shared/billing/sendGuard'
 import { DEFAULT_MAIL_TEMPLATE, type MailTemplate } from '@shared/billing/mailTemplate'
 import type { MaterialPricing, FixedCost, ExtraService, Overhead, PriceBook } from '@shared/pricing/priceBook'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 // Bump key when structure changes so old storage is discarded cleanly
 const STORAGE_KEY = 'wivo_settings_v2'
@@ -52,14 +53,14 @@ export interface ThemeOption {
 export const THEMES: ThemeOption[] = [
   {
     key: 'hele',
-    label: 'Hele',
-    hint: 'Vaikimisi, valge',
+    label: t('Hele', 'Light'),
+    hint: t('Vaikimisi, valge', 'Default, white'),
     preview: { bg: '#F7F9FA', card: '#FFFFFF' }
   },
   {
     key: 'navy-cloud',
     label: 'Navy Cloud',
-    hint: '#16284B → #0F1D3A, heledad kastid',
+    hint: t('#16284B → #0F1D3A, heledad kastid', '#16284B → #0F1D3A, light cards'),
     preview: {
       bg: 'linear-gradient(135deg,#16284B 0%,#142443 45%,#0F1D3A 100%)',
       card: '#F8FBFD'
@@ -68,7 +69,7 @@ export const THEMES: ThemeOption[] = [
   {
     key: 'cloudy-navy',
     label: 'Cloudy Navy',
-    hint: 'Hele taust, tumedad kastid',
+    hint: t('Hele taust, tumedad kastid', 'Light background, dark cards'),
     preview: {
       bg: 'linear-gradient(135deg,#f4f8fc 0%,#e6edf6 45%,#cfdae9 78%,#b9c8dc 100%)',
       card: '#16233F'
@@ -76,8 +77,8 @@ export const THEMES: ThemeOption[] = [
   },
   {
     key: 'oma',
-    label: 'Oma',
-    hint: 'Sinu värvid',
+    label: t('Oma', 'Custom'),
+    hint: t('Sinu värvid', 'Your colours'),
     // No fixed swatch: this one's preview is whatever the person has made, so
     // the settings page reads it off the saved theme instead. A hardcoded pair
     // here would show somebody else's colours on their own theme.
@@ -95,11 +96,11 @@ export interface TextSizeOption {
 }
 
 export const TEXT_SIZES: TextSizeOption[] = [
-  { key: 'vaike',    label: 'Väike',      hint: '90%',  value: 0.9 },
-  { key: 'tavaline', label: 'Tavaline',   hint: '100%', value: 1 },
-  { key: 'suur',     label: 'Suur',       hint: '110%', value: 1.1 },
-  { key: 'suurem',   label: 'Suurem',     hint: '125%', value: 1.25 },
-  { key: 'suurim',   label: 'Väga suur',  hint: '140%', value: 1.4 },
+  { key: 'vaike',    label: t('Väike', 'Small'), hint: '90%',  value: 0.9 },
+  { key: 'tavaline', label: t('Tavaline', 'Normal'), hint: '100%', value: 1 },
+  { key: 'suur',     label: t('Suur', 'Large'), hint: '110%', value: 1.1 },
+  { key: 'suurem',   label: t('Suurem', 'Larger'), hint: '125%', value: 1.25 },
+  { key: 'suurim',   label: t('Väga suur', 'Extra large'), hint: '140%', value: 1.4 },
 ]
 
 export const TEXT_SCALE_MIN = 0.8
@@ -312,8 +313,8 @@ function defaultSettings(): WivoSettings {
       // ships exactly the blank-looking mail the template exists to fix.
       ...DEFAULT_MAIL_TEMPLATE,
     },
-    tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })),
-    visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })),
+    tooTuubid: DEFAULT_WORK_TYPES.map(type => ({ ...type })),
+    visiidiTyybid: DEFAULT_VISIT_TYPES.map(type => ({ ...type })),
     avalikudTeenused: [],
     tooVarvidParandatud: true,
     eemaldatudTuubid: [],
@@ -372,9 +373,9 @@ function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean):
       return [{ nimi: x.trim(), hex: seedHex(x.trim()) }]
     }
     if (x && typeof x === 'object' && typeof (x as WorkType).nimi === 'string') {
-      const t = x as WorkType
-      if (!t.nimi.trim()) return []
-      const stored = typeof t.hex === 'string' && t.hex ? t.hex : null
+      const type = x as WorkType
+      if (!type.nimi.trim()) return []
+      const stored = typeof type.hex === 'string' && type.hex ? type.hex : null
       // One-time repair for lists already written by the broken exact-match
       // seeding: a named type left on the unknown-grey gets its real colour
       // back. Gated on the migration flag so it runs once and never overrides
@@ -388,15 +389,15 @@ function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean):
       // on restart. Anything added to WorkType from here on is carried through
       // automatically; only the fields that need normalising are named below.
       return [{
-        ...t,
-        nimi: t.nimi.trim(),
-        hex: needsRepair || !stored ? seedHex(t.nimi) : stored,
-        hind: numOrUndef(t.hind),
-        soodushind: numOrUndef(t.soodushind),
-        hinnaTyyp: t.hinnaTyyp === 'hammas' ? 'hammas' : t.hinnaTyyp === 'too' ? 'too' : undefined,
-        pilt: typeof t.pilt === 'string' && t.pilt.trim() ? t.pilt.trim() : undefined,
-        kulud: Array.isArray(t.kulud)
-          ? t.kulud
+        ...type,
+        nimi: type.nimi.trim(),
+        hex: needsRepair || !stored ? seedHex(type.nimi) : stored,
+        hind: numOrUndef(type.hind),
+        soodushind: numOrUndef(type.soodushind),
+        hinnaTyyp: type.hinnaTyyp === 'hammas' ? 'hammas' : type.hinnaTyyp === 'too' ? 'too' : undefined,
+        pilt: typeof type.pilt === 'string' && type.pilt.trim() ? type.pilt.trim() : undefined,
+        kulud: Array.isArray(type.kulud)
+          ? type.kulud
               .filter(k => k && typeof k === 'object')
               .map(k => ({
                 nimi: typeof k.nimi === 'string' ? k.nimi : '',
@@ -408,8 +409,8 @@ function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean):
         // by hand in the Supabase table editor, and one NaN in a tier would
         // poison every price it touched. `tierFor()` ignores junk at read time
         // too — this just keeps it from being stored.
-        astmed: Array.isArray(t.astmed)
-          ? t.astmed
+        astmed: Array.isArray(type.astmed)
+          ? type.astmed
               .filter(a => a && typeof a === 'object')
               .map(a => ({
                 alates: numOrUndef(a.alates) ?? 0,
@@ -418,7 +419,7 @@ function workTypeList(v: unknown, fallback: WorkType[], repairColours: boolean):
               }))
               .filter(a => a.alates > 0 && a.hind > 0)
           : undefined,
-        ...(Array.isArray(t.match) ? { match: t.match } : {}),
+        ...(Array.isArray(type.match) ? { match: type.match } : {}),
       }]
     }
     return []
@@ -442,9 +443,9 @@ function mergeLegacyPrices(types: WorkType[], legacy: unknown): WorkType[] {
     .filter((e): e is [string, number] => typeof e[1] === 'number' && e[1] > 0)
   if (entries.length === 0) return types
 
-  const out = types.map(t => ({ ...t }))
+  const out = types.map(type => ({ ...type }))
   for (const [name, price] of entries) {
-    const hit = out.find(t => t.nimi.toLowerCase() === name.trim().toLowerCase())
+    const hit = out.find(type => type.nimi.toLowerCase() === name.trim().toLowerCase())
     if (hit) {
       if (hit.hind == null) hit.hind = price
     } else {
@@ -506,12 +507,12 @@ function loadSettings(): WivoSettings {
       // An empty stored list is a deliberate "I deleted them all", so only a
       // MISSING key falls back to the defaults.
       visiidiTyybid: Array.isArray(stored.visiidiTyybid)
-        ? (stored.visiidiTyybid as VisitType[]).filter(t => t?.nimi && t?.hex).map(t => ({ ...t }))
+        ? (stored.visiidiTyybid as VisitType[]).filter(type => type?.nimi && type?.hex).map(type => ({ ...type }))
         : def.visiidiTyybid,
       // Nagu visiiditüüpidel: tühi salvestatud nimekiri on teadlik valik, ainult
       // PUUDUV võti langeb tagasi vaikeväärtusele.
       avalikudTeenused: Array.isArray(stored.avalikudTeenused)
-        ? (stored.avalikudTeenused as PublicService[]).filter(t => t?.id).map(t => ({ ...t }))
+        ? (stored.avalikudTeenused as PublicService[]).filter(svc => svc?.id).map(svc => ({ ...svc }))
         : def.avalikudTeenused,
       // Merged onto the defaults rather than taken whole: a stored object
       // written before a permission existed must not leave that permission
@@ -658,13 +659,13 @@ export function applyClinicRow(row: Partial<ClinicSettingsRow>): void {
     // Absent on every row written before 1.34 — keep whatever is local rather
     // than blanking the list on the first sync after an upgrade.
     ...(Array.isArray(row.visit_types) && row.visit_types.length > 0
-      ? { visiidiTyybid: (row.visit_types as VisitType[]).filter(t => t?.nimi && t?.hex) }
+      ? { visiidiTyybid: (row.visit_types as VisitType[]).filter(type => type?.nimi && type?.hex) }
       : {}),
     // Unlike the two above, an EMPTY array is honoured: a clinic that deleted
     // every public service must not have them reappear from local cache on the
     // next sync. Only a missing column is ignored.
     ...(Array.isArray(row.public_services)
-      ? { avalikudTeenused: (row.public_services as PublicService[]).filter(t => t?.id) }
+      ? { avalikudTeenused: (row.public_services as PublicService[]).filter(svc => svc?.id) }
       : {}),
     ...(row.materials ? { materjalid: strList(row.materials, prev.materjalid) } : {}),
     ...(row.material_prices ? { materialPrices: row.material_prices } : {}),
@@ -889,7 +890,7 @@ export function useSettings() {
     const n = nimi.trim()
     if (!n) return
     setSettings(prev => {
-      const exists = prev.tooTuubid.some(t => t.nimi.toLowerCase() === n.toLowerCase())
+      const exists = prev.tooTuubid.some(type => type.nimi.toLowerCase() === n.toLowerCase())
       return exists ? prev : { ...prev, tooTuubid: [...prev.tooTuubid, { nimi: n, hex }] }
     }, ['work_types'])
   }, [setSettings])
@@ -897,13 +898,13 @@ export function useSettings() {
   const removeWorkType = useCallback((nimi: string) => {
     setSettings(prev => ({
       ...prev,
-      tooTuubid: prev.tooTuubid.filter(t => t.nimi !== nimi),
+      tooTuubid: prev.tooTuubid.filter(type => type.nimi !== nimi),
       // Deleting the seeded type is what ends the seeding. Without this it
       // would be back on the next sync, and there would be no way to refuse it.
       // Deleting a seeded type is what stops it coming back. Without this it
       // would return on the next sync and could never be refused.
       eemaldatudTuubid: (() => {
-        const seeded = seededTypeOf(prev.tooTuubid.find(t => t.nimi === nimi))
+        const seeded = seededTypeOf(prev.tooTuubid.find(type => type.nimi === nimi))
         return seeded && !prev.eemaldatudTuubid.includes(seeded)
           ? [...prev.eemaldatudTuubid, seeded]
           : prev.eemaldatudTuubid
@@ -914,17 +915,17 @@ export function useSettings() {
   const updateWorkType = useCallback((nimi: string, patch: Partial<WorkType>) => {
     setSettings(prev => ({
       ...prev,
-      tooTuubid: prev.tooTuubid.map(t => {
-        if (t.nimi !== nimi) return t
-        const next = { ...t, ...patch }
-        const renamedTo = next.nimi.trim() || t.nimi
+      tooTuubid: prev.tooTuubid.map(type => {
+        if (type.nimi !== nimi) return type
+        const next = { ...type, ...patch }
+        const renamedTo = next.nimi.trim() || type.nimi
         // Pin the picture BEFORE the name stops resolving to it. Images match
         // on the slugified name, so renaming "Implantkroon" to anything else
         // silently dropped its picture — the picture was never a property of
         // the name, it only defaulted from it. Only when the type has no
         // explicit file already, and only on an actual rename.
-        const pinned = !next.pilt && renamedTo !== t.nimi
-          ? workTypeImageFile(t.nimi)
+        const pinned = !next.pilt && renamedTo !== type.nimi
+          ? workTypeImageFile(type.nimi)
           : null
         return {
           ...next,
@@ -939,7 +940,7 @@ export function useSettings() {
   // implant crown resolves to the plain crown colour.
   const moveWorkType = useCallback((nimi: string, dir: 'up' | 'down') => {
     setSettings(prev => {
-      const i = prev.tooTuubid.findIndex(t => t.nimi === nimi)
+      const i = prev.tooTuubid.findIndex(type => type.nimi === nimi)
       const j = dir === 'up' ? i - 1 : i + 1
       if (i < 0 || j < 0 || j >= prev.tooTuubid.length) return prev
       const next = [...prev.tooTuubid]
@@ -949,7 +950,7 @@ export function useSettings() {
   }, [setSettings])
 
   const resetWorkTypes = useCallback(() => {
-    setSettings(prev => ({ ...prev, tooTuubid: DEFAULT_WORK_TYPES.map(t => ({ ...t })) }), ['work_types'])
+    setSettings(prev => ({ ...prev, tooTuubid: DEFAULT_WORK_TYPES.map(type => ({ ...type })) }), ['work_types'])
   }, [setSettings])
 
   // Price is just another field on the type — 0 or blank clears it back to
@@ -957,12 +958,12 @@ export function useSettings() {
   const setTooHind = useCallback((nimi: string, price: number | null) => {
     setSettings(prev => ({
       ...prev,
-      tooTuubid: prev.tooTuubid.map(t =>
-        t.nimi === nimi
+      tooTuubid: prev.tooTuubid.map(type =>
+        type.nimi === nimi
           ? (price == null || price <= 0
-              ? { ...t, hind: undefined }
-              : { ...t, hind: price })
-          : t)
+              ? { ...type, hind: undefined }
+              : { ...type, hind: price })
+          : type)
     }), ['work_types'])
   }, [setSettings])
 
@@ -980,7 +981,7 @@ export function useSettings() {
     const n = nimi.trim()
     if (!n) return
     setSettings(prev => (
-      prev.visiidiTyybid.some(t => t.nimi.toLowerCase() === n.toLowerCase())
+      prev.visiidiTyybid.some(type => type.nimi.toLowerCase() === n.toLowerCase())
         ? prev
         : { ...prev, visiidiTyybid: [...prev.visiidiTyybid, { nimi: n, hex }] }
     ), ['visit_types'])
@@ -988,7 +989,7 @@ export function useSettings() {
 
   const removeVisitType = useCallback((nimi: string) => {
     setSettings(prev => (
-      { ...prev, visiidiTyybid: prev.visiidiTyybid.filter(t => t.nimi !== nimi) }
+      { ...prev, visiidiTyybid: prev.visiidiTyybid.filter(type => type.nimi !== nimi) }
     ), ['visit_types'])
   }, [])
 
@@ -997,13 +998,13 @@ export function useSettings() {
   // visits fall back to grey, which is honest: the type they name is gone.
   const updateVisitType = useCallback((nimi: string, patch: Partial<VisitType>) => {
     setSettings(prev => (
-      { ...prev, visiidiTyybid: prev.visiidiTyybid.map(t => t.nimi === nimi ? { ...t, ...patch } : t) }
+      { ...prev, visiidiTyybid: prev.visiidiTyybid.map(type => type.nimi === nimi ? { ...type, ...patch } : type) }
     ), ['visit_types'])
   }, [])
 
   const moveVisitType = useCallback((nimi: string, dir: 'up' | 'down') => {
     setSettings(prev => {
-      const i = prev.visiidiTyybid.findIndex(t => t.nimi === nimi)
+      const i = prev.visiidiTyybid.findIndex(type => type.nimi === nimi)
       const j = dir === 'up' ? i - 1 : i + 1
       if (i < 0 || j < 0 || j >= prev.visiidiTyybid.length) return prev
       const next = [...prev.visiidiTyybid]
@@ -1024,7 +1025,7 @@ export function useSettings() {
       // muidu jäävad juba tehtud broneeringud orvuks.
       const base = slugify(n) || 'teenus'
       let id = base
-      for (let i = 2; prev.avalikudTeenused.some(t => t.id === id); i++) id = `${base}-${i}`
+      for (let i = 2; prev.avalikudTeenused.some(svc => svc.id === id); i++) id = `${base}-${i}`
       const next = {
         ...emptyPublicService(id, prev.avalikudTeenused.length + 1),
         nimi: n,
@@ -1035,7 +1036,7 @@ export function useSettings() {
 
   const removePublicService = useCallback((id: string) => {
     setSettings(prev => (
-      { ...prev, avalikudTeenused: prev.avalikudTeenused.filter(t => t.id !== id) }
+      { ...prev, avalikudTeenused: prev.avalikudTeenused.filter(svc => svc.id !== id) }
     ), ['public_services'])
   }, [])
 
@@ -1044,26 +1045,26 @@ export function useSettings() {
       ...prev,
       // SPREAD the stored object — never rebuild field by field. See HANDOFF.md:
       // that trap silently deleted every WorkType field added after 1.7.13.
-      avalikudTeenused: prev.avalikudTeenused.map(t => (t.id === id ? { ...t, ...patch } : t)),
+      avalikudTeenused: prev.avalikudTeenused.map(svc => (svc.id === id ? { ...svc, ...patch } : svc)),
     }), ['public_services'])
   }, [])
 
   const movePublicService = useCallback((id: string, dir: 'up' | 'down') => {
     setSettings(prev => {
-      const i = prev.avalikudTeenused.findIndex(t => t.id === id)
+      const i = prev.avalikudTeenused.findIndex(svc => svc.id === id)
       const j = dir === 'up' ? i - 1 : i + 1
       if (i < 0 || j < 0 || j >= prev.avalikudTeenused.length) return prev
       const next = [...prev.avalikudTeenused]
       ;[next[i], next[j]] = [next[j], next[i]]
       // Järjekord on salvestatud väli, mitte massiivi asend — veeb sorteerib
       // selle järgi ja massiivi asend ei jõua sinna.
-      return { ...prev, avalikudTeenused: next.map((t, n) => ({ ...t, jarjekord: n + 1 })) }
+      return { ...prev, avalikudTeenused: next.map((svc, n) => ({ ...svc, jarjekord: n + 1 })) }
     }, ['public_services'])
   }, [])
 
   const resetVisitTypes = useCallback(() => {
     setSettings(prev => (
-      { ...prev, visiidiTyybid: DEFAULT_VISIT_TYPES.map(t => ({ ...t })) }
+      { ...prev, visiidiTyybid: DEFAULT_VISIT_TYPES.map(type => ({ ...type })) }
     ), ['visit_types'])
   }, [])
 

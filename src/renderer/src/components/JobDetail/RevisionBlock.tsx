@@ -3,7 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Euro, Zap, Pencil, X as XIcon, Pa
 import { fmtDate, toDate } from '../../lib/dates'
 import type { Revision, StageKey, WorkItem } from '../../types/job'
 import {
-  MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonLabel
+  MATERIAL_SHADES, REVISION_REASONS, revisionReasons, revisionReasonDisplay, revisionReasonText
 } from '../../types/job'
 import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
@@ -13,6 +13,7 @@ import { ShadePicker } from './ShadePicker'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
+import { t } from '@/lib/i18n'
 
 interface RevisionBlockProps {
   value: Revision[]
@@ -75,10 +76,10 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
   useEffect(() => {
     if (!autoExpandId) return
     setExpandedIds(prev => new Set([...prev, autoExpandId]))
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 120)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [autoExpandId])
 
   function addRevision() {
@@ -92,7 +93,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       designed_by: draft.designed_by ?? undefined,
       work_items: draft.work_items.length > 0 ? draft.work_items : undefined,
       hambad: draft.work_items.length > 0
-        ? [...new Set(draft.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
+        ? [...new Set(draft.work_items.flatMap(i => i.hambad.split(',').filter(tooth => tooth.trim())))].join(',') || undefined
         : (draft.hambad || undefined),
       varv: draft.varv || undefined,
       materjal: draft.materjal || undefined,
@@ -119,7 +120,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       assigned_to: rev.assigned_to ?? null,
       designed_by: rev.designed_by ?? null,
       work_items: Array.isArray(rev.work_items) ? rev.work_items.map(i => ({ ...i })) : [],
-      hambad: rev.hambad ? rev.hambad.split(',').map(t => t.trim()).filter(Boolean).join(',') : '',
+      hambad: rev.hambad ? rev.hambad.split(',').map(tooth => tooth.trim()).filter(Boolean).join(',') : '',
       varv: rev.varv ?? null,
       materjal: rev.materjal ?? '',
       deadline: rev.deadline ? rev.deadline.replace('Z', '').slice(0, 16) : '',
@@ -142,7 +143,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       designed_by: d.designed_by ?? undefined,
       work_items: d.work_items.length > 0 ? d.work_items : undefined,
       hambad: d.work_items.length > 0
-        ? [...new Set(d.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || undefined
+        ? [...new Set(d.work_items.flatMap(i => i.hambad.split(',').filter(tooth => tooth.trim())))].join(',') || undefined
         : (d.hambad || undefined),
       varv: d.varv || undefined,
       materjal: d.materjal || undefined,
@@ -184,7 +185,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       {/* ── Dark header ── */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-800">
         <span className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-          Muudatused
+          {t('Muudatused', 'Revisions')}
           {value.length > 0 && (
             <span className="bg-slate-600 text-slate-200 rounded-full px-2 py-0.5 text-xs font-bold">
               {value.length}
@@ -198,7 +199,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
             className="flex items-center gap-1 text-xs text-slate-300 hover:text-white font-semibold transition-colors"
           >
             <Plus size={13} />
-            Lisa muudatus
+            {t('Lisa muudatus', 'Add revision')}
           </button>
         )}
       </div>
@@ -222,7 +223,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       {/* ── Empty state ── */}
       {value.length === 0 && !adding && (
         <div className="px-4 py-4 text-xs text-slate-500 italic bg-slate-800/40">
-          Muudatusi pole lisatud
+          {t('Muudatusi pole lisatud', 'No revisions added')}
         </div>
       )}
 
@@ -230,7 +231,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
       {sorted.map((rev, idx) => {
         const expanded = expandedIds.has(rev.id)
         const isEditing = editingId === rev.id
-        const toothCount = rev.hambad ? rev.hambad.split(',').filter(t => t.trim()).length : 0
+        const toothCount = rev.hambad ? rev.hambad.split(',').filter(tooth => tooth.trim()).length : 0
 
         return (
           <div
@@ -251,7 +252,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   </span>
                   {rev.taspidev === false && (
                     <span className="text-[10px] bg-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-bold">
-                      Tasustamata
+                      {t('Tasustamata', 'Not paid')}
                     </span>
                   )}
                   {rev.kiirtoo && (
@@ -284,14 +285,14 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                       {rev.materjal}
                     </span>
                   )}
-                  {revisionReasonLabel(rev) && (
+                  {revisionReasonDisplay(rev) && (
                     <span className="text-[10px] bg-pink-500/30 text-pink-200 px-1.5 py-0.5 rounded font-medium">
-                      {revisionReasonLabel(rev)}
+                      {revisionReasonDisplay(rev)}
                     </span>
                   )}
                   {rev.purunenud_hambad && (
                     <span className="text-[10px] bg-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-medium">
-                      Purunenud: {rev.purunenud_hambad}
+                      {t('Purunenud:', 'Broken:')} {rev.purunenud_hambad}
                     </span>
                   )}
                   {toDate(rev.deadline) && (
@@ -315,7 +316,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   <>
                     <button
                       type="button"
-                      title="Muuda"
+                      title={t('Muuda', 'Edit')}
                       onClick={e => { e.stopPropagation(); startEdit(rev) }}
                       className="p-1 text-slate-600 hover:text-accent transition-colors ml-0.5"
                     >
@@ -326,20 +327,20 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                         className="flex items-center gap-1 ml-0.5"
                         onClick={e => e.stopPropagation()}
                       >
-                        <span className="text-[10px] text-red-400 font-medium whitespace-nowrap">Kustuta?</span>
+                        <span className="text-[10px] text-red-400 font-medium whitespace-nowrap">{t('Kustuta?', 'Delete?')}</span>
                         <button
                           type="button"
                           onClick={() => { deleteRevision(rev.id); setDeleteConfirmId(null) }}
                           className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-semibold hover:bg-red-600 transition-colors"
                         >
-                          Jah
+                          {t('Jah', 'Yes')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteConfirmId(null)}
                           className="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded transition-colors"
                         >
-                          Ei
+                          {t('Ei', 'No')}
                         </button>
                       </div>
                     ) : (
@@ -358,7 +359,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                     type="button"
                     onClick={e => { e.stopPropagation(); cancelEdit() }}
                     className="p-1 text-slate-400 hover:text-white transition-colors ml-0.5"
-                    title="Tühista muutmine"
+                    title={t('Tühista muutmine', 'Cancel editing')}
                   >
                     <XIcon size={12} />
                   </button>
@@ -395,7 +396,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   {rev.price != null && (
                     <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Euro size={11} />
-                      <span>Hind:</span>
+                      <span>{t('Hind:', 'Price:')}</span>
                       <span className="font-bold text-accent">{rev.price.toFixed(2)} €</span>
                     </div>
                   )}
@@ -406,12 +407,12 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                   )}
                   {rev.varv && (
                     <div className="text-xs text-slate-400">
-                      Uus värv: <span className="font-semibold text-slate-200">{rev.varv}</span>
+                      {t('Uus värv:', 'New shade:')} <span className="font-semibold text-slate-200">{rev.varv}</span>
                     </div>
                   )}
                   {toDate(rev.deadline) && (
                     <div className="text-xs text-slate-400">
-                      Uus tähtaeg:{' '}
+                      {t('Uus tähtaeg:', 'New due date:')}{' '}
                       <span className="font-semibold text-slate-200">
                         {fmtDate(rev.deadline, 'dd.MM.yy HH:mm')}
                       </span>
@@ -423,7 +424,7 @@ export function RevisionBlock({ value, onChange, disabled, autoExpandId, autoEdi
                       onClick={() => startEdit(rev)}
                       className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-accent transition-colors mt-1"
                     >
-                      <Pencil size={11} /> Muuda
+                      <Pencil size={11} /> {t('Muuda', 'Edit')}
                     </button>
                   )}
                 </div>
@@ -463,8 +464,8 @@ function RevisionForm({
   // `draft.hambad` alone — which is only filled when NO work item exists — so a
   // revision entered through the work-item field was silently never auto-priced.
   const draftTeeth = draft.work_items.length > 0
-    ? new Set(draft.work_items.flatMap(i => i.hambad.split(',').map(t => t.trim()).filter(Boolean))).size
-    : (draft.hambad ?? '').split(',').filter(t => t.trim()).length
+    ? new Set(draft.work_items.flatMap(i => i.hambad.split(',').map(tooth => tooth.trim()).filter(Boolean))).size
+    : (draft.hambad ?? '').split(',').filter(tooth => tooth.trim()).length
 
   useEffect(() => {
     if (!priceIsAuto) return
@@ -477,11 +478,11 @@ function RevisionForm({
   return (
     <div className="px-6 py-5 space-y-3 bg-slate-900/80 border-b border-slate-700/50 max-w-3xl mx-auto">
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Kirjeldus *</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">{t('Kirjeldus *', 'Description *')}</label>
         <textarea
           value={draft.note}
           onChange={e => setDraft(d => ({ ...d, note: e.target.value }))}
-          placeholder="Kirjelda vajalikud muudatused…"
+          placeholder={t('Kirjelda vajalikud muudatused…', 'Describe the changes needed…')}
           rows={2}
           autoFocus
           className="input resize-none bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent"
@@ -490,7 +491,7 @@ function RevisionForm({
 
       {/* Reason */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Põhjus</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">{t('Põhjus', 'Reason')}</label>
         <div className="flex flex-wrap gap-1.5">
           {REVISION_REASONS.map(r => (
             <button
@@ -510,7 +511,7 @@ function RevisionForm({
                   : 'bg-slate-800 text-slate-400 border-slate-600 hover:border-slate-400'
               }`}
             >
-              {r}
+              {revisionReasonText(r)}
             </button>
           ))}
         </div>
@@ -518,7 +519,7 @@ function RevisionForm({
 
       {/* Status */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Staatus</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">{t('Staatus', 'Status')}</label>
         <div className="flex flex-wrap gap-1.5">
           {stages.map(s => (
             <button
@@ -546,7 +547,7 @@ function RevisionForm({
           past it and reported that revisions had no deadline at all. */}
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-          <CalendarClock size={11} /> Uus tähtaeg
+          <CalendarClock size={11} /> {t('Uus tähtaeg', 'New due date')}
         </label>
         <div className="flex gap-2">
           <input
@@ -573,14 +574,16 @@ function RevisionForm({
           />
         </div>
         <p className="text-[10px] text-slate-500 mt-1">
-          Muudatusel on oma tähtaeg — kalendris on ta selle päeva peal, mitte
-          originaaltöö oma peal.
+          {t(
+            'Muudatusel on oma tähtaeg — kalendris on ta selle päeva peal, mitte originaaltöö oma peal.',
+            'A revision has its own due date — the calendar shows it on that day, not on the original job\'s.',
+          )}
         </p>
       </div>
 
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-          <Euro size={10} /> Hind (€)
+          <Euro size={10} /> {t('Hind (€)', 'Price (€)')}
         </label>
         <div className="relative w-36">
           <input
@@ -607,7 +610,7 @@ function RevisionForm({
         }`}
       >
         <Zap size={12} className={draft.kiirtoo ? 'text-orange-400 fill-orange-300' : ''} />
-        {draft.kiirtoo ? `Kiirtöö — hind ${settings.kiirtooKordaja}×` : 'Kiirtöö'}
+        {draft.kiirtoo ? t(`Kiirtöö — hind ${settings.kiirtooKordaja}×`, `Rush — price ${settings.kiirtooKordaja}×`) : t('Kiirtöö', 'Rush')}
       </button>
 
       {/* Print ID */}
@@ -617,7 +620,7 @@ function RevisionForm({
           type="text"
           value={draft.print_id}
           onChange={e => setDraft(d => ({ ...d, print_id: e.target.value }))}
-          placeholder="SprintRay töö number…"
+          placeholder={t('SprintRay töö number…', 'SprintRay job number…')}
           className="input bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-accent font-mono"
         />
       </div>
@@ -625,7 +628,7 @@ function RevisionForm({
       {/* Material */}
       <div>
         <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
-          <Package size={10} /> Uus materjal
+          <Package size={10} /> {t('Uus materjal', 'New material')}
         </label>
         {(() => {
           // Per work item once there is more than one, exactly as the job page
@@ -661,8 +664,8 @@ function RevisionForm({
               {perItem && (
                 <p className="text-[10px] mb-1.5">
                   {activeItem
-                    ? <span className="text-accent">Materjal tööosale — {activeItem.too}</span>
-                    : <span className="text-slate-500">Vali ülalt tööosa, et sellele materjal määrata</span>}
+                    ? <span className="text-accent">{t('Materjal tööosale', 'Material for work item')} — {activeItem.too}</span>
+                    : <span className="text-slate-500">{t('Vali ülalt tööosa, et sellele materjal määrata', 'Choose a work item above to set its material')}</span>}
                 </p>
               )}
               <div className="flex gap-1.5 flex-wrap mb-1.5">
@@ -684,7 +687,7 @@ function RevisionForm({
               </div>
               {shades && (
                 <div className="flex items-center gap-1 flex-wrap mb-1.5 pl-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Toon:</span>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">{t('Toon:', 'Shade:')}</span>
                   {shades.map(shade => (
                     <button
                       key={shade}
@@ -707,7 +710,7 @@ function RevisionForm({
                   onClick={() => setMat('')}
                   className="text-[10px] text-slate-500 hover:text-red-400 transition-colors"
                 >
-                  Tühjenda
+                  {t('Tühjenda', 'Clear')}
                 </button>
               )}
             </>
@@ -719,23 +722,23 @@ function RevisionForm({
           case, and what every revision written before these fields meant. */}
       <div className="grid grid-cols-2 gap-3">
         <WorkerSelect
-          label="Teostaja"
+          label={t('Teostaja', 'Done by')}
           value={draft.assigned_to}
           onChange={v => setDraft(d => ({ ...d, assigned_to: v }))}
-          emptyLabel="Sama mis tööl"
+          emptyLabel={t('Sama mis tööl', 'Same as job')}
           dark
         />
         <WorkerSelect
-          label="Disainija"
+          label={t('Disainija', 'Designer')}
           value={draft.designed_by}
           onChange={v => setDraft(d => ({ ...d, designed_by: v }))}
-          emptyLabel="Sama mis tööl"
+          emptyLabel={t('Sama mis tööl', 'Same as job')}
           dark
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Uus värv</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">{t('Uus värv', 'New shade')}</label>
         <ShadePicker value={draft.varv} onChange={v => setDraft(d => ({ ...d, varv: v }))} />
       </div>
 
@@ -744,7 +747,7 @@ function RevisionForm({
           own editor could not express: its type buttons toggled, so a second
           "Sild" deleted the first instead of adding one. */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1">Töötüüp ja hambad</label>
+        <label className="block text-xs font-semibold text-slate-400 mb-1">{t('Töötüüp ja hambad', 'Work type and teeth')}</label>
         <WorkItemsField
           value={draft.work_items}
           onChange={items => setDraft(d => ({ ...d, work_items: items }))}
@@ -769,7 +772,7 @@ function RevisionForm({
           onClick={onCancel}
           className="text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
         >
-          Tühista
+          {t('Tühista', 'Cancel')}
         </button>
       </div>
     </div>

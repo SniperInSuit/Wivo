@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
 import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
+import { t } from '@/lib/i18n'
 
 interface SidebarProps {
   view: ViewMode
@@ -23,20 +24,20 @@ const NAV: {
   key: ViewMode; label: string; icon: typeof LayoutDashboard
   perm?: PermissionKey; clinical?: boolean; lab?: boolean
 }[] = [
-  { key: 'overview', label: 'Ülevaade',   icon: LayoutDashboard },
-  { key: 'board',    label: 'Tööd',       icon: Kanban,          perm: 'jobs.read', lab: true },
-  { key: 'calendar', label: 'Kalender',   icon: CalendarDays,    perm: 'visits.read' },
-  { key: 'taotlused', label: 'Taotlused', icon: Inbox,           perm: 'visits.write' },
-  { key: 'table',    label: 'Tabel',      icon: Table2,          perm: 'jobs.read', lab: true },
-  { key: 'patients', label: 'Patsiendid', icon: Users,           perm: 'patients.read', clinical: true },
-  { key: 'kliendid', label: 'Kliendid',   icon: Building2,       perm: 'jobs.read', lab: true },
-  { key: 'arved',    label: 'Arved',      icon: FileText,        perm: 'payments.read' },
-  { key: 'tootasud', label: 'Töötasud',   icon: Wallet },
-  { key: 'stats',    label: 'Statistika', icon: BarChart2,       perm: 'stats.read' },
+  { key: 'overview', label: t('Ülevaade', 'Overview'),   icon: LayoutDashboard },
+  { key: 'board',    label: t('Tööd', 'Jobs'),       icon: Kanban,          perm: 'jobs.read', lab: true },
+  { key: 'calendar', label: t('Kalender', 'Calendar'),   icon: CalendarDays,    perm: 'visits.read' },
+  { key: 'taotlused', label: t('Taotlused', 'Requests'), icon: Inbox,           perm: 'visits.write' },
+  { key: 'table',    label: t('Tabel', 'Table'),      icon: Table2,          perm: 'jobs.read', lab: true },
+  { key: 'patients', label: t('Patsiendid', 'Patients'), icon: Users,           perm: 'patients.read', clinical: true },
+  { key: 'kliendid', label: t('Kliendid', 'Clients'),   icon: Building2,       perm: 'jobs.read', lab: true },
+  { key: 'arved',    label: t('Arved', 'Invoices'),      icon: FileText,        perm: 'payments.read' },
+  { key: 'tootasud', label: t('Töötasud', 'Payroll'),   icon: Wallet },
+  { key: 'stats',    label: t('Statistika', 'Statistics'), icon: BarChart2,       perm: 'stats.read' },
 ]
 
 // Seaded is its own view (since 1.1.6) but stays visually separated below a rule
-const SETTINGS_ITEM = { key: 'settings', label: 'Seaded', icon: Settings } as const
+const SETTINGS_ITEM = { key: 'settings', label: t('Seaded', 'Settings'), icon: Settings } as const
 
 export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
@@ -95,7 +96,10 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
                 single ring colour would be wrong against one of them. */}
             {key === 'taotlused' && newRequests > 0 && (
               <span
-                title={`${newRequests} uut taotlust ootab vastust`}
+                title={t(
+                  `${newRequests} uut taotlust ootab vastust`,
+                  `${newRequests} new ${newRequests === 1 ? 'request is' : 'requests are'} waiting for a reply`,
+                )}
                 className={`text-[10px] font-bold rounded-full bg-red-500 text-white min-w-[17px] h-[17px] px-1 flex items-center justify-center ${
                   wide ? 'ml-auto' : 'absolute top-0.5 right-0.5'
                 }`}
@@ -121,12 +125,12 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           {role === 'owner' && (
             <button
               onClick={() => onViewChange('workers')}
-              title="Meeskond"
+              title={t('Meeskond', 'Team')}
               className={itemClass(view === 'workers')}
             >
               <UsersRound size={wide ? 15 : 17} className="flex-shrink-0" />
               <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>
-                Meeskond
+                {t('Meeskond', 'Team')}
               </span>
             </button>
           )}
@@ -136,13 +140,13 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
       <div className="mt-auto border-t border-nav/10">
         <button
           onClick={toggleRiba}
-          title={wide ? 'Minimeeri külgriba' : 'Laienda külgriba'}
+          title={wide ? t('Minimeeri külgriba', 'Collapse sidebar') : t('Laienda külgriba', 'Expand sidebar')}
           className={`w-full flex items-center text-nav hover:text-white transition-colors ${
             wide ? 'gap-2.5 px-4 py-2.5 text-xs' : 'justify-center py-2.5'
           }`}
         >
           {wide ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={16} />}
-          {wide && 'Minimeeri'}
+          {wide && t('Minimeeri', 'Collapse')}
         </button>
         <div className={`pb-2.5 ${wide ? 'px-4' : 'text-center'}`}>
           {/* The LIVE version, not the build-time constant — the constant goes

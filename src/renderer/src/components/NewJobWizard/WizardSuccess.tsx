@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, Copy } from 'lucide-react'
 import { FOCUS_RING, WIZARD_BTN } from './wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardSuccessProps {
   /** The created job's id. */
@@ -61,8 +62,8 @@ export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Elemen
           <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
             <Check className="w-7 h-7 text-emerald-500" aria-hidden="true" />
           </div>
-          <h2 className="mt-4 text-xl font-semibold text-ink">Töö on loodud</h2>
-          <p className="mt-1 text-base text-ink-muted">Töö number on all — ava töö, kui oled valmis.</p>
+          <h2 className="mt-4 text-xl font-semibold text-ink">{t('Töö on loodud', 'Job created')}</h2>
+          <p className="mt-1 text-base text-ink-muted">{t('Töö number on all — ava töö, kui oled valmis.', 'The job number is below — open the job when you are ready.')}</p>
 
           <div className="mt-5 flex items-center justify-center gap-2">
             <span className="font-mono text-base text-ink-soft bg-bg-sidebar rounded-lg px-3 py-2 break-all">
@@ -71,15 +72,15 @@ export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Elemen
             <button
               type="button"
               onClick={copyId}
-              title="Kopeeri töö ID"
+              title={t('Kopeeri töö ID', 'Copy job ID')}
               className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors ${FOCUS_RING}`}
             >
               <Copy size={18} aria-hidden="true" />
-              <span className="sr-only">Kopeeri töö ID</span>
+              <span className="sr-only">{t('Kopeeri töö ID', 'Copy job ID')}</span>
             </button>
           </div>
           <p aria-live="polite" className="mt-1.5 text-base text-emerald-500 min-h-[20px]">
-            {copied ? 'Töö ID on kopeeritud.' : ''}
+            {copied ? t('Töö ID on kopeeritud.', 'Job ID copied.') : ''}
           </p>
 
           <button
@@ -88,7 +89,7 @@ export function WizardSuccess({ jobId, onDone }: WizardSuccessProps): JSX.Elemen
             onClick={onDone}
             className={`${WIZARD_BTN} mt-4 w-full bg-accent hover:bg-accent-hover text-white transition-colors`}
           >
-            Ava töö
+            {t('Ava töö', 'Open job')}
           </button>
         </div>
       </motion.div>

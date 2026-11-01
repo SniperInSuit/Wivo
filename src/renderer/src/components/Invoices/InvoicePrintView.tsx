@@ -15,8 +15,9 @@
 import { useEffect } from 'react'
 import { X, Printer, AlertTriangle } from 'lucide-react'
 import type { Clinic } from '../../context/AuthContext'
-import { INVOICE_STATUS_LABEL, type InvoiceFull } from '../../types/invoice'
+import type { InvoiceFull } from '../../types/invoice'
 import { invoiceDoc } from '@shared/billing/invoiceDoc'
+import { t } from '@/lib/i18n'
 
 interface InvoicePrintViewProps {
   invoice: InvoiceFull
@@ -43,13 +44,13 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
     <div className="fixed inset-0 z-[60] bg-black/50 overflow-y-auto print:bg-white print:static print:overflow-visible">
       {/* Toolbar — screen only */}
       <div className="sticky top-0 flex items-center gap-2 px-5 py-3 bg-bg-card border-b border-ink-faint/15 print:hidden">
-        <p className="text-sm font-bold text-ink">Arve {invoice.number}</p>
+        <p className="text-sm font-bold text-ink">{t(`Arve ${invoice.number}`, `Invoice ${invoice.number}`)}</p>
         <div className="ml-auto flex items-center gap-2">
           <button onClick={() => window.print()} className="btn-primary">
-            <Printer size={14} /> Prindi / salvesta PDF
+            <Printer size={14} /> {t('Prindi / salvesta PDF', 'Print / save PDF')}
           </button>
           <button onClick={onClose} className="btn-ghost border border-ink-faint/25">
-            <X size={14} /> Sulge
+            <X size={14} /> {t('Sulge', 'Close')}
           </button>
         </div>
       </div>
@@ -59,8 +60,8 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
           <div className="flex items-start gap-2 text-xs rounded-xl border border-orange-200 bg-orange-50 text-orange-800 px-3 py-2">
             <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
             <p>
-              Kliiniku andmetes puudub: <strong>{missing.join(', ')}</strong>. Täienda
-              Seaded → Kliinik, muidu läheb arve välja puudulike rekvisiitidega.
+              {t('Kliiniku andmetes puudub:', 'Missing from the clinic details:')} <strong>{missing.join(', ')}</strong>
+              {t('. Täienda Seaded → Kliinik, muidu läheb arve välja puudulike rekvisiitidega.', '. Fill them in under Settings → Clinic, or the invoice goes out with required details missing.')}
             </p>
           </div>
         </div>
@@ -89,7 +90,8 @@ export function InvoicePrintView({ invoice, clinic, onClose }: InvoicePrintViewP
             )}
             {doc.cancelled && (
               <p className="mt-1 inline-block text-xs font-bold uppercase tracking-wider text-red-600 border border-red-400 rounded px-1.5 py-0.5">
-                {INVOICE_STATUS_LABEL.tuhistatud}
+                {/* Literal, not INVOICE_STATUS_LABEL: that label follows the UI language, the document does not. */}
+                Tühistatud
               </p>
             )}
           </div>

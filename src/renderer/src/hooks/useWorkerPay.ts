@@ -4,6 +4,7 @@ import { supabase, getActiveClinicId } from '../lib/supabase'
 import type {
   WorkerRate, WorkerRateInput, WorkHours, WorkHoursInput, EarningLine
 } from '../lib/earnings'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and workerPayKeys.test.ts imports this
 
 const RATES_KEY   = ['worker_rates']
 const HOURS_KEY   = ['work_hours']
@@ -82,7 +83,7 @@ export function useSaveWorkerRate() {
   return useMutation({
     mutationFn: async (rate: WorkerRateInput & { id?: string }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub.')
+      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
       if (rate.id) {
         const { id, ...patch } = rate
         const { data, error } = await supabase
@@ -148,7 +149,7 @@ export function useAddWorkHours() {
   return useMutation({
     mutationFn: async (input: WorkHoursInput) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub.')
+      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('work_hours')
@@ -219,8 +220,8 @@ export function useCreatePayout() {
       note?: string | null
     }) => {
       const clinicId = getActiveClinicId()
-      if (!clinicId) throw new Error('Kliinik puudub.')
-      if (input.lines.length === 0) throw new Error('Sellel perioodil ei ole midagi välja maksta.')
+      if (!clinicId) throw new Error(t('Kliinik puudub.', 'No clinic.'))
+      if (input.lines.length === 0) throw new Error(t('Sellel perioodil ei ole midagi välja maksta.', 'There is nothing to pay out for this period.'))
 
       const total = Math.round(input.lines.reduce((s, l) => s + l.amount, 0) * 100) / 100
       const { data: userData } = await supabase.auth.getUser()

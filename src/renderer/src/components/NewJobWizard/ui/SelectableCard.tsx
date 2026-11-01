@@ -21,6 +21,7 @@
 import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { FOCUS_RING, WIZARD_CARD_MIN } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface SelectableCardProps {
   selected: boolean
@@ -146,7 +147,7 @@ export function SelectableCard({
       <span className={tile ? 'min-w-0 w-full' : 'min-w-0 w-full pr-6'}>
         {/* Read out before the label, so the state is heard first rather than
             after the user has already committed to the word. */}
-        {selected && <span className="sr-only">Valitud. </span>}
+        {selected && <span className="sr-only">{t('Valitud. ', 'Selected. ')}</span>}
         <span
           className={`block text-base leading-snug ${
             selected ? 'font-semibold text-ink' : 'font-medium text-ink-soft'

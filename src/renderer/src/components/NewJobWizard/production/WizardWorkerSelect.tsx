@@ -1,6 +1,7 @@
 import { useClinicProfiles } from '@/hooks/useClinicProfiles'
 import { WizardField } from '../ui/WizardField'
 import { WizardSelect } from '../ui/WizardSelect'
+import { t } from '@/lib/i18n'
 
 export interface WizardWorkerSelectProps {
   /** Used for the <label for> / <select id> pair. */
@@ -33,8 +34,8 @@ export function WizardWorkerSelect({ id, label, help, value, onChange }: WizardW
         id={id}
         value={value}
         onChange={onChange}
-        placeholder="Määramata"
-        options={workers.map(w => ({ value: w.id, label: w.full_name || 'Nimeta' }))}
+        placeholder={t('Määramata', 'Unassigned')}
+        options={workers.map(w => ({ value: w.id, label: w.full_name || t('Nimeta', 'Unnamed') }))}
       />
     </WizardField>
   )

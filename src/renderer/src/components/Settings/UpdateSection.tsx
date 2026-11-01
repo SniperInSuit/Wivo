@@ -8,6 +8,7 @@
  */
 import { RefreshCw, ArrowUpCircle, Check, AlertTriangle } from 'lucide-react'
 import { useUpdate } from '../../providers/UpdateProvider'
+import { t } from '@/lib/i18n'
 
 export function UpdateSection() {
   const { running, state, checkNow, installNow } = useUpdate()
@@ -15,25 +16,25 @@ export function UpdateSection() {
   const line = (): { icon: JSX.Element; text: string } => {
     switch (state.stage) {
       case 'checking':
-        return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: 'Kontrollin…' }
+        return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: t('Kontrollin…', 'Checking…') }
       case 'available':
-        return { icon: <ArrowUpCircle size={12} className="text-accent" />, text: `Leitud ${state.version}` }
+        return { icon: <ArrowUpCircle size={12} className="text-accent" />, text: t(`Leitud ${state.version}`, `Found ${state.version}`) }
       case 'downloading':
         return {
           icon: <ArrowUpCircle size={12} className="text-accent" />,
-          text: `Laadin alla ${state.version} — ${state.percent}%`,
+          text: t(`Laadin alla ${state.version} — ${state.percent}%`, `Downloading ${state.version} — ${state.percent}%`),
         }
       case 'ready':
         return {
           icon: <Check size={12} className="text-emerald-600" />,
-          text: `${state.version} on valmis ja rakendub järgmisel käivitamisel`,
+          text: t(`${state.version} on valmis ja rakendub järgmisel käivitamisel`, `${state.version} is ready and will be applied at the next start`),
         }
       case 'installing':
-        return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: 'Paigaldan…' }
+        return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: t('Paigaldan…', 'Installing…') }
       case 'failed':
         return { icon: <AlertTriangle size={12} className="text-amber-500" />, text: state.message }
       default:
-        return { icon: <Check size={12} className="text-ink-faint" />, text: 'Uusim versioon' }
+        return { icon: <Check size={12} className="text-ink-faint" />, text: t('Uusim versioon', 'Up to date') }
     }
   }
   const s = line()
@@ -42,16 +43,18 @@ export function UpdateSection() {
     <section>
       <div className="flex items-center gap-2 mb-1">
         <ArrowUpCircle size={14} className="text-accent" />
-        <h3 className="text-sm font-semibold text-ink">Uuendused</h3>
+        <h3 className="text-sm font-semibold text-ink">{t('Uuendused', 'Updates')}</h3>
       </div>
       <p className="text-xs text-ink-faint mb-3 max-w-xl leading-relaxed">
-        Wivo uuendab end ise: uus versioon laaditakse taustal alla ja rakendub
-        järgmisel käivitamisel. Käsitsi midagi paigaldada ei ole vaja.
+        {t(
+          'Wivo uuendab end ise: uus versioon laaditakse taustal alla ja rakendub järgmisel käivitamisel. Käsitsi midagi paigaldada ei ole vaja.',
+          'Wivo updates itself: a new version downloads in the background and is applied at the next start. Nothing needs installing by hand.',
+        )}
       </p>
 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm text-ink">
-          Versioon <strong className="tabular-nums">{running}</strong>
+          {t('Versioon', 'Version')} <strong className="tabular-nums">{running}</strong>
         </span>
         <button
           type="button"
@@ -59,7 +62,7 @@ export function UpdateSection() {
           disabled={state.stage === 'checking' || state.stage === 'downloading'}
           className="btn-ghost text-xs border border-ink-faint/25 flex items-center gap-1.5 disabled:opacity-50"
         >
-          <RefreshCw size={11} /> Kontrolli uuendusi
+          <RefreshCw size={11} /> {t('Kontrolli uuendusi', 'Check for updates')}
         </button>
         {state.stage === 'ready' && (
           <button
@@ -67,7 +70,7 @@ export function UpdateSection() {
             onClick={installNow}
             className="btn-ghost text-xs border border-accent/40 text-accent flex items-center gap-1.5"
           >
-            Taaskäivita ja uuenda
+            {t('Taaskäivita ja uuenda', 'Restart and update')}
           </button>
         )}
       </div>

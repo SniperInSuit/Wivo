@@ -7,6 +7,7 @@ import { WizardField } from '../ui/WizardField'
 import { WizardSearch } from '../ui/WizardSearch'
 import { WIZARD_INPUT, WIZARD_BTN, FOCUS_RING } from '../wizardTheme'
 import { pushRecentMaterial, readRecentMaterials } from './recentMaterials'
+import { t } from '@/lib/i18n'
 
 export interface MaterialPickerProps {
   /** The material assigned to ONE piece of work. */
@@ -23,8 +24,8 @@ export interface MaterialPickerProps {
 /** '15 € / hammas' or '15–22 € / hammas' — only when the lab actually priced it. */
 function priceLabel(small: number, large: number): string | undefined {
   if (!small && !large) return undefined
-  if (small === large) return `${small} € / hammas`
-  return `${small}–${large} € / hammas`
+  if (small === large) return t(`${small} € / hammas`, `${small} € / tooth`)
+  return t(`${small}–${large} € / hammas`, `${small}–${large} € / tooth`)
 }
 
 /**
@@ -108,9 +109,9 @@ export function MaterialPicker({
         <WizardSearch
           value={query}
           onChange={setQuery}
-          placeholder="Otsi materjali…"
-          ariaLabel="Otsi materjali"
-          resultLabel={q ? `${visible.length} vastet` : undefined}
+          placeholder={t('Otsi materjali…', 'Search materials…')}
+          ariaLabel={t('Otsi materjali', 'Search materials')}
+          resultLabel={q ? t(`${visible.length} vastet`, `${visible.length} ${visible.length === 1 ? 'match' : 'matches'}`) : undefined}
         />
       )}
 
@@ -137,7 +138,7 @@ export function MaterialPicker({
         })}
         {visible.length === 0 && (
           <p className="text-base text-ink-muted py-4">
-            Ühtegi materjali ei leitud. Lisa oma materjal allpool.
+            {t('Ühtegi materjali ei leitud. Lisa oma materjal allpool.', 'No materials found. Add your own material below.')}
           </p>
         )}
       </div>
@@ -148,9 +149,9 @@ export function MaterialPicker({
           that both look like a shade, so they are asked in different places and
           named differently. Only materials that come in shades show this. */}
       {shades && shades.length > 0 && (
-        <div role="radiogroup" aria-label={`${base} toon`} className="space-y-2">
+        <div role="radiogroup" aria-label={t(`${base} toon`, `${base} shade`)} className="space-y-2">
           <p className="text-base font-semibold text-ink-soft">
-            {base} toon
+            {base} {t('toon', 'shade')}
             {shade && <span className="text-accent font-medium"> — {shade}</span>}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -175,15 +176,15 @@ export function MaterialPicker({
             })}
           </div>
           <p className="text-base text-ink-muted">
-            Valimata jätmine tellib materjali ilma toonita ({base}).
+            {t('Valimata jätmine tellib materjali ilma toonita', 'Leaving it unselected orders the material without a shade')} ({base}).
           </p>
         </div>
       )}
 
       <WizardField
-        label="Lisa oma materjal"
+        label={t('Lisa oma materjal', 'Add your own material')}
         htmlFor="wizard-materjal-custom"
-        help="Kui materjali nimekirjas pole, kirjuta see siia ja vajuta Lisa."
+        help={t('Kui materjali nimekirjas pole, kirjuta see siia ja vajuta Lisa.', "If the material isn't in the list, type it here and press Add.")}
       >
         <div className="flex gap-2">
           <input
@@ -192,7 +193,7 @@ export function MaterialPicker({
             value={custom}
             onChange={e => setCustom(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
-            placeholder="Nt Zirkoon 1200 MPa"
+            placeholder={t('Nt Zirkoon 1200 MPa', 'e.g. Zirconia 1200 MPa')}
             className={WIZARD_INPUT}
           />
           <button
@@ -202,7 +203,7 @@ export function MaterialPicker({
             className={`${WIZARD_BTN} shrink-0 inline-flex items-center gap-2 border border-ink-faint/40 bg-bg-card text-ink-soft disabled:opacity-40`}
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
-            Lisa
+            {t('Lisa', 'Add')}
           </button>
         </div>
       </WizardField>

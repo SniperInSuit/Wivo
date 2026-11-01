@@ -25,12 +25,21 @@
  * laptop, or this same PC after a driver update, silently never offers it again
  * — a preference quietly rewritten by a machine is close to impossible to
  * diagnose from the outside.
+ *
+ * ── A chunk that will not load is the same answer ───────────────────────────
+ * `onUnavailable` only covers what Odontogram3D can see from the inside. The
+ * lazy import itself can fail first — a checkout where `npm install` was not
+ * run after three.js was added did exactly that — and a rejected `lazy` throws
+ * during render, past every handler, to the app-wide ErrorBoundary: picking 3D
+ * in the new-job wizard took the whole window down. `Fallback3d` catches it
+ * here and gives the same silent 2D, with the error still in the console.
  */
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { Component, lazy, Suspense, useCallback, useState, type ErrorInfo, type ReactNode } from 'react'
 import { MultiOdontogramPicker } from '../JobDetail/MultiOdontogramPicker'
 import { useOdontogramView, setOdontogramView } from '../../stores/useUiPrefs'
 import { webglAvailable } from './odontogram3dCore'
 import type { ToothPickerProps } from './toothPickerProps'
+import { t } from '@/lib/i18n'
 
 const Odontogram3D = lazy(() =>
   import('./Odontogram3D').then(m => ({ default: m.Odontogram3D })),
@@ -80,20 +89,45 @@ export function ToothPicker({ allow3d = true, ...props }: ToothPickerWrapperProp
       )}
 
       {show3d ? (
-        <Suspense
-          fallback={
-            <div className="grid h-[340px] place-items-center rounded-xl bg-ink/5 text-sm text-ink-muted">
-              Laen 3D vaadet…
-            </div>
-          }
-        >
-          <Odontogram3D {...props} onUnavailable={giveUp} />
-        </Suspense>
+        <Fallback3d onError={giveUp}>
+          <Suspense
+            fallback={
+              <div className="grid h-[340px] place-items-center rounded-xl bg-ink/5 text-sm text-ink-muted">
+                {t('Laen 3D vaadet…', 'Loading 3D view…')}
+              </div>
+            }
+          >
+            <Odontogram3D {...props} onUnavailable={giveUp} />
+          </Suspense>
+        </Fallback3d>
       ) : (
         <MultiOdontogramPicker {...props} />
       )}
     </div>
   )
+}
+
+/**
+ * The 3D view's blast radius — see "A chunk that will not load" in the header.
+ *
+ * Renders nothing once it has caught: the parent's `giveUp` swaps in the 2D
+ * chart on the very next render, so there is no frame worth drawing here.
+ */
+class Fallback3d extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error('[wivo] 3D hambakaart ei laadinud, näitan 2D:', error, info.componentStack)
+    this.props.onError()
+  }
+
+  render(): ReactNode {
+    return this.state.failed ? null : this.props.children
+  }
 }
 
 function ViewButton({ active, onClick, children }: {

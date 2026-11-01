@@ -5,6 +5,7 @@ import type { Job } from '../../types/job'
 import type { Visit } from '../../types/visit'
 import { useSettings } from '../../stores/useSettings'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
+import { t } from '@/lib/i18n'
 
 interface VisitTimelineProps {
   visits: Visit[]
@@ -73,7 +74,7 @@ export function VisitTimeline({
       <div className="flex items-center justify-between mb-3">
         <h2 className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted uppercase tracking-wider">
           <User size={12} />
-          {isToday ? 'Täna' : format(day, 'dd.MM')} — visiidid ({dayVisits.length})
+          {isToday ? t('Täna', 'Today') : format(day, 'dd.MM')} — {t('visiidid', 'visits')} ({dayVisits.length})
         </h2>
       </div>
 
@@ -81,7 +82,7 @@ export function VisitTimeline({
         <button
           onClick={() => onDayChange(addDays(day, -1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title="Eelmine päev"
+          title={t('Eelmine päev', 'Previous day')}
         >
           <ChevronLeft size={14} />
         </button>
@@ -206,7 +207,7 @@ export function VisitTimeline({
                     onMouseLeave={() => setOpenId(id => (id === v.id ? null : id))}
                     onDoubleClick={() => onVisitOpen(v)}
                     onClick={() => onVisitOpen(v)}
-                    title="Ava visiit"
+                    title={t('Ava visiit', 'Open visit')}
                     className={`absolute w-[146px] text-left rounded-xl border px-2.5 py-1.5 transition-all ${
                       v.staatus === 'ei_tulnud'
                         ? 'bg-amber-50 border-amber-200 hover:border-amber-300'
@@ -227,14 +228,14 @@ export function VisitTimeline({
                       {format(d, 'HH:mm')}
                       {done && !cancelled && <Check size={9} className="text-emerald-600" />}
                       {cancelled && <X size={9} style={{ color: VISIT_STATUS_HEX[v.staatus] }} />}
-                      {isLate && <span className="text-[9px] font-semibold text-red-500">hilines</span>}
+                      {isLate && <span className="text-[9px] font-semibold text-red-500">{t('hilines', 'late')}</span>}
                     </span>
                     <span className="flex items-center gap-1 text-xs font-semibold text-ink truncate">
                       <Stethoscope size={10} className="text-ink-faint flex-shrink-0" />
                       <span className="truncate">{v.arst?.trim() || v.patsient}</span>
                     </span>
                     <span className="text-[10px] text-ink-muted">
-                      {jobs.length} {jobs.length === 1 ? 'töö' : 'tööd'}
+                      {jobs.length} {jobs.length === 1 ? t('töö', 'job') : t('tööd', 'jobs')}
                     </span>
 
                     {/* Hover detail */}
@@ -266,7 +267,7 @@ export function VisitTimeline({
                           onClick={e => { e.stopPropagation(); onOpenJobs(v) }}
                           className="block text-[10px] font-medium text-accent hover:underline pt-0.5 border-t border-ink-faint/15"
                         >
-                          Vaata tööde nimekirja ({jobs.length})
+                          {t('Vaata tööde nimekirja', 'View job list')} ({jobs.length})
                         </span>
                       </span>
                     )}
@@ -277,7 +278,7 @@ export function VisitTimeline({
 
             {dayVisits.length === 0 && (
               <p className="absolute inset-x-0 text-center text-sm text-ink-faint" style={{ top: CARD_ROW_0 + 10 }}>
-                Sellel päeval visiite ei ole.
+                {t('Sellel päeval visiite ei ole.', 'No visits on this day.')}
               </p>
             )}
           </div>
@@ -286,7 +287,7 @@ export function VisitTimeline({
         <button
           onClick={() => onDayChange(addDays(day, 1))}
           className="w-7 h-7 rounded-full border border-ink-faint/25 flex items-center justify-center text-ink-muted hover:text-accent hover:border-accent/50 transition-colors flex-shrink-0"
-          title="Järgmine päev"
+          title={t('Järgmine päev', 'Next day')}
         >
           <ChevronRight size={14} />
         </button>

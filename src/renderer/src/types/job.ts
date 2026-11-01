@@ -1,4 +1,6 @@
 import type { DeliveryStatus } from './customer'
+// @shared rather than @/lib/i18n: node tests load this file, and that one touches `document`.
+import { t } from '@shared/i18n'
 
 // Pipeline stage keys — now an open string so custom stages are possible
 export type StageKey = string
@@ -77,9 +79,16 @@ export function revisionReasons(rev: Pick<Revision, 'reasons' | 'reason'>): stri
   return rev.reason?.trim() ? [rev.reason.trim()] : []
 }
 
-/** For labels and tooltips. */
+/**
+ * The reasons exactly as stored — for text that leaves the building, like an
+ * invoice line. On screen use `revisionReasonDisplay`.
+ */
 export const revisionReasonLabel = (rev: Pick<Revision, 'reasons' | 'reason'>): string =>
   revisionReasons(rev).join(', ')
+
+/** On-screen version of `revisionReasonLabel`. */
+export const revisionReasonDisplay = (rev: Pick<Revision, 'reasons' | 'reason'>): string =>
+  revisionReasons(rev).map(revisionReasonText).join(', ')
 
 // Pre-defined revision reasons — free text is also allowed
 export const REVISION_REASONS = [
@@ -93,6 +102,27 @@ export const REVISION_REASONS = [
   'Arsti soov',
   'Muu',
 ] as const
+
+/**
+ * English for the predefined reasons, keyed by the STORED Estonian value. The
+ * values themselves never change: they are saved on every revision, counted
+ * by name in Statistics, and 'Purunemine' is compared in code.
+ */
+const REVISION_REASON_EN: Record<(typeof REVISION_REASONS)[number], string> = {
+  'Vale disain': 'Wrong design',
+  'Vale värv': 'Wrong shade',
+  'Vale materjal': 'Wrong material',
+  'Vale hammas': 'Wrong tooth',
+  'Halb passivus': 'Poor fit',
+  'Purunemine': 'Breakage',
+  'Patsiendi soov': "Patient's request",
+  'Arsti soov': "Dentist's request",
+  'Muu': 'Other',
+}
+
+/** One stored reason as the UI shows it. Free text passes through as typed. */
+export const revisionReasonText = (reason: string): string =>
+  t(reason, REVISION_REASON_EN[reason as keyof typeof REVISION_REASON_EN] ?? reason)
 
 // A dated note on a job. Same shape as PatientNote — kept as its own type so the
 // two can diverge (a job note may later carry a stage, a patient note will not).

@@ -7,6 +7,7 @@
  */
 import { Search, X } from 'lucide-react'
 import { FOCUS_RING, WIZARD_INPUT, WIZARD_HIT_MIN } from '../wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardSearchProps {
   value: string
@@ -41,11 +42,11 @@ export function WizardSearch({
           <button
             type="button"
             onClick={() => onChange('')}
-            title="Tühjenda otsing"
+            title={t('Tühjenda otsing', 'Clear search')}
             className={`absolute right-1 top-1/2 -translate-y-1/2 ${WIZARD_HIT_MIN} flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-bg-sidebar transition-colors ${FOCUS_RING}`}
           >
             <X size={18} aria-hidden="true" />
-            <span className="sr-only">Tühjenda otsing</span>
+            <span className="sr-only">{t('Tühjenda otsing', 'Clear search')}</span>
           </button>
         )}
       </div>

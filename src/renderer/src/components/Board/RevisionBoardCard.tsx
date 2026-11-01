@@ -9,6 +9,7 @@ import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
+import { t } from '@/lib/i18n'
 
 interface RevisionBoardCardProps {
   job: Job
@@ -66,13 +67,13 @@ export function RevisionBoardCard({
         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded
           bg-slate-700 text-slate-100">
           <CornerDownLeft size={9} />
-          Muudatus #{revIndex}
+          {t('Muudatus', 'Revision')} #{revIndex}
         </span>
         {(revision.mudel || job.mudel) && (
           <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">M</span>
         )}
         {revision.taspidev === false && (
-          <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1 py-0.5 rounded">Tasustamata</span>
+          <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1 py-0.5 rounded">{t('Tasustamata', 'Unpaid')}</span>
         )}
         {revision.kiirtoo && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded
@@ -99,7 +100,7 @@ export function RevisionBoardCard({
               className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
               style={{ backgroundColor: `${wt.hex(item.too)}20`, color: wt.hex(item.too) }}
             >
-              {item.too}{item.bridge ? ' (sild)' : ''}
+              {item.too}{item.bridge ? t(' (sild)', ' (bridge)') : ''}
             </span>
           ))}
         </div>

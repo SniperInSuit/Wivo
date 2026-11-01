@@ -4,7 +4,7 @@ import {
   format, parseISO, isValid, isSameDay, isToday, startOfWeek, addDays, addWeeks,
   differenceInCalendarDays, differenceInWeeks
 } from 'date-fns'
-import { et } from 'date-fns/locale'
+import { t, dateLocale } from '@/lib/i18n'
 import type { Visit } from '../../types/visit'
 import { VISIT_STATUS_HEX, VISIT_STATUS_LABEL } from '../../types/visit'
 import { useVisitTypes, useSettings } from '../../stores/useSettings'
@@ -207,12 +207,12 @@ export function VisitWeekGrid({
     <section className="card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-faint/15">
         <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-          {format(weekStart, 'd. MMM', { locale: et })} – {format(addDays(weekStart, 6), 'd. MMM yyyy', { locale: et })}
+          {format(weekStart, t('d. MMM', 'd MMM'), { locale: dateLocale })} – {format(addDays(weekStart, 6), t('d. MMM yyyy', 'd MMM yyyy'), { locale: dateLocale })}
         </h2>
         <div className="flex items-center gap-1">
           <button
             onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, -1)) }}
-            className="btn-ghost p-1.5" title="Eelmine nädal"
+            className="btn-ghost p-1.5" title={t('Eelmine nädal', 'Previous week')}
           >
             <ChevronLeft size={14} />
           </button>
@@ -220,11 +220,11 @@ export function VisitWeekGrid({
             onClick={() => { scrollSource.current = 'button'; onWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 })) }}
             className="btn-ghost text-xs"
           >
-            Jooksev nädal
+            {t('Jooksev nädal', 'This week')}
           </button>
           <button
             onClick={() => { scrollSource.current = 'button'; onWeekChange(addWeeks(weekStart, 1)) }}
-            className="btn-ghost p-1.5" title="Järgmine nädal"
+            className="btn-ghost p-1.5" title={t('Järgmine nädal', 'Next week')}
           >
             <ChevronRight size={14} />
           </button>
@@ -284,7 +284,7 @@ export function VisitWeekGrid({
                           }`}
                         >
                           <p className="text-[10px] text-ink-muted first-letter:uppercase truncate">
-                            {format(day, 'EEEEEE', { locale: et })}
+                            {format(day, 'EEEEEE', { locale: dateLocale })}
                           </p>
                           <p className={`text-sm font-semibold tabular-nums ${
                             isToday(day) ? 'text-accent' : 'text-ink'
@@ -348,7 +348,7 @@ export function VisitWeekGrid({
                             start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
                             onSlotClick(start)
                           }}
-                          title="Klõpsa ja lohista ajavahemiku valimiseks"
+                          title={t('Klõpsa ja lohista ajavahemiku valimiseks', 'Click and drag to select a time range')}
                         >
                           {hours.map(h => (
                             <span key={h}>
@@ -470,7 +470,7 @@ export function VisitWeekGrid({
 
       <div className="flex items-center gap-3 px-4 py-2.5 border-t border-ink-faint/15">
         <span className="text-[10px] text-ink-faint tabular-nums whitespace-nowrap w-16">
-          {format(weekStart, 'dd.MM', { locale: et })}
+          {format(weekStart, 'dd.MM', { locale: dateLocale })}
         </span>
         <input
           type="range"
@@ -485,15 +485,15 @@ export function VisitWeekGrid({
             el.scrollLeft = (parseInt(e.target.value) / 1000) * maxScroll
           }}
           className="flex-1 h-1 accent-accent cursor-pointer"
-          title="Libista sujuvalt"
+          title={t('Libista sujuvalt', 'Slide smoothly')}
         />
         <span className="text-[10px] text-ink-faint tabular-nums whitespace-nowrap w-16 text-right">
-          {format(addDays(weekStart, 6), 'dd.MM', { locale: et })}
+          {format(addDays(weekStart, 6), 'dd.MM', { locale: dateLocale })}
         </span>
       </div>
       <p className="flex items-center gap-1.5 px-4 py-1.5 text-[10px] text-ink-faint">
         <Plus size={10} />
-        Klõpsa ja lohista ajavahemiku valimiseks
+        {t('Klõpsa ja lohista ajavahemiku valimiseks', 'Click and drag to select a time range')}
       </p>
     </section>
   )

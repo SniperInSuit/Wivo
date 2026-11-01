@@ -21,7 +21,7 @@ import { useSettings, useWorkTypes, calcProduction, countSmallTeeth, countLargeT
 import { quoteJob } from '@shared/pricing/quote'
 import { workTypeRules } from '@shared/wizard'
 
-const toothCountOf = (h: string) => h.split(',').filter(t => t.trim()).length
+const toothCountOf = (h: string) => h.split(',').filter(tooth => tooth.trim()).length
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { WorkerSelect } from './WorkerSelect'
 import { useCustomers } from '../../hooks/useCustomers'
@@ -38,6 +38,7 @@ import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
 import { DieShadePicker } from './DieShadePicker'
+import { t } from '@/lib/i18n'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -104,7 +105,7 @@ function CustomerSelect({ value, onChange }: {
   return (
     <div>
       <label className="label flex items-center gap-1.5">
-        <Building2 size={11} /> Tellija
+        <Building2 size={11} /> {t('Tellija', 'Client')}
       </label>
       <select
         value={value ?? ''}
@@ -114,7 +115,7 @@ function CustomerSelect({ value, onChange }: {
         <option value="">—</option>
         {options.map(c => (
           <option key={c.id} value={c.id}>
-            {c.name}{c.archived_at ? ' (arhiveeritud)' : ''}
+            {c.name}{c.archived_at ? t(' (arhiveeritud)', ' (archived)') : ''}
           </option>
         ))}
       </select>
@@ -170,7 +171,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
     <div className="border border-ink-faint/20 rounded-xl p-4 space-y-4">
       <p className="text-sm font-semibold text-ink flex items-center gap-2">
         <Euro size={15} className="text-accent" />
-        Hind ja maksmine
+        {t('Hind ja maksmine', 'Price and payment')}
       </p>
 
       {/* The auto-price deliberately leaves the field alone when it cannot work
@@ -179,7 +180,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
       {unpriced.length > 0 && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-            Hinda ei arvutatud automaatselt
+            {t('Hinda ei arvutatud automaatselt', 'Price was not calculated automatically')}
           </p>
           <ul className="mt-1 space-y-0.5">
             {unpriced.map((reason, i) => (
@@ -187,14 +188,14 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             ))}
           </ul>
           <p className="text-[11px] text-ink-faint mt-1">
-            Sisesta hind käsitsi või määra hind Seaded → Hinnad all.
+            {t('Sisesta hind käsitsi või määra hind Seaded → Hinnad all.', 'Enter the price manually or set it under Settings → Prices.')}
           </p>
         </div>
       )}
 
       {hasCalc && (
         <div className="bg-bg-sidebar rounded-xl p-3 space-y-1.5">
-          <p className="text-xs font-semibold text-ink-muted mb-2">Autoarvutus</p>
+          <p className="text-xs font-semibold text-ink-muted mb-2">{t('Autoarvutus', 'Auto calculation')}</p>
           {/* A work-type price replaces the per-tooth rows rather than adding to
               them — showing both would read as if they were summed. */}
           {typePrice != null && info ? (
@@ -202,15 +203,15 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
               <div className="flex justify-between text-xs text-ink-muted">
                 <span>
                   {info.mode === 'hammas'
-                    ? `${teeth} × ${info.unit.toFixed(2)} € / hammas`
-                    : `1 × ${form.too?.trim() || 'töö'} (hind töö kohta)`}
+                    ? t(`${teeth} × ${info.unit.toFixed(2)} € / hammas`, `${teeth} × ${info.unit.toFixed(2)} € / tooth`)
+                    : t(`1 × ${form.too?.trim() || 'töö'} (hind töö kohta)`, `1 × ${form.too?.trim() || 'job'} (price per job)`)}
                   {/* Says WHY the unit price is what it is. Without this the
                       number quietly moves when a sixth tooth is clicked and
                       nobody can explain it to the dentist who was quoted the
                       other one. */}
                   {info.tier && (
                     <span className="ml-1.5 text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                      kogusehind alates {info.tier.alates}
+                      {t(`kogusehind alates ${info.tier.alates}`, `volume price from ${info.tier.alates}`)}
                     </span>
                   )}
                 </span>
@@ -225,7 +226,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                       !useDiscount ? 'bg-accent text-white' : 'bg-ink-faint/20 text-ink-muted hover:text-ink'
                     }`}
                   >
-                    Täishind
+                    {t('Täishind', 'Full price')}
                   </button>
                   <button
                     type="button"
@@ -234,7 +235,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                       useDiscount ? 'bg-accent text-white' : 'bg-ink-faint/20 text-ink-muted hover:text-ink'
                     }`}
                   >
-                    Soodushind
+                    {t('Soodushind', 'Discount price')}
                   </button>
                 </div>
               )}
@@ -243,7 +244,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             <>
               {smallCount > 0 && (
                 <div className="flex justify-between text-xs text-ink-muted">
-                  <span>{smallCount} × väike hammas</span>
+                  <span>{smallCount} × {t('väike hammas', 'small tooth')}</span>
                   <span className="font-medium text-ink">
                     {(smallCount * (settings.materialPrices[form.materjal]?.small ?? 0)).toFixed(2)} €
                   </span>
@@ -251,7 +252,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
               )}
               {largeCount > 0 && (
                 <div className="flex justify-between text-xs text-ink-muted">
-                  <span>{largeCount} × suur hammas</span>
+                  <span>{largeCount} × {t('suur hammas', 'large tooth')}</span>
                   <span className="font-medium text-ink">
                     {(largeCount * (settings.materialPrices[form.materjal]?.large ?? 0)).toFixed(2)} €
                   </span>
@@ -261,7 +262,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
           )}
           {settings.designFee > 0 && (
             <div className="flex items-center justify-between text-xs text-ink-muted">
-              <span className="flex items-center gap-1"><Pencil size={10} /> Disain</span>
+              <span className="flex items-center gap-1"><Pencil size={10} /> {t('Disain', 'Design')}</span>
               <div className="flex items-center gap-2">
                 <span className="font-medium text-ink">{settings.designFee.toFixed(2)} €</span>
                 <button
@@ -273,7 +274,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                       : 'bg-ink-faint/20 text-ink-muted hover:bg-accent/20 hover:text-accent'
                   }`}
                 >
-                  {form.disain_hind != null ? 'Lisatud ✓' : 'Lisa'}
+                  {form.disain_hind != null ? t('Lisatud ✓', 'Added ✓') : t('Lisa', 'Add')}
                 </button>
               </div>
             </div>
@@ -285,7 +286,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
               <>
                 <div className="border-t border-ink-faint/20 pt-1.5 flex items-center justify-between">
                   <span className="text-xs font-semibold text-ink flex items-center gap-1">
-                    Kokku
+                    {t('Kokku', 'Total')}
                     {form.kiirtoo && (
                       <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
                         {settings.kiirtooKordaja}×
@@ -300,7 +301,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                   className="w-full flex items-center justify-center gap-1.5 text-xs text-accent hover:text-accent-dark font-semibold mt-1 py-1 rounded-lg hover:bg-accent/5 transition-colors"
                 >
                   <Calculator size={11} />
-                  Kanna hinna väljale
+                  {t('Kanna hinna väljale', 'Copy to price field')}
                 </button>
               </>
             )
@@ -342,7 +343,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                         next[i] = { ...next[i], nimi: e.target.value }
                         set('extra_costs', next)
                       }}
-                      placeholder="Kulu nimi"
+                      placeholder={t('Kulu nimi', 'Cost name')}
                       className="input py-0.5 px-1.5 text-xs flex-1 min-w-0"
                     />
                     <div className="relative w-20">
@@ -362,7 +363,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 ))}
                 <button type="button" onClick={() => set('extra_costs', [...(form.extra_costs ?? []), { nimi: '', summa: 0 }])}
                   className="text-[10px] text-accent hover:text-accent/80 font-medium">
-                  + Lisa kulu
+                  + {t('Lisa kulu', 'Add cost')}
                 </button>
               </>
             }
@@ -372,7 +373,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label">Hind kokku (€)</label>
+          <label className="label">{t('Hind kokku (€)', 'Total price (€)')}</label>
           <input
             type="number" step="0.01" min="0"
             value={form.hind ?? ''}
@@ -384,7 +385,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
         </div>
         <div>
           <label className="label flex items-center gap-1">
-            <Pencil size={10} /> Disain hind (€)
+            <Pencil size={10} /> {t('Disain hind (€)', 'Design price (€)')}
           </label>
           <input
             type="number" step="0.01" min="0"
@@ -396,7 +397,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
       </div>
 
       <div className="flex flex-col">
-        <label className="label">Makstud</label>
+        <label className="label">{t('Makstud', 'Paid')}</label>
         {/* An ACTION when unpaid, a STATE when paid — the same shape as the read
             view, and for a reason that cost a real person real time: this used
             to render a tick-box labelled "Maksmata" in both states. It looked
@@ -409,14 +410,14 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
               <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                 <Check size={10} className="text-white" />
               </span>
-              Makstud
+              {t('Makstud', 'Paid')}
             </span>
             <button
               type="button"
               onClick={() => { set('makstud', false); set('makse_kuupaev', '') }}
               className="text-[11px] text-ink-faint hover:text-red-500"
             >
-              võta tagasi
+              {t('võta tagasi', 'undo')}
             </button>
           </div>
         ) : (
@@ -426,13 +427,13 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
             className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-accent/40 bg-accent/5 text-accent text-sm font-semibold hover:bg-accent/10 transition-colors"
           >
             <Banknote size={14} />
-            {paidSoFar > 0 ? 'Lisa makse' : 'Märgi makstuks'}
+            {paidSoFar > 0 ? t('Lisa makse', 'Add payment') : t('Märgi makstuks', 'Mark as paid')}
           </button>
         )}
         {/* A job can be unpaid by the flag and still have money against it. */}
         {paidSoFar > 0 && !form.makstud && (
           <p className="text-[11px] text-amber-600 mt-1 leading-relaxed">
-            Osaliselt makstud: laekunud {paidSoFar.toFixed(2)} €
+            {t(`Osaliselt makstud: laekunud ${paidSoFar.toFixed(2)} €`, `Partly paid: ${paidSoFar.toFixed(2)} € received`)}
           </p>
         )}
       </div>
@@ -440,7 +441,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
       {form.makstud && (
         <div>
           <label className="label flex items-center gap-1">
-            <Calendar size={11} /> Makse kuupäev
+            <Calendar size={11} /> {t('Makse kuupäev', 'Payment date')}
           </label>
           <input
             type="date"
@@ -689,10 +690,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
     // plate has been seen, and this is the last moment before the figure enters
     // the month's costs, where correcting it means correcting a paid period.
     if (kapselPuudu) {
-      setSaveError(
+      setSaveError(t(
         `Sisesta kapslite arv — ${form.masina} on kapslimasin ja valmis töö omahind `
-        + 'läheb kuu kuludesse. Kui kapsleid ei kulunud, sisesta 0.'
-      )
+        + 'läheb kuu kuludesse. Kui kapsleid ei kulunud, sisesta 0.',
+        `Enter the number of capsules — ${form.masina} is a capsule machine and a finished job's cost price `
+        + 'goes into the month\'s costs. If no capsules were used, enter 0.',
+      ))
       return
     }
     const cleaned: JobInput = {
@@ -702,7 +705,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         ? form.work_items[0].too
         : (form.too || null),
       hambad: form.work_items.length > 0
-        ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(t => t.trim())))].join(',') || null
+        ? [...new Set(form.work_items.flatMap(i => i.hambad.split(',').filter(tooth => tooth.trim())))].join(',') || null
         : (form.hambad || null),
       // Whichever control was on screen is the one that decides. Split, every
       // item carries its own answer, so nothing still leans on the flat column
@@ -755,7 +758,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         setEditing(false)
       }
     } catch (err: unknown) {
-      setSaveError((err as Error)?.message ?? 'Salvestamine ebaõnnestus')
+      setSaveError((err as Error)?.message ?? t('Salvestamine ebaõnnestus', 'Saving failed'))
     }
   }
 
@@ -805,13 +808,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <h2 className="text-base font-semibold text-ink truncate">
-                {!job ? 'Uus töö' : editing ? 'Muuda tööd' : (job.too || 'Töö')}
+                {!job ? t('Uus töö', 'New job') : editing ? t('Muuda tööd', 'Edit job') : (job.too || t('Töö', 'Job'))}
                 {job && !editing && !activeRev && job.print_id && (
                   <span className="text-ink-muted font-normal"> · {job.print_id}</span>
                 )}
                 {activeRev && !editing && (
                   <span className="text-accent font-normal">
-                    {' '}· muudatus {(job?.revisions ?? []).findIndex(r => r.id === activeRev.id) + 1}
+                    {' '}· {t('muudatus', 'revision')} {(job?.revisions ?? []).findIndex(r => r.id === activeRev.id) + 1}
                   </span>
                 )}
               </h2>
@@ -822,9 +825,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               <div className="flex items-center gap-3 mt-1 text-xs text-ink-muted min-w-0">
                 <span className="truncate">{job.patsient}</span>
                 {(() => {
-                  const t = (activeRev ? activeRev.hambad : job.hambad) ?? ''
-                  const n = t.split(',').filter(x => x.trim()).length
-                  return n > 0 ? <span className="whitespace-nowrap">{n} hammast</span> : null
+                  const teethStr = (activeRev ? activeRev.hambad : job.hambad) ?? ''
+                  const n = teethStr.split(',').filter(x => x.trim()).length
+                  return n > 0 ? <span className="whitespace-nowrap">{t(`${n} hammast`, `${n} ${n === 1 ? 'tooth' : 'teeth'}`)}</span> : null
                 })()}
                 <span className="whitespace-nowrap">
                   {activeRev
@@ -838,20 +841,20 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             {job && onDelete && (
               deleteConfirm ? (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-red-600 font-medium">Kustutada?</span>
+                  <span className="text-xs text-red-600 font-medium">{t('Kustutada?', 'Delete?')}</span>
                   <button
                     type="button"
                     onClick={handleDelete}
                     className="text-xs bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition-colors"
                   >
-                    Jah
+                    {t('Jah', 'Yes')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteConfirm(false)}
                     className="text-xs text-ink-muted hover:text-ink px-2 py-1 rounded-lg transition-colors"
                   >
-                    Ei
+                    {t('Ei', 'No')}
                   </button>
                 </div>
               ) : (
@@ -873,7 +876,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 }
               }} className="btn-ghost">
                 <Pencil size={14} />
-                {activeRev ? 'Muuda muudatust' : 'Muuda'}
+                {activeRev ? t('Muuda muudatust', 'Edit revision') : t('Muuda', 'Edit')}
               </button>
             )}
             {/* Save/Cancel in header when editing */}
@@ -884,7 +887,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   onClick={() => (job ? setEditing(false) : onClose())}
                   className="btn-ghost text-sm"
                 >
-                  Tühista
+                  {t('Tühista', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -893,7 +896,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   className="btn-primary disabled:opacity-50"
                 >
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {job ? 'Salvesta' : 'Loo töö'}
+                  {job ? t('Salvesta', 'Save') : t('Loo töö', 'Create job')}
                 </button>
               </>
             )}
@@ -953,7 +956,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* Status */}
               <div>
-                <label className="label">Staatus</label>
+                <label className="label">{t('Staatus', 'Status')}</label>
                 <div className="flex flex-wrap gap-1.5">
                   {stages.map(s => (
                     <button
@@ -1001,7 +1004,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   <Zap size={14} className={form.kiirtoo ? 'text-orange-500 fill-orange-400' : ''} />
                   {/* The multiplier is configurable (Seaded → Hinnad). A fixed
                       "2×" here contradicted the price the same panel shows. */}
-                  {form.kiirtoo ? `Kiirtöö — hind ${settings.kiirtooKordaja}×` : 'Kiirtöö'}
+                  {form.kiirtoo ? t(`Kiirtöö — hind ${settings.kiirtooKordaja}×`, `Rush — price ${settings.kiirtooKordaja}×`) : t('Kiirtöö', 'Rush')}
                 </button>
                 <button
                   type="button"
@@ -1013,7 +1016,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   }`}
                 >
                   <Cpu size={14} className={form.mudel ? 'text-amber-500' : ''} />
-                  {form.mudel ? `Mudel${settings.mudeliHind > 0 ? ` — ${settings.mudeliHind}€` : ''}` : 'Mudel'}
+                  {form.mudel ? `${t('Mudel', 'Model')}${settings.mudeliHind > 0 ? ` — ${settings.mudeliHind}€` : ''}` : t('Mudel', 'Model')}
                 </button>
               </div>
 
@@ -1022,12 +1025,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   with its own job number, and it only exists while Mudel is on. */}
               {form.mudel && (
                 <div>
-                  <label className="label">Mudel ID</label>
+                  <label className="label">{t('Mudel ID', 'Model ID')}</label>
                   <input
                     type="text"
                     value={form.mudel_id ?? ''}
                     onChange={e => set('mudel_id', e.target.value)}
-                    placeholder="Mudeli töö nr…"
+                    placeholder={t('Mudeli töö nr…', 'Model job no.…')}
                     className="input font-mono"
                   />
                 </div>
@@ -1036,7 +1039,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* Kuupäev + Tähtaeg + Kellaaeg */}
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <div>
-                  <label className="label">Kuupäev</label>
+                  <label className="label">{t('Kuupäev', 'Date')}</label>
                   <input
                     type="date"
                     value={form.kuupaev}
@@ -1046,7 +1049,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   />
                 </div>
                 <div>
-                  <label className="label">Tähtaeg</label>
+                  <label className="label">{t('Tähtaeg', 'Due date')}</label>
                   <input
                     type="date"
                     value={(form.valmis_aeg ?? '').split('T')[0] || ''}
@@ -1058,7 +1061,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   />
                 </div>
                 <div>
-                  <label className="label">Kell</label>
+                  <label className="label">{t('Kell', 'Time')}</label>
                   {/* Was a free-text box that wrote every keystroke straight into
                       `valmis_aeg` — so typing "12:00" stored `…T1`, then `…T12`,
                       and whichever half-finished string was there on save stayed
@@ -1097,15 +1100,15 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   onChange={id => set('customer_id', id)}
                 />
                 <div>
-                  <label className="label">Tellija viide</label>
+                  <label className="label">{t('Tellija viide', 'Client reference')}</label>
                   <input
                     value={form.customer_ref ?? ''}
                     onChange={e => set('customer_ref', e.target.value || null)}
-                    placeholder="nt A-2291"
+                    placeholder={t('nt A-2291', 'e.g. A-2291')}
                     className="input"
                   />
                   <p className="text-[10px] text-ink-faint mt-1">
-                    Kliiniku enda juhtumi number. Ainus viide, mida jälgimislink näitab.
+                    {t('Kliiniku enda juhtumi number. Ainus viide, mida jälgimislink näitab.', 'The clinic\'s own case number. The only reference the tracking link shows.')}
                   </p>
                 </div>
               </div>
@@ -1117,14 +1120,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   made this form confusing. */}
               {form.status === doneStageKey && (
                 <div className="rounded-xl border border-ink-faint/25 bg-bg-sidebar/40 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-ink-soft">Valmis</p>
+                  <p className="text-xs font-semibold text-ink-soft">{t('Valmis', 'Done')}</p>
 
                   {/* The date payroll pays on. It is stamped automatically when
                       the job reaches this stage, but it was never editable —
                       so a job finished on the 30th could not be moved into the
                       next month's wages, which is a correction a lab makes. */}
                   <div>
-                    <label className="label">Valmimiskuupäev</label>
+                    <label className="label">{t('Valmimiskuupäev', 'Completion date')}</label>
                     <input
                       type="date"
                       value={form.valmis_kuupaev ?? ''}
@@ -1132,8 +1135,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       className="input w-auto"
                     />
                     <p className="text-[10px] text-ink-faint mt-1">
-                      Millal töö päriselt valmis sai. Töötasu arvestatakse selle kuupäeva järgi,
-                      mitte tähtaja järgi.
+                      {t(
+                        'Millal töö päriselt valmis sai. Töötasu arvestatakse selle kuupäeva järgi, mitte tähtaja järgi.',
+                        'When the job was actually finished. Pay is counted by this date, not by the due date.',
+                      )}
                     </p>
                   </div>
 
@@ -1141,7 +1146,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       the bench has finished with it — not that the practice has
                       it in their hands. Those are different days. */}
                   <div>
-                    <label className="label">Väljastus</label>
+                    <label className="label">{t('Väljastus', 'Delivery')}</label>
                     <div className="flex items-center gap-1 bg-bg-sidebar rounded-lg p-0.5 w-fit">
                       {(['labor', 'teel', 'yle_antud'] as const).map(d => (
                         <button
@@ -1170,27 +1175,27 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* Töö — multi-select grid (in fullscreen, this moves to center column) */}
               <div className={isFullscreen ? 'hidden' : ''}>
-                <label className="label">Töö tüüp (vali üks või mitu)</label>
+                <label className="label">{t('Töö tüüp (vali üks või mitu)', 'Work type (choose one or more)')}</label>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   {(showAllTypes || form.work_items.length === 0
                     ? settings.tooTuubid
-                    : settings.tooTuubid.filter(t => form.work_items.some(i => i.too === t.nimi))
-                  ).map(t => {
-                    const hasItem = form.work_items.some(i => i.too === t.nimi)
-                    const img = workTypeImage(t.nimi, t.pilt)
+                    : settings.tooTuubid.filter(type => form.work_items.some(i => i.too === type.nimi))
+                  ).map(type => {
+                    const hasItem = form.work_items.some(i => i.too === type.nimi)
+                    const img = workTypeImage(type.nimi, type.pilt)
                     return (
                       <button
-                        key={t.nimi}
+                        key={type.nimi}
                         type="button"
                         onClick={() => {
                           if (hasItem) {
-                            const next = form.work_items.filter(i => i.too !== t.nimi)
+                            const next = form.work_items.filter(i => i.too !== type.nimi)
                             setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? '' }))
                           } else {
-                            const isBridge = /sild|bridge/i.test(t.nimi)
-                            const item = { id: crypto.randomUUID(), too: t.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
+                            const isBridge = /sild|bridge/i.test(type.nimi)
+                            const item = { id: crypto.randomUUID(), too: type.nimi, hambad: '', ...(isBridge ? { bridge: true } : {}) }
                             const next = [...form.work_items, item]
-                            setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? t.nimi }))
+                            setForm(f => ({ ...f, work_items: next, too: next[0]?.too ?? type.nimi }))
                           }
                         }}
                         className={`relative rounded-xl border-2 overflow-hidden text-center transition-all duration-150 ${
@@ -1207,18 +1212,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         <span className="flex h-14 items-center justify-center p-1.5">
                           {img
                             ? <img src={img} alt="" className="h-full object-contain" />
-                            : <span className="w-5 h-5 rounded-full" style={{ backgroundColor: t.hex }} />}
+                            : <span className="w-5 h-5 rounded-full" style={{ backgroundColor: type.hex }} />}
                         </span>
                         <span className={`block px-1 pb-1.5 text-[11px] font-semibold truncate ${
                           hasItem ? 'text-accent' : 'text-ink'
                         }`}>
-                          {t.nimi}
+                          {type.nimi}
                         </span>
-                        {t.hind != null && (
+                        {type.hind != null && (
                           <span className={`block px-1 pb-1 text-[9px] tabular-nums ${
                             hasItem ? 'text-accent/70' : 'text-ink-faint'
                           }`}>
-                            {t.hind.toFixed(0)} € / {t.hinnaTyyp === 'hammas' ? 'hammas' : 'töö'}
+                            {type.hind.toFixed(0)} € / {type.hinnaTyyp === 'hammas' ? t('hammas', 'tooth') : t('töö', 'job')}
                           </span>
                         )}
                       </button>
@@ -1232,7 +1237,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     className="flex items-center gap-1 text-xs font-medium text-ink-muted hover:text-ink px-2 py-1 rounded-lg transition-colors mb-2"
                   >
                     {showAllTypes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    {showAllTypes ? 'Peida' : `Näita kõiki (${settings.tooTuubid.length})`}
+                    {showAllTypes ? t('Peida', 'Hide') : t(`Näita kõiki (${settings.tooTuubid.length})`, `Show all (${settings.tooTuubid.length})`)}
                   </button>
                 )}
 
@@ -1246,9 +1251,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   return (
                   <div className="flex items-center gap-1.5 flex-wrap mb-3">
                     {form.work_items.map(item => {
-                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+                      const hex = settings.tooTuubid.find(type => type.nimi === item.too)?.hex ?? '#94A3B8'
                       const isActive = item.id === activeWorkItemId
-                      const teethCount = item.hambad.split(',').filter(t => t.trim()).length
+                      const teethCount = item.hambad.split(',').filter(tooth => tooth.trim()).length
                       const typeTotal = typeCountMap.get(item.too) ?? 1
                       const seen = (typeSeenMap.get(item.too) ?? 0) + 1
                       typeSeenMap.set(item.too, seen)
@@ -1284,7 +1289,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                               const d = workItemDesigner(item, form.designed_by)
                               return (
                                 <span
-                                  title={`Disainija: ${workerNameOf(d) || '—'}`}
+                                  title={t(`Disainija: ${workerNameOf(d) || '—'}`, `Designer: ${workerNameOf(d) || '—'}`)}
                                   className="text-[9px] text-accent bg-accent/10 px-1 py-0.5 rounded truncate max-w-[70px]"
                                 >
                                   ✎ {workerNameOf(d).split(' ')[0] || '—'}
@@ -1301,18 +1306,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                                   work_items: f.work_items.map(i => i.id === item.id ? { ...i, bridge: !i.bridge } : i)
                                 }))
                               }}
-                              title={item.bridge ? 'Eemalda silla märge' : 'Märgi sillaks'}
+                              title={item.bridge ? t('Eemalda silla märge', 'Remove bridge mark') : t('Märgi sillaks', 'Mark as bridge')}
                               className={`text-[10px] px-1 py-0.5 rounded transition-colors ${
                                 item.bridge ? 'bg-accent/20 text-accent' : 'text-ink-faint hover:text-ink-muted'
                               }`}
                             >
-                              {item.bridge ? '⛓ sild' : '⛓'}
+                              {item.bridge ? t('⛓ sild', '⛓ bridge') : '⛓'}
                             </span>
                           </button>
                           {/* + add another / × remove */}
                           <button
                             type="button"
-                            title={`Lisa veel üks ${item.too}`}
+                            title={t(`Lisa veel üks ${item.too}`, `Add another ${item.too}`)}
                             onClick={e => {
                               e.stopPropagation()
                               const newItem = { id: crypto.randomUUID(), too: item.too, hambad: '', ...(item.bridge ? { bridge: true } : {}) }
@@ -1335,7 +1340,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                           </button>
                           <button
                             type="button"
-                            title="Eemalda"
+                            title={t('Eemalda', 'Remove')}
                             onClick={e => {
                               e.stopPropagation()
                               setForm(f => {
@@ -1357,7 +1362,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       )
                     })}
                     <p className="text-[10px] text-ink-faint">
-                      {activeWorkItemId ? 'Klõpsa hammastel' : 'Vali tüüp, et hambaid märkida'}
+                      {activeWorkItemId ? t('Klõpsa hammastel', 'Click the teeth') : t('Vali tüüp, et hambaid märkida', 'Choose a type to mark teeth')}
                     </p>
                   </div>
                   )
@@ -1369,7 +1374,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     <ToothPicker
                       items={form.work_items}
                       activeItemId={activeWorkItemId}
-                      colorMap={Object.fromEntries(settings.tooTuubid.map(t => [t.nimi, t.hex]))}
+                      colorMap={Object.fromEntries(settings.tooTuubid.map(type => [type.nimi, type.hex]))}
                       // Only offered for work that CAN sit on an implant — the
                       // same rule that decides whether an abutment code is
                       // asked for, so the two can never disagree.
@@ -1404,13 +1409,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         if (!activeWorkItemId) return
                         const s = String(tooth)
                         // Check if tooth belongs to another item
-                        const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(t => t.trim()).includes(s))
+                        const otherOwner = form.work_items.find(i => i.id !== activeWorkItemId && i.hambad.split(',').map(tooth => tooth.trim()).includes(s))
                         if (otherOwner) return // tooth belongs to another item — don't steal it
                         setForm(f => ({
                           ...f,
                           work_items: f.work_items.map(item => {
                             if (item.id !== activeWorkItemId) return item
-                            const teeth = new Set(item.hambad.split(',').map(t => t.trim()).filter(Boolean))
+                            const teeth = new Set(item.hambad.split(',').map(tooth => tooth.trim()).filter(Boolean))
                             teeth.has(s) ? teeth.delete(s) : teeth.add(s)
                             return { ...item, hambad: [...teeth].join(',') }
                           })
@@ -1423,11 +1428,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* Kirjeldus */}
               <div>
-                <label className="label">Kirjeldus</label>
+                <label className="label">{t('Kirjeldus', 'Description')}</label>
                 <textarea
                   value={form.kirjeldus ?? ''}
                   onChange={e => set('kirjeldus', e.target.value)}
-                  placeholder="Töö kirjeldus…"
+                  placeholder={t('Töö kirjeldus…', 'Job description…')}
                   rows={2}
                   className="input resize-none"
                 />
@@ -1457,14 +1462,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   return (
                     <>
                       <label className="label">
-                        Materjal
+                        {t('Materjal', 'Material')}
                         {hasItems && activeItem && (
                           <span className="text-accent font-normal ml-1">
                             — {activeItem.too}
                           </span>
                         )}
                         {hasItems && !activeItem && (
-                          <span className="text-ink-faint font-normal ml-1">— vali tööosa</span>
+                          <span className="text-ink-faint font-normal ml-1">— {t('vali tööosa', 'choose a work item')}</span>
                         )}
                       </label>
                       <div className="flex gap-2 mb-2 flex-wrap">
@@ -1489,7 +1494,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                       </div>
                       {shades && (
                         <div className="flex items-center gap-1.5 flex-wrap mb-2 pl-1">
-                          <span className="text-[10px] text-ink-faint font-semibold uppercase tracking-wide">Toon:</span>
+                          <span className="text-[10px] text-ink-faint font-semibold uppercase tracking-wide">{t('Toon:', 'Shade:')}</span>
                           {shades.map(shade => (
                             <button
                               key={shade}
@@ -1511,7 +1516,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         value={currentMat}
                         disabled={hasItems && !activeItem}
                         onChange={e => setMat(e.target.value)}
-                        placeholder={hasItems && !activeItem ? 'Vali kõigepealt tööosa…' : 'Või sisesta vabalt…'}
+                        placeholder={hasItems && !activeItem ? t('Vali kõigepealt tööosa…', 'Choose a work item first…') : t('Või sisesta vabalt…', 'Or type freely…')}
                         className="input disabled:opacity-30"
                       />
                     </>
@@ -1545,12 +1550,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   return (
                     <>
                       <label className="label flex items-center gap-1.5">
-                        <Cpu size={11} /> Masin
+                        <Cpu size={11} /> {t('Masin', 'Machine')}
                         {hasItems && activeItem && (
                           <span className="text-accent font-normal ml-1">— {activeItem.too}</span>
                         )}
                         {hasItems && !activeItem && (
-                          <span className="text-ink-faint font-normal ml-1">— vali tööosa</span>
+                          <span className="text-ink-faint font-normal ml-1">— {t('vali tööosa', 'choose a work item')}</span>
                         )}
                       </label>
                       <div className="flex gap-2 flex-wrap">
@@ -1582,8 +1587,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {kapsel && (
                 <div>
                   <label className="label flex items-center gap-1.5">
-                    <Cpu size={11} /> Kapsleid
-                    {kapselPuudu && <span className="text-amber-600" title="Kohustuslik valmis tööl">*</span>}
+                    <Cpu size={11} /> {t('Kapsleid', 'Capsules')}
+                    {kapselPuudu && <span className="text-amber-600" title={t('Kohustuslik valmis tööl', 'Required on a finished job')}>*</span>}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1606,14 +1611,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         onClick={() => set('materjali_yhikud', null)}
                         className="text-[11px] text-ink-faint hover:text-ink"
                       >
-                        tühjenda
+                        {t('tühjenda', 'clear')}
                       </button>
                     )}
                   </div>
                   <p className={`text-[10px] mt-1 ${kapselPuudu ? 'text-amber-700' : 'text-ink-faint'}`}>
                     {kapselPuudu
-                      ? 'Valmis tööl on kapslite arv kohustuslik — see läheb kuu kuludesse.'
-                      : `Tühjaks jättes arvestatakse hammaste järgi: ${kapsel.hammasteJargi.toFixed(2)} €.`}
+                      ? t('Valmis tööl on kapslite arv kohustuslik — see läheb kuu kuludesse.', 'The capsule count is required on a finished job — it goes into the month\'s costs.')
+                      : t(`Tühjaks jättes arvestatakse hammaste järgi: ${kapsel.hammasteJargi.toFixed(2)} €.`, `Left empty, it is counted by tooth: ${kapsel.hammasteJargi.toFixed(2)} €.`)}
                   </p>
                 </div>
               )}
@@ -1656,13 +1661,13 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   answer won. Same shape the machine picker above already has. */}
               <div className="grid grid-cols-2 gap-4">
                 <WorkerSelect
-                  label="Teostaja"
+                  label={t('Teostaja', 'Done by')}
                   value={form.assigned_to}
                   onChange={v => set('assigned_to', v)}
                 />
                 {!designerPerItem && (
                   <WorkerSelect
-                    label="Disainija"
+                    label={t('Disainija', 'Designer')}
                     value={form.designed_by}
                     onChange={v => setForm(f => ({
                       ...f,
@@ -1683,12 +1688,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {designerPerItem && (
                 <div>
                   <label className="label flex items-center gap-1.5">
-                    <UserRound size={11} /> Disainija
-                    <span className="text-ink-faint font-normal ml-1">— tööosa kaupa</span>
+                    <UserRound size={11} /> {t('Disainija', 'Designer')}
+                    <span className="text-ink-faint font-normal ml-1">— {t('tööosa kaupa', 'per work item')}</span>
                   </label>
                   <div className="space-y-1.5">
                     {form.work_items.map((item, idx) => {
-                      const hex = settings.tooTuubid.find(t => t.nimi === item.too)?.hex ?? '#94A3B8'
+                      const hex = settings.tooTuubid.find(type => type.nimi === item.too)?.hex ?? '#94A3B8'
                       // "Sild 1" / "Sild 2" only when the type actually repeats,
                       // same rule as the chips above.
                       const repeats = form.work_items.filter(i => i.too === item.too).length > 1
@@ -1721,7 +1726,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                           >
                             <option value="">—</option>
                             {clinicWorkers.map(w => (
-                              <option key={w.id} value={w.id}>{w.full_name || 'Nimeta'}</option>
+                              <option key={w.id} value={w.id}>{w.full_name || t('Nimeta', 'Unnamed')}</option>
                             ))}
                           </select>
                         </div>
@@ -1739,17 +1744,17 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                     type="text"
                     value={form.print_id ?? ''}
                     onChange={e => set('print_id', e.target.value)}
-                    placeholder="SprintRay töö nr…"
+                    placeholder={t('SprintRay töö nr…', 'SprintRay job no.…')}
                     className="input"
                   />
                 </div>
                 <div>
-                  <label className="label">Disain ID</label>
+                  <label className="label">{t('Disain ID', 'Design ID')}</label>
                   <input
                     type="text"
                     value={form.disain_id ?? ''}
                     onChange={e => set('disain_id', e.target.value)}
-                    placeholder="Disaini viide…"
+                    placeholder={t('Disaini viide…', 'Design reference…')}
                     className="input"
                   />
                 </div>
@@ -1757,7 +1762,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
 
               {/* Värv */}
               <div>
-                <label className="label">Värv (VITA)</label>
+                <label className="label">{t('Värv (VITA)', 'Shade (VITA)')}</label>
                 <ShadePicker value={form.varv ?? null} onChange={v => set('varv', v)} />
               </div>
 
@@ -1766,10 +1771,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                   together: the ingot is chosen from the pair, never from the
                   target shade alone. */}
               <div>
-                <label className="label">Köndivärv (VITA ND)</label>
+                <label className="label">{t('Köndivärv (VITA ND)', 'Stump shade (VITA ND)')}</label>
                 <p className="text-[11px] text-ink-faint mb-1.5 leading-snug">
-                  Ihutud köndi enda toon. Läbipaistva keraamika all paistab see krooni
-                  läbi — tume könt vajab teistsugust ingotit sama lõpptooni saamiseks.
+                  {t(
+                    'Ihutud köndi enda toon. Läbipaistva keraamika all paistab see krooni läbi — tume könt vajab teistsugust ingotit sama lõpptooni saamiseks.',
+                    'The shade of the prepared stump itself. Under translucent ceramics it shows through the crown — a dark stump needs a different ingot to reach the same final shade.',
+                  )}
                 </p>
                 <DieShadePicker value={form.kondivarv ?? null} onChange={v => set('kondivarv', v)} />
               </div>
@@ -1781,7 +1788,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
             {/* ── CENTER COLUMN (fullscreen: work types + odontogram) ── */}
             {isFullscreen && (
               <div className="space-y-3 sticky top-0">
-                <label className="label">Töö tüüp ja hambad</label>
+                <label className="label">{t('Töö tüüp ja hambad', 'Work type and teeth')}</label>
                 <WorkItemsField
                   jobDesignedBy={form.designed_by}
                   value={form.work_items}
@@ -1802,14 +1809,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               {/* No work type selected — hint (non-fullscreen only, fullscreen shows it in center) */}
               {!isFullscreen && form.work_items.length === 0 && (
               <div className="bg-bg-sidebar rounded-xl p-4 text-center">
-                <p className="text-xs text-ink-faint">Vali ülalt töötüüp, et hambaid märkida</p>
+                <p className="text-xs text-ink-faint">{t('Vali ülalt töötüüp, et hambaid märkida', 'Choose a work type above to mark teeth')}</p>
               </div>
               )}
 
               {/* Extra services picker */}
               {settings.lisateenused.length > 0 && (
                 <div>
-                  <label className="label">Lisateenused</label>
+                  <label className="label">{t('Lisateenused', 'Extra services')}</label>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {settings.lisateenused.map(svc => {
                       const added = (form.extras ?? []).find(e => e.id === svc.id)
@@ -1856,7 +1863,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         </div>
                       ))}
                       <p className="text-[11px] text-ink-muted">
-                        Lisateenused kokku: <strong className="tabular-nums">{(form.extras ?? []).reduce((s, e) => s + e.hind, 0).toFixed(2)} €</strong>
+                        {t('Lisateenused kokku:', 'Extra services total:')} <strong className="tabular-nums">{(form.extras ?? []).reduce((s, e) => s + e.hind, 0).toFixed(2)} €</strong>
                       </p>
                     </div>
                   )}
@@ -1945,7 +1952,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         const { total, paid: already } = jobPaymentState(job, jobPayments, allInvoices)
         return (
           <MarkPaidDialog
-            title={`Märgi makstuks · ${job.too ?? 'Töö'}`}
+            title={`${t('Märgi makstuks', 'Mark as paid')} · ${job.too ?? t('Töö', 'Job')}`}
             amount={total}
             alreadyPaid={already}
             busy={markPaid.isPending}

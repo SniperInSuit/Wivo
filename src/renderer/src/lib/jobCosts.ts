@@ -25,19 +25,20 @@ import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
 import { workTypeConsumables, abutmentUnitPrice, type WorkType } from '../config/workTypes'
 import type { MaterialPricing } from '@shared/pricing/priceBook'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 const toothCount = (h: string | null | undefined) =>
-  (h ?? '').split(',').filter(t => t.trim()).length
+  (h ?? '').split(',').filter(tooth => tooth.trim()).length
 
 /** The four buckets a cost can land in. Stable, so an override can name one. */
 export type CostKey = 'tehnik' | 'disainija' | 'materjal' | 'tarvikud'
 
 export const COST_LABEL: Record<CostKey, string> = {
-  tehnik:    'Tehnik',
-  disainija: 'Disainija',
-  materjal:  'Materjal',
-  tarvikud:  'Tarvikud',
+  tehnik:    t('Tehnik', 'Technician'),
+  disainija: t('Disainija', 'Designer'),
+  materjal:  t('Materjal', 'Material'),
+  tarvikud:  t('Tarvikud', 'Consumables'),
 }
 
 export interface CostLine {
@@ -103,7 +104,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
   // percentage is not, and the multiplier belongs to the PERSON.
   const rushOf = (id: string | null | undefined): number =>
     job.kiirtoo && id ? (workers.find(w => w.id === id)?.kiirtoo_kordaja ?? 1) : 1
-  const rushTag = (m: number) => (m !== 1 ? ` ×${m} kiirtöö` : '')
+  const rushTag = (m: number) => (m !== 1 ? t(` ×${m} kiirtöö`, ` ×${m} rush`) : '')
 
   // ── Technician ────────────────────────────────────────────────────────────
   const tId = job.assigned_to
@@ -126,7 +127,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     if (mRate) {
       const tc = toothCount(allTeeth)
       const amt = (mRate.kind === 'hammas' ? tc * mRate.amount : mRate.kind === 'too' ? mRate.amount : 0) * tRush
-      if (amt > 0) techLines.push({ label: `Mudel: 1 × ${mRate.amount} €${rushTag(tRush)}`, amount: amt })
+      if (amt > 0) techLines.push({ label: t(`Mudel: 1 × ${mRate.amount} €${rushTag(tRush)}`, `Model: 1 × ${mRate.amount} €${rushTag(tRush)}`), amount: amt })
     }
   }
 
@@ -136,7 +137,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     if (covered.length === 0) continue
     const tc = covered.reduce((s, i) => s + toothCount(i.hambad), 0)
     const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * tRush
-    if (amt > 0) techLines.push({ label: `${r.label || 'Lisatasu'}: ${tc} × ${r.amount} €${rushTag(tRush)}`, amount: amt })
+    if (amt > 0) techLines.push({ label: `${r.label || t('Lisatasu', 'Extra pay')}: ${tc} × ${r.amount} €${rushTag(tRush)}`, amount: amt })
   }
 
   // ── Designers ─────────────────────────────────────────────────────────────
@@ -167,7 +168,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
       designLines.push({
         label: `${item.too}${designerTag(dId)}: ${tc} × ${rate.amount} €${rushTag(dRush)}`
           // Without this a designer paid for 1 of 2 teeth reads as a mistake.
-          + (designIsPartial(item) ? ` (${tc}/${toothCount(item.hambad)} hammast)` : ''),
+          + (designIsPartial(item) ? t(` (${tc}/${toothCount(item.hambad)} hammast)`, ` (${tc}/${toothCount(item.hambad)} teeth)`) : ''),
         amount: amt,
       })
     }
@@ -182,7 +183,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
       if (covered.length === 0) continue
       const tc = covered.reduce((s, i) => s + toothCount(designTeeth(i)), 0)
       const amt = (r.kind === 'hammas' ? tc * r.amount : r.kind === 'too' ? r.amount * covered.length : 0) * dRush
-      if (amt > 0) designLines.push({ label: `${r.label || 'Lisatasu'}${designerTag(dId)}: ${tc} × ${r.amount} €${rushTag(dRush)}`, amount: amt })
+      if (amt > 0) designLines.push({ label: `${r.label || t('Lisatasu', 'Extra pay')}${designerTag(dId)}: ${tc} × ${r.amount} €${rushTag(dRush)}`, amount: amt })
     }
   }
 
@@ -201,8 +202,9 @@ export function jobCosts(input: JobCostsInput): JobCosts {
   // jobs keep the bare material name, because there the teeth are the answer
   // and they are already on screen.
   const matLabel = !mat || mat.kapsleid == null
-    ? (effectiveMaterial || 'Materjal')
-    : `${effectiveMaterial || 'Materjal'}: ${mat.kapsleid} kapslit`
+    ? (effectiveMaterial || t('Materjal', 'Material'))
+    : `${effectiveMaterial || t('Materjal', 'Material')}: `
+      + t(`${mat.kapsleid} kapslit`, `${mat.kapsleid} ${mat.kapsleid === 1 ? 'capsule' : 'capsules'}`)
       + ` × ${mat.tykihind.toFixed(2)} €`
   const matLines: CostLine[] = matCost > 0
     ? [{ label: matLabel, amount: matCost }]
@@ -221,7 +223,9 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     // The line SAYS what it counted. "Kruvi 200 €" on a five-unit bridge is not
     // checkable; "Kruvi: 2 implantaati" is, and it is the only thing on screen
     // that explains why it is not five.
-    const tag = implants != null ? ` (${implants} implantaati)` : ''
+    const tag = implants != null
+      ? t(` (${implants} implantaati)`, ` (${implants} ${implants === 1 ? 'implant' : 'implants'})`)
+      : ''
     return workTypeConsumables(i.too, workTypes, implants ?? toothCount(i.hambad)).items
       .map(c => ({ label: `${c.nimi}${tag}`, amount: c.summa }))
   })
@@ -244,7 +248,7 @@ export function jobCosts(input: JobCostsInput): JobCosts {
   ]
 
   const adHoc: CostLine[] = (job.extra_costs ?? [])
-    .map(c => ({ label: c.nimi || 'Lisakulu', amount: Number(c.summa) || 0 }))
+    .map(c => ({ label: c.nimi || t('Lisakulu', 'Extra cost'), amount: Number(c.summa) || 0 }))
   const adHocTotal = round2(adHoc.reduce((s, l) => s + l.amount, 0))
 
   const total = round2(categories.reduce((s, c) => s + c.amount, 0) + adHocTotal)

@@ -27,6 +27,7 @@ import type { Job } from '../types/job'
 import type { InvoiceFull } from '../types/invoice'
 import type { Payment } from '../types/invoice'
 import { jobPaymentState } from './jobPayments'
+import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -123,8 +124,8 @@ export function debtors(input: DebtorsInput): DebtorStats {
     const customerId = job.customer_id ?? null
     const key = customerId ? `klient:${customerId}` : `patsient:${(job.patsient ?? '').trim().toLowerCase()}`
     const nimi = customerId
-      ? (nameOf.get(customerId) ?? 'Tundmatu klient')
-      : ((job.patsient ?? '').trim() || 'Nimeta')
+      ? (nameOf.get(customerId) ?? t('Tundmatu klient', 'Unknown client'))
+      : ((job.patsient ?? '').trim() || t('Nimeta', 'Unnamed'))
 
     let row = acc.get(key)
     if (!row) {
@@ -187,6 +188,7 @@ export function debtors(input: DebtorsInput): DebtorStats {
 export interface DebtBucket { label: string; amount: number; count: number }
 
 export function debtBuckets(stats: DebtorStats): DebtBucket[] {
+  // Left Estonian: Dashboard/panels/render.tsx picks the bar colour by comparing these labels.
   const bands: { label: string; min: number; max: number }[] = [
     { label: '1–30 p',  min: 1,  max: 30 },
     { label: '31–60 p', min: 31, max: 60 },

@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { ArrowUpCircle, RefreshCw, X, AlertTriangle } from 'lucide-react'
 import { useUpdate } from '../providers/UpdateProvider'
 import { useDevGitUpdate } from '../hooks/useDevGitUpdate'
+import { t } from '@/lib/i18n'
 
 export function UpdateBanner() {
   const { running, state, installNow } = useUpdate()
@@ -47,25 +48,28 @@ export function UpdateBanner() {
         <div className="min-w-0 flex-1">
           {prodShow && state.stage === 'ready' && (
             <>
-              <p className="text-xs font-semibold text-ink">Uuendus on valmis</p>
+              <p className="text-xs font-semibold text-ink">{t('Uuendus on valmis', 'Update ready')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                Versioon {state.version} rakendub, kui Wivo järgmine kord käivitad.
+                {t(
+                  `Versioon ${state.version} rakendub, kui Wivo järgmine kord käivitad.`,
+                  `Version ${state.version} will be applied the next time you start Wivo.`,
+                )}
               </p>
               <button
                 type="button"
                 onClick={installNow}
                 className="btn-ghost text-[11px] border border-ink-faint/25 mt-2 flex items-center gap-1.5"
               >
-                <RefreshCw size={11} /> Taaskäivita kohe
+                <RefreshCw size={11} /> {t('Taaskäivita kohe', 'Restart now')}
               </button>
             </>
           )}
 
           {prodShow && failed && (
             <>
-              <p className="text-xs font-semibold text-ink">Uuendus ei õnnestunud</p>
+              <p className="text-xs font-semibold text-ink">{t('Uuendus ei õnnestunud', 'Update failed')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                {state.message} Wivo töötab edasi versiooniga {running}.
+                {state.message} {t(`Wivo töötab edasi versiooniga ${running}.`, `Wivo keeps running version ${running}.`)}
               </p>
             </>
           )}
@@ -74,14 +78,14 @@ export function UpdateBanner() {
           {!prodShow && devShow && (
             <>
               <p className="text-xs font-semibold text-ink">
-                {dev.pullDone ? 'Uuendus tõmmatud' : 'Uus versioon saadaval'}
+                {dev.pullDone ? t('Uuendus tõmmatud', 'Update pulled') : t('Uus versioon saadaval', 'New version available')}
               </p>
               <p className="text-[11px] text-ink-muted mt-0.5">
                 {dev.pullDone
-                  ? 'Taaskäivita rakendus.'
+                  ? t('Taaskäivita rakendus.', 'Restart the app.')
                   : dev.diskAvailable
-                    ? `Saadaval ${dev.diskAvailable}, töötab ${running}.`
-                    : 'Uuem versioon on saadaval.'}
+                    ? t(`Saadaval ${dev.diskAvailable}, töötab ${running}.`, `${dev.diskAvailable} available, running ${running}.`)
+                    : t('Uuem versioon on saadaval.', 'A newer version is available.')}
               </p>
               <button
                 type="button"
@@ -90,7 +94,7 @@ export function UpdateBanner() {
                 className="btn-ghost text-[11px] border border-ink-faint/25 mt-2 flex items-center gap-1.5 disabled:opacity-50"
               >
                 <RefreshCw size={11} className={dev.pulling ? 'animate-spin' : ''} />
-                {dev.pulling ? 'Tõmban…' : dev.remoteAvailable ? 'Uuenda automaatselt' : 'Taaskäivita'}
+                {dev.pulling ? t('Tõmban…', 'Pulling…') : dev.remoteAvailable ? t('Uuenda automaatselt', 'Update automatically') : t('Taaskäivita', 'Restart')}
               </button>
             </>
           )}
@@ -100,7 +104,7 @@ export function UpdateBanner() {
           type="button"
           onClick={() => setDismissed(key)}
           className="p-0.5 text-ink-faint hover:text-ink flex-shrink-0"
-          title="Peida"
+          title={t('Peida', 'Dismiss')}
         >
           <X size={12} />
         </button>

@@ -20,6 +20,7 @@
 import { Check } from 'lucide-react'
 import { WIZARD_STEPS, type StepId, type StepStatus } from '@shared/wizard'
 import { FOCUS_RING } from './wizardTheme'
+import { t } from '@/lib/i18n'
 
 export interface WizardProgressProps {
   current: StepId
@@ -36,7 +37,7 @@ export function WizardProgress({
   const currentMeta = WIZARD_STEPS[current - 1]
 
   return (
-    <nav aria-label="Töö loomise sammud">
+    <nav aria-label={t('Töö loomise sammud', 'Job creation steps')}>
       {/* ── Desktop: compact inline tracker ──────────────────────────────── */}
       <ol className="hidden md:flex items-center justify-center">
         {WIZARD_STEPS.map((meta, i) => {
@@ -124,7 +125,7 @@ export function WizardProgress({
 
       {/* Screen reader announcement */}
       <p aria-live="polite" className="sr-only">
-        Samm {current}/6 · {currentMeta.short}
+        {t('Samm', 'Step')} {current}/6 · {currentMeta.short}
       </p>
     </nav>
   )

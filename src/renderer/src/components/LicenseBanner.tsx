@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { KeyRound, AlertTriangle, X } from 'lucide-react'
 import { useLicense } from '../hooks/useLicense'
+import { t } from '@/lib/i18n'
 
 export function LicenseBanner({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { status, enforced, loading } = useLicense()
@@ -22,14 +23,16 @@ export function LicenseBanner({ onOpenSettings }: { onOpenSettings: () => void }
       <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 flex-shrink-0">
         <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
         <p className="text-xs text-ink flex-1">
-          <strong>Litsents on aegunud.</strong>{' '}
-          Rakendus töötab veel {status.graceLeft} päeva, siis lülitub
-          kirjutuskaitsesse — lugemine jääb alles.
+          <strong>{t('Litsents on aegunud.', 'Licence expired.')}</strong>{' '}
+          {t(
+            `Rakendus töötab veel ${status.graceLeft} päeva, siis lülitub kirjutuskaitsesse — lugemine jääb alles.`,
+            `The app keeps working for ${status.graceLeft} more ${status.graceLeft === 1 ? 'day' : 'days'}, then becomes read-only — you can still view everything.`,
+          )}
         </p>
         <button onClick={onOpenSettings} className="text-xs font-medium text-accent hover:underline">
-          Sisesta uus võti
+          {t('Sisesta uus võti', 'Enter a new key')}
         </button>
-        <button onClick={() => setDismissed(true)} className="text-ink-faint hover:text-ink" title="Peida">
+        <button onClick={() => setDismissed(true)} className="text-ink-faint hover:text-ink" title={t('Peida', 'Dismiss')}>
           <X size={13} />
         </button>
       </div>
@@ -43,14 +46,17 @@ export function LicenseBanner({ onOpenSettings }: { onOpenSettings: () => void }
       <KeyRound size={14} className="text-red-600 flex-shrink-0" />
       <p className="text-xs text-ink flex-1">
         <strong>
-          {status.state === 'missing' ? 'Litsentsivõti puudub.' :
-           status.state === 'invalid' ? 'Litsentsivõti ei kehti.' :
-           'Litsents on aegunud.'}
+          {status.state === 'missing' ? t('Litsentsivõti puudub.', 'No licence key.') :
+           status.state === 'invalid' ? t('Litsentsivõti ei kehti.', 'Licence key is not valid.') :
+           t('Litsents on aegunud.', 'Licence expired.')}
         </strong>{' '}
-        Rakendus on kirjutuskaitses — kõik andmed on nähtaval, aga muuta ei saa.
+        {t(
+          'Rakendus on kirjutuskaitses — kõik andmed on nähtaval, aga muuta ei saa.',
+          'The app is read-only — all data is visible, but nothing can be changed.',
+        )}
       </p>
       <button onClick={onOpenSettings} className="text-xs font-medium text-accent hover:underline">
-        Sisesta võti
+        {t('Sisesta võti', 'Enter key')}
       </button>
     </div>
   )
