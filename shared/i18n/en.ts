@@ -3054,6 +3054,15 @@ export const en = {
   'bugReport.thanks': "Sent. Thank you — Kevin gets it by e-mail.",
   'bugReport.close': "Close",
   'bugReport.reportABug': "Report a bug",
+
+  // ── stageRules ────────────────────────────────────────────────────────────
+  'stageRules.allow': "Allow",
+  'stageRules.to': "To stage",
+  'stageRules.from': "From stage",
+  'stageRules.remove': "Remove",
+  'stageRules.customRules': "A partner may make exactly these moves, and only from a stage assigned to them:",
+  'stageRules.defaultRule': "No rules yet, so a partner can only hand its own stage over to the next one (the › button). Add a rule to allow other moves; rules replace this default.",
+  'stageRules.partnerMoves': "Stage moves a partner may make",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

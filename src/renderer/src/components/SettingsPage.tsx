@@ -23,6 +23,7 @@ import { slugify } from '@shared/portal/publicService'
 import { MigrationStatus } from './Settings/MigrationStatus'
 import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
+import { StageTransitionsSection } from './Settings/StageTransitionsSection'
 import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
@@ -2350,6 +2351,8 @@ export function SettingsPage() {
           )}
 
           {/* Pipeline stages */}
+          {activeGroup === 'etapid' && <StageTransitionsSection />}
+
           {activeGroup === 'etapid' && (
           <section>
             <div className="flex items-center gap-2 mb-1">

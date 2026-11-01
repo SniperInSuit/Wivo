@@ -64,7 +64,7 @@ Files
 Communication and notifications
 - [x] Comments and questions on a job, on top of chat (job thread RPCs on the
       chat tables; thread in the job panel and the partner panel; a file on a
-      comment for change proposals, sql/080 — COMMIT_CFILE) — 85d4f73
+      comment for change proposals, sql/080 — b7cfa2d) — 85d4f73
 - [x] Notifications: realtime badges, e-mail via Resend (code + link only)
       (sql/075–077; the other side only, never the actor; no patient data in a
       row; Edge Function send-notifications; per-user e-mail toggle; deploying

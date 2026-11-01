@@ -3041,4 +3041,13 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'bugReport.close': "Sulge",
   'bugReport.reportABug': "Teata veast",
 
+  // ── stageRules ────────────────────────────────────────────────────────────
+  'stageRules.allow': "Luba",
+  'stageRules.to': "Etappi",
+  'stageRules.from': "Etapist",
+  'stageRules.remove': "Eemalda",
+  'stageRules.customRules': "Partner võib teha täpselt neid liikumisi ja ainult talle määratud etapist:",
+  'stageRules.defaultRule': "Reegleid veel pole, seega saab partner ainult oma etapi järgmisele üle anda (nupp ›). Lisa reegel, et lubada muid liikumisi; reeglid asendavad selle vaikimisi käitumise.",
+  'stageRules.partnerMoves': "Etapimuutused, mida partner võib teha",
+
 }
