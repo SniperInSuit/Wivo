@@ -65,7 +65,7 @@ Other
 - [ ] Languages: English primary, Russian for Riga, Estonian from existing
 - [ ] Technician pay shown large on the job (from the existing rule engine)
 - [x] MFA for all users (mandatory TOTP enrolment + code at sign-in; steps aside
-      if the project has TOTP off; built early, DECISIONS D12) — COMMIT_MFA
+      if the project has TOTP off; built early, DECISIONS D12) — 639b354
 
 Bug reports
 - [ ] "Report a bug" button → `bug_report` (no screenshot unless the user adds one)
