@@ -184,3 +184,27 @@ describe('wrong codes are rate limited', () => {
     expect(await as(db, admin(A), async () => (await db.query(`select * from public.preview_partnership_invite($1)`, [code])).rows)).toEqual([])
   })
 })
+
+describe('job codes are the database\'s (sql/082)', () => {
+  it('a duplicated job sent with the original\'s code gets its own', async () => {
+    const original = await makeRow(db, 'jobs', A)
+    const [copy] = await rowsAs<{ job_code: string }>(db, { id: A.ownerId },
+      `insert into public.jobs (clinic_id, patsient, job_code) values ($1, 'Copy', $2) returning job_code`,
+      [A.clinicId, original.job_code])
+    expect(copy.job_code).toMatch(/-\d{2}-\d{4}$/)
+    expect(copy.job_code).not.toBe(original.job_code)
+  })
+
+  it('an update cannot change a code', async () => {
+    const job = await makeRow(db, 'jobs', A)
+    await rowsAs(db, { id: A.ownerId }, `update public.jobs set job_code = 'HACKED-1' where id = $1 returning 1`, [job.id])
+    const { rows } = await db.query<{ job_code: string }>(`select job_code from public.jobs where id = $1`, [job.id])
+    expect(rows[0].job_code).toBe(job.job_code)
+  })
+
+  it('an update that sends the same code (the old app saving a job) is fine', async () => {
+    const job = await makeRow(db, 'jobs', A)
+    expect(await errorAs(db, { id: A.ownerId },
+      `update public.jobs set job_code = $2, patsient = 'Renamed' where id = $1`, [job.id, job.job_code])).toBeNull()
+  })
+})
