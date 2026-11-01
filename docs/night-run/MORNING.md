@@ -3,7 +3,8 @@
 ## Needs you
 
 ### First: the migrations you already applied
-You ran the SQL during the night (23:34). Three files were committed late:
+You ran the SQL on **production** during the night (23:34). The test project
+does not have 068+ yet; the leak check below needs them there too. Three files were committed late:
 **080** (23:30), **081** (23:33) and **082** (23:35). If your run started
 before those, run them now, in order, each followed by
 `notify pgrst, 'reload schema';`. **082 matters most:** it repairs "Duplicate
