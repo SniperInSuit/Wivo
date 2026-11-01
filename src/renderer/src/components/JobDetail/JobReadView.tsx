@@ -238,6 +238,9 @@ export function JobReadView({
                 <p className="text-sm font-semibold text-ink truncate" title={job.patsient}>
                   {job.patsient || '—'}
                 </p>
+                {/* The code is what partners, e-mails and file names use — and
+                    what goes on the case box. */}
+                {job.job_code && <p className="font-mono text-[11px] text-ink-muted select-all">{job.job_code}</p>}
                 {linkedPatientId && onOpenPatient && (
                   <button
                     type="button"

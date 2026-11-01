@@ -72,7 +72,10 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       <div className="p-3.5 pl-[18px]">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
+          {job.job_code && <p className="font-mono text-[10px] text-ink-muted mt-0.5">{job.job_code}</p>}
+        </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Spec: a question is a FLAG on the card, not a column — the job
               stays where it is in the flow while someone waits for an answer. */}
