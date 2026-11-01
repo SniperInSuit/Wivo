@@ -91,8 +91,12 @@ describe('profiles: nobody moves themselves or others across tenants', () => {
     expect(await clinicOf(stranger)).toBeNull()
   })
 
-  it('a clinic-less user is invisible to other tenants', async () => {
+  it('a clinic-less user is invisible to other tenants (owners: only for the ten minutes a link takes)', async () => {
     const stranger = await createUser(db, 'Fresh signup')
+    // sql/083: an owner must see a brand-new signup to link the worker they
+    // just created; a worker never does, and after ten minutes nobody does.
+    expect(await rowsAs(db, { id: A.workerId }, `select 1 from public.profiles where id = $1`, [stranger])).toEqual([])
+    await db.query(`update public.profiles set created_at = now() - interval '11 minutes' where id = $1`, [stranger])
     expect(await rowsAs(db, { id: A.ownerId }, `select 1 from public.profiles where id = $1`, [stranger])).toEqual([])
   })
 })
@@ -111,9 +115,11 @@ describe('the flows the app needs still work', () => {
   })
 
   it('an owner can link a worker they have just created', async () => {
+    // Checks the ROW, not just "no error": an UPDATE the caller cannot see
+    // changes nothing and raises nothing — exactly how this broke in 068.
     const fresh = await createUser(db, 'New technician')
-    expect(await errorAs(db, { id: A.ownerId },
-      `update public.profiles set clinic_id = $1 where id = $2`, [A.clinicId, fresh])).toBeNull()
+    await errorAs(db, { id: A.ownerId }, `update public.profiles set clinic_id = $1 where id = $2`, [A.clinicId, fresh])
+    expect(await clinicOf(fresh)).toBe(A.clinicId)
   })
 
   it('an owner can remove a worker and put them back; the removed list is theirs only', async () => {
