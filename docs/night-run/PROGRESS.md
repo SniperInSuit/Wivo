@@ -31,10 +31,15 @@ Organisations and sharing
       DECISIONS D9; plus job codes D10, audit_log, stage_transition) — 80db025
 - [x] New-job form: assigning a stage to a partner creates a `job_share`; case
       type (lab work / referral); consent mark for referrals (share_job RPC in
-      sql/071; section in the wizard's production step) — COMMIT_SHAREUI
-- [ ] `partner_job_view`, search, menu restriction on shared jobs
-- [ ] `move_job_stage` + `stage_transition`; partner moves its own stage
-- [ ] "Question" as a flag on the card, not a column
+      sql/071; section in the wizard's production step) — 7258ead
+- [x] `partner_job_view`, search, menu restriction on shared jobs (sql/071 +
+      "Partner jobs" screen: search by code, read-only detail, hand-over only,
+      thread) — COMMIT_PVIEW
+- [x] `move_job_stage` + `stage_transition`; partner moves its own stage (sql/071;
+      the partner's "›" hand-over button; owner rules also enforced on direct
+      updates by trigger) — COMMIT_PVIEW
+- [x] "Question" as a flag on the card, not a column (open_questions() + flag on
+      board cards and partner rows) — COMMIT_PVIEW
 
 Creating a partnership
 - [~] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
@@ -51,7 +56,8 @@ Files
 - [ ] Patient export: PDF + ZIP of their files, download logged
 
 Communication and notifications
-- [ ] Comments and questions on a job, on top of chat
+- [x] Comments and questions on a job, on top of chat (job thread RPCs on the
+      chat tables; thread in the job panel and the partner panel) — COMMIT_PVIEW
 - [ ] Notifications: realtime badges, e-mail via Resend (code + link only)
 - [ ] Audit log
 

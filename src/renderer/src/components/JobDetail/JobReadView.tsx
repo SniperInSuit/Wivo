@@ -19,6 +19,7 @@ import { CostBreakdown } from './CostBreakdown'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
+import { JobThread } from '../Partners/JobThread'
 import { t } from '@/lib/i18n'
 
 interface JobReadViewProps {
@@ -354,6 +355,12 @@ export function JobReadView({
           {/* Notes belong to the job as a whole, not to the selected variant —
               they stay put when you switch between original and revisions. */}
           <JobNotesPanel job={job} highlightNoteId={highlightNoteId} />
+
+          {/* Comments and questions — the same thread a partner sees when the
+              job is shared. Notes above stay this clinic's own. */}
+          <div className="card p-4">
+            <JobThread jobId={job.id} />
+          </div>
         </div>
 
         {/* ─── Right: money ──────────────────────────────────────────────── */}

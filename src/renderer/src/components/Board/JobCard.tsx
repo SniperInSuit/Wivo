@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { MessageSquare, ChevronLeft, ChevronRight, Zap } from 'lucide-react'
+import { MessageSquare, ChevronLeft, ChevronRight, Zap, HelpCircle } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
 import { jobImplantTeeth } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
@@ -10,6 +10,7 @@ import { jobPaymentState } from '../../lib/jobPayments'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
+import { useOpenQuestions } from '../../hooks/usePartners'
 import { t } from '@/lib/i18n'
 
 interface JobCardProps {
@@ -20,6 +21,8 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProps) {
+  const { data: questions } = useOpenQuestions()
+  const openQuestions = questions?.get(job.id) ?? 0
   const { stages } = usePipeline()
   const wt = useWorkTypes()
   const { data: allPayments = [] } = usePayments()
@@ -71,6 +74,14 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="font-semibold text-sm text-ink leading-tight">{job.patsient}</p>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Spec: a question is a FLAG on the card, not a column — the job
+              stays where it is in the flow while someone waits for an answer. */}
+          {openQuestions > 0 && (
+            <span title={t('partners.openQuestionsCount', { n: openQuestions })}
+              className="flex items-center gap-0.5 text-[9px] font-bold bg-amber-400/20 text-amber-600 px-1 py-0.5 rounded">
+              <HelpCircle size={11} aria-hidden="true" />{openQuestions}
+            </span>
+          )}
           {job.mudel && (
             <span title={t('board.model')} className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
               M

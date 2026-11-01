@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
 import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
+import { usePartnerOrgs } from '../hooks/usePartners'
 import { t } from '@/lib/i18n'
 
 interface SidebarProps {
@@ -45,6 +46,9 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { can } = usePermissions()
   const running = useRunningVersion()
   const newRequests = useNewRequestCount()
+  // Only an organisation that has a partnership has partner jobs to look at.
+  const { data: partners = [] } = usePartnerOrgs()
+  const hasPartners = partners.some(p => p.status !== 'awaiting_inviter' && p.status !== 'awaiting_platform')
   const wide = settings.ribaLaiendatud
 
   // Shared by the nav items and Seaded so the active treatment never drifts
@@ -106,6 +110,13 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
             )}
           </button>
         ))}
+
+        {hasPartners && (
+          <button onClick={() => onViewChange('partner')} title={t('partners.partnerJobs')} className={itemClass(view === 'partner')}>
+            <Handshake size={wide ? 15 : 17} className="flex-shrink-0" />
+            <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>{t('partners.partnerJobs')}</span>
+          </button>
+        )}
 
         <div className="pt-2 mt-2 border-t border-nav/15">
           <button

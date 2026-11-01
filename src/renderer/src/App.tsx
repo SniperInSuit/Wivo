@@ -10,6 +10,7 @@ import { Dashboard } from './components/Dashboard/Dashboard'
 import { CalendarView, type CalendarMode, type CalendarScale } from './components/CalendarView/CalendarView'
 import { CalendarTopControls } from './components/CalendarView/CalendarTopControls'
 import { PatientsView } from './components/Patients/PatientsView'
+import { PartnerJobsView } from './components/Partners/PartnerJobsView'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { jobTotalValue } from './lib/jobPayments'
@@ -399,6 +400,7 @@ function AppContent() {
           {view === 'taotlused' && <RequestsInbox />}
           {view === 'settings' && <SettingsPage />}
           {view === 'workers' && <WorkersPage />}
+          {view === 'partner' && <PartnerJobsView />}
         </main>
       </div>
 

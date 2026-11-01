@@ -156,3 +156,86 @@ export function useMoveJobStage() {
     },
   })
 }
+
+// ── Job thread: comments and questions (sql/071, on the chat tables) ───────
+
+export interface ThreadMessage {
+  id: string
+  body: string
+  author_id: string | null
+  author_name: string | null
+  author_org: string | null
+  is_question: boolean
+  resolved_at: string | null
+  created_at: string
+  edited_at: string | null
+  mine: boolean
+}
+
+/**
+ * A job's thread, the same for both sides: the owner organisation (if the
+ * member can see the job) and a partner it is shared with.
+ */
+export function useJobThread(jobId: string | null) {
+  return useQuery<ThreadMessage[]>({
+    queryKey: ['job_thread', jobId],
+    enabled: !!jobId,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('job_thread', { p_job: jobId })
+      if (error) {
+        if (notInstalled(error.code)) return []
+        throw error
+      }
+      return (data ?? []) as ThreadMessage[]
+    },
+  })
+}
+
+export function usePostJobComment(jobId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ body, isQuestion }: { body: string; isQuestion: boolean }) => {
+      const { error } = await supabase.rpc('post_job_comment', { p_job: jobId, p_body: body, p_is_question: isQuestion })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job_thread', jobId] })
+      qc.invalidateQueries({ queryKey: ['open_questions'] })
+      qc.invalidateQueries({ queryKey: ['partner_jobs'] })
+    },
+  })
+}
+
+export function useResolveQuestion(jobId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (messageId: string) => {
+      const { error } = await supabase.rpc('resolve_question', { p_message: messageId })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job_thread', jobId] })
+      qc.invalidateQueries({ queryKey: ['open_questions'] })
+      qc.invalidateQueries({ queryKey: ['partner_jobs'] })
+    },
+  })
+}
+
+/** Job id → open questions, for the flag on the caller's own board cards. */
+export function useOpenQuestions() {
+  const { clinicId } = useAuth()
+  return useQuery<Map<string, number>>({
+    queryKey: ['open_questions', clinicId],
+    enabled: !!clinicId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('open_questions')
+      if (error) {
+        if (notInstalled(error.code)) return new Map()
+        throw error
+      }
+      return new Map(((data ?? []) as { job_id: string; open_count: number }[]).map(r => [r.job_id, r.open_count]))
+    },
+  })
+}
