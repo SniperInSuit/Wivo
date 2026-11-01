@@ -34,17 +34,17 @@ Organisations and sharing
       sql/071; section in the wizard's production step) — 7258ead
 - [x] `partner_job_view`, search, menu restriction on shared jobs (sql/071 +
       "Partner jobs" screen: search by code, read-only detail, hand-over only,
-      thread) — COMMIT_PVIEW
+      thread) — 85d4f73
 - [x] `move_job_stage` + `stage_transition`; partner moves its own stage (sql/071;
       the partner's "›" hand-over button; owner rules also enforced on direct
-      updates by trigger) — COMMIT_PVIEW
+      updates by trigger) — 85d4f73
 - [x] "Question" as a flag on the card, not a column (open_questions() + flag on
-      board cards and partner rows) — COMMIT_PVIEW
+      board cards and partner rows) — 85d4f73
 
 Creating a partnership
-- [~] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
+- [x] `partnership_invite` + invite flow (hashed one-time code, 7 days, attempt
       limit, both admins confirm, suspend/end, every step audited): database
-      and RPCs done and tested in sql/070 — 80db025; Settings screen pending
+      and RPCs in sql/070 — 80db025; Seaded → Partnerships screen — COMMIT_PSET
 
 Files
 - [ ] `job_file`, private bucket, TUS background upload, SHA-256, versions,
@@ -57,7 +57,7 @@ Files
 
 Communication and notifications
 - [x] Comments and questions on a job, on top of chat (job thread RPCs on the
-      chat tables; thread in the job panel and the partner panel) — COMMIT_PVIEW
+      chat tables; thread in the job panel and the partner panel) — 85d4f73
 - [ ] Notifications: realtime badges, e-mail via Resend (code + link only)
 - [ ] Audit log
 
