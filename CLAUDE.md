@@ -4,6 +4,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 
 ## Read first
 - wivo-2.0-spec.md: Wivo 2.0 build plan (in Estonian). Its locked decisions are final.
+- docs/VISION.md: the long-term product vision (consultation to procedure day), its build order and its locked rules.
 - HANDOFF.md, NEXT.md, Testing.md: current state and testing notes.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
