@@ -8,6 +8,12 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - HANDOFF.md, NEXT.md, Testing.md: current state and testing notes.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
+## Branches
+- `main` = production: the desktop release, the phone app at app.wivodent.com (Cloudflare Pages project `wivo`) and the production database. Pushed only for a release; a push to `main` with a new version in package.json publishes the desktop update to every machine (.github/workflows/build.yml).
+- `testing` = the test site wivo-test.pages.dev (Cloudflare Pages project `wivo-test`) and the test copy database. **All new work goes on `testing`.**
+- `2.0` and `2.1` are old branches. Don't build on them.
+- Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
+
 ## Rules
 - Migrations are numbered SQL files in sql/ (next one is 097_...). Only add new files. Never edit or delete existing ones.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test.
