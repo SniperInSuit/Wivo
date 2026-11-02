@@ -3,12 +3,13 @@
  * Consignment when the goods belong to a partner organisation or an outside
  * supplier: due in three months unless another date is set (sql/093).
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { addMonths, format } from 'date-fns'
-import { X } from 'lucide-react'
-import { useStockAction } from '@/hooks/useStock'
+import { X, CheckCircle2 } from 'lucide-react'
+import { useStockAction, useStockProducts } from '@/hooks/useStock'
 import { usePartnerOrgs } from '@/hooks/usePartners'
-import type { StockCategory } from '../../lib/stockWarnings'
+import { stockItemLabel, type StockCategory, type ProductLevel } from '../../lib/stockWarnings'
+import { suggestProducts, existingProduct } from '../../lib/stockProducts'
 import { describeError } from '../Patients/errors'
 import { categoryLabel, CATEGORIES } from './StockView'
 import { t } from '@/lib/i18n'
@@ -17,6 +18,7 @@ type Ownership = 'own' | 'partner' | 'supplier'
 
 export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdded: (id: string) => void }) {
   const action = useStockAction()
+  const { data: products = [] } = useStockProducts()
   const { data: partners = [] } = usePartnerOrgs()
   const active = partners.filter(p => p.status === 'active')
   const [f, setF] = useState({
@@ -93,6 +95,9 @@ export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdde
           {field(t('stock.warnBelowProduct'), <input type="number" min={0} className="input w-full" value={f.minQty} onChange={e => set({ minQty: e.target.value })} placeholder={t('stock.keepThreshold')} />)}
         </div>
 
+        <ProductHint products={products} entry={f}
+          onPick={p => set({ category: p.category, manufacturer: p.manufacturer ?? '', system: p.system ?? '', size: p.size ?? '', product: p.product ?? '' })} />
+
         <fieldset className="space-y-2">
           <legend className="label">{t('stock.whoseGoods')}</legend>
           <div className="flex flex-wrap gap-4 text-sm text-ink">
@@ -126,6 +131,44 @@ export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdde
           <button type="button" onClick={save} disabled={action.isPending} className="btn-primary disabled:opacity-50">{t('stock.save')}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Existing products that fit what is typed, to pick instead of a new
+ * spelling (Kevin, RUN-4); or, when the entry already is one, a tick saying
+ * so — its stock and threshold are then shared with the new lot.
+ */
+function ProductHint({ products, entry, onPick }: {
+  products: ProductLevel[]
+  entry: { category: StockCategory; manufacturer: string; system: string; size: string; product: string }
+  onPick: (p: ProductLevel) => void
+}) {
+  const same = useMemo(() => existingProduct(products, entry), [products, entry])
+  const suggestions = useMemo(() => suggestProducts(products, entry), [products, entry])
+  if (same) {
+    return (
+      <p role="status" className="flex items-center gap-1.5 text-sm text-emerald-600">
+        <CheckCircle2 size={14} aria-hidden="true" />
+        {t('stock.existingProduct', { qty: same.qty, lots: same.lots })}
+      </p>
+    )
+  }
+  if (suggestions.length === 0) return null
+  return (
+    <div className="rounded-lg border border-accent/30 bg-accent/5 p-2">
+      <p className="text-xs text-ink-soft mb-1">{t('stock.pickExisting')}</p>
+      <ul className="space-y-0.5">
+        {suggestions.map(p => (
+          <li key={p.product_key}>
+            <button type="button" onClick={() => onPick(p)} className="w-full text-left text-sm px-2 py-1 rounded hover:bg-bg-sidebar">
+              <span className="font-medium text-ink">{stockItemLabel(p)}</span>
+              <span className="text-xs text-ink-muted"> · {categoryLabel(p.category)} · {t('stock.inStockN', { n: p.qty })}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

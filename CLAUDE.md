@@ -9,11 +9,12 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
 ## Rules
-- Migrations are numbered SQL files in sql/ (next one is 096_...). Only add new files. Never edit or delete existing ones.
+- Migrations are numbered SQL files in sql/ (next one is 097_...). Only add new files. Never edit or delete existing ones.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test.
 - The app uses only the anon key. The service-role key lives only in Edge Functions.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.
 - Everyday work never connects to the production Supabase project: local Supabase, the PGlite tests or a test copy only.
+- Test mode (`npm run dev:test`, `.env.test`) refuses the production project by its ID, hard-coded in src/renderer/src/lib/testCopy.ts (`PRODUCTION_REF`). If the production project ever changes, update that ID in the same change.
 - Production changes happen only in a session Kevin explicitly starts for that purpose. Everything is tested on a test copy first. Migrations are applied in order by Claude with Kevin's approval, never by hand.
 - Never push, merge or force anything.
 - Wivo is not a medical device: no feature may recommend or rank treatment based on patient data.

@@ -3175,6 +3175,9 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'privacy.removePatientIdentity': "Partnerid loevad seda teksti. Eemalda patsiendi nimi või isikukood ja salvesta uuesti.",
 
   // ── stock ─────────────────────────────────────────────────────────────────
+  'stock.inStockN': "laos {n}",
+  'stock.existingProduct': "Olemasolev toode: laos {qty} tk, {lots} partiis. See partii lisatakse sellele.",
+  'stock.pickExisting': "Juba laos: vali üks, et kasutada sama toodet, mitte uut kirjapilti.",
   'stock.thresholdHelp': "Üks number tootele: kõik selle partiid loetakse kokku. Tühi: hoiatust pole.",
   'stock.setThreshold': "Hoiatus",
   'stock.warnBelowN': "hoiatus alla {n}",
@@ -3182,10 +3185,10 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'stock.productTotal': "See toode",
   'stock.inThisLot': "Selles partiis",
   'stock.usedAfterExpiry': "kasutatud pärast aegumist",
-  'stock.expiredCannotUse': "See kaup on aegunud ja seda ei saa tööl kasutada. Kanna see maha või palu omanikul teha põhjendusega erand.",
-  'stock.expiredNotOwner': "Aegunud. Selle saab maha kanda või tagastada, aga mitte tööl kasutada. Erandi saab teha ainult omanik.",
+  'stock.expiredCannotUse': "See kaup on aegunud ja seda ei saa tööl kasutada. Kanna see maha või palu omanikul või administraatoril teha põhjendusega erand.",
+  'stock.expiredNotOwner': "Aegunud. Selle saab maha kanda või tagastada, aga mitte tööl kasutada. Erandi saab teha ainult omanik või administraator.",
   'stock.expiredOwner': "Aegunud. Selle saab maha kanda või tagastada; tööl kasutamiseks on vaja sinu põhjendust.",
-  'stock.overrideHelp': "Seda saab teha ainult omanik. See salvestub sinu nime ja põhjusega ajalukku ja auditilogisse.",
+  'stock.overrideHelp': "Seda saab teha ainult omanik või administraator. See salvestub sinu nime ja põhjusega ajalukku ja auditilogisse.",
   'stock.overrideReason': "Miks kasutada aegunud kaupa?",
   'stock.jobRequiredHelp': "Kohustuslik implantaatidel, abutmentidel, luumaterjalil ja membraanidel. Partii seotakse tööga; seda seost näeb ainult teie kliinik.",
   'stock.needThreshold': "Sisesta arv null või rohkem, või jäta tühjaks, kui hoiatust ei ole vaja.",

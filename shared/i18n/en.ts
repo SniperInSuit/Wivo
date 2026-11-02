@@ -3189,6 +3189,9 @@ export const en = {
   'privacy.removePatientIdentity': "Partners read this text. Remove the patient's name or personal code, then save again.",
 
   // ── stock ─────────────────────────────────────────────────────────────────
+  'stock.inStockN': "{n} in stock",
+  'stock.existingProduct': "Existing product: {qty} in stock in {lots} lots. This lot is added to it.",
+  'stock.pickExisting': "Already in stock: pick one to use the same product instead of a new spelling.",
   'stock.thresholdHelp': "One number for the product: every lot of it counts together. Empty: no warning.",
   'stock.setThreshold': "Warning",
   'stock.warnBelowN': "warn below {n}",
@@ -3196,10 +3199,10 @@ export const en = {
   'stock.productTotal': "This product",
   'stock.inThisLot': "In this lot",
   'stock.usedAfterExpiry': "used after expiry",
-  'stock.expiredCannotUse': "These goods have expired and cannot be used on a job. Write them off, or ask the owner to make an exception with a reason.",
-  'stock.expiredNotOwner': "Expired. It can be written off or returned, not used on a job. Only the owner can make an exception.",
+  'stock.expiredCannotUse': "These goods have expired and cannot be used on a job. Write them off, or ask the owner or an admin to make an exception with a reason.",
+  'stock.expiredNotOwner': "Expired. It can be written off or returned, not used on a job. Only the owner or an admin can make an exception.",
   'stock.expiredOwner': "Expired. It can be written off or returned; using it on a job needs your reason.",
-  'stock.overrideHelp': "Only the owner can do this. It is saved with your name and the reason, in the history and the audit log.",
+  'stock.overrideHelp': "Only the owner or an admin can do this. It is saved with your name and the reason, in the history and the audit log.",
   'stock.overrideReason': "Why use expired goods?",
   'stock.jobRequiredHelp': "Required for implants, abutments, bone material and membranes. The lot is linked to the job; only your clinic sees the link.",
   'stock.needThreshold': "Enter a number of zero or more, or leave it empty for no warning.",
