@@ -23,7 +23,9 @@ export function MobileSettings() {
 
   async function signOut() {
     await forgetPushBeforeSignOut()
-    await auth.signOut()
+    // This phone only. The shared signOut() is global (Supabase's default) and
+    // would end the desktop's session too. AuthContext follows the event.
+    await supabase.auth.signOut({ scope: 'local' })
   }
 
   async function choose(next: Lang) {

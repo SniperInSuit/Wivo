@@ -223,6 +223,8 @@ async function allowedValue(db: PGlite, table: string, column: string): Promise<
       where c.contype = 'c' and n.nspname = 'public' and t.relname = $1`, [table])
   for (const { def } of rows) {
     if (!new RegExp(`\\b${column}\\b`).test(def)) continue
+    // A phone push endpoint (sql/091): a real push service, unique per row.
+    if (def.includes(`is_push_endpoint(${column})`)) return `https://fcm.googleapis.com/fcm/send/t${++seq}`
     // A fixed-length hex pattern (`~ '^[0-9a-f]{64}$'`, a SHA-256): that many hex digits.
     const hex = def.match(/\[0-9a-f\]\{(\d+)\}/)
     if (hex) return 'a'.repeat(Number(hex[1]))

@@ -54,6 +54,17 @@ export async function vapidAuthorization(
 
 export type PushResult = 'ok' | 'gone' | 'failed'
 
+/** The push services Wivo talks to — the same list as public.is_push_endpoint (sql/091). */
+export function isPushEndpoint(endpoint: string): boolean {
+  try {
+    const u = new URL(endpoint)
+    return u.protocol === 'https:' && endpoint.length <= 1000
+      && /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/i.test(u.hostname)
+  } catch {
+    return false
+  }
+}
+
 /** One empty push. `gone`: the subscription no longer exists (unsubscribed, phone reset). */
 export async function sendEmptyPush(
   endpoint: string, authorization: string, doFetch: typeof fetch = fetch,
@@ -62,9 +73,25 @@ export async function sendEmptyPush(
     const res = await doFetch(endpoint, {
       method: 'POST',
       headers: { Authorization: authorization, TTL: '86400', Urgency: 'normal' },
+      signal: AbortSignal.timeout(10_000),
     })
     if (res.status === 404 || res.status === 410) return 'gone'
     return res.ok ? 'ok' : 'failed'
+  } catch {
+    return 'failed'
+  }
+}
+
+/**
+ * One phone, never throwing: a bad row must not stop the others. An endpoint
+ * that is not a known push service counts as gone, so the sender removes it.
+ */
+export async function pushToPhone(
+  endpoint: string, key: CryptoKey, publicKey: string, subject: string, doFetch: typeof fetch = fetch,
+): Promise<PushResult> {
+  if (!isPushEndpoint(endpoint)) return 'gone'
+  try {
+    return await sendEmptyPush(endpoint, await vapidAuthorization(endpoint, key, publicKey, subject), doFetch)
   } catch {
     return 'failed'
   }

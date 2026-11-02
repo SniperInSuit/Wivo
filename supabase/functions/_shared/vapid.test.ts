@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { b64url, fromB64url, vapidSigningKey, vapidAuthorization, sendEmptyPush } from './vapid'
+import { b64url, fromB64url, vapidSigningKey, vapidAuthorization, sendEmptyPush, isPushEndpoint, pushToPhone } from './vapid'
 
 async function keyPair() {
   const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']) as CryptoKeyPair
@@ -48,5 +48,23 @@ describe('vapid', () => {
     expect(await sendEmptyPush('https://push.example/x', 'v', fake(404))).toBe('gone')
     expect(await sendEmptyPush('https://push.example/x', 'v', fake(500))).toBe('failed')
     expect(await sendEmptyPush('https://push.example/x', 'v', (async () => { throw new Error('offline') }) as typeof fetch)).toBe('failed')
+  })
+
+  it('only known push services; anything else is gone without a request, and nothing throws', async () => {
+    for (const ok of ['https://fcm.googleapis.com/fcm/send/x', 'https://web.push.apple.com/a', 'https://updates.push.services.mozilla.com/wpush/v2/x', 'https://wns2-par02p.notify.windows.com/w/?token=x']) {
+      expect(isPushEndpoint(ok)).toBe(true)
+    }
+    for (const bad of ['https://', 'not a url', 'http://fcm.googleapis.com/x', 'https://fcm.googleapis.com.evil.example/x', 'https://evil.example/fcm.googleapis.com', 'https://127.0.0.1/x']) {
+      expect(isPushEndpoint(bad)).toBe(false)
+    }
+    const { pub, priv } = await keyPair()
+    const key = await vapidSigningKey(pub, priv)
+    let calls = 0
+    const counting = (async () => { calls++; return new Response(null, { status: 201 }) }) as typeof fetch
+    expect(await pushToPhone('https://', key, pub, 'mailto:a@b.c', counting)).toBe('gone')
+    expect(await pushToPhone('http://127.0.0.1:54321/x', key, pub, 'mailto:a@b.c', counting)).toBe('gone')
+    expect(calls).toBe(0)
+    expect(await pushToPhone('https://fcm.googleapis.com/fcm/send/x', key, pub, 'mailto:a@b.c', counting)).toBe('ok')
+    expect(calls).toBe(1)
   })
 })

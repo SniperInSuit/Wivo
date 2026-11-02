@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { LoginPage } from '../components/Auth/LoginPage'
 import { MfaGate } from '../components/Auth/MfaGate'
+import { forgetPushBeforeSignOut } from '../lib/push'
 import { phoneSessionExpired, signedInAt, markSignedIn, clearSignedIn } from './session'
 import { t } from '@/lib/i18n'
 
@@ -23,7 +24,8 @@ export function MobileAuthGuard({ children }: { children: ReactNode }) {
     const check = () => {
       if (status === 'authenticated' && phoneSessionExpired(signedInAt(), Date.now())) {
         clearSignedIn()
-        void supabase.auth.signOut()
+        // This phone only: a global sign-out would end the desktop's session too.
+        void forgetPushBeforeSignOut().then(() => supabase.auth.signOut({ scope: 'local' }))
       }
     }
     check()

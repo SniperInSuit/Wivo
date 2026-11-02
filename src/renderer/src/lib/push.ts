@@ -47,8 +47,11 @@ export async function enablePush(): Promise<PushState> {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'off'
   const reg = await navigator.serviceWorker.ready
-  const sub = await reg.pushManager.getSubscription()
-    ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) })
+  // Always a fresh endpoint: one left over from another account on this phone
+  // stays theirs (sql/091 refuses it) and is dropped once the push service
+  // reports it gone.
+  await (await reg.pushManager.getSubscription())?.unsubscribe()
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) })
   const json = sub.toJSON()
   const { error } = await supabase.rpc('save_push_subscription', {
     p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_user_agent: navigator.userAgent,
@@ -65,6 +68,21 @@ export async function disablePush(): Promise<PushState> {
     await sub.unsubscribe()
   }
   return 'off'
+}
+
+/**
+ * After "sign out on all other devices": those devices stop getting this
+ * user's pushes too (a lost phone would otherwise keep lighting up). Keeps
+ * this browser's own subscription, if it has one.
+ */
+export async function forgetOtherPhones(): Promise<void> {
+  let mine: string | null = null
+  try {
+    const reg = pushSupported() ? await navigator.serviceWorker.getRegistration() : undefined
+    mine = (await reg?.pushManager.getSubscription())?.endpoint ?? null
+  } catch { /* no push here */ }
+  const q = supabase.from('push_subscription').delete().not('id', 'is', null)
+  await (mine ? q.neq('endpoint', mine) : q)
 }
 
 /**

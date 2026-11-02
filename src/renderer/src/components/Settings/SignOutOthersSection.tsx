@@ -3,11 +3,12 @@
  * session of this account ends — phones and computers — and this one stays.
  * Supabase revokes their refresh tokens at once; an access token already
  * handed out still works until it expires (at most an hour), then that
- * device is back at the login screen.
+ * device is back at the login screen. Their phone notifications stop at once.
  */
 import { useState } from 'react'
 import { MonitorSmartphone } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { forgetOtherPhones } from '../../lib/push'
 import { describeError } from '../Patients/errors'
 import { t } from '@/lib/i18n'
 
@@ -20,7 +21,9 @@ export function SignOutOthersSection() {
     setState('busy')
     setError(null)
     const { error: err } = await supabase.auth.signOut({ scope: 'others' })
-    if (err) { setError(describeError(err)); setState('idle') } else setState('done')
+    if (err) { setError(describeError(err)); setState('idle'); return }
+    await forgetOtherPhones().catch(() => {}) // RLS: only this user's own rows
+    setState('done')
   }
 
   return (

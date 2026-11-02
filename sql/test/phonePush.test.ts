@@ -44,7 +44,7 @@ describe('files added', () => {
 describe('push subscriptions', () => {
   it('each user registers and sees only their own browsers', async () => {
     expect(await errorAs(db, { id: A.workerId },
-      `select public.save_push_subscription('https://push.example/a', 'k', 'a', 'iPhone')`)).toBeNull()
+      `select public.save_push_subscription('https://fcm.googleapis.com/fcm/send/a', 'k', 'a', 'iPhone')`)).toBeNull()
     expect(await rowsAs(db, { id: A.workerId }, `select 1 from public.push_subscription`)).toHaveLength(1)
     expect(await rowsAs(db, { id: A.ownerId }, `select 1 from public.push_subscription`)).toEqual([])
   })

@@ -242,4 +242,15 @@ Kevin: new migrations from 089 on are never applied to production. Nothing
 was applied anywhere; both run from an empty database in every `npm test`.
 Without them the app behaves as before: a delete is a real delete, the
 deleted-jobs list stays empty, switching on phone notifications shows an
-error, and no "files added" notifications are made.
+error, and no "files added" notifications are made. The review's fixes for
+089/090 are a new file, 091 (files are never edited, applied or not); the
+three go together.
+
+## D23. The phone signs out only itself
+
+Supabase's `signOut()` defaults to every session of the account, so the
+phone's daily 12-hour expiry signed the desktop out too (review-089-091.md
+#2). The phone now uses `scope: 'local'`. The desktop's sign-out is left as
+it was (global): signing out at the desk also signs the phone out, which is
+the safer surprise. "Sign out on all other devices" also removes those
+devices' push registrations.

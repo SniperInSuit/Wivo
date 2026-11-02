@@ -107,3 +107,6 @@ Phase 1b: phone (PWA)
 - [x] Chat: the same job thread — message, photo, question mark — e6ea58d
 - [x] Push notifications (iPhone after "Add to Home Screen"), e-mail as fallback — 4f35573, 3c9d921, e6ea58d (VAPID keys + deploy: Kevin)
 - [x] Shorter session on the phone, remote sign-out for a lost phone — e6ea58d
+
+- [x] Independent review of 089–090, push and the phone app; every finding fixed (sql/091) — review-089-091.md
+- [x] RUN-2.md written

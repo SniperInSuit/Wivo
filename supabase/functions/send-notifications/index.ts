@@ -28,7 +28,7 @@
  *      scripts/vapid-keys.mjs makes the pair).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { vapidSigningKey, vapidAuthorization, sendEmptyPush } from '../_shared/vapid.ts'
+import { vapidSigningKey, pushToPhone, type PushResult } from '../_shared/vapid.ts'
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -134,14 +134,15 @@ interface PendingPush { notification_id: string; subscription_id: string; endpoi
  * One empty push per phone, however many notifications wait for it — the app
  * shows them all. A notification is done once a phone took the push or turned
  * out to be gone; one whose phones all failed is tried again next minute, for
- * an hour (pending_pushes).
+ * an hour (pending_pushes). Twenty phones at a time, ten seconds each at most.
  */
+const PUSH_BATCH = 500
 async function sendPushes(dry: boolean): Promise<{ sent: number; gone: number; error?: string }> {
   const pub = Deno.env.get('VAPID_PUBLIC_KEY')
   const priv = Deno.env.get('VAPID_PRIVATE_KEY')
   const subject = Deno.env.get('VAPID_SUBJECT')
   if (!pub || !priv || !subject) return { sent: 0, gone: 0, error: 'VAPID keys not set' }
-  const { data, error } = await db.rpc('pending_pushes', { p_limit: 500 })
+  const { data, error } = await db.rpc('pending_pushes', { p_limit: PUSH_BATCH })
   if (error) return { sent: 0, gone: 0, error: error.message }
   const rows = (data ?? []) as PendingPush[]
   if (rows.length === 0) return { sent: 0, gone: 0 }
@@ -156,12 +157,20 @@ async function sendPushes(dry: boolean): Promise<{ sent: number; gone: number; e
   const ok: string[] = []
   const gone: string[] = []
   const done = new Set<string>()
-  for (const [id, p] of phones) {
-    const result = dry ? 'ok' : await sendEmptyPush(p.endpoint, await vapidAuthorization(p.endpoint, signing, pub, subject))
-    if (result === 'ok') ok.push(id)
-    if (result === 'gone') gone.push(id)
-    if (result !== 'failed') p.notifications.forEach(n => done.add(n))
+  const list = [...phones]
+  for (let i = 0; i < list.length; i += 20) {
+    const slice = list.slice(i, i + 20)
+    const results: PushResult[] = await Promise.all(slice.map(([, p]) =>
+      dry ? Promise.resolve<PushResult>('ok') : pushToPhone(p.endpoint, signing, pub, subject)))
+    slice.forEach(([id, p], k) => {
+      if (results[k] === 'ok') ok.push(id)
+      if (results[k] === 'gone') gone.push(id)
+      if (results[k] !== 'failed') p.notifications.forEach(n => done.add(n))
+    })
   }
+  // A full batch may have cut the last notification's phones short (rows come
+  // ordered by notification, sql/091): leave it for the next run.
+  if (rows.length === PUSH_BATCH) done.delete(rows[rows.length - 1].notification_id)
   if (!dry) {
     const { error: markErr } = await db.rpc('mark_pushed', {
       p_notifications: [...done], p_ok_subscriptions: ok, p_gone_subscriptions: gone,

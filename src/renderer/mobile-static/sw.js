@@ -36,10 +36,13 @@ self.addEventListener('fetch', event => {
     return
   }
   if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/sounds/') || url.pathname === '/icon-256.png') {
-    // Hashed or static files: cache first.
+    // Hashed or static files: cache first. Never keep the index.html that the
+    // catch-all rewrite (_redirects) serves for a file that no longer exists.
     event.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
-      const copy = res.clone()
-      caches.open(CACHE).then(c => c.put(req, copy))
+      if (res.ok && !(res.headers.get('content-type') || '').includes('text/html')) {
+        const copy = res.clone()
+        caches.open(CACHE).then(c => c.put(req, copy))
+      }
       return res
     })))
   }
