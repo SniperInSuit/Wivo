@@ -2953,6 +2953,34 @@ export const en = {
   'partners.roleDesign': "Design",
 
   // ── mfa ───────────────────────────────────────────────────────────────────
+  'mfa.wrongCode': "That code didn't work. Check that it's the code next to Wivo, and type the one showing now: it changes every 30 seconds.",
+  'mfa.lostPhone': "Lost your phone or got a new one? Ask your Wivo administrator to reset your two-factor sign-in.",
+  'mfa.verifyHow': "Open the authenticator app on your phone (Google Authenticator, Microsoft Authenticator or Passwords on iPhone) and type the 6-digit code next to **Wivo**.",
+  'mfa.afterSetup': "From now on, Wivo asks for this code after your password. Open the app and type the code next to Wivo.",
+  'mfa.step3Body': "The app now shows **Wivo** with a 6-digit code. The code changes every 30 seconds, so type the one you see now.",
+  'mfa.step3Title': "Type the 6-digit code",
+  'mfa.copied': "Copied",
+  'mfa.copyKey': "Copy key",
+  'mfa.keyLabel': "Setup key",
+  'mfa.keyApple': "In Passwords, tap **Codes**, tap **+**, then **Enter Setup Key**. Paste the key below and save it under the name Wivo.",
+  'mfa.keyMicrosoft': "In Microsoft Authenticator, tap **+**, choose **Other account**, then **Enter code manually**. Account name: Wivo. Secret key: paste the key below. Tap **Finish**.",
+  'mfa.keyGoogle': "In Google Authenticator, tap **+**, then **Enter a setup key**. Account name: Wivo. Key: paste the key below. Tap **Add**.",
+  'mfa.openInAppHint': "If the app asks, save the code for Wivo. If nothing happens, add it by hand with the key below.",
+  'mfa.openInApp': "Open in the authenticator app",
+  'mfa.step2PhoneTitle': "Add Wivo to the app",
+  'mfa.showQr': "Setting up on another phone? Show the QR code",
+  'mfa.cannotScanToggle': "Can't scan? Type in a key instead",
+  'mfa.scanApple': "Open Passwords, tap **Codes**, tap **+**, then **Scan QR Code**, and point your phone's camera at this code.",
+  'mfa.scanMicrosoft': "Open Microsoft Authenticator, tap **+**, choose **Other account**, and point your phone's camera at this code.",
+  'mfa.scanGoogle': "Open Google Authenticator, tap **+**, then **Scan a QR code**, and point your phone's camera at this code.",
+  'mfa.step2ScanTitle': "Scan this code with the app",
+  'mfa.getApple': "Nothing to install: the **Passwords** app is already on your iPhone (iOS 18 or newer).",
+  'mfa.getMicrosoft': "Install **Microsoft Authenticator** from the App Store (iPhone) or Google Play (Android).",
+  'mfa.getGoogle': "Install **Google Authenticator** from the App Store (iPhone) or Google Play (Android).",
+  'mfa.step1Body': "Any of these works, and they are free. Pick the one you have or want to use:",
+  'mfa.step1Title': "Get an authenticator app on your phone",
+  'mfa.setUpWhy': "To keep patient data safe, Wivo asks for two things when you sign in: your password and a 6-digit code from an app on your phone. Setting it up takes about two minutes, and you only do it once.",
+  'mfa.setUpTitle': "Set up two-factor sign-in",
   'mfa.confirm': "Confirm",
   'mfa.sixDigitCode': "6-digit code",
   'mfa.signOut': "Sign out",
@@ -3126,6 +3154,12 @@ export const en = {
   'signOutOthers.button': "Sign out everywhere else",
   'signOutOthers.intro': "For a lost or stolen phone: every other place this account is signed in is signed out. This device stays signed in. A device that is open right now is signed out within the hour.",
   'signOutOthers.title': "Sign out on all other devices",
+
+  // ── whatsNew ──────────────────────────────────────────────────────────────
+  'whatsNew.close': "Close",
+  'whatsNew.gotIt': "Got it",
+  'whatsNew.kicker': "What's new · Wivo {version}",
+  'whatsNew.menu': "What's new",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

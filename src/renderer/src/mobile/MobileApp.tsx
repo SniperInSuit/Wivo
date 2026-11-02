@@ -11,11 +11,14 @@ import { parseRoute, routePath, type Route } from './route'
 import { MobileHome } from './MobileHome'
 import { MobileJob } from './MobileJob'
 import { MobileSettings } from './MobileSettings'
+import { useWhatsNew } from '../components/WhatsNew'
 import { t } from '@/lib/i18n'
 
 export function MobileApp() {
   const { clinic } = useAuth()
   const [route, setRoute] = useState<Route>(() => parseRoute(location.pathname))
+  // Opens by itself once per person per version; Settings reopens it.
+  const whatsNew = useWhatsNew(__APP_VERSION__)
 
   useEffect(() => {
     const onPop = () => setRoute(parseRoute(location.pathname))
@@ -58,7 +61,8 @@ export function MobileApp() {
 
       {route.name === 'home' && <MobileHome onOpen={id => go({ name: 'job', id })} />}
       {route.name === 'job' && <MobileJob id={route.id} onClose={back} />}
-      {route.name === 'settings' && <MobileSettings />}
+      {route.name === 'settings' && <MobileSettings onWhatsNew={whatsNew.open} />}
+      {whatsNew.dialog}
     </div>
   )
 }

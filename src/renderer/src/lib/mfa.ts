@@ -50,6 +50,8 @@ export interface Enrollment {
   qrCode: string
   /** The same secret as text, for a password manager or a phone that cannot scan. */
   secret: string
+  /** The otpauth:// link: on a phone, it opens the authenticator app directly. */
+  uri: string
 }
 
 /**
@@ -64,18 +66,40 @@ export async function startEnrollment(): Promise<Enrollment | 'disabled'> {
       await supabase.auth.mfa.unenroll({ factorId: f.id })
     }
   }
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Wivo' })
+  // The issuer is the name the authenticator app shows next to the code. Left
+  // out, it is the project's site address, which nobody would recognise.
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Wivo', issuer: 'Wivo' })
   if (error) {
     // The project has MFA (TOTP) switched off: enrolment cannot work for
     // anyone, so the gate must not lock everybody out.
     if (/disabled|not enabled|mfa_totp_enroll_not_enabled/i.test(`${error.code ?? ''} ${error.message}`)) return 'disabled'
     throw error
   }
-  return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret }
+  return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri }
 }
 
 /** Checks a 6-digit code; on success the session becomes aal2. */
 export async function verifyCode(factorId: string, code: string): Promise<void> {
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: code.replace(/\s/g, '') })
   if (error) throw error
+}
+
+/** The apps the setup screen explains, step by step. */
+export type AuthApp = 'google' | 'microsoft' | 'apple'
+
+/** The app to explain first: an iPhone already has Passwords. */
+export function defaultAuthApp(userAgent: string): AuthApp {
+  return /iPhone|iPad|iPod/.test(userAgent) ? 'apple' : 'google'
+}
+
+/** The setup key in groups of four, the way the apps print it, so it can be typed. */
+export function groupKey(secret: string): string {
+  return secret.replace(/\s+/g, '').replace(/(.{4})(?=.)/g, '$1 ')
+}
+
+/** A wrong or expired code, as opposed to a server that could not answer. */
+export function isWrongCode(e: unknown): boolean {
+  const { code, message } = (e ?? {}) as { code?: unknown; message?: unknown }
+  return code === 'mfa_verification_failed' || code === 'mfa_challenge_expired'
+    || /invalid totp/i.test(typeof message === 'string' ? message : '')
 }

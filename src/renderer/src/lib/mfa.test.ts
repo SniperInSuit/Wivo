@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextMfaStep } from './mfa'
+import { nextMfaStep, defaultAuthApp, groupKey, isWrongCode } from './mfa'
 
 describe('nextMfaStep', () => {
   it('signed in with a second factor: nothing to do', () => {
@@ -16,5 +16,27 @@ describe('nextMfaStep', () => {
   })
   it('a code is still required even when enrolment would be unavailable', () => {
     expect(nextMfaStep({ currentLevel: 'aal1', nextLevel: 'aal2' }, false)).toBe('verify')
+  })
+})
+
+describe('the setup screen', () => {
+  it('explains Passwords first on an iPhone, Google Authenticator elsewhere', () => {
+    expect(defaultAuthApp('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X)')).toBe('apple')
+    expect(defaultAuthApp('Mozilla/5.0 (Linux; Android 14; Pixel 8)')).toBe('google')
+    expect(defaultAuthApp('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Electron/32')).toBe('google')
+  })
+
+  it('prints the key in groups of four', () => {
+    expect(groupKey('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP')).toBe('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP')
+    expect(groupKey('ABCDEF')).toBe('ABCD EF')
+    expect(groupKey('AB CD')).toBe('ABCD')
+  })
+
+  it('tells a wrong code from a server problem', () => {
+    expect(isWrongCode({ code: 'mfa_verification_failed', message: 'Invalid TOTP code entered' })).toBe(true)
+    expect(isWrongCode({ code: 'mfa_challenge_expired' })).toBe(true)
+    expect(isWrongCode({ message: 'Invalid TOTP code entered' })).toBe(true)
+    expect(isWrongCode({ message: 'Failed to fetch' })).toBe(false)
+    expect(isWrongCode(null)).toBe(false)
   })
 })

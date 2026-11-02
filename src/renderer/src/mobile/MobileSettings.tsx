@@ -4,7 +4,7 @@
  * organisation — that is the desktop's job.
  */
 import { useEffect, useState } from 'react'
-import { Bell, LogOut, Languages } from 'lucide-react'
+import { Bell, LogOut, Languages, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { pushState, enablePush, disablePush, needsHomeScreen, forgetPushBeforeSignOut, type PushState } from '../lib/push'
@@ -18,7 +18,8 @@ const LANGUAGES: { key: Lang; label: string }[] = [
   { key: 'en', label: 'English' },
 ]
 
-export function MobileSettings() {
+/** `onWhatsNew`: reopens the release notes; null when this version has none. */
+export function MobileSettings({ onWhatsNew }: { onWhatsNew: (() => void) | null }) {
   const auth = useAuth()
 
   async function signOut() {
@@ -57,6 +58,14 @@ export function MobileSettings() {
           ))}
         </div>
       </section>
+
+      {onWhatsNew && (
+        <button type="button" onClick={onWhatsNew}
+          className="flex w-full items-center gap-2 rounded-xl border border-ink-faint/30 bg-bg-card px-3 py-3 text-sm font-semibold text-ink">
+          <Sparkles size={16} className="text-accent" aria-hidden="true" /> {t('whatsNew.menu')}
+          <span className="ml-auto text-xs font-normal text-ink-muted">v{__APP_VERSION__}</span>
+        </button>
+      )}
 
       <SignOutOthersSection />
 

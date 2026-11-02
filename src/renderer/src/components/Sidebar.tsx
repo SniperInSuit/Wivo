@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake, FolderInput
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake, FolderInput, Sparkles
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -11,6 +11,7 @@ import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
 import { usePartnerOrgs } from '../hooks/usePartners'
 import { BugReportButton } from './BugReportButton'
+import { useWhatsNew } from './WhatsNew'
 import { t } from '@/lib/i18n'
 
 interface SidebarProps {
@@ -46,6 +47,8 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { role } = useAuth()
   const { can } = usePermissions()
   const running = useRunningVersion()
+  // Opens by itself once per person per version; the footer button reopens it.
+  const whatsNew = useWhatsNew(running)
   const newRequests = useNewRequestCount()
   // Only an organisation that has a partnership has partner jobs to look at.
   const { data: partners = [] } = usePartnerOrgs()
@@ -166,12 +169,20 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           {wide && t('sidebar.collapse')}
         </button>
         <div className={`pb-2.5 space-y-1.5 ${wide ? 'px-4' : 'text-center flex flex-col items-center'}`}>
+          {whatsNew.open && (
+            <button type="button" onClick={whatsNew.open} title={t('whatsNew.menu')}
+              className={`flex items-center gap-1.5 text-nav/70 hover:text-white ${wide ? 'text-[11px]' : 'justify-center'}`}>
+              <Sparkles size={13} aria-hidden="true" />
+              {wide && t('whatsNew.menu')}
+            </button>
+          )}
           <BugReportButton screen={view} version={running} compact={!wide} />
           {/* The LIVE version, not the build-time constant — the constant goes
               stale in dev and reported a version the app was not running. */}
           <span className="text-[9px] text-nav-muted/70 font-mono">v{running}</span>
         </div>
       </div>
+      {whatsNew.dialog}
     </aside>
   )
 }
