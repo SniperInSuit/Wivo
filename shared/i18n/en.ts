@@ -3066,6 +3066,20 @@ export const en = {
   'stageRules.customRules': "A partner may make exactly these moves, and only from a stage assigned to them:",
   'stageRules.defaultRule': "No rules yet, so a partner can only hand its own stage over to the next one (the › button). Add a rule to allow other moves; rules replace this default.",
   'stageRules.partnerMoves': "Stage moves a partner may make",
+
+  // ── sound ─────────────────────────────────────────────────────────────────
+  'sound.quietTo': "Quiet until",
+  'sound.quietFrom': "Quiet from",
+  'sound.quietHours': "Quiet hours",
+  'sound.test': "Test",
+  'sound.interfaceHint': "Quiet clicks for switches, checkboxes, tabs, sliders and dragging cards. Off by default.",
+  'sound.interfaceSounds': "Interface sounds",
+  'sound.notificationHint': "New messages, mentions, shared jobs, hand-overs, uploads finished or failed.",
+  'sound.notificationSounds': "Notification sounds",
+  'sound.volume': "Volume",
+  'sound.soundsOn': "Sounds on",
+  'sound.intro': "For this computer only. A sound never says anything on its own — whatever it accompanies is always on screen too.",
+  'sound.sounds': "Sounds",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

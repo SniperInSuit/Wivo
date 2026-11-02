@@ -17,6 +17,7 @@ import { supabase, storageEndpoint, anonKey } from './supabase'
 import { cleanForUpload, extensionOf, sha256Hex, type JobFileType } from './fileClean'
 import { tusUpload } from './tusUpload'
 import { makePreview } from './previews'
+import { playSound } from './sound'
 
 export type UploadStatus = 'queued' | 'preparing' | 'uploading' | 'done' | 'failed'
 
@@ -94,6 +95,7 @@ async function runOne(task: UploadTask): Promise<void> {
   patch(task.id, { status: 'done', sent: bytes.length })
   doneListeners.forEach(l => l(task.jobId))
   task.onStored?.(file.id)
+  playSound('notify-upload-done') // with the finished row in the Files list
 }
 
 /** Best effort: the file is already safely stored when this runs. */
@@ -121,6 +123,7 @@ async function pump(): Promise<void> {
         await runOne(next)
       } catch (e) {
         patch(next.id, { status: 'failed', error: (e as Error).message ?? String(e) })
+        playSound('notify-error') // with the red "Failed" row and its message
       }
     }
   } finally {

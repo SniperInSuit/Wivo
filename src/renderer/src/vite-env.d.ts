@@ -36,6 +36,7 @@ interface Window {
       cb: (s: import('../../types/update').UpdaterSplashState) => void
     ) => () => void
     htmlToPdf?: (html: string) => Promise<Uint8Array>
+    readSound?: (file: string) => Promise<ArrayBuffer | null>
     // The scanner export folder — src/main/watchFolder.ts.
     watchFolder?: {
       get: () => Promise<string | null>

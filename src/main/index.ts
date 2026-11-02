@@ -124,6 +124,19 @@ app.whenReady().then(async () => {
   registerWatchFolder()
 
   /**
+   * A sound file's bytes, for the installed app (file://, where the renderer
+   * cannot fetch). Only names from public/sounds — a flat folder of .wav files —
+   * never a path the page made up.
+   */
+  ipcMain.handle('wivo:read-sound', (_e, file: string) => {
+    if (typeof file !== 'string' || !/^[a-z0-9-]+\.wav$/.test(file)) return null
+    for (const dir of [join(__dirname, '../renderer/sounds'), join(app.getAppPath(), 'src/renderer/public/sounds')]) {
+      try { return readFileSync(join(dir, file)) } catch { /* try the next place */ }
+    }
+    return null
+  })
+
+  /**
    * HTML → PDF for documents made in the renderer (the patient export). A
    * hidden, sandboxed window with JavaScript OFF: the HTML is data, built from
    * patient records, and never gets to run anything.

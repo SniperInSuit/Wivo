@@ -7,6 +7,7 @@ import { useEffect, useId } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { playSound } from '../lib/sound'
 
 export interface AppNotification {
   id: string
@@ -43,7 +44,12 @@ export function useNotifications() {
     if (!user?.id) return
     const ch = supabase.channel(`notifications-${user.id}-${channelId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notification', filter: `user_id=eq.${user.id}` },
-        () => qc.invalidateQueries({ queryKey: ['notifications', user.id] }))
+        payload => {
+          qc.invalidateQueries({ queryKey: ['notifications', user.id] })
+          // With the bell's badge — never instead of it.
+          const kind = (payload.new as { kind?: string } | undefined)?.kind
+          playSound(kind === 'job_shared' ? 'notify-new-work' : kind === 'stage_handover' ? 'notify-handoff' : 'notify-message')
+        })
       .subscribe()
     return () => { void supabase.removeChannel(ch) }
   }, [user?.id, channelId, qc])

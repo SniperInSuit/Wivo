@@ -67,6 +67,12 @@ const wivoAPI = {
     ipcRenderer.invoke('wivo:license-install', token),
   licenseEnforced: (): Promise<boolean> => ipcRenderer.invoke('wivo:license-enforced'),
 
+  /** A sound file's bytes (src/renderer/public/sounds), or null. Sliced for the same reason as getTeethModel. */
+  readSound: async (file: string): Promise<ArrayBuffer | null> => {
+    const bytes = (await ipcRenderer.invoke('wivo:read-sound', file)) as Uint8Array | null
+    if (!bytes) return null
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+  },
   /** A PDF of an HTML document, rendered by Chromium in a sandboxed window. */
   htmlToPdf: (html: string): Promise<Uint8Array> => ipcRenderer.invoke('wivo:html-to-pdf', html),
 

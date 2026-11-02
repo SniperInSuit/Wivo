@@ -24,6 +24,7 @@ import { MigrationStatus } from './Settings/MigrationStatus'
 import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
 import { StageTransitionsSection } from './Settings/StageTransitionsSection'
+import { SoundSection } from './Settings/SoundSection'
 import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
@@ -1513,6 +1514,8 @@ export function SettingsPage() {
         {/* Language. First in the tab because it is the one setting someone
             who cannot read the rest of the page has to be able to find. */}
         {activeGroup === 'kasutajaliides' && <LanguageSection />}
+
+        {activeGroup === 'kasutajaliides' && <SoundSection />}
 
         {/* Teema */}
         {activeGroup === 'kasutajaliides' && (

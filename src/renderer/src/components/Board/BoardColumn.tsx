@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { playSound } from '../../lib/sound'
 import { AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Job, StageKey } from '../../types/job'
@@ -53,6 +54,7 @@ export function BoardColumn({
     if (revId) e.dataTransfer.setData('revId', revId)
     e.dataTransfer.effectAllowed = 'move'
     setDraggingId(jobId)
+    playSound('ui-pickup')
   }
   const handleDragEnd = () => setDraggingId(null)
   const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsDragOver(true) }
@@ -63,6 +65,7 @@ export function BoardColumn({
     const id = e.dataTransfer.getData('jobId')
     const revId = e.dataTransfer.getData('revId')
     if (!id) return
+    playSound('ui-drop')
     // A revision moves itself. Falling back to the job would put the parent in
     // a stage nobody asked for and leave the card on screen where it was —
     // which is exactly how this went unnoticed for so long.

@@ -5,7 +5,7 @@
  * The same component on both sides of a shared job. It talks only to the
  * thread RPCs, so a partner never needs to be a member of the owner's channel.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2 } from 'lucide-react'
 import { useJobThread, usePostJobComment, useResolveQuestion } from '@/hooks/usePartners'
@@ -13,6 +13,8 @@ import { describeError } from '../Patients/errors'
 import { enqueueUpload } from '../../lib/uploadQueue'
 import { fileDownloadUrl } from '../../lib/fileLink'
 import { guessFileType } from '../../lib/fileClean'
+import { playSound } from '../../lib/sound'
+import { useAuth } from '../../context/AuthContext'
 import { t, dateLocale } from '@/lib/i18n'
 
 export function JobThread({ jobId, readOnly = false, partner = false }: { jobId: string; readOnly?: boolean; partner?: boolean }) {
@@ -25,6 +27,24 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
   // A file for the comment: uploaded the normal way first (same rules — a
   // partner adds design files only), then the comment points at it.
   const [attachment, setAttachment] = useState<{ name: string; id: string | null } | null>(null)
+  const { profile } = useAuth()
+
+  // A message from someone else that appears while the thread is open sounds
+  // once — with the message itself on screen. The first load is history, not
+  // news. Questions from the other side are announced by the bell instead,
+  // so they do not sound twice.
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (isLoading) return
+    if (!seen.current) { seen.current = new Set(messages.map(m => m.id)); return }
+    for (const m of messages) {
+      if (seen.current.has(m.id)) continue
+      seen.current.add(m.id)
+      if (m.mine) continue
+      if (mentionsMe(m.body, profile?.full_name, profile?.username)) playSound('notify-mention')
+      else if (!m.is_question) playSound('notify-message')
+    }
+  }, [messages, isLoading, profile?.full_name, profile?.username])
 
   function attach(file: File | undefined) {
     if (!file) return
@@ -46,6 +66,7 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
     setError(null)
     try {
       await post.mutateAsync({ body, isQuestion: asQuestion, fileId: attachment?.id ?? null })
+      playSound('message-sent')
       setBody('')
       setAsQuestion(false)
       setAttachment(null)
@@ -122,4 +143,11 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
       )}
     </section>
   )
+}
+
+/** "@Mari" or "@mari.k" anywhere in the text: the first name or the username. */
+export function mentionsMe(body: string, fullName?: string | null, username?: string | null): boolean {
+  const names = [fullName?.trim().split(/\s+/)[0], username].filter((n): n is string => !!n && n.length > 1)
+  const text = body.toLowerCase()
+  return names.some(n => new RegExp(`(^|\\W)@${n.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\W|$)`).test(text))
 }

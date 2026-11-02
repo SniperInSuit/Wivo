@@ -397,6 +397,25 @@ Arst koostab vastuvõtul paketid, patsient valib, makstud broneerimistasu lukust
 - Makstud broneering lukustab kauba ja kinnitab aja.
 - Broneeringu tühistamine vabastab kauba (`release`) ja logib põhjuse.
 
+## Sounds
+
+The sound system exists (`src/renderer/src/lib/sound.ts`, files in
+`src/renderer/public/sounds/`, settings per device in Seaded → Interface). A
+sound never carries information on its own: each one accompanies a badge, a
+notification or a visible change. Call `playSound(name)` where the visible
+event happens.
+
+| Sound | Event | Phase |
+|---|---|---|
+| `notify-new-work` | A job shared with us — **wired** (Phase 1, notification `job_shared`). Files ready for print (a partner uploads a `print` file): needs its own notification kind first | 1 (shared, done) · 1 follow-up (files ready) |
+| `notify-handoff` | A stage handed over to our side — **wired** (notification `stage_handover`) | 1 (done) |
+| `notify-stock-warning` | Stock under its minimum, or consignment goods turning red a month before they are due | 2 |
+| `notify-booking-confirmed` | A booking fee is marked paid and the appointment is confirmed | 4 |
+| `ui-tab`, `ui-tick` | Registered and wired (tabs; sliders and number steppers); play once their recordings exist | — |
+| `ui-move` | Recording exists; not yet wired (a card moved with the ‹ › buttons) | — |
+
+The phone app (1b) reuses the same service and files.
+
 ## Hiljem
 
 Neid ei ehitata enne, kui faasid 0–4 on valmis.

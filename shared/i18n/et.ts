@@ -3053,4 +3053,18 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'stageRules.defaultRule': "Reegleid veel pole, seega saab partner ainult oma etapi järgmisele üle anda (nupp ›). Lisa reegel, et lubada muid liikumisi; reeglid asendavad selle vaikimisi käitumise.",
   'stageRules.partnerMoves': "Etapimuutused, mida partner võib teha",
 
+  // ── sound ─────────────────────────────────────────────────────────────────
+  'sound.quietTo': "Vaikne kuni",
+  'sound.quietFrom': "Vaikne alates",
+  'sound.quietHours': "Vaikne aeg",
+  'sound.test': "Proovi",
+  'sound.interfaceHint': "Vaiksed klõpsud lülititele, märkeruutudele, sakkidele, liuguritele ja kaartide lohistamisele. Vaikimisi väljas.",
+  'sound.interfaceSounds': "Liidese helid",
+  'sound.notificationHint': "Uued sõnumid, mainimised, jagatud tööd, üleandmised, lõppenud või ebaõnnestunud üleslaadimised.",
+  'sound.notificationSounds': "Teavituste helid",
+  'sound.volume': "Helitugevus",
+  'sound.soundsOn': "Helid sees",
+  'sound.intro': "Ainult selles arvutis. Heli ei ütle kunagi midagi üksi — see, millega ta kaasas käib, on alati ka ekraanil.",
+  'sound.sounds': "Helid",
+
 }
