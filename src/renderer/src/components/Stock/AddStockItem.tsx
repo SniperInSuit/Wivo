@@ -8,9 +8,9 @@ import { addMonths, format } from 'date-fns'
 import { X } from 'lucide-react'
 import { useStockAction } from '@/hooks/useStock'
 import { usePartnerOrgs } from '@/hooks/usePartners'
-import type { StockLevel } from '../../lib/stockWarnings'
+import type { StockCategory } from '../../lib/stockWarnings'
 import { describeError } from '../Patients/errors'
-import { categoryLabel } from './StockView'
+import { categoryLabel, CATEGORIES } from './StockView'
 import { t } from '@/lib/i18n'
 
 type Ownership = 'own' | 'partner' | 'supplier'
@@ -20,7 +20,7 @@ export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdde
   const { data: partners = [] } = usePartnerOrgs()
   const active = partners.filter(p => p.status === 'active')
   const [f, setF] = useState({
-    category: 'implant' as StockLevel['category'], manufacturer: '', system: '', size: '', product: '',
+    category: 'implant' as StockCategory, manufacturer: '', system: '', size: '', product: '',
     lot: '', expiry: '', qty: '1', minQty: '',
     ownership: 'own' as Ownership, partnerOrg: '', supplier: '',
     due: format(addMonths(new Date(), 3), 'yyyy-MM-dd'),
@@ -79,8 +79,8 @@ export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdde
 
         <div className="grid grid-cols-2 gap-3">
           {field(t('stock.category'), (
-            <select className="input w-full" value={f.category} onChange={e => set({ category: e.target.value as StockLevel['category'] })}>
-              {(['implant', 'abutment', 'bone', 'other'] as const).map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+            <select className="input w-full" value={f.category} onChange={e => set({ category: e.target.value as StockCategory })}>
+              {CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
             </select>
           ))}
           {field(t('stock.manufacturer'), <input className="input w-full" value={f.manufacturer} onChange={e => set({ manufacturer: e.target.value })} />)}
@@ -90,7 +90,7 @@ export function AddStockItem({ onClose, onAdded }: { onClose: () => void; onAdde
           {field(t('stock.lot'), <input className="input w-full font-mono" value={f.lot} onChange={e => set({ lot: e.target.value })} />, true)}
           {field(t('stock.expiry'), <input type="date" className="input w-full" value={f.expiry} onChange={e => set({ expiry: e.target.value })} />, true)}
           {field(t('stock.quantity'), <input type="number" min={1} className="input w-full" value={f.qty} onChange={e => set({ qty: e.target.value })} />, true)}
-          {field(t('stock.warnBelow'), <input type="number" min={0} className="input w-full" value={f.minQty} onChange={e => set({ minQty: e.target.value })} placeholder={t('stock.noWarning')} />)}
+          {field(t('stock.warnBelowProduct'), <input type="number" min={0} className="input w-full" value={f.minQty} onChange={e => set({ minQty: e.target.value })} placeholder={t('stock.keepThreshold')} />)}
         </div>
 
         <fieldset className="space-y-2">

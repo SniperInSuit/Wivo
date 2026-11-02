@@ -11,7 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { StockLevel } from '../lib/stockWarnings'
+import type { ProductLevel, StockLevel } from '../lib/stockWarnings'
 
 const notInstalled = (code: string | undefined): boolean =>
   code === '42P01' || code === 'PGRST205' || code === 'PGRST202' || code === '42883'
@@ -19,10 +19,12 @@ const notInstalled = (code: string | undefined): boolean =>
 export interface StockMovement {
   id: string
   item_id: string
-  kind: 'in' | 'use' | 'return' | 'buy' | 'adjust'
+  kind: 'in' | 'use' | 'return' | 'buy' | 'adjust' | 'writeoff'
   delta: number
   job_id: string | null
   reason: string | null
+  reason_code: 'damaged' | 'expired' | 'opened' | 'returned' | null
+  expired_override: boolean
   count_id: string | null
   by_user: string | null
   at: string
@@ -44,6 +46,7 @@ export interface PartnerStockRow {
   used: number
   returned: number
   bought: number
+  written_off: number
   adjusted: number
   remaining: number
 }
@@ -75,6 +78,25 @@ export function useStockLevels(enabled = true) {
         throw error
       }
       return (data ?? []) as StockLevel[]
+    },
+  })
+}
+
+/** Each product (the same reference across lots): total, lots in stock, threshold. */
+export function useStockProducts(enabled = true) {
+  const { clinicId } = useAuth()
+  return useQuery<ProductLevel[]>({
+    queryKey: ['stock', 'products', clinicId],
+    enabled: !!clinicId && enabled,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('stock_product_levels').select('*')
+      if (error) {
+        if (notInstalled(error.code)) return []
+        throw error
+      }
+      return (data ?? []) as ProductLevel[]
     },
   })
 }

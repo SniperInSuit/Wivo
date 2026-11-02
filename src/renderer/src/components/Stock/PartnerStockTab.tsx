@@ -3,7 +3,7 @@
  * partnership shares stock, what we own there — lot, expiry, used and
  * remaining. Totals only: which job or patient used them stays with the clinic.
  */
-import { isRed, stockItemLabel, type StockLevel } from '../../lib/stockWarnings'
+import { lotWarnings, stockItemLabel } from '../../lib/stockWarnings'
 import type { PartnerStockRow } from '@/hooks/useStock'
 import { categoryLabel, shortDate } from './StockView'
 import { t } from '@/lib/i18n'
@@ -24,13 +24,16 @@ export function PartnerStockTab({ rows }: { rows: PartnerStockRow[] }) {
             <th className="py-2 pr-3 text-right">{t('stock.received')}</th>
             <th className="py-2 pr-3 text-right">{t('stock.used')}</th>
             <th className="py-2 pr-3 text-right">{t('stock.returnedOrBought')}</th>
+            <th className="py-2 pr-3 text-right">{t('stock.writtenOff')}</th>
             <th className="py-2 text-right">{t('stock.remaining')}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => {
             // Same red rule as on the clinic's own list.
-            const red = isRed({ ...r, id: r.item_id, owner_org: null, owner_supplier: null, min_qty: null, archived_at: null, created_at: '', qty: r.remaining } as StockLevel, today)
+            const red = lotWarnings({
+              ...r, id: r.item_id, owner_org: null, owner_supplier: null, product_key: '', archived_at: null, created_at: '', qty: r.remaining,
+            }, today).length > 0
             return (
               <tr key={r.item_id} className={`border-t border-ink-faint/15 ${red ? 'bg-rose-500/10 text-rose-600' : ''}`}>
                 <td className="py-2 pr-3">{r.location_name}</td>
@@ -41,6 +44,7 @@ export function PartnerStockTab({ rows }: { rows: PartnerStockRow[] }) {
                 <td className="py-2 pr-3 text-right tabular-nums">{r.received}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{r.used}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{r.returned + r.bought}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{r.written_off}</td>
                 <td className="py-2 text-right tabular-nums font-semibold">{r.remaining}</td>
               </tr>
             )

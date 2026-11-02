@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { usePartnerOrgs, type PartnerOrg, type PartnerRole, type PartnershipStatus } from '../../hooks/usePartners'
 import { describeError } from '../Patients/errors'
+import { useAuth } from '../../context/AuthContext'
 import { t } from '@/lib/i18n'
 
 const ROLES: PartnerRole[] = ['design', 'surgery', 'supplier']
@@ -185,6 +186,8 @@ function EnterCode({ onDone }: { onDone: () => void }) {
 
 function PartnershipRow({ p, onChange }: { p: PartnerOrg; onChange: () => void }) {
   const [error, setError] = useState<string | null>(null)
+  const { role } = useAuth()
+  const accepted = p.status === 'active' || p.status === 'suspended'
 
   async function call(fn: string, args: Record<string, unknown>) {
     setError(null)
@@ -227,6 +230,17 @@ function PartnershipRow({ p, onChange }: { p: PartnerOrg; onChange: () => void }
           </button>
         )}
       </div>
+      {/* sql/093: either side's owner, logged in both audit logs. */}
+      {accepted && role === 'owner' && (
+        <label className="w-full flex items-start gap-2 text-sm text-ink border-t border-ink-faint/15 pt-2">
+          <input type="checkbox" role="switch" aria-checked={p.share_stock} checked={p.share_stock} className="mt-0.5"
+            onChange={e => void call('set_partnership_share_stock', { p_partnership: p.partnership_id, p_on: e.target.checked })} />
+          <span>
+            {t('partners.shareStockSwitch')}
+            <span className="block text-xs text-ink-muted">{t('partners.shareStockSwitchHelp', { name: p.name })}</span>
+          </span>
+        </label>
+      )}
       {error && <p role="alert" className="w-full text-sm text-rose-500">{error}</p>}
     </div>
   )

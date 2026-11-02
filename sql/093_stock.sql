@@ -590,7 +590,7 @@ begin
     raise exception 'Only the owner can change this' using errcode = '42501';
   end if;
   if not public.has_mfa() then
-    raise exception 'Sign in with your second factor first' using errcode = '42501';
+    raise exception 'Sign in with your second factor first' using errcode = '42501', hint = 'mfa_required';
   end if;
   select * into p from public.partnership
    where id = p_partnership and v_org in (org_a, org_b) and status in ('active', 'suspended') for update;

@@ -10,9 +10,9 @@
 import { useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Package, Plus, Search, AlertTriangle } from 'lucide-react'
-import { useStockLevels, usePartnerStock } from '@/hooks/useStock'
+import { useStockLevels, useStockProducts, usePartnerStock } from '@/hooks/useStock'
 import { usePermissions } from '@/hooks/usePermissions'
-import { itemWarnings, isRed, stockItemLabel, type StockLevel } from '../../lib/stockWarnings'
+import { lotWarnings, isLow, isRed, stockItemLabel, type StockLevel, type StockCategory } from '../../lib/stockWarnings'
 import { describeError } from '../Patients/errors'
 import type { Job } from '../../types/job'
 import { AddStockItem } from './AddStockItem'
@@ -22,9 +22,11 @@ import { PartnerStockTab } from './PartnerStockTab'
 import { InventoryBanner } from './InventoryBanner'
 import { t, dateLocale } from '@/lib/i18n'
 
-export const categoryLabel = (c: StockLevel['category']): string => ({
+export const CATEGORIES: StockCategory[] = ['implant', 'abutment', 'bone', 'membrane', 'other']
+
+export const categoryLabel = (c: StockCategory): string => ({
   implant: t('stock.categoryImplant'), abutment: t('stock.categoryAbutment'),
-  bone: t('stock.categoryBone'), other: t('stock.categoryOther'),
+  bone: t('stock.categoryBone'), membrane: t('stock.categoryMembrane'), other: t('stock.categoryOther'),
 })[c]
 
 export const shortDate = (d: string | null): string => (d ? format(parseISO(d), 'd MMM yyyy', { locale: dateLocale }) : '—')
@@ -34,6 +36,7 @@ type Tab = 'items' | 'inventory' | 'partner'
 export function StockView({ jobs }: { jobs: Job[] }) {
   const { can } = usePermissions()
   const { data: rows = [], isLoading, error } = useStockLevels()
+  const { data: products = [] } = useStockProducts()
   const { data: partnerRows = [] } = usePartnerStock()
   const [tab, setTab] = useState<Tab>('items')
   const [query, setQuery] = useState('')
@@ -42,11 +45,14 @@ export function StockView({ jobs }: { jobs: Job[] }) {
   const [adding, setAdding] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const today = new Date()
+  const low = useMemo(() => products.filter(isLow), [products])
+  const lowKeys = useMemo(() => new Set(low.map(p => p.product_key)), [low])
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     return rows
-      .filter(r => showEmpty || (!r.archived_at && (r.qty > 0 || r.min_qty != null)))
+      // A lot at zero leaves the list (its product's low warning stays, above).
+      .filter(r => showEmpty || (!r.archived_at && r.qty > 0))
       .filter(r => category === 'all' || r.category === category)
       .filter(r => !q || [stockItemLabel(r), r.lot, r.owner_supplier].some(s => s?.toLowerCase().includes(q)))
   }, [rows, query, category, showEmpty])
@@ -92,13 +98,29 @@ export function StockView({ jobs }: { jobs: Job[] }) {
               </label>
               <select value={category} onChange={e => setCategory(e.target.value as typeof category)} aria-label={t('stock.category')} className="input w-44">
                 <option value="all">{t('stock.allCategories')}</option>
-                {(['implant', 'abutment', 'bone', 'other'] as const).map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+                {CATEGORIES.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
               </select>
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 <input type="checkbox" checked={showEmpty} onChange={e => setShowEmpty(e.target.checked)} />
                 {t('stock.showEmpty')}
               </label>
             </div>
+
+            {low.length > 0 && (
+              <div role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+                <p className="flex items-center gap-1.5 font-semibold text-amber-700">
+                  <AlertTriangle size={14} aria-hidden="true" /> {t('stock.runningLow')}
+                </p>
+                <ul className="mt-1 space-y-0.5 text-ink">
+                  {low.map(p => (
+                    <li key={p.product_key}>
+                      {stockItemLabel(p)} <span className="text-ink-muted">· {categoryLabel(p.category)}</span>
+                      {' — '}{t('stock.lowLine', { qty: p.qty, min: p.min_qty ?? 0 })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {error ? (
               <p role="alert" className="text-sm text-rose-500">{describeError(error)}</p>
@@ -121,7 +143,7 @@ export function StockView({ jobs }: { jobs: Job[] }) {
                   </thead>
                   <tbody>
                     {shown.map(r => {
-                      const warnings = itemWarnings(r, today)
+                      const warnings = lotWarnings(r, today)
                       const red = isRed(r, today)
                       return (
                         <tr key={r.id} onClick={() => setOpenId(r.id)}
@@ -141,11 +163,10 @@ export function StockView({ jobs }: { jobs: Job[] }) {
                             ) : t('stock.ownGoods')}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums">
-                            {warnings.includes('low') && (
+                            {lowKeys.has(r.product_key) && (
                               <AlertTriangle size={13} className="inline mr-1 text-amber-500" aria-label={t('stock.lowStock')} />
                             )}
                             <span className="font-semibold">{r.qty}</span>
-                            {r.min_qty != null && <span className="text-xs text-ink-muted"> / {r.min_qty}</span>}
                           </td>
                         </tr>
                       )
@@ -158,7 +179,9 @@ export function StockView({ jobs }: { jobs: Job[] }) {
         )}
       </div>
 
-      {tab === 'items' && open && <StockItemPanel item={open} jobs={jobs} onClose={() => setOpenId(null)} />}
+      {tab === 'items' && open && (
+        <StockItemPanel item={open} product={products.find(p => p.product_key === open.product_key) ?? null} jobs={jobs} onClose={() => setOpenId(null)} />
+      )}
       {adding && <AddStockItem onClose={() => setAdding(false)} onAdded={id => { setAdding(false); setOpenId(id) }} />}
     </div>
   )

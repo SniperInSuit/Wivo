@@ -2,62 +2,88 @@
  * When stock needs attention (spec, Phase 2; sounds: "stock under its
  * minimum, or consignment goods turning red a month before they are due").
  *
- *  - low: fewer left than the item's threshold (`min_qty`).
+ * Per LOT (a stock item):
  *  - consignment: due within a month (or past due) — the row turns red.
  *  - expiry: the goods expire within a month (or have expired).
+ *  A lot at zero, or archived, never warns.
  *
- * An empty item warns only about being low; an empty consignment item or
- * an expired empty lot is nothing to act on. Archived items never warn.
+ * Per PRODUCT (the same reference across lots, sql/093 `product_key`):
+ *  - low: the total of all its lots is below the product's threshold. A
+ *    product whose lots are all used up is still low — that is when to order.
  */
-import { addMonths, parseISO } from 'date-fns'
+import { addMonths, parseISO, startOfDay } from 'date-fns'
+
+export type StockCategory = 'implant' | 'abutment' | 'bone' | 'membrane' | 'other'
 
 export interface StockLevel {
   id: string
   owner_org: string | null
   owner_supplier: string | null
-  category: 'implant' | 'abutment' | 'bone' | 'other'
+  category: StockCategory
   manufacturer: string | null
   system: string | null
   size: string | null
   product: string | null
+  product_key: string
   lot: string
   expiry_date: string
   consignment_due: string | null
-  min_qty: number | null
   archived_at: string | null
   created_at: string
   qty: number
 }
 
-export type StockWarningKind = 'low' | 'consignment' | 'expiry'
-
-export interface StockWarning {
-  itemId: string
-  kind: StockWarningKind
+export interface ProductLevel {
+  product_key: string
+  category: StockCategory
+  manufacturer: string | null
+  system: string | null
+  size: string | null
+  product: string | null
+  qty: number
+  lots: number
+  min_qty: number | null
 }
+
+/** Implants, abutments, bone material, membranes: used only on a job (sql/093). */
+export const NEEDS_JOB: ReadonlySet<StockCategory> = new Set(['implant', 'abutment', 'bone', 'membrane'])
+
+export type LotWarningKind = 'consignment' | 'expiry'
+
+export type StockWarning =
+  | { kind: LotWarningKind; itemId: string }
+  | { kind: 'low'; productKey: string }
 
 const withinAMonth = (date: string, today: Date): boolean => parseISO(date) <= addMonths(today, 1)
 
-export function itemWarnings(row: StockLevel, today: Date): StockWarningKind[] {
-  if (row.archived_at) return []
-  const out: StockWarningKind[] = []
-  if (row.min_qty != null && row.qty < row.min_qty) out.push('low')
-  if (row.qty > 0 && row.consignment_due && withinAMonth(row.consignment_due, today)) out.push('consignment')
-  if (row.qty > 0 && withinAMonth(row.expiry_date, today)) out.push('expiry')
+/** Past its expiry date (it can still be used on the day itself). */
+export const isExpired = (row: Pick<StockLevel, 'expiry_date'>, today: Date): boolean =>
+  parseISO(row.expiry_date) < startOfDay(today)
+
+export function lotWarnings(row: StockLevel, today: Date): LotWarningKind[] {
+  if (row.archived_at || row.qty <= 0) return []
+  const out: LotWarningKind[] = []
+  if (row.consignment_due && withinAMonth(row.consignment_due, today)) out.push('consignment')
+  if (withinAMonth(row.expiry_date, today)) out.push('expiry')
   return out
 }
 
-export function stockWarnings(rows: StockLevel[], today: Date): StockWarning[] {
-  return rows.flatMap(r => itemWarnings(r, today).map(kind => ({ itemId: r.id, kind })))
+export const isLow = (p: ProductLevel): boolean => p.min_qty != null && p.qty < p.min_qty
+
+export function stockWarnings(rows: StockLevel[], products: ProductLevel[], today: Date): StockWarning[] {
+  return [
+    ...products.filter(isLow).map(p => ({ kind: 'low' as const, productKey: p.product_key })),
+    ...rows.flatMap(r => lotWarnings(r, today).map(kind => ({ kind, itemId: r.id }))),
+  ]
 }
 
 /** Red in the list: consignment due within a month (the spec's rule), or expiring. */
 export function isRed(row: StockLevel, today: Date): boolean {
-  const w = itemWarnings(row, today)
-  return w.includes('consignment') || w.includes('expiry')
+  return lotWarnings(row, today).length > 0
 }
 
-export const warningKey = (w: StockWarning): string => `${w.itemId}:${w.kind}`
+export const warningKey = (w: StockWarning): string =>
+  w.kind === 'low' ? `product:${w.productKey}:low` : `${w.itemId}:${w.kind}`
 
 /**
  * Warnings the person has not been told about yet. The sound plays once per
@@ -65,11 +91,10 @@ export const warningKey = (w: StockWarning): string => `${w.itemId}:${w.kind}`
  * new again, so `seen` keeps only what is still current.
  */
 export function freshWarnings(current: StockWarning[], seen: Set<string>): { fresh: StockWarning[]; nextSeen: Set<string> } {
-  const keys = current.map(warningKey)
-  return { fresh: current.filter(w => !seen.has(warningKey(w))), nextSeen: new Set(keys) }
+  return { fresh: current.filter(w => !seen.has(warningKey(w))), nextSeen: new Set(current.map(warningKey)) }
 }
 
-/** "Straumann BLT 4.1x10 RC": what the item is called in a list. */
+/** "Straumann BLT 4.1x10 RC": what the item or product is called in a list. */
 export function stockItemLabel(r: Pick<StockLevel, 'manufacturer' | 'system' | 'size' | 'product'>): string {
   return [r.manufacturer, r.system, r.size, r.product].filter(Boolean).join(' ')
 }

@@ -45,6 +45,10 @@ export function describeError(err: unknown): string {
   if (e?.code === 'WV001') {
     return t('privacy.removePatientIdentity')
   }
+  // sql/093: expired goods on a job; only the owner overrides, with a reason.
+  if (e?.code === 'WV002') {
+    return t('stock.expiredCannotUse')
+  }
   if (e?.code === '42501' || /row-level security/i.test(msg)) {
     return t('patients.theDatabaseRefusedTheWriteRLS')
   }

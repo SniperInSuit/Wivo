@@ -1,61 +1,83 @@
 import { describe, it, expect } from 'vitest'
-import { itemWarnings, stockWarnings, isRed, freshWarnings, warningKey, stockItemLabel, type StockLevel } from './stockWarnings'
+import {
+  lotWarnings, stockWarnings, isRed, isLow, isExpired, freshWarnings, warningKey, stockItemLabel, NEEDS_JOB,
+  type StockLevel, type ProductLevel,
+} from './stockWarnings'
 
 const today = new Date('2026-11-02T10:00:00')
 
 const row = (p: Partial<StockLevel> = {}): StockLevel => ({
   id: 'i1', owner_org: null, owner_supplier: null, category: 'implant', manufacturer: 'Straumann', system: 'BLT',
-  size: '4.1x10', product: null, lot: 'L1', expiry_date: '2028-01-31', consignment_due: null, min_qty: null,
-  archived_at: null, created_at: '2026-10-01T00:00:00Z', qty: 5, ...p,
+  size: '4.1x10', product: null, product_key: 'implant|straumann|blt|4.1x10|', lot: 'L1', expiry_date: '2028-01-31',
+  consignment_due: null, archived_at: null, created_at: '2026-10-01T00:00:00Z', qty: 5, ...p,
 })
 
-describe('itemWarnings', () => {
-  it('nothing for a well-stocked item far from its dates', () => {
-    expect(itemWarnings(row(), today)).toEqual([])
-  })
+const product = (p: Partial<ProductLevel> = {}): ProductLevel => ({
+  product_key: 'implant|straumann|blt|4.1x10|', category: 'implant', manufacturer: 'Straumann', system: 'BLT',
+  size: '4.1x10', product: null, qty: 5, lots: 2, min_qty: null, ...p,
+})
 
-  it('low: fewer than the threshold, not equal to it', () => {
-    expect(itemWarnings(row({ min_qty: 5 }), today)).toEqual([])
-    expect(itemWarnings(row({ min_qty: 6 }), today)).toEqual(['low'])
-    expect(itemWarnings(row({ min_qty: 1, qty: 0 }), today)).toEqual(['low'])
+describe('lot warnings', () => {
+  it('nothing for a lot far from its dates', () => {
+    expect(lotWarnings(row(), today)).toEqual([])
   })
 
   it('consignment turns red a month before it is due, and stays red after', () => {
-    expect(itemWarnings(row({ consignment_due: '2026-12-03' }), today)).toEqual([])
-    expect(itemWarnings(row({ consignment_due: '2026-12-02' }), today)).toEqual(['consignment'])
-    expect(itemWarnings(row({ consignment_due: '2026-10-01' }), today)).toEqual(['consignment'])
+    expect(lotWarnings(row({ consignment_due: '2026-12-03' }), today)).toEqual([])
+    expect(lotWarnings(row({ consignment_due: '2026-12-02' }), today)).toEqual(['consignment'])
+    expect(lotWarnings(row({ consignment_due: '2026-10-01' }), today)).toEqual(['consignment'])
   })
 
   it('expiry within a month, or past', () => {
-    expect(itemWarnings(row({ expiry_date: '2026-12-01' }), today)).toEqual(['expiry'])
-    expect(itemWarnings(row({ expiry_date: '2026-01-01' }), today)).toEqual(['expiry'])
+    expect(lotWarnings(row({ expiry_date: '2026-12-01' }), today)).toEqual(['expiry'])
+    expect(lotWarnings(row({ expiry_date: '2026-01-01' }), today)).toEqual(['expiry'])
   })
 
-  it('an empty item is only ever low; an archived one never warns', () => {
-    expect(itemWarnings(row({ qty: 0, consignment_due: '2026-11-01', expiry_date: '2026-11-01' }), today)).toEqual([])
-    expect(itemWarnings(row({ archived_at: '2026-10-01', min_qty: 9 }), today)).toEqual([])
+  it('a lot at zero, or archived, never warns', () => {
+    expect(lotWarnings(row({ qty: 0, consignment_due: '2026-11-01', expiry_date: '2026-11-01' }), today)).toEqual([])
+    expect(lotWarnings(row({ archived_at: '2026-10-01', expiry_date: '2026-11-01' }), today)).toEqual([])
+  })
+})
+
+describe('product warning: the total of all lots against one threshold', () => {
+  it('low below the threshold, not at it; no threshold, never low', () => {
+    expect(isLow(product({ qty: 3, min_qty: 3 }))).toBe(false)
+    expect(isLow(product({ qty: 2, min_qty: 3 }))).toBe(true)
+    expect(isLow(product({ qty: 0, min_qty: null }))).toBe(false)
+  })
+
+  it('a product with every lot used up is still low', () => {
+    expect(isLow(product({ qty: 0, lots: 0, min_qty: 1 }))).toBe(true)
   })
 })
 
 describe('stockWarnings and isRed', () => {
-  it('lists every warning per item; red is consignment or expiry, not low', () => {
-    const rows = [row({ id: 'a', min_qty: 9 }), row({ id: 'b', consignment_due: '2026-11-20', expiry_date: '2026-11-20' })]
-    expect(stockWarnings(rows, today)).toEqual([
-      { itemId: 'a', kind: 'low' }, { itemId: 'b', kind: 'consignment' }, { itemId: 'b', kind: 'expiry' },
+  it('lists low products and red lots; red is consignment or expiry', () => {
+    const rows = [row({ id: 'a' }), row({ id: 'b', consignment_due: '2026-11-20', expiry_date: '2026-11-20' })]
+    expect(stockWarnings(rows, [product({ min_qty: 9 })], today)).toEqual([
+      { kind: 'low', productKey: 'implant|straumann|blt|4.1x10|' },
+      { kind: 'consignment', itemId: 'b' }, { kind: 'expiry', itemId: 'b' },
     ])
     expect(isRed(rows[0], today)).toBe(false)
     expect(isRed(rows[1], today)).toBe(true)
   })
 })
 
+describe('isExpired: from the day after the expiry date', () => {
+  it('usable on the day itself', () => {
+    expect(isExpired({ expiry_date: '2026-11-02' }, today)).toBe(false)
+    expect(isExpired({ expiry_date: '2026-11-01' }, today)).toBe(true)
+  })
+})
+
 describe('freshWarnings: the sound plays once per warning', () => {
-  const a = { itemId: 'a', kind: 'low' as const }
-  const b = { itemId: 'b', kind: 'expiry' as const }
+  const a = { kind: 'low' as const, productKey: 'p1' }
+  const b = { kind: 'expiry' as const, itemId: 'b' }
 
   it('only what was not seen is fresh', () => {
     const { fresh, nextSeen } = freshWarnings([a, b], new Set([warningKey(a)]))
     expect(fresh).toEqual([b])
-    expect([...nextSeen].sort()).toEqual(['a:low', 'b:expiry'])
+    expect([...nextSeen].sort()).toEqual(['b:expiry', 'product:p1:low'])
   })
 
   it('a warning that went away and came back is fresh again', () => {
@@ -65,6 +87,7 @@ describe('freshWarnings: the sound plays once per warning', () => {
   })
 })
 
-it('stockItemLabel joins what is known', () => {
+it('the categories that need a job, and the label', () => {
+  expect([...NEEDS_JOB].sort()).toEqual(['abutment', 'bone', 'implant', 'membrane'])
   expect(stockItemLabel({ manufacturer: 'Straumann', system: 'BLT', size: null, product: 'RC' })).toBe('Straumann BLT RC')
 })

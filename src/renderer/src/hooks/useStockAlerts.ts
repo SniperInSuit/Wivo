@@ -11,7 +11,7 @@
 import { useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { usePermissions } from './usePermissions'
-import { useStockLevels } from './useStock'
+import { useStockLevels, useStockProducts } from './useStock'
 import { stockWarnings, freshWarnings } from '../lib/stockWarnings'
 import { playSound } from '../lib/sound'
 
@@ -30,15 +30,17 @@ export function useStockAlerts(): number {
   const { can } = usePermissions()
   const allowed = can('stock.read')
   const { data: rows } = useStockLevels(allowed)
+  const { data: products } = useStockProducts(allowed)
   // Recomputed with the data; "today" moves on with the five-minute refetch.
-  const warnings = useMemo(() => (rows ? stockWarnings(rows, new Date()) : []), [rows])
+  const warnings = useMemo(() => (rows && products ? stockWarnings(rows, products, new Date()) : []), [rows, products])
 
   useEffect(() => {
-    if (!allowed || !rows || !user) return
+    if (!allowed || !rows || !products || !user) return
     const { fresh, nextSeen } = freshWarnings(warnings, readSeen(user.id))
     if (fresh.length > 0) playSound('notify-stock-warning')
     try { localStorage.setItem(key(user.id), JSON.stringify([...nextSeen])) } catch { /* private mode: it sounds again next time */ }
-  }, [allowed, rows, user, warnings])
+  }, [allowed, rows, products, user, warnings])
 
-  return allowed ? new Set(warnings.map(w => w.itemId)).size : 0
+  // Low products, and lots that are red.
+  return allowed ? new Set(warnings.map(w => (w.kind === 'low' ? w.productKey : w.itemId))).size : 0
 }
