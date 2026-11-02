@@ -1,12 +1,15 @@
 # Mis edasi
 
-**Seis: v1.107.0 · 28.10.2026 · haru `main`**
+**Seis: v1.109.0 · 02.11.2026 · haru `main` (2.0 merged)**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
 
 `HANDOFF.md` on arendaja püsireeglid ("ära kunagi tee X"). See fail on
 hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
+
+> **2.0 release work:** `docs/night-run/RUN-3.md` — production state,
+> open items (desktop release, dashboard settings, phone app, cleanup).
 
 ---
 

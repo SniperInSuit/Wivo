@@ -1,6 +1,9 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.84.1
+## Current version: 1.109.0 (2.0 merged into main)
+
+> **Latest release work:** see `docs/night-run/RUN-3.md` — production state,
+> migrations applied, VAPID keys, Cloudflare projects, open items, and fix list.
 
 > **Migration rule:** never edit a migration that has already been run — an applied
 > migration is history, and editing it changes nothing in the database. Add a new numbered
