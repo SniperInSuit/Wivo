@@ -96,7 +96,7 @@ describe('what a partner sees of its goods', () => {
 describe('leak test: no job, no patient, nothing of the clinic\'s own, through anything', () => {
   /** Every function a signed-in user can call that reads or writes stock. */
   const COVERED = ['add_stock_item', 'adjust_stock', 'archive_stock_item', 'buy_out_stock', 'partner_stock',
-    'receive_stock', 'return_stock', 'update_stock_item', 'use_stock']
+    'receive_stock', 'record_inventory_count', 'return_stock', 'update_stock_item', 'use_stock']
 
   it('the sweep covers every function that touches stock', async () => {
     const { rows } = await db.query<{ proname: string }>(`
@@ -127,6 +127,8 @@ describe('leak test: no job, no patient, nothing of the clinic\'s own, through a
       await run(`select public.adjust_stock($1, 1, 'x')`, [rigaItem])
       await run(`select public.archive_stock_item($1)`, [rigaItem])
       await run(`select public.update_stock_item($1, 'S', null, null, null, 'L', '2028-01-01', 1)`, [rigaItem])
+      await run(`select public.record_inventory_count(now(), $1)`, [JSON.stringify([{ item_id: rigaItem, counted: 0, reason: 'x' }])])
+      await run(`select public.set_inventory_schedule(1, current_date)`)
       await run(`select public.add_stock_item('implant', 'S', null, null, null, 'L', '2028-01-01', 1, null, $1)`, [A.clinicId])
       for (const t of tables) await run(`select * from public.${t}`)
       for (const v of views) await run(`select * from public.${v.relname}`)
