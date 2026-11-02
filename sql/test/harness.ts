@@ -216,7 +216,7 @@ async function fksOf(db: PGlite, table: string): Promise<Fk[]> {
 }
 
 /** The first value a CHECK constraint on this column allows, when it lists them. */
-async function allowedValue(db: PGlite, table: string, column: string): Promise<string | null> {
+async function allowedValue(db: PGlite, table: string, column: string, type = 'text'): Promise<string | null> {
   const { rows } = await db.query<{ def: string }>(
     `select pg_get_constraintdef(c.oid) as def from pg_constraint c
        join pg_class t on t.oid = c.conrelid join pg_namespace n on n.oid = t.relnamespace
@@ -229,7 +229,9 @@ async function allowedValue(db: PGlite, table: string, column: string): Promise<
     const hex = def.match(/\[0-9a-f\]\{(\d+)\}/)
     if (hex) return 'a'.repeat(Number(hex[1]))
     if (def.includes(' ~ ')) continue  // another pattern: not a list of values
-    const m = def.match(/'([^']*)'::/)
+    // A quoted value is a value for a text column; a number column named in
+    // the same check (`kind = 'in' and delta > 0`, sql/093) is not given it.
+    const m = /int|numeric|double|real/.test(type) ? null : def.match(/'([^']*)'::/)
     if (m) return m[1]
     // Ranges render as `(col >= 11) AND (col <= 18)`: the lower bound is allowed.
     const lo = def.match(new RegExp(`\\b${column} >= \\(?(-?\\d+)`))
@@ -281,7 +283,7 @@ export async function makeRow(
       else values[c.name] = (await makeRow(db, fk.refTable, tenant, depth + 1))[fk.refColumn]
       continue
     }
-    values[c.name] = (await allowedValue(db, table, c.name)) ?? sample(c.type)
+    values[c.name] = (await allowedValue(db, table, c.name, c.type)) ?? sample(c.type)
   }
   const names = Object.keys(values)
   const sql = names.length
