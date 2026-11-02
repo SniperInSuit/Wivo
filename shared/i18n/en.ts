@@ -895,6 +895,7 @@ export const en = {
   'invoices.stopPlan': "Stop plan",
 
   // ── jobDetail ─────────────────────────────────────────────────────────────
+  'jobDetail.costDetails': "Details",
   'jobDetail.payProjectionNote': "What this job pays when it is finished, by the current pay rules. Revisions are paid separately.",
   'jobDetail.designerPay': "Designer pay",
   'jobDetail.technicianPay': "Technician pay",

@@ -14,7 +14,7 @@ import { Pencil, RotateCcw, Check, X, ChevronDown, ChevronRight } from 'lucide-r
 import type { JobCosts, CostKey, JobTotal } from '../../lib/jobCosts'
 import { t } from '@/lib/i18n'
 
-export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, dense, total }: {
+export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, dense, total, collapsible }: {
   costs: JobCosts
   /** False in the read view: the numbers show, the pencils do not. */
   editable: boolean
@@ -30,15 +30,23 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
    * the original's figure is the honest answer.
    */
   total?: JobTotal
+  /**
+   * The read view: starts folded to the total and the margin, the lines one
+   * click away. The edit form leaves it out and always shows every line.
+   */
+  collapsible?: boolean
 }) {
   const [editing, setEditing] = useState<CostKey | null>(null)
   const [draft, setDraft] = useState('')
   const [showRemakes, setShowRemakes] = useState(false)
+  const [open, setOpen] = useState(!collapsible)
 
   const hasRemakes = !!total && total.revisions.length > 0
   // The margin follows whatever the total line says, so the two can never
   // disagree about which cost they are a percentage of.
   const shown = hasRemakes ? total! : costs
+  // Folded, a hand-set figure would hide inside the total, so it is flagged there.
+  const anyManual = costs.categories.some(c => c.override != null)
 
   const nothingToShow =
     costs.total === 0 &&
@@ -63,181 +71,219 @@ export function CostBreakdown({ costs, editable, onOverride, extraCostsSlot, den
 
   return (
     <div className={`bg-bg-sidebar rounded-xl ${pad} space-y-1`}>
-      <p className="text-xs font-semibold text-ink-muted mb-1.5">{t('jobDetail.costPriceLabCost')}</p>
+      {collapsible ? (
+        <div className="flex justify-between items-center mb-1.5">
+          <p className="text-xs font-semibold text-ink-muted">{t('jobDetail.costPriceLabCost')}</p>
+          <button
+            type="button"
+            onClick={() => setOpen(v => !v)}
+            aria-expanded={open}
+            aria-label={open ? t('jobDetail.hide') : t('jobDetail.costDetails')}
+            title={open ? t('jobDetail.hide') : t('jobDetail.costDetails')}
+            className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${
+              open
+                ? 'bg-accent/10 border-accent/40 text-accent'
+                : 'bg-bg-card border-ink-faint/30 text-ink-muted hover:text-accent hover:border-accent/50'
+            }`}
+          >
+            <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs font-semibold text-ink-muted mb-1.5">{t('jobDetail.costPriceLabCost')}</p>
+      )}
 
-      {costs.categories.map(cat => {
-        const overridden = cat.override != null
-        const empty = cat.lines.length === 0 && !overridden
-        // An empty category is noise in the read view. In the edit form it stays
-        // visible, because a cost you cannot see is a cost you cannot correct.
-        if (empty && !editable) return null
-
-        return (
-          <div key={cat.key} className="space-y-0.5">
-            {/* The rule lines, greyed out once a person has overruled them. */}
-            {!overridden && cat.lines.map((l, i) => (
-              <div key={i} className="flex justify-between text-xs text-ink-muted">
-                <span className="truncate">
-                  {cat.lines.length === 1 ? cat.label : `${cat.label}: ${l.label.split(':')[0]}`}
-                </span>
-                <span className="tabular-nums text-ink flex-shrink-0 ml-2">
-                  {l.amount.toFixed(2)} €{' '}
-                  <span className="text-ink-faint text-[10px]">
-                    {l.label.split(':').slice(1).join(':').trim()}
-                  </span>
-                </span>
-              </div>
-            ))}
-
-            {(overridden || (editable && empty)) && (
-              <div className="flex justify-between items-center text-xs">
-                <span className={overridden ? 'text-ink-muted' : 'text-ink-faint'}>
-                  {cat.label}
-                  {overridden && (
-                    <span className="ml-1.5 text-[9px] px-1 py-px rounded bg-amber-100 text-amber-700 font-medium align-middle">
-                      {t('jobDetail.manual')}
-                    </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  {overridden && cat.computed !== cat.amount && (
-                    <span className="text-[10px] text-ink-faint line-through tabular-nums">
-                      {cat.computed.toFixed(2)} €
-                    </span>
-                  )}
-                  <span className="tabular-nums text-ink">{cat.amount.toFixed(2)} €</span>
-                </span>
-              </div>
+      {!open && (
+        <div className="flex justify-between text-xs">
+          <span className="font-semibold text-ink">
+            {t('jobDetail.totalCost')}
+            {anyManual && (
+              <span className="ml-1.5 text-[9px] px-1 py-px rounded bg-amber-100 text-amber-700 font-medium align-middle">
+                {t('jobDetail.manual')}
+              </span>
             )}
-
-            {/* Pencil row. Separate line so a long rule label never collides. */}
-            {editable && (
-              editing === cat.key ? (
-                <div className="flex items-center gap-1 justify-end">
-                  <div className="relative w-24">
-                    <input
-                      type="number" min="0" step="0.01" autoFocus
-                      value={draft}
-                      onChange={e => setDraft(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') { e.preventDefault(); commit(cat.key) }
-                        if (e.key === 'Escape') { e.preventDefault(); setEditing(null) }
-                      }}
-                      placeholder={cat.computed.toFixed(2)}
-                      className="input py-0.5 px-1.5 pr-5 text-xs text-right"
-                    />
-                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
-                  </div>
-                  <button type="button" onClick={() => commit(cat.key)}
-                    title={t('jobDetail.save')} className="text-emerald-600 hover:text-emerald-700 p-0.5">
-                    <Check size={12} />
-                  </button>
-                  <button type="button" onClick={() => setEditing(null)}
-                    title={t('jobDetail.cancel')} className="text-ink-faint hover:text-ink p-0.5">
-                    <X size={12} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 justify-end">
-                  <button type="button" onClick={() => start(cat.key, cat.amount)}
-                    title={t('jobDetail.editCostManually', { label: cat.label.toLowerCase() })}
-                    className="text-[10px] text-accent hover:text-accent/80 flex items-center gap-0.5">
-                    <Pencil size={9} /> {t('jobDetail.edit')}
-                  </button>
-                  {overridden && (
-                    <button type="button" onClick={() => onOverride?.(cat.key, null)}
-                      title={t('jobDetail.backToTheRules')}
-                      className="text-[10px] text-ink-faint hover:text-ink flex items-center gap-0.5">
-                      <RotateCcw size={9} /> {t('jobDetail.rule')}
-                    </button>
-                  )}
-                </div>
-              )
-            )}
-          </div>
-        )
-      })}
-
-      {costs.technicianHourly != null && (
-        <div className="flex justify-between text-[10px] text-ink-faint">
-          <span>{t('jobDetail.technicianHourlyRate')}</span>
-          <span className="tabular-nums">{costs.technicianHourly.toFixed(2)} €/h</span>
+          </span>
+          <span className="font-bold text-red-500 tabular-nums">{shown.total.toFixed(2)} €</span>
         </div>
       )}
 
-      {/* Ad-hoc costs: the form's own editor, or plain lines in the read view. */}
-      {extraCostsSlot ?? costs.adHoc.map((l, i) => (
-        <div key={i} className="flex justify-between text-xs text-ink-muted">
-          <span className="truncate">{l.label}</span>
-          <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} €</span>
-        </div>
-      ))}
-
-      {/* When there are remakes, this line is the ORIGINAL only and says so —
-          an unlabelled "Kokku kulu" that silently excluded five remakes is
-          what made the margin on this page wrong. */}
-      <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
-        <span className={hasRemakes ? 'text-ink-muted' : 'font-semibold text-ink'}>
-          {hasRemakes ? t('jobDetail.original') : t('jobDetail.totalCost')}
-        </span>
-        <span className={`tabular-nums ${hasRemakes ? 'text-ink' : 'font-bold text-red-500'}`}>
-          {costs.total.toFixed(2)} €
-        </span>
-      </div>
-
-      {hasRemakes && (
+      {open && (
         <>
-          <button
-            type="button"
-            onClick={() => setShowRemakes(v => !v)}
-            className="w-full flex justify-between items-center text-xs hover:opacity-70 transition-opacity"
-          >
-            <span className="text-ink-muted flex items-center gap-1">
-              {showRemakes ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              {t('jobDetail.revisions')} ({total!.revisions.length})
-            </span>
-            <span className="tabular-nums text-ink">{total!.revisionTotal.toFixed(2)} €</span>
-          </button>
+          {costs.categories.map(cat => {
+            const overridden = cat.override != null
+            const empty = cat.lines.length === 0 && !overridden
+            // An empty category is noise in the read view. In the edit form it stays
+            // visible, because a cost you cannot see is a cost you cannot correct.
+            if (empty && !editable) return null
 
-          {showRemakes && (
-            <div className="pl-4 space-y-0.5 border-l border-ink-faint/20 ml-1">
-              {total!.revisions.map(r => (
-                <div key={r.id} className="py-0.5">
-                  <div className="flex justify-between text-[11px] gap-2">
-                    <span className="text-ink-muted truncate">
-                      {t('jobDetail.revision')} {r.nr}
-                      {r.note ? ` · ${r.note}` : ''}
-                      {/* Both are reasons a remake costs less than it looks, and
-                          both are worth seeing next to the number, not guessing at. */}
-                      {!r.tasustatav && <span className="text-ink-faint"> · {t('jobDetail.notPaid')}</span>}
-                      {!r.valmis && <span className="text-amber-600"> · {t('jobDetail.inProgress')}</span>}
+            return (
+              <div key={cat.key} className="space-y-0.5">
+                {/* The rule lines, greyed out once a person has overruled them. */}
+                {!overridden && cat.lines.map((l, i) => (
+                  <div key={i} className="flex justify-between text-xs text-ink-muted">
+                    <span className="truncate">
+                      {cat.lines.length === 1 ? cat.label : `${cat.label}: ${l.label.split(':')[0]}`}
                     </span>
-                    <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
+                    <span className="tabular-nums text-ink flex-shrink-0 ml-2">
+                      {l.amount.toFixed(2)} €{' '}
+                      <span className="text-ink-faint text-[10px]">
+                        {l.label.split(':').slice(1).join(':').trim()}
+                      </span>
+                    </span>
                   </div>
-                  {/* What the number is MADE OF. Without this a remake was a
-                      bare figure with nothing to check it against — which is
-                      how a thousand euros of consumables charged twice went
-                      unnoticed until somebody said "why is every one 1313". */}
-                  {r.total > 0 && (
-                    <div className="text-[10px] text-ink-faint tabular-nums">
-                      {[
-                        r.labour > 0 ? t('jobDetail.labour', { labour: r.labour.toFixed(2) }) : null,
-                        r.material - r.tarvikud > 0
-                          ? t('jobDetail.material', { value: (r.material - r.tarvikud).toFixed(2) }) : null,
-                        r.tarvikud > 0 ? t('jobDetail.newConsumables', { tarvikud: r.tarvikud.toFixed(2) }) : null,
-                        r.extras > 0 ? t('jobDetail.extras', { extras: r.extras.toFixed(2) }) : null,
-                      ].filter(Boolean).join(' · ')} €
+                ))}
+
+                {(overridden || (editable && empty)) && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className={overridden ? 'text-ink-muted' : 'text-ink-faint'}>
+                      {cat.label}
+                      {overridden && (
+                        <span className="ml-1.5 text-[9px] px-1 py-px rounded bg-amber-100 text-amber-700 font-medium align-middle">
+                          {t('jobDetail.manual')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      {overridden && cat.computed !== cat.amount && (
+                        <span className="text-[10px] text-ink-faint line-through tabular-nums">
+                          {cat.computed.toFixed(2)} €
+                        </span>
+                      )}
+                      <span className="tabular-nums text-ink">{cat.amount.toFixed(2)} €</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Pencil row. Separate line so a long rule label never collides. */}
+                {editable && (
+                  editing === cat.key ? (
+                    <div className="flex items-center gap-1 justify-end">
+                      <div className="relative w-24">
+                        <input
+                          type="number" min="0" step="0.01" autoFocus
+                          value={draft}
+                          onChange={e => setDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { e.preventDefault(); commit(cat.key) }
+                            if (e.key === 'Escape') { e.preventDefault(); setEditing(null) }
+                          }}
+                          placeholder={cat.computed.toFixed(2)}
+                          className="input py-0.5 px-1.5 pr-5 text-xs text-right"
+                        />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-ink-faint pointer-events-none">€</span>
+                      </div>
+                      <button type="button" onClick={() => commit(cat.key)}
+                        title={t('jobDetail.save')} className="text-emerald-600 hover:text-emerald-700 p-0.5">
+                        <Check size={12} />
+                      </button>
+                      <button type="button" onClick={() => setEditing(null)}
+                        title={t('jobDetail.cancel')} className="text-ink-faint hover:text-ink p-0.5">
+                        <X size={12} />
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                  ) : (
+                    <div className="flex items-center gap-2 justify-end">
+                      <button type="button" onClick={() => start(cat.key, cat.amount)}
+                        title={t('jobDetail.editCostManually', { label: cat.label.toLowerCase() })}
+                        className="text-[10px] text-accent hover:text-accent/80 flex items-center gap-0.5">
+                        <Pencil size={9} /> {t('jobDetail.edit')}
+                      </button>
+                      {overridden && (
+                        <button type="button" onClick={() => onOverride?.(cat.key, null)}
+                          title={t('jobDetail.backToTheRules')}
+                          className="text-[10px] text-ink-faint hover:text-ink flex items-center gap-0.5">
+                          <RotateCcw size={9} /> {t('jobDetail.rule')}
+                        </button>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            )
+          })}
+
+          {costs.technicianHourly != null && (
+            <div className="flex justify-between text-[10px] text-ink-faint">
+              <span>{t('jobDetail.technicianHourlyRate')}</span>
+              <span className="tabular-nums">{costs.technicianHourly.toFixed(2)} €/h</span>
             </div>
           )}
 
+          {/* Ad-hoc costs: the form's own editor, or plain lines in the read view. */}
+          {extraCostsSlot ?? costs.adHoc.map((l, i) => (
+            <div key={i} className="flex justify-between text-xs text-ink-muted">
+              <span className="truncate">{l.label}</span>
+              <span className="tabular-nums text-ink flex-shrink-0 ml-2">{l.amount.toFixed(2)} €</span>
+            </div>
+          ))}
+
+          {/* When there are remakes, this line is the ORIGINAL only and says so —
+              an unlabelled "Kokku kulu" that silently excluded five remakes is
+              what made the margin on this page wrong. */}
           <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
-            <span className="font-semibold text-ink">{t('jobDetail.totalCost')}</span>
-            <span className="font-bold text-red-500 tabular-nums">{total!.total.toFixed(2)} €</span>
+            <span className={hasRemakes ? 'text-ink-muted' : 'font-semibold text-ink'}>
+              {hasRemakes ? t('jobDetail.original') : t('jobDetail.totalCost')}
+            </span>
+            <span className={`tabular-nums ${hasRemakes ? 'text-ink' : 'font-bold text-red-500'}`}>
+              {costs.total.toFixed(2)} €
+            </span>
           </div>
+
+          {hasRemakes && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowRemakes(v => !v)}
+                className="w-full flex justify-between items-center text-xs hover:opacity-70 transition-opacity"
+              >
+                <span className="text-ink-muted flex items-center gap-1">
+                  {showRemakes ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                  {t('jobDetail.revisions')} ({total!.revisions.length})
+                </span>
+                <span className="tabular-nums text-ink">{total!.revisionTotal.toFixed(2)} €</span>
+              </button>
+
+              {showRemakes && (
+                <div className="pl-4 space-y-0.5 border-l border-ink-faint/20 ml-1">
+                  {total!.revisions.map(r => (
+                    <div key={r.id} className="py-0.5">
+                      <div className="flex justify-between text-[11px] gap-2">
+                        <span className="text-ink-muted truncate">
+                          {t('jobDetail.revision')} {r.nr}
+                          {r.note ? ` · ${r.note}` : ''}
+                          {/* Both are reasons a remake costs less than it looks, and
+                              both are worth seeing next to the number, not guessing at. */}
+                          {!r.tasustatav && <span className="text-ink-faint"> · {t('jobDetail.notPaid')}</span>}
+                          {!r.valmis && <span className="text-amber-600"> · {t('jobDetail.inProgress')}</span>}
+                        </span>
+                        <span className="tabular-nums text-ink flex-shrink-0">{r.total.toFixed(2)} €</span>
+                      </div>
+                      {/* What the number is MADE OF. Without this a remake was a
+                          bare figure with nothing to check it against — which is
+                          how a thousand euros of consumables charged twice went
+                          unnoticed until somebody said "why is every one 1313". */}
+                      {r.total > 0 && (
+                        <div className="text-[10px] text-ink-faint tabular-nums">
+                          {[
+                            r.labour > 0 ? t('jobDetail.labour', { labour: r.labour.toFixed(2) }) : null,
+                            r.material - r.tarvikud > 0
+                              ? t('jobDetail.material', { value: (r.material - r.tarvikud).toFixed(2) }) : null,
+                            r.tarvikud > 0 ? t('jobDetail.newConsumables', { tarvikud: r.tarvikud.toFixed(2) }) : null,
+                            r.extras > 0 ? t('jobDetail.extras', { extras: r.extras.toFixed(2) }) : null,
+                          ].filter(Boolean).join(' · ')} €
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between text-xs border-t border-ink-faint/15 pt-1 mt-1">
+                <span className="font-semibold text-ink">{t('jobDetail.totalCost')}</span>
+                <span className="font-bold text-red-500 tabular-nums">{total!.total.toFixed(2)} €</span>
+              </div>
+            </>
+          )}
         </>
       )}
 

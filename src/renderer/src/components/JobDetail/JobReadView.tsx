@@ -212,10 +212,14 @@ export function JobReadView({
               if (!el) return
               const w = window.open('', '_blank', 'width=800,height=600')
               if (!w) return
+              // The print has no Tailwind, so the one-column order (job details,
+              // then production) is restated here; see the grid below.
               w.document.write(`<html><head><title>${job.patsient} — ${job.too || t('jobDetail.job')}</title>
                 <style>body{font-family:Inter,system-ui,sans-serif;padding:24px;font-size:13px;color:#1a1a1a}
                 section{border:1px solid #e5e5e5;border-radius:8px;padding:12px;margin-bottom:12px}
                 h3{font-size:11px;text-transform:uppercase;color:#0AB6C4;margin:0 0 8px}
+                body{display:flex;flex-direction:column}.job-col{display:contents}
+                .order-1{order:1}.order-2{order:2}.order-3{order:3}.order-4{order:4}
                 </style></head><body>${el.innerHTML}</body></html>`)
               w.document.close()
               w.print()
@@ -228,10 +232,14 @@ export function JobReadView({
         </div>
       </div>
 
-      <div ref={printRef} className={isBottom ? 'grid grid-cols-2 gap-3 items-start' : 'grid grid-cols-1 xl:grid-cols-2 gap-3 items-start'}>
-        {/* ─── Left: production data ─────────────────────────────────────── */}
-        <div className="space-y-3">
-          <Card title={rev ? t('jobDetail.rEVISIONDETAILS') : t('jobDetail.jOBDETAILS')} icon={FileText}>
+      {/* Two columns: the job and its conversation on the left, how it is made
+          and what it costs on the right. In one column the column wrappers
+          dissolve (`contents`) and `order` puts the production data straight
+          under the job's details again, ahead of the notes and the thread. */}
+      <div ref={printRef} className={isBottom ? 'grid grid-cols-2 gap-3 items-start' : 'flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start'}>
+        {/* ─── Left: the job, notes, files, thread ───────────────────────── */}
+        <div className={isBottom ? 'job-col space-y-3' : 'job-col contents xl:block xl:space-y-3'}>
+          <Card className="order-1" title={rev ? t('jobDetail.rEVISIONDETAILS') : t('jobDetail.jOBDETAILS')} icon={FileText}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               <div className="min-w-0">
                 <Label>{t('jobDetail.patient')}</Label>
@@ -321,7 +329,26 @@ export function JobReadView({
             </div>
           </Card>
 
-          <Card title={t('jobDetail.pRODUCTIONDETAILS')} icon={Cpu}>
+          <div className="order-3 space-y-3">
+            {/* Notes belong to the job as a whole, not to the selected variant —
+                they stay put when you switch between original and revisions. */}
+            <JobNotesPanel job={job} highlightNoteId={highlightNoteId} />
+
+            {/* Comments and questions — the same thread a partner sees when the
+                job is shared. Notes above stay this clinic's own. */}
+            <div className="card p-4">
+              <JobFiles jobId={job.id} />
+            </div>
+
+            <div className="card p-4">
+              <JobThread jobId={job.id} />
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Right: production, then money ─────────────────────────────── */}
+        <div className={isBottom ? 'job-col space-y-3' : 'job-col contents xl:block xl:space-y-3'}>
+          <Card className="order-2" title={t('jobDetail.pRODUCTIONDETAILS')} icon={Cpu}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               <Cell label={t('jobDetail.material2')} value={v.material || '—'} strong />
               <div>
@@ -361,159 +388,147 @@ export function JobReadView({
             </div>
           </Card>
 
-          {/* Notes belong to the job as a whole, not to the selected variant —
-              they stay put when you switch between original and revisions. */}
-          <JobNotesPanel job={job} highlightNoteId={highlightNoteId} />
-
-          {/* Comments and questions — the same thread a partner sees when the
-              job is shared. Notes above stay this clinic's own. */}
-          <div className="card p-4">
-            <JobFiles jobId={job.id} />
-          </div>
-
-          <div className="card p-4">
-            <JobThread jobId={job.id} />
-          </div>
-        </div>
-
-        {/* ─── Right: money ──────────────────────────────────────────────── */}
-        <div className="space-y-3">
-          <JobPayCard job={job} />
-          <Card title={t('jobDetail.pRICEANDPAYMENT')} icon={Euro}>
-            <div className="space-y-1.5">
-              {rev ? (
-                <>
-                  <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
-                  {v.price > 0 && (
-                    <Line label={t('jobDetail.remakeCostInternal')} value={`${v.price.toFixed(2)} €`} muted />
-                  )}
-                  {revisions.length > 1 && (
-                    <Line label={t('jobDetail.allRevisions', { revisionsCount: revisions.length })} value={`${revTotal.toFixed(2)} €`} muted />
-                  )}
-                </>
-              ) : (
-                <>
-                  <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
-                  {extras > 0 && <Line label={t('jobDetail.extraCosts')} value={`${extras.toFixed(2)} €`} />}
-                </>
-              )}
-              <div className="flex items-center justify-between pt-1.5 border-t border-ink-faint/15">
-                <span className="text-sm font-semibold text-ink">{t('jobDetail.jobTotal')}</span>
-                <span className="text-sm font-bold text-ink">{jobGrandTotal.toFixed(2)} €</span>
-              </div>
-              {revisions.length > 0 && !rev && showCosts && (
-                <div className="flex items-center justify-between text-[11px] text-ink-faint mt-1">
-                  <span>{t('jobDetail.revisionCostInternal')}</span>
-                  <span className="tabular-nums">{total.revisionTotal.toFixed(2)} €</span>
+          <div className="order-4 space-y-3">
+            <JobPayCard job={job} />
+            <Card title={t('jobDetail.pRICEANDPAYMENT')} icon={Euro}>
+              <div className="space-y-1.5">
+                {rev ? (
+                  <>
+                    <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
+                    {v.price > 0 && (
+                      <Line label={t('jobDetail.remakeCostInternal')} value={`${v.price.toFixed(2)} €`} muted />
+                    )}
+                    {revisions.length > 1 && (
+                      <Line label={t('jobDetail.allRevisions', { revisionsCount: revisions.length })} value={`${revTotal.toFixed(2)} €`} muted />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Line label={t('jobDetail.jobPrice')} value={`${(job.hind ?? 0).toFixed(2)} €`} />
+                    {extras > 0 && <Line label={t('jobDetail.extraCosts')} value={`${extras.toFixed(2)} €`} />}
+                  </>
+                )}
+                <div className="flex items-center justify-between pt-1.5 border-t border-ink-faint/15">
+                  <span className="text-sm font-semibold text-ink">{t('jobDetail.jobTotal')}</span>
+                  <span className="text-sm font-bold text-ink">{jobGrandTotal.toFixed(2)} €</span>
                 </div>
-              )}
-            </div>
-
-            {/* Part payments mean the flag alone no longer tells the story: a job
-                can read "maksmata" and still have money against it. */}
-            {pay.partial ? (
-              <div className="rounded-lg px-3 py-2 mt-2.5 bg-orange-50 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-orange-500" />
-                  <span className="text-sm font-medium text-orange-800">{t('jobDetail.partlyPaid')}</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-orange-800">
-                  <span>{t('jobDetail.received')}</span>
-                  <span className="tabular-nums font-semibold">{pay.paid.toFixed(2)} €</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-orange-900">
-                  <span className="font-medium">{t('jobDetail.balance')}</span>
-                  <span className="tabular-nums font-bold">{pay.outstanding.toFixed(2)} €</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 mt-2.5 ${
-                  pay.settled ? 'bg-emerald-50' : 'bg-red-50'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${pay.settled ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                <span className={`text-sm font-medium ${pay.settled ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {pay.settled ? t('jobDetail.paid') : t('jobDetail.unpaid')}
-                </span>
-                {pay.settled && job.makse_kuupaev && (
-                  <span className="ml-auto text-[11px] text-emerald-700">
-                    {fmt(job.makse_kuupaev, 'dd.MM.yyyy')}
-                  </span>
+                {revisions.length > 0 && !rev && showCosts && (
+                  <div className="flex items-center justify-between text-[11px] text-ink-faint mt-1">
+                    <span>{t('jobDetail.revisionCostInternal')}</span>
+                    <span className="tabular-nums">{total.revisionTotal.toFixed(2)} €</span>
+                  </div>
                 )}
               </div>
-            )}
 
-            {/* Individual receipts, so a part payment can be checked rather than
-                just believed. */}
-            {jobPayments.length > 0 && (
-              <div className="mt-1.5 space-y-0.5">
-                {jobPayments.map(p => (
-                  <PaymentRow key={p.id} payment={p} onDelete={() => deletePayment.mutate(p.id)} />
-                ))}
-              </div>
-            )}
+              {/* Part payments mean the flag alone no longer tells the story: a job
+                  can read "maksmata" and still have money against it. */}
+              {pay.partial ? (
+                <div className="rounded-lg px-3 py-2 mt-2.5 bg-orange-50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-sm font-medium text-orange-800">{t('jobDetail.partlyPaid')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-orange-800">
+                    <span>{t('jobDetail.received')}</span>
+                    <span className="tabular-nums font-semibold">{pay.paid.toFixed(2)} €</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-orange-900">
+                    <span className="font-medium">{t('jobDetail.balance')}</span>
+                    <span className="tabular-nums font-bold">{pay.outstanding.toFixed(2)} €</span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 mt-2.5 ${
+                    pay.settled ? 'bg-emerald-50' : 'bg-red-50'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${pay.settled ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <span className={`text-sm font-medium ${pay.settled ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {pay.settled ? t('jobDetail.paid') : t('jobDetail.unpaid')}
+                  </span>
+                  {pay.settled && job.makse_kuupaev && (
+                    <span className="ml-auto text-[11px] text-emerald-700">
+                      {fmt(job.makse_kuupaev, 'dd.MM.yyyy')}
+                    </span>
+                  )}
+                </div>
+              )}
 
-            {/* Payment lives on the job, so it is stated once and never per revision */}
-            {/* Said once on the job, never per revision — and it says what is
-                actually charged. It used to read "koos muudatustega", which is
-                the opposite of what the total does: revision costs are the
-                lab's own and stay off the client's bill. */}
-            <p className="text-[11px] text-ink-muted mt-1.5">
-              {t('jobDetail.paymentCoversTheWholeJobRevision')}
-            </p>
-            {!pay.settled && onMarkPaid && (
-              <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/30 mt-1.5">
-                {pay.partial ? t('jobDetail.addPayment') : t('jobDetail.markAsPaid')}
-              </button>
-            )}
-          </Card>
+              {/* Individual receipts, so a part payment can be checked rather than
+                  just believed. */}
+              {jobPayments.length > 0 && (
+                <div className="mt-1.5 space-y-0.5">
+                  {jobPayments.map(p => (
+                    <PaymentRow key={p.id} payment={p} onDelete={() => deletePayment.mutate(p.id)} />
+                  ))}
+                </div>
+              )}
 
-          {/* The cost table, the same one the edit form shows — one component,
-              one computation. A revision is deliberately excluded: this is what
-              the JOB cost, and a revision has its own separate figure above. */}
-          {showCosts && !rev && (
-            <CostBreakdown
-              costs={costs}
-              total={total}
-              editable
-              dense
-              onOverride={(key, value) => {
-                const next = { ...(job.kulu_yle ?? {}) }
-                if (value == null) delete next[key]
-                else next[key] = value
-                updateJob.mutate({ id: job.id, kulu_yle: next })
-              }}
-            />
-          )}
+              {/* Payment lives on the job, so it is stated once and never per revision */}
+              {/* Said once on the job, never per revision — and it says what is
+                  actually charged. It used to read "koos muudatustega", which is
+                  the opposite of what the total does: revision costs are the
+                  lab's own and stay off the client's bill. */}
+              <p className="text-[11px] text-ink-muted mt-1.5">
+                {t('jobDetail.paymentCoversTheWholeJobRevision')}
+              </p>
+              {!pay.settled && onMarkPaid && (
+                <button onClick={onMarkPaid} className="btn-ghost text-xs border border-ink-faint/30 mt-1.5">
+                  {pay.partial ? t('jobDetail.addPayment') : t('jobDetail.markAsPaid')}
+                </button>
+              )}
+            </Card>
 
-          <Card title={t('jobDetail.jOBHISTORY')} icon={History}>
-            {/* Derived from the timestamps the job already carries — there is no
-                audit log table, so this is every event we can honestly show. */}
-            <ol className="space-y-2">
-              {[...revisions]
-                .map((r, i) => ({ r, n: i + 1 }))
-                .sort((a, b) => (b.r.ts ?? '').localeCompare(a.r.ts ?? ''))
-                .map(({ r, n }) => (
-                  <Event
-                    key={r.id}
-                    ts={r.ts}
-                    active={r.id === activeRevisionId}
-                    badge={t('jobDetail.revision3', { n })}
-                    text={r.note?.trim() || t('jobDetail.revision')}
-                    meta={stageMap[r.status ?? job.status]?.label}
-                    onClick={() => onSelectVariant(r.id)}
-                  />
-                ))}
-              <Event ts={job.updated_at} text={t('jobDetail.lastEdited')} />
-              <Event
-                ts={job.created_at}
-                text={t('jobDetail.jobCreated')}
-                active={activeRevisionId === null}
-                onClick={() => onSelectVariant(null)}
+            {/* The cost table, the same one the edit form shows — one component,
+                one computation. A revision is deliberately excluded: this is what
+                the JOB cost, and a revision has its own separate figure above.
+                Folded to the total and the margin: the pay card above already
+                shows the labour lines, large. */}
+            {showCosts && !rev && (
+              <CostBreakdown
+                costs={costs}
+                total={total}
+                editable
+                dense
+                collapsible
+                onOverride={(key, value) => {
+                  const next = { ...(job.kulu_yle ?? {}) }
+                  if (value == null) delete next[key]
+                  else next[key] = value
+                  updateJob.mutate({ id: job.id, kulu_yle: next })
+                }}
               />
-            </ol>
-          </Card>
+            )}
+
+            <Card title={t('jobDetail.jOBHISTORY')} icon={History}>
+              {/* Derived from the timestamps the job already carries — there is no
+                  audit log table, so this is every event we can honestly show. */}
+              <ol className="space-y-2">
+                {[...revisions]
+                  .map((r, i) => ({ r, n: i + 1 }))
+                  .sort((a, b) => (b.r.ts ?? '').localeCompare(a.r.ts ?? ''))
+                  .map(({ r, n }) => (
+                    <Event
+                      key={r.id}
+                      ts={r.ts}
+                      active={r.id === activeRevisionId}
+                      badge={t('jobDetail.revision3', { n })}
+                      text={r.note?.trim() || t('jobDetail.revision')}
+                      meta={stageMap[r.status ?? job.status]?.label}
+                      onClick={() => onSelectVariant(r.id)}
+                    />
+                  ))}
+                <Event ts={job.updated_at} text={t('jobDetail.lastEdited')} />
+                <Event
+                  ts={job.created_at}
+                  text={t('jobDetail.jobCreated')}
+                  active={activeRevisionId === null}
+                  onClick={() => onSelectVariant(null)}
+                />
+              </ol>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
@@ -539,13 +554,14 @@ function Chip({ active, onClick, children }: {
   )
 }
 
-function Card({ title, icon: Icon, children }: {
+function Card({ title, icon: Icon, children, className = '' }: {
   title: string
   icon: LucideIcon
   children: React.ReactNode
+  className?: string
 }) {
   return (
-    <section className="bg-bg-card border border-ink-faint/20 rounded-xl px-3.5 py-3">
+    <section className={`bg-bg-card border border-ink-faint/20 rounded-xl px-3.5 py-3 ${className}`}>
       <div className="flex items-center gap-1.5 mb-2.5">
         <Icon size={12} className="text-accent" />
         <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">{title}</h3>

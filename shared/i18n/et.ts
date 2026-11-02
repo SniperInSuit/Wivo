@@ -882,6 +882,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'invoices.stopPlan': "Peata graafik",
 
   // ── jobDetail ─────────────────────────────────────────────────────────────
+  'jobDetail.costDetails': "Detailid",
   'jobDetail.payProjectionNote': "Mida see töö valmimisel maksab, praeguste tasureeglite järgi. Muudatused makstakse eraldi.",
   'jobDetail.designerPay': "Disainija tasu",
   'jobDetail.technicianPay': "Tehniku tasu",
