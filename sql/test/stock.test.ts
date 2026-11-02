@@ -7,7 +7,8 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { freshDb, createTenant, rowsAs, errorAs, grant, type Tenant } from './harness'
+import { freshDb, createTenant, createUser, rowsAs, errorAs, grant, type Tenant } from './harness'
+import { productKey } from '../../src/renderer/src/lib/stockProducts'
 
 let db: PGlite
 let A: Tenant  // Tallinn
@@ -250,13 +251,22 @@ describe('expired goods', () => {
     const { rows } = await db.query<{ detail: Record<string, unknown> }>(
       `select detail from public.audit_log where org_id = $1 and action = 'stock_override' and object = $2`, [A.clinicId, `stock:${i}`])
     expect(rows).toHaveLength(1)
-    expect(rows[0].detail).toMatchObject({ qty: 1, job: jobId, reason: 'only one in the country, patient informed' })
+    expect(rows[0].detail).toMatchObject({ qty: 1, job: jobId, reason: 'only one in the country, patient informed', as: 'owner' })
   })
 
-  it('nobody but the owner overrides, even with stock.write', async () => {
+  it('an org admin can override too, with a reason, logged as admin; a worker cannot (sql/096)', async () => {
     const i = await expired()
     await grant(db, A, A.workerId, ['stock.write', 'jobs.read'])
-    expect(await errorAs(db, { id: A.workerId }, `select public.use_stock($1, 1, $2, 'please')`, [i, jobId])).toMatch(/Only the clinic's owner/)
+    expect(await errorAs(db, { id: A.workerId }, `select public.use_stock($1, 1, $2, 'please')`, [i, jobId])).toMatch(/owner or an admin/)
+    const admin = await createUser(db, 'Org Admin')
+    await db.query(`update public.profiles set clinic_id = $1, role = 'worker', org_role = 'admin' where id = $2`, [A.clinicId, admin])
+    await grant(db, A, admin, ['stock.write', 'jobs.read'])
+    const code = await rowsAs(db, { id: admin }, `select public.use_stock($1, 1, $2)`, [i, jobId]).then(() => null, (e: { code?: string }) => e.code)
+    expect(code).toBe('WV002')   // the reason is still required
+    await rowsAs(db, { id: admin }, `select public.use_stock($1, 1, $2, 'last one, checked sterile')`, [i, jobId])
+    const { rows } = await db.query<{ detail: Record<string, unknown> }>(
+      `select detail from public.audit_log where action = 'stock_override' and object = $1`, [`stock:${i}`])
+    expect(rows.map(r => r.detail)).toEqual([expect.objectContaining({ as: 'admin', reason: 'last one, checked sterile' })])
   })
 
   it('can be written off and returned', async () => {
@@ -292,5 +302,15 @@ describe('share_stock: the owner switches it, logged', () => {
       `insert into public.partnership (org_a, org_b, status, roles) values ($1, $2, 'awaiting_platform', array['design']) returning id`, [A.clinicId, C.clinicId])
     expect(await errorAs(db, { id: A.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, true)`, [rows[0].id])).toMatch(/not found/)
     expect(await shared()).toBe(true)
+  })
+})
+
+describe('the app computes the same product key as the database', () => {
+  it('lib/stockProducts productKey = stock_item.product_key', async () => {
+    const e = { category: 'membrane' as const, manufacturer: ' Geistlich ', system: 'Bio-Gide', size: '25 x 25', product: 'Perio' }
+    const [{ id }] = await rowsAs<{ id: string }>(db, owner(),
+      `select public.add_stock_item($1, $2, $3, $4, $5, 'L', '2028-01-01', 1) as id`, [e.category, e.manufacturer, e.system, e.size, e.product])
+    const { rows } = await db.query<{ k: string }>(`select product_key as k from public.stock_item where id = $1`, [id])
+    expect(rows[0].k).toBe(productKey(e))
   })
 })

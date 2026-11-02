@@ -6,7 +6,7 @@
  * Rules the database enforces, offered here so nobody hits a refusal blind:
  * implants, abutments, bone material and membranes go out only on a job, or
  * as a write-off with a reason; expired goods are not used on a job unless
- * the clinic's owner overrides with a reason (logged). The warning threshold
+ * the clinic's owner or an org admin overrides with a reason (logged, sql/096). The warning threshold
  * belongs to the product — every lot of it — not to this lot.
  */
 import { useMemo, useState } from 'react'
@@ -47,7 +47,7 @@ export function StockItemPanel({ item, product, jobs, onClose }: {
   item: StockLevel; product: ProductLevel | null; jobs: Job[]; onClose: () => void
 }) {
   const { can } = usePermissions()
-  const { role } = useAuth()
+  const { role, profile } = useAuth()
   const { data: moves = [] } = useStockMovements(item.id)
   const { data: partners = [] } = usePartnerOrgs()
   const ownerName = item.owner_supplier ?? partners.find(p => p.org_id === item.owner_org)?.name ?? t('stock.partner')
@@ -69,7 +69,8 @@ export function StockItemPanel({ item, product, jobs, onClose }: {
   const writable = can('stock.write') && !item.archived_at
   const needsJob = NEEDS_JOB.has(item.category)
   const expired = isExpired(item, today)
-  const isOwner = role === 'owner'
+  // sql/096: the owner or an org admin may override expiry, with a reason.
+  const canOverride = role === 'owner' || profile?.org_role === 'owner' || profile?.org_role === 'admin'
   const warnings: (LotWarningKind | 'low')[] = [...(product && isLow(product) ? ['low' as const] : []), ...lotWarnings(item, today)]
   const jobCode = useMemo(() => new Map(jobs.map(j => [j.id, j.job_code ?? j.id.slice(0, 8)])), [jobs])
   const jobMatches = useMemo(() => {
@@ -123,7 +124,7 @@ export function StockItemPanel({ item, product, jobs, onClose }: {
   }
 
   const actions: { key: Action; label: string; show: boolean }[] = [
-    { key: 'use', label: t('stock.useOnJob'), show: item.qty > 0 && (!expired || isOwner) },
+    { key: 'use', label: t('stock.useOnJob'), show: item.qty > 0 && (!expired || canOverride) },
     { key: 'writeoff', label: t('stock.writeOff'), show: item.qty > 0 },
     { key: 'receive', label: t('stock.receiveMore'), show: true },
     { key: 'return', label: t('stock.returnToOwner'), show: consignment && item.qty > 0 },
@@ -171,7 +172,7 @@ export function StockItemPanel({ item, product, jobs, onClose }: {
         <ul className="space-y-1">
           {expired && (
             <li className="flex items-start gap-2 text-sm text-rose-600 font-semibold">
-              <AlertTriangle size={13} className="mt-0.5" aria-hidden="true" /> {isOwner ? t('stock.expiredOwner') : t('stock.expiredNotOwner')}
+              <AlertTriangle size={13} className="mt-0.5" aria-hidden="true" /> {canOverride ? t('stock.expiredOwner') : t('stock.expiredNotOwner')}
             </li>
           )}
           {warnings.filter(w => !(expired && w === 'expiry')).map(w => (
