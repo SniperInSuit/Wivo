@@ -1,6 +1,6 @@
 # Wivo — Handoff Notes
 
-## Current version: 1.109.0 (2.0 merged into main)
+## Current version: 2.0.0 (bumped on main 2 Nov 2026, not yet pushed)
 
 > **Latest release work:** see `docs/night-run/RUN-3.md` — production state,
 > migrations applied, VAPID keys, Cloudflare projects, open items, and fix list.
@@ -304,54 +304,52 @@ having it in one place instead of forty.
 
 ## What's next
 
-### Immediately outstanding
-- **Run `040`.** Until it runs, saving an additive pay rule fails on the CHECK
-  constraint. `034`–`037` are still outstanding too: without them the app shows
-  empty customer lists and fails on `features` reads.
-- **Check the current period's payroll before confirming any payout.** 1.31
-  changed what mixed-work-item jobs earn (each item under its own rule, summed)
-  and who gets paid for a revision. Already-confirmed payouts are safe — their
-  lines are copies — but anything not yet confirmed will differ from what was on
-  screen yesterday.
-- **Run Seaded → Hinnad → tööde ümberhindamine in PREVIEW** against real data.
-  Mixed-work-item jobs get a different price now (the sum of their items rather
-  than one type across all teeth). Review before writing. Issued invoices are
-  safe by construction — their lines are copies.
-- **Enter overheads** (Seaded → Hinnad → Üldkulud kuus) or Rahandus keeps
-  reporting contribution rather than profit, correctly labelled but less useful.
+Current as of 2 November 2026 (2.0.0). The full list, with the production
+state behind it, is in `docs/night-run/RUN-3.md`.
 
-### Reviewed by nobody yet
-The 1.31 wizard (`shared/wizard/`, `components/NewJobWizard/`, ~50 files) was
-written by agents and has not had a human read it end to end. Its logic layer is
-tested; its UI is not. The payroll rework and the revision editors have tests but
-no independent review either — an adversarial pass was started and abandoned.
+### Release 2.0.0
+- The version is 2.0.0 on `main`, **not pushed**. Pushing `main` publishes it:
+  CI builds the Windows installer and publishes the GitHub Release
+  (`.github/workflows/build.yml`), and every desktop installs it at its next
+  launch (see "Auto-update is real" above). The bump must be the newest commit
+  in the push, because CI publishes only when `package.json`'s version differs
+  from the commit before it.
+- Before staff sign in to 2.0, tell them two-factor sign-in is coming and to
+  have an authenticator app ready: Google Authenticator, Microsoft
+  Authenticator, or Passwords on iPhone. The setup screen walks them through
+  it.
 
-### Two open decisions
-- **Ülevaade's "Makstud" figures ignore `makse_kuupaev`.** They use the `makstud`
-  flag and bucket the job by its own date, so a job received in June and paid in
-  August reports as paid revenue in June. Rahandus already counts payments by
-  `paid_at` and is correct. Fixing it changes historical months.
-- **`JobDetailPanel` still has two inline copies of the work-item chip strip**
-  that `WorkItemsField` now replaces everywhere else. They have not diverged yet.
-  They will.
+### This week
+- **E-mail notifications** (deferred): set `RESEND_API_KEY`, `NOTIFY_FROM` and
+  `BUG_REPORT_TO` on `send-notifications`. Until then push and in-app badges
+  work; e-mail doesn't go out.
 
-### Faas 2 — public job-status link
-Design is in the plan. **Supabase Pro is NOT required for this**, contrary to an
-earlier draft: Edge Functions, `pg_cron` and `pg_net` are all on the free tier.
-Pro is only needed for Faas 4's file uploads (1 GB free vanishes in a week of
-real scans). The free tier's one real risk is a project pausing after 7 idle
-days — irrelevant for a lab using the app daily.
+### After the release
+- **Real notification test:** share a job or add a file to a shared job. The
+  phone should get "New in Wivo" within a minute.
+- **Android test:** the spec's acceptance asks for two camera apps. Check the
+  gallery with each one.
 
-You will still need: a Cloudflare account, a domain, and the Supabase CLI (for
-`functions deploy` and `secrets set` ONLY — never `db push`, which would want to
-take ownership of the 37 hand-run files in `sql/`).
+### Cleanup
+- Delete the test copy (Supabase project `jhqyvancrzykxhzwnost`), then the
+  `wivo-test` Cloudflare Pages project.
+- Revoke the `sbp_…` Supabase access tokens used on 2 November.
+- Reset the production database password (it was exposed in an error message
+  on 2 November).
+- GitHub: the repo belongs to `SniperInSuit`, but the local git credential is
+  `fullgevity`, so pushes go through GitHub Desktop. Align them or set up a
+  deploy key.
 
-### Smaller, no external setup
-- Customers from the free-text `patients.kliinik` field — a one-off import with
-  a preview, same shape as `RepriceJobsSection`. Not built; worth it only if
-  those names are actually populated in your data.
-- i18n. Every string is Estonian, inline. Blocks the Baltics.
-- Job attachments. No file storage exists at all yet.
+### Fix list (not blockers)
+- "Sign out" is local to the device now. Consider saying "(this device)" on
+  the button.
+- `npx supabase inspect db lint` reports 167 warnings on a fresh project,
+  mostly unindexed foreign keys.
+- Restore test: replay `scripts/fresh-schema.mjs` on a throwaway project and
+  compare it with production. The test copy's restore missed 12 triggers.
+- `~/WivoBackups/` (database backups, VAPID private keys) exists only on this
+  Mac. Copy it off-site.
+- Move to Node.js 22: the Supabase SDK warns on every run under 20.
 
 ## Legal / compliance
 

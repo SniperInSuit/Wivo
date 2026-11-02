@@ -2,6 +2,12 @@
 
 2 November 2026, evening. Merged `2.0` into `main`.
 
+**Update, later on 2 November:** the dashboard settings are done, the
+production phone app is live at https://app.wivodent.com, and `APP_LINK` is
+set. E-mail (Resend) is deferred to later this week. The version is bumped to
+2.0.0 on `main` but not pushed. Pushing publishes the release (see
+"Desktop release" below).
+
 ## What was done
 
 ### Production database
@@ -34,8 +40,9 @@ Production has everything.
 `send-notifications` deployed to production with:
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (production pair, separate from test)
 - `VAPID_SUBJECT=mailto:fullgevity@gmail.com`
-- `RESEND_API_KEY` and `NOTIFY_FROM` not yet set (e-mail notifications not active)
-- `APP_LINK` not yet set (no production phone app yet)
+- `RESEND_API_KEY` and `NOTIFY_FROM` not yet set (e-mail notifications not
+  active; deferred to later this week)
+- `APP_LINK=https://app.wivodent.com/job/{id}` (set later on 2 November)
 
 ### Desktop app
 
@@ -71,8 +78,8 @@ pushed.
 | Test copy Supabase project | `jhqyvancrzykxhzwnost` (eu-west-1) |
 | Test copy Cloudflare Pages | `wivo-test.pages.dev` |
 | Production Supabase project | `wrtucsfmpbwekugzzzxw` (eu-west-1) |
-| Production Cloudflare Pages | not yet created |
-| Production phone app domain | `app.wivodent.com` (planned) |
+| Production Cloudflare Pages | project **wivo**, builds from `main` |
+| Production phone app domain | https://app.wivodent.com, live (CNAME at Veebimajutus) |
 
 ---
 
@@ -80,25 +87,27 @@ pushed.
 
 ### Before staff use the new build
 
-1. **Deploy send-notifications to production** — done (VAPID keys set).
-   Still needs: `RESEND_API_KEY`, `NOTIFY_FROM`, `BUG_REPORT_TO` for e-mail
-   notifications, and `APP_LINK` once the production phone app exists.
-2. **Dashboard settings** — three changes in the Supabase dashboard:
+1. **Deploy send-notifications to production** — done (VAPID keys set,
+   `APP_LINK` set). E-mail is **deferred to later this week**: it still needs
+   `RESEND_API_KEY`, `NOTIFY_FROM` and `BUG_REPORT_TO`.
+2. **Dashboard settings** — done:
    - Storage → Settings → upload limit **500 MB**
    - Auth → Password security → **Prevent leaked passwords** on, minimum 12
    - Account → Security → **MFA on the dashboard account**
-3. **Desktop release** — bump the version, build, and publish to GitHub
-   Releases. Staff install the new build tomorrow.
-4. **Staff heads-up** — everyone needs Google Authenticator or Microsoft
-   Authenticator ready. First sign-in after the update asks them to scan a QR
-   code (MFA is mandatory).
+3. **Desktop release** — the version is bumped to 2.0.0 on `main`, not pushed.
+   Pushing `main` publishes it: CI builds the Windows installer and publishes
+   the GitHub Release (`.github/workflows/build.yml`). The bump must be the
+   newest commit in that push, because CI compares the version with the
+   commit before it. Staff install the new build tomorrow.
+4. **Staff heads-up** — everyone needs an authenticator app ready: Google
+   Authenticator, Microsoft Authenticator, or Passwords on iPhone. The first
+   sign-in after the update walks them through the setup (MFA is mandatory).
 
 ### After the release
 
-5. **Production phone app** — create a Cloudflare Pages project for production
-   (`app.wivodent.com`), building from `main`, with the production Supabase URL,
-   anon key, and the production VAPID public key. Then set `APP_LINK` on the
-   function.
+5. **Production phone app** — done. Cloudflare Pages project **wivo** builds
+   from `main` and is live at https://app.wivodent.com. `APP_LINK` points at
+   `https://app.wivodent.com/job/{id}`.
 6. **Real notification test** — share a job or add a file to a shared job and
    check that the phone gets "New in Wivo" within a minute.
 7. **Android test** — the spec's acceptance asks for two camera apps. Check the
@@ -126,6 +135,7 @@ Things noticed during the session that aren't blockers but should be addressed:
 
 1. **E-mail notification text** — `RESEND_API_KEY` and `NOTIFY_FROM` are not set
    on production. E-mail notifications won't go out until they are. Push works.
+   Deferred to later this week.
 2. **"Sign out on this device"** — the button label still says just "Sign out".
    Consider adding "(this device)" so people know it's local.
 3. **167 Supabase warnings** — `npx supabase inspect db lint` on a fresh project
@@ -137,7 +147,7 @@ Things noticed during the session that aren't blockers but should be addressed:
    "restore test" (MORNING.md §3).
 5. **Hetzner file backup** — the VAPID private keys and the database backups
    live only on this Mac. Copy `~/WivoBackups/` to an off-site location.
-6. **Announcements** — `wivo-2.0-spec.md` mentions a changelog entry and an
-   in-app "what's new" screen. Neither exists yet.
+6. **Announcements** — done. The in-app "What's new" screen is in `97f56d3`
+   (notes in `release-notes/2.0.0/`), and CHANGELOG.md has a 2.0.0 entry.
 7. **Node.js 20 deprecation** — the Supabase JS SDK warns on every run. Upgrade
    to Node.js 22 when convenient.
