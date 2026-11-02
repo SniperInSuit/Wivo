@@ -9,7 +9,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
 ## Rules
-- Migrations are numbered SQL files in sql/ (next one is 093_...). Only add new files. Never edit or delete existing ones.
+- Migrations are numbered SQL files in sql/ (next one is 095_...). Only add new files. Never edit or delete existing ones.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test.
 - The app uses only the anon key. The service-role key lives only in Edge Functions.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.
