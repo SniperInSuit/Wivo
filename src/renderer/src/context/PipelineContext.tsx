@@ -96,6 +96,7 @@ interface PipelineContextValue {
   renameStage: (key: string, newLabel: string) => void
   recolorStage: (key: string, hex: string) => void
   moveStage: (key: string, direction: 'up' | 'down') => void
+  setStageNotify: (key: string, who: 'notifyTechnician' | 'notifyDesigner', on: boolean) => void
   resetToDefaults: () => void
 }
 
@@ -145,6 +146,10 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     commit(next)
   }, [])
 
+  const setStageNotify = useCallback((key: string, who: 'notifyTechnician' | 'notifyDesigner', on: boolean) => {
+    commit(snapshot.map(s => (s.key === key ? { ...s, [who]: on } : s)))
+  }, [])
+
   const resetToDefaults = useCallback(() => commit([...PIPELINE_STAGES]), [])
 
   const stageMap = useMemo(
@@ -155,8 +160,8 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
   const doneStageKey = stages[stages.length - 1]?.key ?? 'valmis'
 
   const value = useMemo<PipelineContextValue>(
-    () => ({ stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults }),
-    [stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults]
+    () => ({ stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, setStageNotify, resetToDefaults }),
+    [stages, stageMap, doneStageKey, addStage, removeStage, renameStage, recolorStage, moveStage, setStageNotify, resetToDefaults]
   )
 
   return <PipelineContext.Provider value={value}>{children}</PipelineContext.Provider>

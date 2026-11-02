@@ -1922,6 +1922,11 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'settings.restartAndUpdate': "Taaskäivita ja uuenda",
 
   // ── settingsPage ──────────────────────────────────────────────────────────
+  'settingsPage.notifyDesigner': "Disainija",
+  'settingsPage.notifyTechnician': "Teostaja",
+  'settingsPage.stage': "Etapp",
+  'settingsPage.stageNotificationsHelp': "Kui töö jõuab etappi, kes selle töö inimestest saab teavituse telefoni ja kellukesse. Liigutaja ise teavitust ei saa.",
+  'settingsPage.stageNotifications': "Teavitused etappide kaupa",
   'settingsPage.organisationDefaultHelp': "Liikmetele, kes pole ise keelt valinud.",
   'settingsPage.organisationDefaultLanguage': "Organisatsiooni vaikekeel",
   'settingsPage.yourOwnLanguage': "Sinu enda seade: see järgneb sulle igasse arvutisse. Vahetamisel laetakse aken uuesti.",
@@ -3040,6 +3045,10 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'patientExport.madeBy': "Koostas {clinic}, {date}",
 
   // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.assignedDesigner': "Sind määrati töö {code} disainijaks",
+  'notifications.assignedTechnician': "Sind määrati töö {code} teostajaks",
+  'notifications.remakeReachedStage': "Töö {code} ümbertegemine on nüüd etapis {stage}",
+  'notifications.reachedStage': "Töö {code} on nüüd etapis {stage}",
   'notifications.filesAdded': "Uued failid tööl {code}",
   'notifications.emailHelp': "E-kirjas on ainult töö kood ja link, mitte kunagi patsiendi andmeid.",
   'notifications.emailMe': "Saada mulle e-kiri, kui partner jagab tööd, annab üle või küsib",

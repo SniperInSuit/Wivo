@@ -5,6 +5,10 @@ export interface PipelineStage {
   key: StageKey
   label: string          // Estonian display label
   hex: string            // THE colour. Everything renders from this.
+  // Who hears when a job reaches this stage (sql/095). Unset means yes; the
+  // database reads these from clinic_settings.pipeline_stages.
+  notifyTechnician?: boolean
+  notifyDesigner?: boolean
   // ─── LEGACY, do not render from these ─────────────────────────────────────
   // Tailwind class names, kept only so stages saved in localStorage before
   // 1.1.7 still parse. A user-picked colour (Seaded → Töö etapid) can never be

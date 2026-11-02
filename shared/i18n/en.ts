@@ -1935,6 +1935,11 @@ export const en = {
   'settings.restartAndUpdate': "Restart and update",
 
   // ── settingsPage ──────────────────────────────────────────────────────────
+  'settingsPage.notifyDesigner': "Designer",
+  'settingsPage.notifyTechnician': "Technician",
+  'settingsPage.stage': "Stage",
+  'settingsPage.stageNotificationsHelp': "When a job reaches a stage, who on the job gets a notification on their phone and in the bell. The person who moved it is never notified.",
+  'settingsPage.stageNotifications': "Notifications per stage",
   'settingsPage.organisationDefaultHelp': "For members who have not chosen a language themselves.",
   'settingsPage.organisationDefaultLanguage': "Organisation default",
   'settingsPage.yourOwnLanguage': "Your own setting: it follows you to every computer. The window reloads when you switch.",
@@ -3054,6 +3059,10 @@ export const en = {
   'patientExport.madeBy': "Prepared by {clinic} on {date}",
 
   // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.assignedDesigner': "You are the designer on job {code}",
+  'notifications.assignedTechnician': "You are the technician on job {code}",
+  'notifications.remakeReachedStage': "A remake on job {code} is now in {stage}",
+  'notifications.reachedStage': "Job {code} is now in {stage}",
   'notifications.filesAdded': "New files on job {code}",
   'notifications.emailHelp': "The e-mail contains only the job code and a link, never patient details.",
   'notifications.emailMe': "E-mail me when a partner shares a job, hands one over or asks a question",

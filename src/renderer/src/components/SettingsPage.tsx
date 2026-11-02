@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database, Languages, Handshake, ScrollText
+import { CalendarDays, Globe, Cpu, Pencil, Layers, ChevronUp, ChevronDown, Trash2, RotateCcw, Plus, User, Palette, CalendarClock, Euro, Building2, Type, ListChecks, Image as ImageIcon , KeyRound, Mail, ShieldCheck, AlertTriangle, Database, Languages, Handshake, ScrollText, Bell
 } from 'lucide-react'
 import { useSettings, THEMES, TEXT_SIZES } from '../stores/useSettings'
 import { ThemeEditor } from './Settings/ThemeEditor'
@@ -1324,7 +1324,7 @@ export function SettingsPage() {
     addWorkType, removeWorkType, updateWorkType, moveWorkType, resetWorkTypes,
     addVisitType, removeVisitType, updateVisitType, moveVisitType, resetVisitTypes,
   } = useSettings()
-  const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, resetToDefaults } = usePipeline()
+  const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, setStageNotify, resetToDefaults } = usePipeline()
   const auth = useAuth()
   const { can } = usePermissions()
 
@@ -2397,6 +2397,42 @@ export function SettingsPage() {
             >
               <RotateCcw size={11} /> {t('settingsPage.resetToDefaults')}
             </button>
+          </section>
+          )}
+
+          {activeGroup === 'etapid' && (
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Bell size={14} className="text-accent" />
+              <h3 className="text-sm font-semibold text-ink">{t('settingsPage.stageNotifications')}</h3>
+            </div>
+            <p className="text-xs text-ink-faint mb-3">{t('settingsPage.stageNotificationsHelp')}</p>
+            <table className="text-sm">
+              <thead className="text-left text-[11px] uppercase tracking-wider text-ink-muted">
+                <tr>
+                  <th className="py-1.5 pr-6">{t('settingsPage.stage')}</th>
+                  <th className="py-1.5 pr-6 text-center">{t('settingsPage.notifyTechnician')}</th>
+                  <th className="py-1.5 text-center">{t('settingsPage.notifyDesigner')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stages.map(stage => (
+                  <tr key={stage.key} className="border-t border-ink-faint/15">
+                    <td className="py-1.5 pr-6">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle" style={{ backgroundColor: stage.hex }} />
+                      {stage.label}
+                    </td>
+                    {(['notifyTechnician', 'notifyDesigner'] as const).map(who => (
+                      <td key={who} className="py-1.5 pr-6 text-center">
+                        <input type="checkbox" checked={stage[who] !== false}
+                          aria-label={`${stage.label}: ${who === 'notifyTechnician' ? t('settingsPage.notifyTechnician') : t('settingsPage.notifyDesigner')}`}
+                          onChange={e => setStageNotify(stage.key, who, e.target.checked)} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </section>
           )}
 

@@ -6,10 +6,18 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Bell } from 'lucide-react'
 import { useNotifications, type AppNotification } from '../hooks/useNotifications'
+import { usePipeline } from '../context/PipelineContext'
 import { t, dateLocale } from '@/lib/i18n'
 
-const text = (n: AppNotification): string => {
+const text = (n: AppNotification, stageLabel: (key: string) => string): string => {
   const code = n.job_code ?? '—'
+  if (n.kind === 'stage_reached') {
+    const stage = stageLabel(String(n.detail.to ?? ''))
+    return n.detail.revision ? t('notifications.remakeReachedStage', { code, stage }) : t('notifications.reachedStage', { code, stage })
+  }
+  if (n.kind === 'assigned') {
+    return n.detail.role === 'designer' ? t('notifications.assignedDesigner', { code }) : t('notifications.assignedTechnician', { code })
+  }
   if (n.kind === 'job_shared') return t('notifications.jobShared', { code, from: String(n.detail.from_org ?? '') })
   if (n.kind === 'stage_handover') return t('notifications.handedOver', { code })
   if (n.kind === 'files_added') return t('notifications.filesAdded', { code })
@@ -18,6 +26,8 @@ const text = (n: AppNotification): string => {
 
 export function NotificationBell({ onOpen }: { onOpen: (n: AppNotification) => void }) {
   const { items, unread, markRead } = useNotifications()
+  const { stageMap } = usePipeline()
+  const stageLabel = (key: string): string => stageMap[key]?.label ?? key
   const [open, setOpen] = useState(false)
 
   return (
@@ -51,7 +61,7 @@ export function NotificationBell({ onOpen }: { onOpen: (n: AppNotification) => v
                   <button type="button"
                     onClick={() => { if (!n.read_at) markRead.mutate([n.id]); setOpen(false); onOpen(n) }}
                     className={`w-full text-left rounded-lg px-2 py-2 text-sm hover:bg-bg-sidebar ${n.read_at ? 'text-ink-muted' : 'text-ink font-medium'}`}>
-                    {text(n)}
+                    {text(n, stageLabel)}
                     <span className="block text-[11px] font-normal text-ink-muted">
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: dateLocale })}
                     </span>
