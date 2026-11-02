@@ -3067,4 +3067,11 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'sound.intro': "Ainult selles arvutis. Heli ei ütle kunagi midagi üksi — see, millega ta kaasas käib, on alati ka ekraanil.",
   'sound.sounds': "Helid",
 
+  // ── deletedJobs ───────────────────────────────────────────────────────────
+  'deletedJobs.restore': "Taasta",
+  'deletedJobs.deletedBy': "kustutas {who}, {when}",
+  'deletedJobs.none': "Kustutatud töid ei ole.",
+  'deletedJobs.intro': "Töö kustutamine ainult peidab selle: töö, selle failid ja muudatused jäävad alles ja need saab siit taastada. Jagamine partneriga lõppes kustutamisel ja taastamisel tagasi ei tule.",
+  'deletedJobs.deletedJobs': "Kustutatud tööd",
+
 }

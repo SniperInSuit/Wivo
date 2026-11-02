@@ -93,3 +93,17 @@ Bug reports
       BUG_REPORT_TO; deploying → MORNING) — 0a117ef
 - [x] Sentry in Electron with patient data filtered out (both processes, only
       with a DSN; shared/privacy/scrub.ts tested; EU region → MORNING) — 141b635
+
+## Run 2 (2 Nov 2026, daytime): sounds, soft delete, Phase 1b
+
+- [x] Sound system (Kevin's list) — f94633a
+- [x] Job deletion becomes a soft delete keeping job_file rows (sql/089) — COMMIT_SOFT
+
+Phase 1b: phone (PWA)
+- [ ] PWA from the same React code base, hosted on Cloudflare Pages; same login and MFA
+- [ ] Home: my jobs (assigned or active) and search by code
+- [ ] Job view: basic info, files, chat
+- [ ] Camera: photo straight onto the job; GPS removal and job-code name; never in the gallery
+- [ ] Chat: the same job thread — message, photo, question mark
+- [ ] Push notifications (iPhone after "Add to Home Screen"), e-mail as fallback
+- [ ] Shorter session on the phone, remote sign-out for a lost phone

@@ -3080,6 +3080,13 @@ export const en = {
   'sound.soundsOn': "Sounds on",
   'sound.intro': "For this computer only. A sound never says anything on its own — whatever it accompanies is always on screen too.",
   'sound.sounds': "Sounds",
+
+  // ── deletedJobs ───────────────────────────────────────────────────────────
+  'deletedJobs.restore': "Restore",
+  'deletedJobs.deletedBy': "deleted by {who}, {when}",
+  'deletedJobs.none': "No deleted jobs.",
+  'deletedJobs.intro': "Deleting a job only hides it: the job, its files and revisions stay and can be restored here. Sharing with a partner ended when it was deleted and does not come back with it.",
+  'deletedJobs.deletedJobs': "Deleted jobs",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

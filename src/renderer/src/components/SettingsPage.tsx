@@ -25,6 +25,7 @@ import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
 import { StageTransitionsSection } from './Settings/StageTransitionsSection'
 import { SoundSection } from './Settings/SoundSection'
+import { DeletedJobsSection } from './Settings/DeletedJobsSection'
 import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
@@ -1493,6 +1494,7 @@ export function SettingsPage() {
 
         {activeGroup === 'partnerlused' && <PartnershipsSection />}
         {activeGroup === 'auditilogi' && <AuditLogSection />}
+        {activeGroup === 'auditilogi' && <DeletedJobsSection />}
 
         {activeGroup === 'litsents' && <LicenseSection />}
         {activeGroup === 'litsents' && <UpdateSection />}
