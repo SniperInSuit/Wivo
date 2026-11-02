@@ -32,17 +32,17 @@ const SHA = 'a'.repeat(64)
 const FORBIDDEN = [
   'zelinda', 'quorrington', CODE, LV_CODE, '1984-07-19', '5123 4567', '51234567',
   'chart-secret', 'allergy-secret', 'visit-secret', 'markused-secret', 'wi-note-secret', 'rev-note-secret',
-  '98765', '87654', '76543',
+  '98765.43', '87654.32', '76543.21',  // decimals: a random uuid never contains a dot
 ]
 
 async function job(extra: Record<string, unknown> = {}): Promise<string> {
   const base: Record<string, unknown> = {
-    clinic_id: A.clinicId, patsient: NAME, patient_id: patientId, status: 'disain', hind: 98765, too: 'Kroon',
+    clinic_id: A.clinicId, patsient: NAME, patient_id: patientId, status: 'disain', hind: 98765.43, too: 'Kroon',
     hambad: '11,21', kirjeldus: 'Zirconia, check the contacts',
     markused: JSON.stringify([{ id: 'n1', ts: '2026-10-01', autor: 'x', tekst: 'MARKUSED-SECRET' }]),
     work_items: JSON.stringify([{ id: 'w1', too: 'Kroon', hambad: '11', note: 'WI-NOTE-SECRET' }]),
-    revisions: JSON.stringify([{ id: 'r1', ts: '2026-10-01', note: 'REV-NOTE-SECRET', price: 87654, status: 'disain',
-      extra_costs: [{ nimi: 'screw', summa: 76543 }] }]),
+    revisions: JSON.stringify([{ id: 'r1', ts: '2026-10-01', note: 'REV-NOTE-SECRET', price: 87654.32, status: 'disain',
+      extra_costs: [{ nimi: 'screw', summa: 76543.21 }] }]),
     ...extra,
   }
   const cols = Object.keys(base)

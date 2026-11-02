@@ -57,6 +57,8 @@ beforeAll(async () => {
   await act(`select public.return_stock($1, 1, 'SECRET-REASON wrong size')`, [rigaItem])
   await act(`select public.buy_out_stock($1, 2)`, [rigaItem])
   await act(`select public.adjust_stock($1, -1, 'SECRET-REASON dropped')`, [rigaItem])
+  await act(`select public.writeoff_stock($1, 1, 'damaged', 'SECRET-REASON cracked')`, [rigaItem])
+  await act(`select public.set_stock_threshold($1, 5)`, [rigaItem])
 }, 120_000)
 
 describe('what a partner sees of its goods', () => {
@@ -66,7 +68,7 @@ describe('what a partner sees of its goods', () => {
       expect(rows).toHaveLength(1)
       expect(rows[0]).toMatchObject({
         item_id: rigaItem, location_name: 'Tallinn', lot: 'RIGA-LOT-7', expiry_date: expect.anything(),
-        received: 10, used: 2, returned: 1, bought: 2, adjusted: -1, remaining: 4,
+        received: 10, used: 2, returned: 1, bought: 2, written_off: 1, adjusted: -1, remaining: 3,
       })
       expect(Object.keys(rows[0]).some(k => /job|patient|reason|by|at$/.test(k))).toBe(false)
     }
@@ -87,7 +89,7 @@ describe('what a partner sees of its goods', () => {
   })
 
   it('the tables themselves return nothing to a partner', async () => {
-    for (const t of ['stock_item', 'stock_movement', 'stock_levels']) {
+    for (const t of ['stock_item', 'stock_movement', 'stock_levels', 'stock_product_levels', 'stock_threshold']) {
       expect(await rowsAs(db, { id: B.ownerId }, `select * from public.${t}`)).toEqual([])
     }
   })
@@ -96,7 +98,8 @@ describe('what a partner sees of its goods', () => {
 describe('leak test: no job, no patient, nothing of the clinic\'s own, through anything', () => {
   /** Every function a signed-in user can call that reads or writes stock. */
   const COVERED = ['add_stock_item', 'adjust_stock', 'archive_stock_item', 'buy_out_stock', 'partner_stock',
-    'receive_stock', 'record_inventory_count', 'return_stock', 'update_stock_item', 'use_stock']
+    'receive_stock', 'record_inventory_count', 'return_stock', 'set_stock_threshold', 'update_stock_item', 'use_stock',
+    'writeoff_stock']
 
   it('the sweep covers every function that touches stock', async () => {
     const { rows } = await db.query<{ proname: string }>(`
@@ -126,7 +129,10 @@ describe('leak test: no job, no patient, nothing of the clinic\'s own, through a
       await run(`select public.buy_out_stock($1, 1)`, [rigaItem])
       await run(`select public.adjust_stock($1, 1, 'x')`, [rigaItem])
       await run(`select public.archive_stock_item($1)`, [rigaItem])
-      await run(`select public.update_stock_item($1, 'S', null, null, null, 'L', '2028-01-01', 1)`, [rigaItem])
+      await run(`select public.writeoff_stock($1, 1, 'damaged')`, [rigaItem])
+      await run(`select public.set_stock_threshold($1, 1)`, [rigaItem])
+      await run(`select public.use_stock($1, 1, $2, 'override')`, [rigaItem, jobId])
+      await run(`select public.update_stock_item($1, 'S', null, null, null, 'L', '2028-01-01')`, [rigaItem])
       await run(`select public.record_inventory_count(now(), $1)`, [JSON.stringify([{ item_id: rigaItem, counted: 0, reason: 'x' }])])
       await run(`select public.set_inventory_schedule(1, current_date)`)
       await run(`select public.add_stock_item('implant', 'S', null, null, null, 'L', '2028-01-01', 1, null, $1)`, [A.clinicId])
@@ -138,6 +144,6 @@ describe('leak test: no job, no patient, nothing of the clinic\'s own, through a
     }
     // Nothing above changed the goods.
     const [r] = await rowsAs<{ remaining: number }>(db, { id: B.ownerId }, `select remaining from public.partner_stock()`)
-    expect(r.remaining).toBe(4)
+    expect(r.remaining).toBe(3)
   })
 })

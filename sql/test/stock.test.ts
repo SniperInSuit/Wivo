@@ -70,7 +70,7 @@ describe('adding goods', () => {
     expect(await rowsAs(db, { id: A.workerId }, `select 1 from public.stock_levels where id = $1`, [i])).toEqual([])
     await grant(db, A, A.workerId, ['stock.read'])
     expect(await rowsAs(db, { id: A.workerId }, `select 1 from public.stock_levels where id = $1`, [i])).toHaveLength(1)
-    expect(await errorAs(db, { id: A.workerId }, `select public.use_stock($1, 1)`, [i])).toMatch(/permission/)
+    expect(await errorAs(db, { id: A.workerId }, `select public.use_stock($1, 1, $2)`, [i, jobId])).toMatch(/permission/)
   })
 })
 
@@ -130,7 +130,7 @@ describe('using goods', () => {
 
   it('never below zero', async () => {
     const i = await add({ qty: 1 })
-    expect(await errorAs(db, owner(), `select public.use_stock($1, 2)`, [i])).toMatch(/Not enough/)
+    expect(await errorAs(db, owner(), `select public.use_stock($1, 2, $2)`, [i, jobId])).toMatch(/Not enough/)
   })
 
   it('not on another organisation\'s job, nor a deleted one', async () => {
@@ -144,7 +144,7 @@ describe('using goods', () => {
 
   it('another organisation cannot use our goods', async () => {
     const i = await add({ ownerOrg: B.clinicId })
-    expect(await errorAs(db, { id: B.ownerId }, `select public.use_stock($1, 1)`, [i])).toMatch(/Item not found/)
+    expect(await errorAs(db, { id: B.ownerId }, `select public.use_stock($1, 1, $2)`, [i, jobId])).toMatch(/Item not found/)
     expect(await errorAs(db, { id: C.ownerId }, `select public.receive_stock($1, 1)`, [i])).toMatch(/Item not found/)
   })
 })
@@ -170,15 +170,127 @@ describe('corrections and history', () => {
   it('an item is archived only when empty; then it cannot be moved', async () => {
     const i = await add({ qty: 1 })
     expect(await errorAs(db, owner(), `select public.archive_stock_item($1)`, [i])).toMatch(/empty/)
-    await rowsAs(db, owner(), `select public.use_stock($1, 1)`, [i])
+    await rowsAs(db, owner(), `select public.use_stock($1, 1, $2)`, [i, jobId])
     await rowsAs(db, owner(), `select public.archive_stock_item($1)`, [i])
     expect(await errorAs(db, owner(), `select public.receive_stock($1, 1)`, [i])).toMatch(/archived/)
   })
 
-  it('editing keeps lot and expiry required, and sets the warning threshold', async () => {
+  it('editing keeps lot and expiry required', async () => {
     const i = await add()
-    expect(await errorAs(db, owner(), `select public.update_stock_item($1, 'S', null, null, null, '', '2028-01-01', 1)`, [i])).toMatch(/lot number/)
-    await rowsAs(db, owner(), `select public.update_stock_item($1, 'Straumann', 'BLT', '4.1x12', 'RC', 'LOT-9', '2029-01-01', 4)`, [i])
-    expect((await db.query(`select size, lot, min_qty from public.stock_item where id = $1`, [i])).rows).toEqual([{ size: '4.1x12', lot: 'LOT-9', min_qty: 4 }])
+    expect(await errorAs(db, owner(), `select public.update_stock_item($1, 'S', null, null, null, '', '2028-01-01')`, [i])).toMatch(/lot number/)
+    await rowsAs(db, owner(), `select public.update_stock_item($1, 'Straumann', 'BLT', '4.1x12', 'RC', 'LOT-9', '2029-01-01')`, [i])
+    expect((await db.query(`select size, lot from public.stock_item where id = $1`, [i])).rows).toEqual([{ size: '4.1x12', lot: 'LOT-9' }])
+  })
+})
+
+// ── Kevin's decisions after Run 4 ────────────────────────────────────────────
+
+const addAs = async (category: string, opts: { lot?: string; expiry?: string; qty?: number; product?: string; size?: string; min?: number | null } = {}) =>
+  (await rowsAs<{ id: string }>(db, owner(),
+    `select public.add_stock_item($1, 'Nobel', 'Active', $2, $3, $4, $5, $6, $7) as id`,
+    [category, opts.size ?? '4.3x10', opts.product ?? 'NobelActive', opts.lot ?? 'L', opts.expiry ?? '2028-01-31', opts.qty ?? 5, opts.min ?? null]))[0].id
+
+describe('the warning threshold is per product, across its lots', () => {
+  it('two lots of the same product share one threshold and one total', async () => {
+    const a = await addAs('abutment', { product: 'Multi-unit 17', lot: 'A1', qty: 2, min: 5 })
+    await addAs('abutment', { product: 'multi-unit 17 ', lot: 'A2', qty: 2 })   // same product, other spelling of spaces/case
+    await addAs('abutment', { product: 'Multi-unit 30', lot: 'B1', qty: 1 })    // another product
+    const rows = await rowsAs<{ qty: number; lots: number; min_qty: number | null }>(db, owner(),
+      `select qty, lots, min_qty from public.stock_product_levels where product ilike 'multi-unit 17'`)
+    expect(rows).toEqual([{ qty: 4, lots: 2, min_qty: 5 }])
+    await rowsAs(db, owner(), `select public.set_stock_threshold($1, 3)`, [a])
+    expect((await rowsAs<{ min_qty: number }>(db, owner(), `select min_qty from public.stock_product_levels where product ilike 'multi-unit 17%'`))[0].min_qty).toBe(3)
+    await rowsAs(db, owner(), `select public.set_stock_threshold($1, null)`, [a])
+    expect((await rowsAs<{ min_qty: number | null }>(db, owner(), `select min_qty from public.stock_product_levels where product ilike 'multi-unit 17%'`))[0].min_qty).toBeNull()
+  })
+
+  it('a lot used up still counts its product as low; the threshold needs stock.write', async () => {
+    const i = await addAs('other', { product: 'Healing cap', qty: 1, min: 2 })
+    await rowsAs(db, owner(), `select public.use_stock($1, 1)`, [i])
+    const [p] = await rowsAs<{ qty: number; lots: number }>(db, owner(), `select qty, lots from public.stock_product_levels where product = 'Healing cap'`)
+    expect(p).toEqual({ qty: 0, lots: 0 })
+    expect(await errorAs(db, { id: A.workerId }, `select public.set_stock_threshold($1, 9)`, [i])).toMatch(/permission/)
+  })
+})
+
+describe('implants, abutments, bone material and membranes go out on a job', () => {
+  it('without a job they are refused; "other" goods are not', async () => {
+    for (const c of ['implant', 'abutment', 'bone', 'membrane']) {
+      const i = await addAs(c)
+      expect(await errorAs(db, owner(), `select public.use_stock($1, 1)`, [i])).toMatch(/only be used on a job/)
+      expect(await errorAs(db, owner(), `select public.use_stock($1, 1, $2)`, [i, jobId])).toBeNull()
+    }
+    expect(await errorAs(db, owner(), `select public.use_stock($1, 1)`, [await addAs('other')])).toBeNull()
+  })
+
+  it('anything can be written off without a job, with one of the four reasons', async () => {
+    const i = await addAs('implant', { qty: 3 })
+    expect(await errorAs(db, owner(), `select public.writeoff_stock($1, 1, null)`, [i])).toMatch(/needs a reason/)
+    expect(await errorAs(db, owner(), `select public.writeoff_stock($1, 1, 'lost')`, [i])).toMatch(/needs a reason/)
+    await rowsAs(db, owner(), `select public.writeoff_stock($1, 1, 'opened', 'sterile pack torn')`, [i])
+    const m = await rowsAs(db, owner(), `select kind, delta, reason_code, reason, job_id from public.stock_movement where item_id = $1 and kind = 'writeoff'`, [i])
+    expect(m).toEqual([{ kind: 'writeoff', delta: -1, reason_code: 'opened', reason: 'sterile pack torn', job_id: null }])
+  })
+})
+
+describe('expired goods', () => {
+  const expired = () => addAs('implant', { expiry: '2026-01-31', qty: 3 })
+
+  it('are not used on a job (WV002)', async () => {
+    const i = await expired()
+    const code = await rowsAs(db, owner(), `select public.use_stock($1, 1, $2)`, [i, jobId]).then(() => null, (e: { code?: string }) => e.code)
+    expect(code).toBe('WV002')
+  })
+
+  it('the owner can override with a reason: marked on the movement and in the audit log', async () => {
+    const i = await expired()
+    await rowsAs(db, owner(), `select public.use_stock($1, 1, $2, 'only one in the country, patient informed')`, [i, jobId])
+    const [m] = await rowsAs<Record<string, unknown>>(db, owner(), `select expired_override, reason, job_id from public.stock_movement where item_id = $1 and kind = 'use'`, [i])
+    expect(m).toEqual({ expired_override: true, reason: 'only one in the country, patient informed', job_id: jobId })
+    const { rows } = await db.query<{ detail: Record<string, unknown> }>(
+      `select detail from public.audit_log where org_id = $1 and action = 'stock_override' and object = $2`, [A.clinicId, `stock:${i}`])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].detail).toMatchObject({ qty: 1, job: jobId, reason: 'only one in the country, patient informed' })
+  })
+
+  it('nobody but the owner overrides, even with stock.write', async () => {
+    const i = await expired()
+    await grant(db, A, A.workerId, ['stock.write', 'jobs.read'])
+    expect(await errorAs(db, { id: A.workerId }, `select public.use_stock($1, 1, $2, 'please')`, [i, jobId])).toMatch(/Only the clinic's owner/)
+  })
+
+  it('can be written off and returned', async () => {
+    const i = await expired()
+    await rowsAs(db, owner(), `select public.writeoff_stock($1, 1, 'expired')`, [i])
+    const c = await add({ ownerOrg: B.clinicId, expiry: '2026-01-31' })
+    await rowsAs(db, owner(), `select public.return_stock($1, 1)`, [c])
+    expect(await qty(i)).toBe(2)
+  })
+})
+
+describe('share_stock: the owner switches it, logged', () => {
+  const pid = async () => (await db.query<{ id: string }>(`select id from public.partnership where org_a = $1 and org_b = $2`, [A.clinicId, B.clinicId])).rows[0].id
+  const shared = async () => (await db.query<{ s: boolean }>(`select share_stock as s from public.partnership where id = $1`, [await pid()])).rows[0].s
+
+  it('either side\'s owner, with the second factor; both audit logs', async () => {
+    const p = await pid()
+    await rowsAs(db, { id: A.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, false)`, [p])
+    expect(await shared()).toBe(false)
+    await rowsAs(db, { id: B.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, true)`, [p])
+    expect(await shared()).toBe(true)
+    const { rows } = await db.query<{ org_id: string; detail: { share_stock: boolean } }>(
+      `select org_id, detail from public.audit_log where action = 'partnership' and object = $1 order by at`, [`partnership:${p}`])
+    expect(rows.map(r => [r.org_id === A.clinicId ? 'A' : 'B', r.detail.share_stock]).sort()).toEqual([['A', false], ['A', true], ['B', false], ['B', true]])
+  })
+
+  it('not a worker, not without the second factor, not a stranger, not before it is accepted', async () => {
+    const p = await pid()
+    expect(await errorAs(db, { id: A.workerId, mfa: true }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/Only the owner/)
+    expect(await errorAs(db, { id: A.ownerId }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/second factor/)
+    expect(await errorAs(db, { id: C.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/not found/)
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.partnership (org_a, org_b, status, roles) values ($1, $2, 'awaiting_platform', array['design']) returning id`, [A.clinicId, C.clinicId])
+    expect(await errorAs(db, { id: A.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, true)`, [rows[0].id])).toMatch(/not found/)
+    expect(await shared()).toBe(true)
   })
 })

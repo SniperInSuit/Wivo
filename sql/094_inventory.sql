@@ -75,6 +75,7 @@ begin
   if tg_op = 'UPDATE' then
     if new.id = old.id and new.org_id = old.org_id and new.item_id = old.item_id and new.kind = old.kind
        and new.delta = old.delta and new.reason is not distinct from old.reason and new.at = old.at
+       and new.reason_code is not distinct from old.reason_code and new.expired_override = old.expired_override
        and (new.job_id is not distinct from old.job_id or new.job_id is null)
        and (new.by_user is not distinct from old.by_user or new.by_user is null)
        and (new.count_id is not distinct from old.count_id or new.count_id is null) then
