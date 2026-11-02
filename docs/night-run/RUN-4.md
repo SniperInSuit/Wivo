@@ -61,7 +61,9 @@ Apply in order on the test copy, each followed by `notify pgrst, 'reload schema'
 2. `sql/093_stock.sql`: stock tables, movements, consignment, the stock functions, `partner_stock()`.
 3. `sql/094_inventory.sql`: inventory schedule and counts.
 
-The next migration is 095.
+4. `sql/095_team_notifications.sql`: notifications inside the clinic (added later the same evening, see below).
+
+The next migration is 096.
 
 ## What to test by hand (test copy)
 
@@ -111,3 +113,26 @@ The next migration is 095.
 12. **A partner organisation can't be removed** while its goods are still on a clinic's shelf (`owner_org … on delete restrict`). Return or buy out first.
 13. **Not built:** no phone (PWA) stock screen, no Russian texts (English shows), no screen to switch `share_stock` after a partnership is accepted.
 14. **Blind counts:** the count screen shows the expected number beside the input, as the spec says. Some clinics prefer blind counts (expected hidden until saving). Keep it as it is?
+
+## Added later: notifications inside the clinic (sql/095)
+
+Kevin's case: the clinic's own technician works in a lab across town and heard nothing, because every notification was about a partner.
+
+- **"Job TAL-26-0042 is now in Print"** goes to the job's technician and designers when the job, or a remake on it, moves to a stage.
+  - Per stage, Settings → Job stages → *Notifications per stage* chooses whether the technician and the designer are told. The default is both.
+  - A remake tells its own technician and designer, else the job's.
+- **"You are the technician / designer on job …"** goes out when someone is put on a job, new or changed.
+- Never the person who did it, never anyone outside the clinic, nothing for a deleted job, never a partner.
+- They reach the bell (handoff and new-work sounds), the phone as a push, and e-mail once Resend is on.
+- `send-notifications` has subjects for the two new kinds, and needs a redeploy for them. Until then, an e-mail for these kinds would fall back to the "new files" subject. E-mail is off anyway.
+- Tests: `sql/test/teamNotifications.test.ts` (10).
+
+**To test by hand (test copy):**
+1. Apply 095.
+2. Put the technician's account on a job as technician. Their phone gets "You are the technician on job …" within a minute.
+3. Move the job to the next stage from another account. The technician's phone gets "Job … is now in <stage>". Moving it from their own account sends nothing.
+4. In Settings → Job stages, untick "Technician" for one stage. Moving a job there no longer notifies the technician.
+
+**Open questions:**
+- Notifications can't be turned off per person yet (only per stage for the whole clinic).
+- Revisions changed in the job form also count as a stage change when their stage changes.
