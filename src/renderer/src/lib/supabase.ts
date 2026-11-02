@@ -55,6 +55,8 @@ export type PayBasis = 'bruto' | 'neto'
 export interface Profile {
   /** sql/075: e-mail for notifications. The in-app bell is always on. */
   notify_email?: boolean
+  /** sql/095: push to this person's phones. */
+  notify_push?: boolean
   /** sql/070. */
   org_role?: 'owner' | 'admin' | 'doctor' | 'technician' | 'assistant' | null
   language?: 'en' | 'et' | 'ru' | null

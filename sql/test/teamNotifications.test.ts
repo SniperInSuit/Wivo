@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { freshDb, createTenant, createUser, rowsAs, type Tenant } from './harness'
+import { freshDb, createTenant, createUser, rowsAs, errorAs, type Tenant } from './harness'
 
 let db: PGlite
 let A: Tenant       // the clinic: owner moves jobs, worker is the technician
@@ -142,5 +142,33 @@ describe('the partner side', () => {
     await update(j, `status = 'print'`)
     const { rows } = await db.query(`select kind from public.notification where org_id = $1 and job_id = $2`, [B.clinicId, j])
     expect([...new Set(rows.map(r => r.kind))].sort()).toEqual(['job_shared', 'stage_handover'])  // one each, to both partner members
+  })
+})
+
+describe('each person chooses push and e-mail; the bell always shows', () => {
+  it('push off: the notification is in the bell, but no phone gets it', async () => {
+    await db.query(`insert into public.push_subscription (org_id, user_id, endpoint, p256dh, auth) values ($1, $2, 'https://web.push.apple.com/t1', 'k', 'a')`, [A.clinicId, A.workerId])
+    await rowsAs(db, { id: A.workerId }, `select public.set_notify_push(false)`)
+    const j = await job({ assigned_to: A.workerId })
+    expect(await got(A.workerId, j)).toHaveLength(1)
+    const pushes = async () => (await db.query(`select 1 from public.pending_pushes() p join public.notification n on n.id = p.notification_id where n.job_id = $1`, [j])).rows
+    expect(await pushes()).toEqual([])
+    await rowsAs(db, { id: A.workerId }, `select public.set_notify_push(true)`)
+    expect(await pushes()).toHaveLength(1)
+  })
+
+  it('e-mail off (sql/075): no e-mail; the bell still has it', async () => {
+    await rowsAs(db, { id: A.workerId }, `select public.set_notify_email(false)`)
+    const j = await job({ assigned_to: A.workerId })
+    expect(await got(A.workerId, j)).toHaveLength(1)
+    expect((await db.query(`select 1 from public.pending_notification_emails() where job_id = $1`, [j])).rows).toEqual([])
+    await rowsAs(db, { id: A.workerId }, `select public.set_notify_email(true)`)
+  })
+
+  it('only for oneself, and not without signing in', async () => {
+    await rowsAs(db, { id: A.ownerId }, `select public.set_notify_push(false)`)
+    expect((await db.query(`select notify_push from public.profiles where id = $1`, [A.workerId])).rows).toEqual([{ notify_push: true }])
+    await rowsAs(db, { id: A.ownerId }, `select public.set_notify_push(true)`)
+    expect(await errorAs(db, 'anon', `select public.set_notify_push(false)`)).toMatch(/permission denied/)
   })
 })

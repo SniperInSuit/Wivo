@@ -23,12 +23,51 @@
 -- and e-mail when that is switched on. They carry the job code and the stage
 -- key — no patient.
 --
+-- Each person chooses their channels: e-mail already had its switch
+-- (`profiles.notify_email`, sql/075); push gets one here
+-- (`profiles.notify_push`), for all of that person's phones at once. The bell
+-- always shows everything — there is no switch for it.
+--
 -- Tests: sql/test/teamNotifications.test.ts.
 -- ============================================================================
 
 alter table public.notification drop constraint if exists notification_kind_valid;
 alter table public.notification add constraint notification_kind_valid
   check (kind in ('job_shared', 'stage_handover', 'question', 'files_added', 'stage_reached', 'assigned'));
+
+-- ── Each person's channels ──────────────────────────────────────────────────
+
+alter table public.profiles
+  add column if not exists notify_push boolean not null default true;
+
+/** Push to all my phones, on or off. Only one's own profile. */
+create or replace function public.set_notify_push(p_on boolean)
+returns void
+language sql
+security definer
+set search_path = public
+as $$ update public.profiles set notify_push = coalesce(p_on, true) where id = auth.uid() $$;
+revoke execute on function public.set_notify_push(boolean) from public, anon;
+
+/** As sql/091, without the people who switched push off. */
+create or replace function public.pending_pushes(p_limit int default 500)
+returns table (notification_id uuid, subscription_id uuid, endpoint text, p256dh text, auth text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select n.id, s.id, s.endpoint, s.p256dh, s.auth
+    from public.notification n
+    join public.push_subscription s on s.user_id = n.user_id
+    join public.profiles p on p.id = n.user_id and p.notify_push
+   where n.pushed_at is null and n.read_at is null and n.created_at > now() - interval '1 hour'
+   order by n.created_at, n.id
+   limit p_limit
+$$;
+revoke execute on function public.pending_pushes(int) from public, anon, authenticated;
+
+-- ── Who is told ─────────────────────────────────────────────────────────────
 
 /** Does the organisation's stage `p_stage` tell `p_who` ('technician' or 'designer')? Unset: yes. */
 create or replace function public.stage_notifies(p_org uuid, p_stage text, p_who text)

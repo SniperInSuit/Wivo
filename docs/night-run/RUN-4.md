@@ -124,15 +124,21 @@ Kevin's case: the clinic's own technician works in a lab across town and heard n
 - **"You are the technician / designer on job …"** goes out when someone is put on a job, new or changed.
 - Never the person who did it, never anyone outside the clinic, nothing for a deleted job, never a partner.
 - They reach the bell (handoff and new-work sounds), the phone as a push, and e-mail once Resend is on.
+- **Each person chooses their own channels** in their own settings (desktop: Settings → profile; phone: Settings → *My notifications*):
+  - push to all their phones: new `profiles.notify_push`, `set_notify_push`, honoured by `pending_pushes`;
+  - e-mail: the existing `notify_email` from sql/075.
+
+  The bell always shows everything, and there is no switch for it. The phone's own "Notifications on this phone" switch stays as well; it turns off that one phone.
+- A remake's stage changed in the job form counts as a stage change and notifies. Kevin's decision: keep it that way.
 - `send-notifications` has subjects for the two new kinds, and needs a redeploy for them. Until then, an e-mail for these kinds would fall back to the "new files" subject. E-mail is off anyway.
-- Tests: `sql/test/teamNotifications.test.ts` (10).
+- Tests: `sql/test/teamNotifications.test.ts` (13): who is told, per-stage settings, remakes, partners, push and e-mail switches, the bell always on.
 
 **To test by hand (test copy):**
 1. Apply 095.
 2. Put the technician's account on a job as technician. Their phone gets "You are the technician on job …" within a minute.
 3. Move the job to the next stage from another account. The technician's phone gets "Job … is now in <stage>". Moving it from their own account sends nothing.
 4. In Settings → Job stages, untick "Technician" for one stage. Moving a job there no longer notifies the technician.
+5. As the technician, turn off "Push to my phones" in their own settings. The next notification shows in the bell but the phone stays quiet. Turn it back on and the phone gets the next one.
 
 **Open questions:**
-- Notifications can't be turned off per person yet (only per stage for the whole clinic).
-- Revisions changed in the job form also count as a stage change when their stage changes.
+- The switches are all or nothing per channel. A person can't yet choose by kind (for example push for "put on a job" but not for every stage).

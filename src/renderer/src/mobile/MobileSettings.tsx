@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { pushState, enablePush, disablePush, needsHomeScreen, forgetPushBeforeSignOut, type PushState } from '../lib/push'
 import { SoundSection } from '../components/Settings/SoundSection'
+import { NotificationChannels } from '../components/Settings/NotificationChannels'
 import { SignOutOthersSection } from '../components/Settings/SignOutOthersSection'
 import { describeError } from '../components/Patients/errors'
 import { t, lang, setLang, type Lang } from '@/lib/i18n'
@@ -41,6 +42,8 @@ export function MobileSettings({ onWhatsNew }: { onWhatsNew: (() => void) | null
       </section>
 
       <PushSection />
+
+      <NotificationChannels />
 
       <SoundSection />
 
