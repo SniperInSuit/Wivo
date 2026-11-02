@@ -1,5 +1,88 @@
 # Changelog
 
+## [2.0.0] — 2026-11-02
+
+**Wivo 2.0: a phone app, partners, files and comments on jobs, and two-factor sign-in**
+
+What staff see in the app is in `release-notes/2.0.0/`; this entry is the
+record. It was built in the night run of 1–2 November and in Run 2 on
+2 November. Details, decisions and reviews are in `docs/night-run/`
+(MORNING.md, RUN-2.md, RUN-3.md, DECISIONS.md D1–D23).
+
+**For everyone**
+- **Two-factor sign-in is mandatory.** After the password comes a 6-digit code
+  from an authenticator app. The first sign-in walks through the setup step by
+  step.
+- **Phone app** at https://app.wivodent.com:
+  - your own jobs, active jobs, and jobs shared with you; search by job code;
+  - each job's files and comments;
+  - a camera inside the app: photos never go into the phone's gallery and
+    carry no location;
+  - push notifications that carry no content, only "New in Wivo" (on iPhone,
+    once Wivo is on the home screen);
+  - the phone signs out after 12 hours.
+- **Files on every job.**
+  - Uploads run in the background and resume after a dropped connection.
+  - Photo and STL previews.
+  - Before upload, the location is removed from photos and patient data from
+    X-ray (DICOM) headers.
+  - Each file is named after the job code, and every download is logged.
+- **Comments and questions on every job.** A question puts a flag on the job
+  card.
+- **Job codes** (for example TAL-26-0042) on every job. Existing jobs were
+  numbered too.
+- **Notifications:** in-app badges and phone push. E-mail starts once e-mail
+  sending is set up on the server.
+- **Pay on the job:** what the job pays the technician and the designer, shown
+  large.
+- **Language follows the person:** each person picks a language, and the
+  organisation's language is the default. English came in 1.109.0. Russian
+  comes later and shows English until then.
+- **Sounds** for notifications and the interface, set per device.
+- A **Report a bug** button.
+- A **What's new** window after an update.
+- **Job view:** production details sit next to the job details, and the cost
+  list starts folded to total cost and margin.
+- **Signing out** on the desktop now signs out only that computer. "Sign out on
+  all other devices" is there for a lost phone.
+
+**Partners**
+- Two organisations connect through a one-time invite code. Admins on both
+  sides confirm, each signed in with two-factor, and Wivo confirms too. This is
+  in Settings → Partnerships.
+- When creating a job, stages can be assigned to a partner, as lab work or as
+  a referral (a referral needs the patient's consent). The partner sees only
+  what the work needs. On lab work, that excludes the patient's name.
+- "Partner jobs" is the partner's view:
+  - read-only;
+  - search by code;
+  - hand-over to the next stage;
+  - questions in the job's comments.
+
+**For admins**
+- **Audit log** (Settings → Audit log). It records:
+  - shares and partner views;
+  - downloads, uploads and exports;
+  - partnership steps and stage moves;
+  - every job opened.
+- **Deleting a job keeps it.** Files, revisions and invoices stay, the job can
+  be restored from the audit log, and its shares end.
+- **Patient export:** a PDF and a ZIP of the patient's files. The export is
+  logged.
+- **Scanner folder** (desktop): files from a scanner's export folder land in
+  "Unsorted", from where they are filed onto a job.
+
+**Under the hood**
+- Database migrations 068–091, all on production as of 2 November
+  (RUN-3.md). Every table is isolated per organisation. Tests replay every
+  migration from an empty database and check the isolation table by table.
+- Error reporting (Sentry) is built in but stays off until a DSN is set at
+  build time. Patient data is filtered out of it.
+
+## [1.95.0 – 1.109.0] — 2026-10-27 … 2026-11-01
+
+Not written up here. Each release's commit message (`v1.95.0: …` to `v1.109.0: …`) says what changed: `git log --oneline 774ab17^..df6ab54`.
+
 ## [1.94.0] — 2026-10-27
 
 **3D ettevalmistus — null uut pikslit, aga 3D on nüüd lisamine, mitte ümbertegemine**
