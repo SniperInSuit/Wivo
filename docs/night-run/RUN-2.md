@@ -13,7 +13,7 @@ nothing applied to any database.
 | Push sender in `send-notifications`, and a fix: it had no e-mail subject for `files_added` | `3c9d921` |
 | **Phase 1b, the phone app** (PWA from the same React code) | `e6ea58d` |
 | Run notes, decisions, camera file-name fix | `14f04c9` |
-| Fixes from the independent review (sql/091 and app fixes) | next commit after `14f04c9` |
+| Fixes from the independent review (sql/091 and app fixes) | `7085b92` |
 
 Typecheck is clean, all tests pass (81 files, 1,251 tests), and
 `npm run mobile:build` builds the phone app without warnings.
