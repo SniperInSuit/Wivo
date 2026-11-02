@@ -261,3 +261,84 @@ To check: a minute later, `select created, status_code, left(content, 300) from 
    - Deploying an Edge Function doesn't need a push. Local `main` still has the 2.0.0 bump (`ad078af`) as its newest commit, and CI publishes only when the newest commit in the push changed the version.
    - Merging the hotfix into `main` before the release push would put it on top of the bump, and 2.0.0 would never be published.
    - So: deploy the hotfix from `hotfix-push` (step 3), push `main` for the 2.0.0 release as it is, and only then merge `hotfix-push` into `main` and push. That last push runs a build but publishes nothing, since the version is unchanged.
+
+## Gateway JWT check off for send-notifications (testing, `e8783a3`)
+
+**What happened on the test copy:**
+- The cron job was recreated, with the test copy's own service_role key in Vault. Kevin checked it: right project, role `service_role`, not expired.
+- The Edge Functions **gateway** still answered `401 UNAUTHORIZED_LEGACY_JWT "Invalid JWT"`, so it refused the legacy JWT before our code ran.
+- Supabase's recommended fix: switch off the gateway's JWT check for the function and let the function check the caller itself.
+
+**What changed:**
+- **`supabase/config.toml`:** `[functions.send-notifications] verify_jwt = false`. The file was untracked; it is now committed, so the setting is in git.
+  - Apart from that section it holds the CLI's **local** defaults, including MFA off.
+  - **Never run `supabase config push`** with it: that would copy those defaults to the hosted project.
+- **`_shared/serviceAuth.ts`:** the function's own check. Only `Bearer <this project's service key>` gets in:
+  - the legacy service_role JWT the platform gives the function (`SUPABASE_SERVICE_ROLE_KEY`), and only if its payload really says `role: service_role`;
+  - or a new secret key (`sb_secret_…`), from the platform's `SUPABASE_SECRET_KEYS` or from our own function secret `WIVO_SERVICE_SECRET_KEY`.
+
+  Never the anon key or a publishable key. The comparison is constant-time, and with no key configured every request is refused. The function's own database client uses a secret key when one is configured, else the legacy key.
+- **Tests** (`serviceAuth.test.ts`, 9):
+  - accepted: the service JWT, and secret keys in all three formats;
+  - refused: the anon key, another project's service key, a publishable key, an altered key, malformed headers, misconfiguration, no key at all.
+
+  `npm test` passes all 1,396.
+- **Not verified here:** whether the platform actually provides `SUPABASE_SECRET_KEYS` to functions, and in what format. That's why `WIVO_SERVICE_SECRET_KEY` exists. We can set it ourselves, because names starting with `SUPABASE_` are reserved.
+
+**The other functions** (not changed):
+
+| Function | Gateway check | Its own check |
+|---|---|---|
+| `public-booking` | off (`--no-verify-jwt`, documented) | origin allowlist, rate limits, Montonio's signed tokens |
+| `file-link` | on | yes: `Bearer` required, then `request_file_download` runs **as the user**, so the database checks the JWT and the rights |
+| `send-invoices` | on | **none** |
+
+`send-invoices` needs attention later:
+- The gateway accepts any valid JWT for the project, including the public anon key that ships in the app. So anyone who has the anon key can probably trigger invoice sending. Its own comment ("NOT PUBLIC… the caller is pg_cron holding the service key") assumes otherwise.
+- Its cron job will also hit the same legacy-JWT 401.
+- The fix would be the same pattern: gateway check off and `isServiceRequest` in the function, as a separate change.
+
+**Deploy to the test copy only.** Kevin runs it, from the repo on `testing`:
+
+```sh
+cd ~/dev/Workly && git switch testing
+read -rs SUPABASE_ACCESS_TOKEN && export SUPABASE_ACCESS_TOKEN   # paste the token, nothing is shown
+npx supabase functions deploy send-notifications --project-ref jhqyvancrzykxhzwnost --use-api --no-verify-jwt
+unset SUPABASE_ACCESS_TOKEN
+```
+
+`--no-verify-jwt` says the same as config.toml, so the deploy doesn't depend on the file being read.
+
+To check, a minute later on the test copy:
+
+```sql
+select created, status_code, left(content, 300) from net._http_response order by created desc limit 5;
+```
+
+- **200** with `email`/`pushes`: working.
+- **401 `{"ok":false,"error":"service key required"}`** (our message, not the gateway's): the key in Vault isn't the one the function got as `SUPABASE_SERVICE_ROLE_KEY`. Then use a secret key: create one under Settings → API Keys, set it as the function secret `WIVO_SERVICE_SECRET_KEY`, and put the same key in Vault as `wivo_service_role_key`.
+- Still **401 `UNAUTHORIZED_LEGACY_JWT`**: the gateway check is still on, so the deploy didn't take the setting. Check the dashboard: Edge Functions → send-notifications → "Enforce JWT verification" should be off.
+
+**Production:**
+1. **Does it need the same change?** Almost certainly. Its cron sends the same kind of legacy service_role JWT, and its function has both bugs: the e-mail early return (`e0214fe`) and the gateway check. Confirm first, read-only, in production's SQL editor:
+
+   ```sql
+   select created, status_code, left(content, 200) from net._http_response order by created desc limit 5;
+   ```
+
+   - `UNAUTHORIZED_LEGACY_JWT`: the gateway problem.
+   - `RESEND_API_KEY and NOTIFY_FROM must be set`: the old function ran and stopped early.
+   - Empty: production's cron or Vault is missing too. Check that in the same session.
+2. **Order** (in a production session Kevin starts; replaces the earlier hotfix plan above):
+   1. Make `hotfix-push` from `origin/main` and cherry-pick `e0214fe` and `e8783a3`. `index.ts` conflicts in the subject table; take the `testing` version. For `config.toml`, take the `testing` file (it is new on main). Run `npm test`.
+   2. Deploy from that checkout. Kevin runs it:
+
+      ```sh
+      npx supabase functions deploy send-notifications --project-ref wrtucsfmpbwekugzzzxw --use-api --no-verify-jwt
+      ```
+
+      Check production's `net._http_response`. No database change is needed: the function only calls functions production already has.
+   3. Push `main` for the **2.0.0 release** as it is. The version bump `ad078af` must stay the newest commit in that push, or CI won't publish.
+   4. Then merge `hotfix-push` into `main` and push. That push builds but publishes nothing, since the version is unchanged.
+
+   Steps 2 and 3 are independent: deploying a function needs no git push, and the desktop release doesn't touch functions. The fix can go out before or after the release.
