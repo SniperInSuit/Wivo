@@ -34,26 +34,30 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { vapidSigningKey, pushToPhone } from '../_shared/vapid.ts'
 import { runSender } from '../_shared/notifySender.ts'
+import { isServiceRequest, serviceClientKey } from '../_shared/serviceAuth.ts'
+
+const env = (name: string) => Deno.env.get(name)
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  serviceClientKey(env),
   { auth: { persistSession: false, autoRefreshToken: false } },
 )
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  // Only the cron job (or Kevin with the service key) may run the sender. The
-  // platform's JWT check accepts the public anon key too, which would let
-  // anyone trigger sends — and two runs at once would send duplicates.
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  if (!serviceKey || req.headers.get('Authorization') !== `Bearer ${serviceKey}`) {
+  // Only the cron job (or Kevin with the service key) may run the sender.
+  // The gateway's JWT check is OFF for this function (verify_jwt = false in
+  // supabase/config.toml): it refused the legacy service_role JWT, and it
+  // would accept the public anon key anyway. This is the whole check — this
+  // project's service key, legacy or sb_secret, nothing else (serviceAuth.ts).
+  if (!isServiceRequest(req.headers.get('Authorization'), env)) {
     return json(401, { ok: false, error: 'service key required' })
   }
   const dry = new URL(req.url).searchParams.get('dry') === '1'
   // Always 200 once the caller is checked: each part reports its own result,
   // and a part that cannot run (no e-mail secrets) never stops the others.
   const result = await runSender({
-    env: name => Deno.env.get(name),
+    env,
     rpc: async (fn, args) => await db.rpc(fn, args),
     fetch: (url, init) => fetch(url, init),
     signingKey: vapidSigningKey,
