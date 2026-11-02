@@ -13,6 +13,7 @@ export type PermissionKey =
   | 'settings.read'
   | 'pipeline.write'
   | 'payroll.manage'
+  | 'stock.read' | 'stock.write'
 
 // Human-readable labels for the permissions UI
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
@@ -28,6 +29,8 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   'settings.read':   { label: t('usePermissions.viewSettings'), description: t('usePermissions.seesTheClinicSettingsCannotChange') },
   'pipeline.write':  { label: t('usePermissions.editStages'), description: t('usePermissions.canAddRemoveAndRenameJob') },
   'payroll.manage':  { label: t('usePermissions.managePayroll'), description: t('usePermissions.seesEveryoneSPayRatesAnd') },
+  'stock.read':      { label: t('usePermissions.viewStock'), description: t('usePermissions.seesStockAndCounts') },
+  'stock.write':     { label: t('usePermissions.manageStock'), description: t('usePermissions.canAddUseAndCountStock') },
 }
 
 export const ALL_PERMISSIONS = Object.keys(PERMISSION_LABELS) as PermissionKey[]
