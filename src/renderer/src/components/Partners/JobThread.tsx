@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
-import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2 } from 'lucide-react'
+import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2, Camera } from 'lucide-react'
 import { useJobThread, usePostJobComment, useResolveQuestion } from '@/hooks/usePartners'
 import { describeError } from '../Patients/errors'
 import { enqueueUpload } from '../../lib/uploadQueue'
@@ -15,9 +15,11 @@ import { fileDownloadUrl } from '../../lib/fileLink'
 import { guessFileType } from '../../lib/fileClean'
 import { playSound } from '../../lib/sound'
 import { useAuth } from '../../context/AuthContext'
+import { PhoneCamera } from '../../mobile/PhoneCamera'
 import { t, dateLocale } from '@/lib/i18n'
 
-export function JobThread({ jobId, readOnly = false, partner = false }: { jobId: string; readOnly?: boolean; partner?: boolean }) {
+/** `camera`: a button for a photo taken inside the app (the phone app; never for a partner). */
+export function JobThread({ jobId, readOnly = false, partner = false, camera = false }: { jobId: string; readOnly?: boolean; partner?: boolean; camera?: boolean }) {
   const { data: messages = [], isLoading } = useJobThread(jobId)
   const post = usePostJobComment(jobId)
   const resolve = useResolveQuestion(jobId)
@@ -28,6 +30,7 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
   // partner adds design files only), then the comment points at it.
   const [attachment, setAttachment] = useState<{ name: string; id: string | null } | null>(null)
   const { profile } = useAuth()
+  const [shooting, setShooting] = useState(false)
 
   // A message from someone else that appears while the thread is open sounds
   // once — with the message itself on screen. The first load is history, not
@@ -127,6 +130,12 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
               <span className="truncate max-w-[140px]">{attachment?.name ?? t('partners.attachFile')}</span>
               <input type="file" hidden onChange={e => { attach(e.target.files?.[0]); e.target.value = '' }} />
             </label>
+            {camera && !partner && !attachment && (
+              <button type="button" onClick={() => setShooting(true)} title={t('mobile.takePhoto')} aria-label={t('mobile.takePhoto')}
+                className="text-ink-soft">
+                <Camera size={14} aria-hidden="true" />
+              </button>
+            )}
             <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input type="checkbox" checked={asQuestion} onChange={e => setAsQuestion(e.target.checked)} />
               {t('partners.askAsQuestion')}
@@ -139,6 +148,7 @@ export function JobThread({ jobId, readOnly = false, partner = false }: { jobId:
             </button>
           </div>
           {error && <p role="alert" className="text-sm text-rose-500">{error}</p>}
+          {shooting && <PhoneCamera single onFile={attach} onClose={() => setShooting(false)} />}
         </div>
       )}
     </section>

@@ -3088,6 +3088,43 @@ export const en = {
   'deletedJobs.none': "No deleted jobs.",
   'deletedJobs.intro': "Deleting a job only hides it: the job, its files and revisions stay and can be restored here. Sharing with a partner ended when it was deleted and does not come back with it.",
   'deletedJobs.deletedJobs': "Deleted jobs",
+
+  // ── mobile ────────────────────────────────────────────────────────────────
+  'mobile.pushBody': "New in Wivo",
+  'mobile.pushDenied': "Notifications are blocked for Wivo in this phone's settings. Allow them there to switch them on.",
+  'mobile.pushNotConfigured': "Phone notifications are not switched on for Wivo yet. You still get e-mails.",
+  'mobile.pushUnsupported': "This browser cannot show notifications. You still get e-mails.",
+  'mobile.pushNeedsHomeScreen': "On iPhone, notifications work once Wivo is on the Home Screen: tap Share, then \"Add to Home Screen\", and open Wivo from there.",
+  'mobile.pushOnThisPhone': "Notify me on this phone",
+  'mobile.pushIntro': "A notification only says that something is new. What it is, you see after opening Wivo. E-mails keep coming either way.",
+  'mobile.pushTitle': "Notifications on this phone",
+  'mobile.sessionNote': "On a phone you are signed out automatically 12 hours after signing in.",
+  'mobile.signOut': "Sign out on this phone",
+  'mobile.photoOntoJob': "Photo onto this job",
+  'mobile.rush': "Rush",
+  'mobile.jobNotFound': "This job is not available to you, or it was deleted.",
+  'mobile.noJobs': "No jobs here.",
+  'mobile.nothingFound': "No job matches that code.",
+  'mobile.searchByCode': "Search by job code",
+  'mobile.sharedWithUs': "Shared",
+  'mobile.active': "Active",
+  'mobile.mine': "Mine",
+  'mobile.settings': "Settings",
+  'mobile.back': "Back",
+  'mobile.takePhoto': "Take photo",
+  'mobile.cameraFallback': "Wivo cannot open the camera here. Allow camera access in the browser settings, or use the phone's camera button below.",
+  'mobile.done': "Done",
+  'mobile.cameraHint': "Photos go straight to the job, not to your gallery.",
+  'mobile.photosAdded': ({ n }: Params) => `${n} ${n === 1 ? 'photo' : 'photos'} added to the job`,
+  'mobile.camera': "Camera",
+  'mobile.setUpOnDesktop': "Finish setting up your clinic in the Wivo desktop app, then sign in here again.",
+
+  // ── signOutOthers ─────────────────────────────────────────────────────────
+  'signOutOthers.done': "Done. Other devices are being signed out.",
+  'signOutOthers.confirm': "Sign this account out on every other phone and computer?",
+  'signOutOthers.button': "Sign out everywhere else",
+  'signOutOthers.intro': "For a lost or stolen phone: every other place this account is signed in is signed out. This device stays signed in. A device that is open right now is signed out within the hour.",
+  'signOutOthers.title': "Sign out on all other devices",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

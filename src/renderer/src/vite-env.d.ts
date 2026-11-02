@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_USERNAME_DOMAIN?: string
   /** Optional. Without it Sentry is not loaded at all. */
   readonly VITE_SENTRY_DSN?: string
+  /** Phone app only (lib/push.ts). Without it "Notifications on this phone" says push is not set up. */
+  readonly VITE_VAPID_PUBLIC_KEY?: string
 }
 
 // Preload bridge (src/preload/index.ts). Optional: during `dev` the renderer can

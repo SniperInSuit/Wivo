@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dist": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& set WIN_CSC_LINK=&& electron-builder --config.forceCodeSigning=false",
-    "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir --config.forceCodeSigning=false"
+    "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir --config.forceCodeSigning=false",
+    "mobile:dev": "vite --config vite.mobile.config.ts",
+    "mobile:build": "vite build --config vite.mobile.config.ts"
   },
   "dependencies": {
     "@sentry/electron": "^5.12.0",

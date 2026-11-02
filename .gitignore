@@ -7,3 +7,4 @@ out
 
 # Licence signing key — NEVER commit. See scripts/make-license.mjs
 license-private.pem
+dist-mobile

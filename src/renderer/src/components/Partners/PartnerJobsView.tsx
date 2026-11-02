@@ -173,13 +173,14 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function PartnerJobPanel({ job, onClose }: { job: PartnerJob; onClose: () => void }) {
+/** The shared job's panel. `page`: full width, as the phone app shows it (same view, same rules). */
+export function PartnerJobPanel({ job, onClose, page = false }: { job: PartnerJob; onClose: () => void; page?: boolean }) {
   // Opening is a logged view, in both organisations' audit logs (spec: audit
   // "view"). Once per job opened, not per render.
   useEffect(() => { void openPartnerJob(job.job_id).catch(() => {}) }, [job.job_id])
 
   return (
-    <aside className="w-[420px] flex-shrink-0 border-l border-ink-faint/20 overflow-y-auto p-5 space-y-5 bg-bg-card">
+    <aside className={page ? 'p-4 space-y-5 bg-bg-card min-h-full' : 'w-[420px] flex-shrink-0 border-l border-ink-faint/20 overflow-y-auto p-5 space-y-5 bg-bg-card'}>
       <div className="flex items-start gap-3">
         <div>
           <p className="font-mono text-xs text-ink-muted">{job.job_code}</p>

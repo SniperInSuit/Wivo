@@ -1,0 +1,13 @@
+{
+  "name": "Wivo",
+  "short_name": "Wivo",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1116",
+  "theme_color": "#0E1116",
+  "icons": [
+    { "src": "/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }
+  ]
+}

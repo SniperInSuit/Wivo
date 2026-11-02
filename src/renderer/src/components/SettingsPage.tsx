@@ -25,6 +25,7 @@ import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
 import { StageTransitionsSection } from './Settings/StageTransitionsSection'
 import { SoundSection } from './Settings/SoundSection'
+import { SignOutOthersSection } from './Settings/SignOutOthersSection'
 import { DeletedJobsSection } from './Settings/DeletedJobsSection'
 import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
@@ -1673,7 +1674,10 @@ export function SettingsPage() {
 
           {/* Your name — stamped as the author on every patient note */}
           {activeGroup === 'profiil' && (
-          <ProfileSection auth={auth} />
+          <>
+            <ProfileSection auth={auth} />
+            <SignOutOthersSection />
+          </>
           )}
 
           {/* Clinic settings — owner only */}
