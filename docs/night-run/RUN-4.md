@@ -186,7 +186,30 @@ Typecheck is clean, `npm test` passes all 1,372, and `npm run build` works.
    - As the owner: "Use on a job" asks for a reason. After saving, the history says "used after expiry" and Settings → Audit log has the entry.
 5. **share_stock:** as the owner, Settings → Partnerships → tick "Share stock with this partner". The partner's "Our goods at partners" appears; untick and it goes. Both audit logs have the change. A worker doesn't see the switch.
 
-**Still open:**
-- **Product key spelling:** "Nobel Active" and "NobelActive" are two products. Case and outer spaces are ignored, inner spelling isn't. A product catalogue would fix it; it would also serve the marketplace.
-- **Override rights:** only the role `owner` can override expiry, not an org admin. Should admins be allowed too?
-- **Hard-coded production project ID:** the test-mode guard has it in the source. It isn't a secret (the phone app's bundle carries it), but a new production project would need the guard updated.
+**Still open:** the three questions here were decided the same day; see the next section.
+
+## Last decisions (3 November 2026)
+
+Migrations 092–095 are frozen from here, because Kevin is applying them to the test copy. Database changes go into new migrations; the next is 097.
+
+1. **Product spelling: suggestions, no catalogue.**
+   - While adding goods, "Already in stock" lists up to six existing products that fit what is typed. Matching ignores case, spaces and punctuation, and works across manufacturer, system, size and name/REF, so "NobelActive" finds "Nobel Active". Products in the same category come first, then those with more in stock.
+   - Picking one fills the fields, so the new lot joins that product (same total, same threshold).
+   - When the entry already is an existing product, a green line says so, with its stock.
+   - `lib/stockProducts.ts` computes the same product key as the database. A test checks the two against each other, so they can't drift apart.
+2. **Expiry override for owners and org admins** (`sql/096_expiry_override_admins.sql`).
+   - `use_stock` as in 093, with `is_org_admin()` (role owner, or org role owner/admin) instead of the owner-only check.
+   - The reason is still required, and the audit row now records `"as": "owner"` or `"admin"`. Workers still can't override.
+   - The item panel offers the override to both.
+3. **Production ID in the test-mode guard:** kept. CLAUDE.md now says to update `PRODUCTION_REF` in `lib/testCopy.ts` in the same change if the production project ever changes.
+
+**Tests:**
+- `stock.test.ts`: an admin overrides with a reason and is logged as admin; an admin without a reason is still refused (`WV002`); a worker is refused; the owner's override is logged as owner; the product key matches the database's.
+- `stockProducts.test.ts`: how suggestions are found and ranked.
+- Typecheck is clean, `npm test` passes all 1,379, and `npm run build` works.
+
+**Migrations for the test copy:** after 092–095, apply **096**, followed by `notify pgrst, 'reload schema';`.
+
+**To test by hand (`npm run dev:test`):**
+1. **Suggestions:** with "Nobel Active 4.3x10" in stock, open Add goods and type "nobelactive" as the name. It's suggested; pick it and the fields fill in. Typing exactly "Nobel" / "Active" / "4.3x10" shows the green "Existing product" line instead.
+2. **Admin override:** as an org admin (not the owner), open an expired lot. "Use on a job" asks for a reason. After saving, Settings → Audit log shows the override. As a plain worker the button isn't there.
