@@ -213,3 +213,51 @@ Migrations 092–095 are frozen from here, because Kevin is applying them to the
 **To test by hand (`npm run dev:test`):**
 1. **Suggestions:** with "Nobel Active 4.3x10" in stock, open Add goods and type "nobelactive" as the name. It's suggested; pick it and the fields fill in. Typing exactly "Nobel" / "Active" / "4.3x10" shows the green "Existing product" line instead.
 2. **Admin override:** as an org admin (not the owner), open an expired lot. "Use on a job" asks for a reason. After saving, Settings → Audit log shows the override. As a plain worker the button isn't there.
+
+## Push without e-mail: send-notifications fix (testing, `e0214fe`)
+
+**What was wrong:** an in-clinic notification reached the bell on the test copy, but no push reached the iPhone.
+- `send-notifications` returned **500** as soon as `RESEND_API_KEY` or `NOTIFY_FROM` was missing. That check came before the push step, so no phone ever got a push on a project without e-mail.
+- E-mail is deferred on the test copy and on production, so both are hit.
+- The cron job looked fine, because it only records that it queued the request. The 500 is only visible in `net._http_response`.
+
+**The fix** (on `testing`; no database change):
+- Missing e-mail secrets now log a warning (`[send-notifications] RESEND_API_KEY or NOTIFY_FROM is not set: e-mail skipped, pushes still sent`). Notification and bug-report e-mails are skipped, and the pushes are sent.
+- An e-mail error never stops the pushes either.
+- Once the caller is checked, the function always answers 200 with each part's result: `email.status` (`sent`, `skipped` or `error`), `bugs`, `pushes` (`sent`, `gone`, `error`).
+- The logic moved to `supabase/functions/_shared/notifySender.ts`, with its database, `fetch` and push dependencies passed in. `index.ts` only checks the service key and wires them up.
+- Tests (`notifySender.test.ts`, 8): no secrets (the bug), one secret, e-mail in the recipient's language, an e-mail error while pushes still go, one push per phone, gone and failed phones, missing VAPID keys, a full batch, dry run. `npm test` passes all 1,387.
+- Deno isn't installed on this Mac, so the Deno side was not type-checked here. The deploy is the first check.
+
+**Deploy to the test copy only.** Kevin runs it, from the repo on `testing`, with his own token:
+
+```sh
+cd ~/dev/Workly && git switch testing
+read -rs SUPABASE_ACCESS_TOKEN && export SUPABASE_ACCESS_TOKEN   # paste the token, nothing is shown
+npx supabase functions deploy send-notifications --project-ref jhqyvancrzykxhzwnost --use-api
+unset SUPABASE_ACCESS_TOKEN
+```
+
+To check: a minute later, `select created, status_code, left(content, 300) from net._http_response order by created desc limit 5;` on the test copy. You should see status 200 with `"email":{"status":"skipped"...}` and `"pushes":{"sent":1,...}` once a notification is waiting.
+
+**Production: same bug, not touched yet. Plan:**
+
+1. **What production runs:** the function deployed in Run 3, so phones there get no push either until this is fixed.
+2. **Compatibility:** the fixed function works against production's database as it is. It only calls functions production already has:
+   - `pending_notification_emails` and `mark_notifications_emailed` (075);
+   - `pending_bug_reports` and `mark_bug_reports_emailed` (079);
+   - `pending_pushes` and `mark_pushed` (090/091).
+
+   `pending_pushes` has the same signature on production (091) as on the test copy (095). 095 only added the per-person push switch inside it. The e-mail subjects for the two in-clinic kinds are unused on production, which doesn't create those kinds.
+3. **In a production session Kevin starts:**
+   1. Make a branch `hotfix-push` from `origin/main`, which is what production runs, and cherry-pick `e0214fe`. `index.ts` will conflict in the subject table; take the `testing` version of the file. Run `npm test`.
+   2. Deploy from that checkout. Kevin runs it, with his token, as above:
+
+      ```sh
+      npx supabase functions deploy send-notifications --project-ref wrtucsfmpbwekugzzzxw --use-api
+      ```
+   3. Check production's `net._http_response` the same way.
+4. **Getting it into `main` without breaking the 2.0.0 release:**
+   - Deploying an Edge Function doesn't need a push. Local `main` still has the 2.0.0 bump (`ad078af`) as its newest commit, and CI publishes only when the newest commit in the push changed the version.
+   - Merging the hotfix into `main` before the release push would put it on top of the bump, and 2.0.0 would never be published.
+   - So: deploy the hotfix from `hotfix-push` (step 3), push `main` for the 2.0.0 release as it is, and only then merge `hotfix-push` into `main` and push. That last push runs a build but publishes nothing, since the version is unchanged.
