@@ -39,6 +39,7 @@ Kui faasid 0–4 on valmis, on see **Wivo 2.0**, turuvalmis versioon.
 - Vaba tekst, mida partner loeb (töö kirjeldus ja väljad, kommentaarid, chat, jagatud visiidikirjed), ei tohi sisaldada patsiendi ees- või perenime ega isikukoodi. Andmebaas keeldub salvestamast ja partnerile näidatakse sellised sõnad varjatuna.
 - Jagatud töö failidelt eemaldatakse enne üleslaadimist kõik peidetud andmed: kogu EXIF, DICOM-i patsiendiandmed, STL-i nimi ja päis, PLY/OBJ kommentaarid. Fail nimetatakse töö koodi järgi. PDF-i, foto ja röntgeni lisamisel jagatud tööle küsitakse kinnitust (nägu, pildi sisse põletatud nimi).
 - Partner ei näe kunagi patsiendihindu ega teise organisatsiooni rahandust.
+- **Ladu partnerile** (Kevini otsus, 3. november 2026): partner näeb teise organisatsiooni laos ainult **oma komisjonikaupa** ja ainult siis, kui partnerluses on `share_stock` sees. Ta näeb kogust, partiid, säilivusaega, kasutatud ja alles olevat kogust kokkuvõttena. Ta ei näe kunagi teise organisatsiooni enda kaupa ega seda, millisel tööl või millise patsiendi juures kaupa kasutati. `share_stock`-i lülitab sisse ja välja kumma tahes poole omanik ning see logitakse mõlema poole auditilogisse.
 - Andmed on EL-is: Supabase Iirimaal (eu-west-1), varundus Hetzneris Helsingis. Varundust käivitatakse EL-i serverist, mitte GitHub Actionsist.
 - **Admin-konsool ei näe patsiendiandmeid.** Ainult äriandmed: kliinikud, kontod, moodulid, arved, failimaht, vead. Tugi pääseb kliiniku andmetesse ainult kliiniku nõusolekul, ajutiselt ja iga kord logituna.
 - **Veateates ei ole vaikimisi ekraanipilti**, sest sellel on peaaegu alati patsiendi nimi.
@@ -158,7 +159,7 @@ Kliinikute äpp neid tabeleid ei näe. RLS keelab ligipääsu kõigile peale adm
 
 ## Õigused ja nähtavus
 
-Riia näeb oma organisatsioonis kõike oma. Tallinna andmetest näeb Riia ainult jagatud töid ja ühendatud ladu, ning vastupidi.
+Riia näeb oma organisatsioonis kõike oma. Tallinna andmetest näeb Riia ainult jagatud töid ja, kui `share_stock` on sees, oma komisjonikaupa Tallinna laos, ning vastupidi.
 
 - **RLS igal tabelil.** Kasutaja näeb oma organisatsiooni ridu. Partneri jagatud tööd tulevad ainult vaate `partner_job_view` kaudu.
 - **`partner_job_view`.** Tuletab vanuse, soo ja FDI hambakaardi. Identiteedivälju ei ole üldse, ka suunamisel (täielik nähtavus on välja lülitatud, sql/092). Patsiendihindu ei ole kummalgi juhul, partneri enda hind (disainitasu) on nähtav.
@@ -275,7 +276,7 @@ Laoseis tuleneb alati liikumistest, mitte käsitsi muudetavast arvust.
 - [ ] Käsitsi lisamisel on säilivusaeg ja partii kohustuslikud.
 - [ ] **Komisjon:** kui omanik ja asukoht erinevad, on komisjoni tähtaeg vaikimisi 3 kuud. Kuu enne tähtaega muutub kaup punaseks. Tegevused: kasuta, tagasta, osta välja.
 - [ ] Kasutus töö juures vähendab laoseisu ja seob partii töö (ja seeläbi patsiendiga).
-- [ ] Partner näeb oma kaupa teise organisatsiooni laos. Kui `share_stock` on sees, näeb ta ka selle laoseisu planeerimiseks.
+- [ ] Kui `share_stock` on sees, näeb partner oma komisjonikaupa teise organisatsiooni laos: kogus, partii, säilivusaeg, kasutatud ja alles, ainult kokkuvõttena. Teise organisatsiooni enda kaupa ta ei näe, ka siis mitte, kui `share_stock` on sees. Kui `share_stock` on väljas, ei näe ta midagi. (Lukus otsus, vt „Privaatsus“.)
 - [ ] Miinimumkoguse hoiatus.
 - [ ] **Inventuur:** organisatsioon seadistab sageduse. Tähtaja saabudes on ülevaatel suur punane riba. Loendusvaade näitab oodatud ja loendatud kogust, erinevus salvestub koos põhjusega, ajalugu jääb alles.
 
@@ -284,7 +285,7 @@ Laoseis tuleneb alati liikumistest, mitte käsitsi muudetavast arvust.
 - Kaupa ilma säilivusajata ei saa salvestada.
 - Komisjonikaup on kuu enne tähtaega punane.
 - Inventuuri erinevus muudab laoseisu ainult koos põhjusega.
-- Riia näeb Tallinna laos olevat Riia kaupa, aga mitte Tallinna oma kaupa, kui `share_stock` on väljas.
+- Kui `share_stock` on sees, näeb Riia Tallinna laos olevat Riia kaupa, aga mitte kunagi Tallinna oma kaupa ega seda, millisel tööl Riia kaupa kasutati. Kui `share_stock` on väljas, ei näe Riia Tallinna laost midagi.
 
 ## Faas 3: moodulid, arveldus ja admin-konsool
 

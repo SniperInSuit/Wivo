@@ -93,25 +93,17 @@ The next migration is 096.
 
 ## Open questions
 
-1. **What a partner sees (differs from the spec).**
-   - The spec says a partner always sees its own goods in the other clinic's stock, and with `share_stock` on also that clinic's stock, for planning.
-   - Your rule for this run was stricter: only with `share_stock` on, and only its own consignment goods. I built your rule.
-   - Should the spec's Phase 2 lines and acceptance criterion ("Riga sees Riga's goods … but not Tallinn's own when share_stock is off") be rewritten to match?
-2. **Threshold per lot or per product?**
-   - The spec puts `min_qty` on `stock_item`, and an item is one lot. So the warning is per lot, as you asked.
-   - In practice a clinic probably wants "warn when fewer than 3 Straumann BLT 4.1×10, across all lots". An empty old lot keeps warning until it is archived.
-   - Per-product thresholds would need a product table (it would also help the marketplace later).
-3. **Should using goods require a job?** It is optional now; the job link is what traces the lot to the patient. For implants and bone material it could be made mandatory.
-4. **Expired goods can still be used.** Wivo warns but doesn't block. Should it block using goods past their expiry date? That is a stock rule, not a clinical one.
+Questions 1–4 and the `share_stock` screen from 13 are decided and built: see "Decisions after Run 4" below.
+
 5. **Expiry warning window:** one month, the same as consignment. Is that right, or should each clinic set it?
 6. **Paid module:** the spec makes stock a paid module behind `has_module(org, 'stock')`. Phase 3 (modules) doesn't exist yet, so stock is open to every clinic.
-7. **Reserving stock for a treatment package** (`reserve` and `release`, vision step 2) is not built. The movement kinds are limited to `in`, `use`, `return`, `buy` and `adjust`, so adding them needs a migration.
+7. **Reserving stock for a treatment package** (`reserve` and `release`, vision step 2) is not built. The movement kinds are limited to `in`, `use`, `return`, `buy`, `adjust` and `writeoff`, so adding them needs a migration.
 8. **Using goods doesn't create a `patient_component` record yet.** The spec's Phase 4 treatment record creates one automatically from stock use, and that table doesn't exist.
 9. **Partner notifications:** the owning partner isn't told when its goods are used, returned or near their due date. Should it be? (It would get "item X: 2 used", never the job.)
 10. **Who records consignment goods:** only the clinic holding them can. The owning partner can't add or correct anything; it only reads totals.
 11. **The patient-name check on partner goods** compares against every patient name in the clinic. A product name that happens to equal a patient's surname is refused. It is rare, but the message doesn't say which word matched (on purpose: errors end up in logs).
 12. **A partner organisation can't be removed** while its goods are still on a clinic's shelf (`owner_org … on delete restrict`). Return or buy out first.
-13. **Not built:** no phone (PWA) stock screen, no Russian texts (English shows), no screen to switch `share_stock` after a partnership is accepted.
+13. **Not built:** no phone (PWA) stock screen, no Russian texts (English shows).
 14. **Blind counts:** the count screen shows the expected number beside the input, as the spec says. Some clinics prefer blind counts (expected hidden until saving). Keep it as it is?
 
 ## Added later: notifications inside the clinic (sql/095)
@@ -142,3 +134,59 @@ Kevin's case: the clinic's own technician works in a lab across town and heard n
 
 **Open questions:**
 - The switches are all or nothing per channel. A person can't yet choose by kind (for example push for "put on a job" but not for every stage).
+
+## Decisions after Run 4 (3 November 2026)
+
+Kevin decided the open stock questions. 093 and 094 weren't applied anywhere, so they were changed in place; no new migration numbers.
+
+1. **Partner stock rule** stays as built: a partner sees only its own consignment goods, and only when `share_stock` is on. It is now in `wivo-2.0-spec.md`: the locked decisions (Privacy), "Rights and visibility", the Phase 2 line, and its acceptance criterion.
+2. **Warning threshold per product, not per lot.**
+   - `stock_item.product_key` is computed from category, manufacturer, system, size and product name or REF, ignoring case and outer spaces. So the same product across lots has one key.
+   - `stock_threshold` holds one number per product, and the `stock_product_levels` view sums all of a product's lots against it. Set it with `set_stock_threshold` from any lot of the product, or when adding goods.
+   - In the app: "Running low" above the list names every product below its threshold, including one whose lots are all used up.
+   - A lot at zero never warns and leaves the list. "Show empty and archived" brings it back.
+3. **Implants, abutments, bone material and membranes go out only on a job.**
+   - "Membrane" is a new category.
+   - Anything else can still be used without a job.
+   - Any item can leave without a job as a **write-off**, with a required reason (damaged, expired, packaging opened, returned) and an optional note.
+4. **Expired goods** (past the expiry date; usable on the day itself) are refused on a job with SQLSTATE `WV002`.
+   - The clinic's **owner** can override with a reason. The movement is marked `expired_override` and the audit log gets a `stock_override` row with lot, expiry, quantity, job and reason.
+   - In the app, the owner sees a reason field and the history says "used after expiry". Everyone else sees why the item can't be used.
+   - Write-off and return of expired goods work as usual.
+5. **`share_stock` switch:** Settings → Partnerships → "Share stock with this partner", on an accepted (active or paused) partnership.
+   - Only an owner of either organisation, signed in with the second factor (as every partnership step).
+   - Logged in both organisations' audit logs.
+6. **Test mode:** `npm run dev:test` runs the desktop app against the test copy.
+   - `.env.test` (git-ignored, created empty) takes only the test copy's URL and anon key. `.env.test.example` is the template.
+   - The app shows an amber TEST COPY frame and label at all times.
+   - It fails closed: if `.env.test` is empty, or its URL is production's (which is what a deleted line falls back to, from `.env`), the app connects to nothing and the label turns red with the reason.
+   - Sentry is off in test mode. `npm test` now runs Vitest in mode `unit`, so unit tests never read `.env.test`.
+
+**Tests:** `stock.test.ts` has new cases for every rule above:
+- the per-product total and threshold, a used-up product still low;
+- the job required per category, the write-off reasons;
+- expired refused, the owner override with its audit row, a worker refused, write-off and return of expired goods;
+- `share_stock`: either owner with MFA, both audit logs; refused for a worker, without MFA, for a stranger, and before acceptance.
+
+`stockLeak.test.ts` covers `writeoff_stock`, `set_stock_threshold`, the `stock_threshold` table and the `stock_product_levels` view, and checks `written_off` in the partner's totals. `stockWarnings.test.ts` and `testCopy.test.ts` cover the app logic.
+
+`partnerNoIdentity.test.ts` had a chance failure: a planted price matched digits inside a random UUID. The planted prices are now decimals, which a UUID can't contain.
+
+Typecheck is clean, `npm test` passes all 1,372, and `npm run build` works.
+
+**To test by hand (test copy, with `npm run dev:test`):**
+1. **Test mode:**
+   - With `.env.test` still empty: the frame and label are red with "no URL or anon key", and nothing loads.
+   - Paste in the test copy's URL and anon key: amber "TEST COPY", and you can sign in.
+2. **Per-product warning:** add two lots of the same implant, with 2 and 1 in stock and a threshold of 4. "Running low" shows it once, with 3 left. Use both lots up on jobs. The lots leave the list; the product stays under "Running low" with 0.
+3. **Job rule:** "Use on a job" for an implant without choosing a job is refused with the message. A healing cap ("Other") can be used without a job. "Write off" requires a reason.
+4. **Expired goods:**
+   - Add a lot that expired yesterday.
+   - As a worker with "Manage stock": no "Use on a job", and the message says why. Write-off works.
+   - As the owner: "Use on a job" asks for a reason. After saving, the history says "used after expiry" and Settings → Audit log has the entry.
+5. **share_stock:** as the owner, Settings → Partnerships → tick "Share stock with this partner". The partner's "Our goods at partners" appears; untick and it goes. Both audit logs have the change. A worker doesn't see the switch.
+
+**Still open:**
+- **Product key spelling:** "Nobel Active" and "NobelActive" are two products. Case and outer spaces are ignored, inner spelling isn't. A product catalogue would fix it; it would also serve the marketplace.
+- **Override rights:** only the role `owner` can override expiry, not an org admin. Should admins be allowed too?
+- **Hard-coded production project ID:** the test-mode guard has it in the source. It isn't a secret (the phone app's bundle carries it), but a new production project would need the guard updated.
