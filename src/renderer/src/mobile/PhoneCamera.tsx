@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Camera, Loader2 } from 'lucide-react'
 import { t } from '@/lib/i18n'
 
-const stamp = (d = new Date()) => d.toISOString().slice(0, 19).replace(/[-:T]/g, '')
+const stamp = (d = new Date()) => d.toISOString().slice(0, 19).replace(/\D/g, '')
 
 export function PhoneCamera({ onFile, onClose, single = false }: { onFile: (file: File) => void; onClose: () => void; single?: boolean }) {
   const video = useRef<HTMLVideoElement>(null)

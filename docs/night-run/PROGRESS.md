@@ -100,10 +100,10 @@ Bug reports
 - [x] Job deletion becomes a soft delete keeping job_file rows (sql/089) — 177bca3
 
 Phase 1b: phone (PWA)
-- [ ] PWA from the same React code base, hosted on Cloudflare Pages; same login and MFA
-- [ ] Home: my jobs (assigned or active) and search by code
-- [ ] Job view: basic info, files, chat
-- [ ] Camera: photo straight onto the job; GPS removal and job-code name; never in the gallery
-- [ ] Chat: the same job thread — message, photo, question mark
-- [ ] Push notifications (iPhone after "Add to Home Screen"), e-mail as fallback
-- [ ] Shorter session on the phone, remote sign-out for a lost phone
+- [x] PWA from the same React code base, hosted on Cloudflare Pages; same login and MFA — e6ea58d (Cloudflare project: Kevin, RUN-2.md)
+- [x] Home: my jobs (assigned or active) and search by code — e6ea58d
+- [x] Job view: basic info, files, chat — e6ea58d
+- [x] Camera: photo straight onto the job; GPS removal and job-code name; never in the gallery — e6ea58d (phone check: Kevin, RUN-2.md)
+- [x] Chat: the same job thread — message, photo, question mark — e6ea58d
+- [x] Push notifications (iPhone after "Add to Home Screen"), e-mail as fallback — 4f35573, 3c9d921, e6ea58d (VAPID keys + deploy: Kevin)
+- [x] Shorter session on the phone, remote sign-out for a lost phone — e6ea58d

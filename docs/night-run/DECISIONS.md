@@ -163,3 +163,83 @@ separate test project; Kevin's call is not to keep one. What stands in for it:
 - the Phase 0 restore test still needs a non-production target. A throwaway
   project, built in one paste by `scripts/fresh-schema.mjs` and deleted
   afterwards, is enough (MORNING.md).
+
+# Run 2 (2 Nov 2026, daytime)
+
+## D15. Sounds: names, extra events, no ffmpeg
+
+- The files in assets/sounds/ had other names than Kevin's list; they were
+  renamed to the list's names (message → notify-message, message_tagged →
+  notify-mention, …) and moved to src/renderer/public/sounds/, which both the
+  desktop build and the phone build serve. `notify-handoff` (an extra file)
+  sounds for a stage handed over to us.
+- `notify-new-work` already has events: a job shared with us (`job_shared`)
+  and, since sql/090, files added by the other side (`files_added`). Wired,
+  and the spec's Sounds section says so.
+- There are no files for `ui-tab` and `ui-tick`: registered, silently skipped.
+- ffmpeg is not installed here, so scripts/process-sounds.mjs (trim, loudness)
+  has not run. The interface sounds' −8 dB is applied at playback instead, so
+  it holds either way.
+
+## D16. Soft delete: what stays real
+
+Kevin's instruction. A delete from the app (any build: it is a plain DELETE)
+becomes `deleted_at`; files, revisions and invoices stay; live shares end, with
+"unshare" audit rows on both sides; the job can be restored in Seaded → Audit
+log. A restore does not bring the share back (sharing is a deliberate act with
+consent rules). A delete with no signed-in user (service role, SQL editor)
+stays a real delete: that is the organisation-exit path of Phase 3.
+
+## D17. Phone app build: a second Vite config, same code, no new dependency
+
+`vite.mobile.config.ts` builds the PWA from src/renderer with its own entry
+(mobile.html) into dist-mobile/. The manifest and service worker are written
+by hand (about 80 lines) instead of adding vite-plugin-pwa: the worker caches
+only the app's own files and must never cache an API answer, which is easier
+to guarantee in code one can read in a minute.
+
+## D18. Phone session: 12 hours from sign-in, absolute
+
+The spec says "a shorter session on the phone" with no number. Conservative
+choice: one working day, counted from sign-in (not from last use), checked on
+load and whenever the app comes back to the foreground. Remote sign-out is
+Supabase's `signOut({ scope: 'others' })`, in Seaded → Profile on the desktop
+and in the phone's settings: other devices' refresh tokens die at once; an
+access token already issued lives until it expires (at most an hour).
+
+## D19. Push without content
+
+A push carries no data: no job code, no patient, nothing passes through
+Apple's or Google's servers. The phone says "New in Wivo" (in the user's
+language) and the app shows the rest after sign-in. That also means no payload
+encryption and no push library: the VAPID token is ~60 lines of WebCrypto
+(`supabase/functions/_shared/vapid.ts`, tested). It rides the existing
+every-minute `send-notifications` run; e-mail keeps going regardless. A
+notification already read (on any device) is not pushed.
+
+## D20. The camera is inside the app
+
+`getUserMedia` → canvas → JPEG: the picture never goes through the phone's
+camera app, so it never lands in the gallery, and a canvas JPEG has no EXIF
+(no GPS). It still goes through the same upload queue (cleanForUpload, the
+database names the stored file). Without camera access the fallback is the
+browser's capture input. Partners get no camera: they add design and print
+files only (locked rule).
+
+## D21. What the phone shows
+
+- Home: "Mine" (assigned to me or designed by me, including per-work-item
+  designers, not finished), "Active" (every unfinished job I can see — RLS
+  decides), "Shared" (jobs shared with us). Search: the job code always; the
+  patient name only on our own jobs, never on a shared one.
+- A shared job is the desktop's own partner panel, full width: the same
+  limited view, the same RPCs, the same audit "view".
+- Not on the phone: board, stock, finance, invoices, admin, founding a clinic.
+
+## D22. 089 and 090 stay off production
+
+Kevin: new migrations from 089 on are never applied to production. Nothing
+was applied anywhere; both run from an empty database in every `npm test`.
+Without them the app behaves as before: a delete is a real delete, the
+deleted-jobs list stays empty, switching on phone notifications shows an
+error, and no "files added" notifications are made.
