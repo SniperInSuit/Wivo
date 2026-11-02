@@ -206,12 +206,6 @@ export function PartnerJobPanel({ job, onClose, page = false }: { job: PartnerJo
         <Field label={t('partners.due')} value={job.due_at ? format(new Date(job.due_at), 'd MMM yyyy HH:mm', { locale: dateLocale }) : null} />
         <Field label={t('partners.patientAge')} value={job.patient_age} />
         <Field label={t('partners.yourPrice')} value={job.partner_price != null ? `${Number(job.partner_price).toFixed(2)} €` : null} />
-        {job.visibility === 'full' && (
-          <>
-            <Field label={t('partners.patient')} value={job.patient_name} />
-            <Field label={t('partners.contact')} value={[job.patient_phone, job.patient_email].filter(Boolean).join(' · ') || null} />
-          </>
-        )}
       </dl>
 
       {job.description && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.description}</span>} />}

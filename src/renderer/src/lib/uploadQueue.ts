@@ -2,7 +2,8 @@
  * Files upload in the background, one at a time, while the app stays usable
  * (spec, Phase 1 Files: "TUS upload in a background queue").
  *
- * Each file: read → clean (GPS off photos, identity off DICOM) → SHA-256 of
+ * Each file: read → clean (fileClean: metadata off photos, identity off DICOM
+ * and 3D scans; a file that cannot be cleaned is not uploaded) → SHA-256 of
  * what will actually be stored → `register_job_file` (rights, version, job-code
  * name, path) → resumable upload to that path → `confirm_job_file`. A failure
  * keeps the task with its file so "Retry" continues the same upload
@@ -14,10 +15,11 @@
  */
 import { useSyncExternalStore } from 'react'
 import { supabase, storageEndpoint, anonKey } from './supabase'
-import { cleanForUpload, extensionOf, sha256Hex, type JobFileType } from './fileClean'
+import { cleanForUpload, extensionOf, sha256Hex, CleanError, type JobFileType } from './fileClean'
 import { tusUpload } from './tusUpload'
 import { makePreview } from './previews'
 import { playSound } from './sound'
+import { t } from './i18n'
 
 export type UploadStatus = 'queued' | 'preparing' | 'uploading' | 'done' | 'failed'
 
@@ -62,7 +64,7 @@ let running = false
 
 async function runOne(task: UploadTask): Promise<void> {
   patch(task.id, { status: 'preparing', error: undefined })
-  const bytes = cleanForUpload(new Uint8Array(await task.file.arrayBuffer()))
+  const bytes = cleanForUpload(new Uint8Array(await task.file.arrayBuffer()), task.file.name)
   const sha = await sha256Hex(bytes)
   const { data: row, error } = await supabase.rpc('register_job_file', {
     p_job: task.jobId, p_type: task.type, p_sha256: sha, p_size: bytes.length,
@@ -122,7 +124,7 @@ async function pump(): Promise<void> {
       try {
         await runOne(next)
       } catch (e) {
-        patch(next.id, { status: 'failed', error: (e as Error).message ?? String(e) })
+        patch(next.id, { status: 'failed', error: e instanceof CleanError ? t('files.couldNotClean') : (e as Error).message ?? String(e) })
         playSound('notify-error') // with the red "Failed" row and its message
       }
     }

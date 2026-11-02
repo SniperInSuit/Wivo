@@ -2857,6 +2857,7 @@ export const en = {
   'publicServices.inclVat': "incl. VAT",
 
   // ── partners ──────────────────────────────────────────────────────────────
+  'partners.neverPatientIdentity': "Partners see the work, never who the patient is: no name, contacts, birth date or prices.",
   'partners.revisionN': "Revision {n}",
   'partners.revisions': "Revisions",
   'partners.attachFile': "Attach a file",
@@ -2870,9 +2871,6 @@ export const en = {
   'partners.dpaPlaceholder': "e.g. DPA-2026-11, signed 1.11.2026",
   'partners.dpaReference': "Signed data processing agreement (reference)",
   'partners.roles': "Roles",
-  'partners.visibilityFull': "Full — with name and contacts",
-  'partners.visibilityPartial': "Partial — no patient identity",
-  'partners.defaultVisibility': "Default visibility for lab work",
   'partners.shareStock': "Share stock (consignment goods in each other's stores)",
   'partners.invitedBy': "Invited by {name} ({country}), registry code {reg}.",
   'partners.check': "Check",
@@ -2900,8 +2898,6 @@ export const en = {
   'partners.changesGoThroughQuestions': "You cannot edit a shared job. Ask in the thread below if something needs to change.",
   'partners.workItems': "Work items",
   'partners.description': "Description",
-  'partners.contact': "Contact",
-  'partners.patient': "Patient",
   'partners.yourPrice': "Your price",
   'partners.patientAge': "Patient age",
   'partners.shade': "Shade",
@@ -2938,7 +2934,7 @@ export const en = {
   'partners.patientInformedAndAgreed': "Patient informed and agreed",
   'partners.chooseAtLeastOneStage': "Choose at least one stage.",
   'partners.stagesForPartner': "Stages the partner does",
-  'partners.referralHelp': "The partner also sees the patient's name and contacts. Needs the patient's consent.",
+  'partners.referralHelp': "The patient goes to the partner, who still sees only the work, never the patient's name or contacts. The patient brings their own records (\"Export for the patient\" on their patient card). Needs the patient's consent.",
   'partners.labWorkHelp': "The partner sees the work, the teeth and the patient's age — not the name, contacts or prices.",
   'partners.referral': "Referral",
   'partners.labWork': "Lab work",
@@ -2991,6 +2987,12 @@ export const en = {
   'mfa.twoFactorSignIn': "Two-factor sign-in",
 
   // ── files ─────────────────────────────────────────────────────────────────
+  'files.couldNotClean': "Wivo could not read this file to remove its hidden data, so it was not uploaded. Export it again, or save it in another format.",
+  'files.sharedWarnConfirm': "Add the files anyway?",
+  'files.sharedWarnXray': "X-ray: the patient's name can be burned into the image itself. Wivo removes it from the file's data, not from the picture. Check the image first.",
+  'files.sharedWarnPhoto': "Photo: a photo that shows the patient's face identifies them. Add only photos without the face.",
+  'files.sharedWarnPdf': "PDF: documents such as referrals and orders often show the patient's name. Wivo cannot remove it from a PDF.",
+  'files.sharedWarnIntro': "This job is shared with a partner. They will see these files, and must not learn who the patient is.",
   'files.uploadedBy': "{who}, {when}",
   'files.deleteConfirm': "Delete {name}? It disappears from the job; the file itself is kept, as all files are.",
   'files.delete': "Delete",
@@ -3003,7 +3005,7 @@ export const en = {
   'files.preparing': "Preparing",
   'files.waiting': "Waiting",
   'files.failed': "Failed",
-  'files.cleaningNote': "Before upload, photos lose their GPS location and X-rays the patient's name and ID. The file is named after the job code.",
+  'files.cleaningNote': "Before upload, photos lose all their hidden data (location, camera, dates), X-rays the patient's details, and 3D scans the name inside the file. The file is named after the job code.",
   'files.addFiles': "Add files",
   'files.fileType': "File type",
   'files.files': "Files",
@@ -3160,6 +3162,9 @@ export const en = {
   'whatsNew.gotIt': "Got it",
   'whatsNew.kicker': "What's new · Wivo {version}",
   'whatsNew.menu': "What's new",
+
+  // ── privacy ───────────────────────────────────────────────────────────────
+  'privacy.removePatientIdentity': "Partners read this text. Remove the patient's name or personal code, then save again.",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

@@ -33,8 +33,11 @@ Kui faasid 0–4 on valmis, on see **Wivo 2.0**, turuvalmis versioon.
 
 **Privaatsus**
 
-- Juhtumil on kaks tüüpi. **Laboritöö** annab partnerile osalise nähtavuse. **Suunamine** annab täieliku nähtavuse ja nõuab märget "patsient teavitatud ja nõustus" koos sellega, kes märkis ja millal.
-- Osalise nähtavuse korral ei näe partner patsiendi nime, isikukoodi, kontakte, sünnikuupäeva (ainult vanust), ravikaarti ega visiite.
+- **Kliinikute vahel ei liigu isikuandmeid üle piiri** (juristi otsus, 2. november 2026). Partnerorganisatsioon näeb ainult töö andmeid, mitte kunagi seda, kes on patsient. See kehtib igas kanalis: vaated, RPC-d, failid, teavitused, e-kirjad, kommentaarid ja jagatud visiidikirjed.
+- Juhtumil on kaks tüüpi: **laboritöö** ja **suunamine**. Mõlemal on partneril osaline nähtavus. Täielik nähtavus on välja lülitatud (sql/092). Suunamine nõuab endiselt märget "patsient teavitatud ja nõustus" koos sellega, kes märkis ja millal. Suunatud patsient toob oma andmed ise kaasa (patsiendi eksport).
+- Partner ei näe patsiendi nime, isikukoodi, kontakte, sünnikuupäeva (ainult vanust), ravikaarti ega visiite.
+- Vaba tekst, mida partner loeb (töö kirjeldus ja väljad, kommentaarid, chat, jagatud visiidikirjed), ei tohi sisaldada patsiendi ees- või perenime ega isikukoodi. Andmebaas keeldub salvestamast ja partnerile näidatakse sellised sõnad varjatuna.
+- Jagatud töö failidelt eemaldatakse enne üleslaadimist kõik peidetud andmed: kogu EXIF, DICOM-i patsiendiandmed, STL-i nimi ja päis, PLY/OBJ kommentaarid. Fail nimetatakse töö koodi järgi. PDF-i, foto ja röntgeni lisamisel jagatud tööle küsitakse kinnitust (nägu, pildi sisse põletatud nimi).
 - Partner ei näe kunagi patsiendihindu ega teise organisatsiooni rahandust.
 - Andmed on EL-is: Supabase Iirimaal (eu-west-1), varundus Hetzneris Helsingis. Varundust käivitatakse EL-i serverist, mitte GitHub Actionsist.
 - **Admin-konsool ei näe patsiendiandmeid.** Ainult äriandmed: kliinikud, kontod, moodulid, arved, failimaht, vead. Tugi pääseb kliiniku andmetesse ainult kliiniku nõusolekul, ajutiselt ja iga kord logituna.
@@ -158,7 +161,7 @@ Kliinikute äpp neid tabeleid ei näe. RLS keelab ligipääsu kõigile peale adm
 Riia näeb oma organisatsioonis kõike oma. Tallinna andmetest näeb Riia ainult jagatud töid ja ühendatud ladu, ning vastupidi.
 
 - **RLS igal tabelil.** Kasutaja näeb oma organisatsiooni ridu. Partneri jagatud tööd tulevad ainult vaate `partner_job_view` kaudu.
-- **`partner_job_view`.** Tuletab vanuse, soo ja FDI hambakaardi. Osalisel nähtavusel identiteedivälju ei ole üldse. Täielikul nähtavusel (suunamine) tulevad juurde nimi ja kontaktid. Patsiendihindu ei ole kummalgi juhul, partneri enda hind (disainitasu) on nähtav.
+- **`partner_job_view`.** Tuletab vanuse, soo ja FDI hambakaardi. Identiteedivälju ei ole üldse, ka suunamisel (täielik nähtavus on välja lülitatud, sql/092). Patsiendihindu ei ole kummalgi juhul, partneri enda hind (disainitasu) on nähtav.
 - **Otsing.** Läbib sama vaate. Partner otsib töö koodi järgi.
 - **Etapid.** Liigutamine käib ainult RPC `move_job_stage` kaudu, mis kontrollib `stage_transition`-it ja partneri määratud etappe. Teisi etappe näeb partner lugemiseks.
 - **Töö väljad.** Partner ei muuda neid. Muudatus käib "Küsimuse" kaudu.

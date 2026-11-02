@@ -13,6 +13,7 @@ import { describeError } from '../Patients/errors'
 import { enqueueUpload } from '../../lib/uploadQueue'
 import { fileDownloadUrl } from '../../lib/fileLink'
 import { guessFileType } from '../../lib/fileClean'
+import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { playSound } from '../../lib/sound'
 import { useAuth } from '../../context/AuthContext'
 import { PhoneCamera } from '../../mobile/PhoneCamera'
@@ -49,10 +50,12 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
     }
   }, [messages, isLoading, profile?.full_name, profile?.username])
 
-  function attach(file: File | undefined) {
+  /** `confirmed`: the camera asked before it opened. */
+  async function attach(file: File | undefined, confirmed = false) {
     if (!file) return
-    setAttachment({ name: file.name, id: null })
     const type = partner ? 'design' : guessFileType(file.name)
+    if (!partner && !confirmed && !(await confirmSharedUpload(jobId, [{ name: file.name, type, mime: file.type }]))) return
+    setAttachment({ name: file.name, id: null })
     enqueueUpload(jobId, file, type, null, id => setAttachment(a => (a ? { ...a, id } : a)))
   }
 
@@ -128,11 +131,11 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
             <label className="flex items-center gap-1 text-xs text-ink-soft cursor-pointer" title={t('partners.attachFile')}>
               {attachment && !attachment.id ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Paperclip size={12} aria-hidden="true" />}
               <span className="truncate max-w-[140px]">{attachment?.name ?? t('partners.attachFile')}</span>
-              <input type="file" hidden onChange={e => { attach(e.target.files?.[0]); e.target.value = '' }} />
+              <input type="file" hidden onChange={e => { void attach(e.target.files?.[0]); e.target.value = '' }} />
             </label>
             {camera && !partner && !attachment && (
-              <button type="button" onClick={() => setShooting(true)} title={t('mobile.takePhoto')} aria-label={t('mobile.takePhoto')}
-                className="text-ink-soft">
+              <button type="button" title={t('mobile.takePhoto')} aria-label={t('mobile.takePhoto')} className="text-ink-soft"
+                onClick={async () => { if (await confirmSharedUpload(jobId, [{ name: 'photo.jpg', type: 'photo' }])) setShooting(true) }}>
                 <Camera size={14} aria-hidden="true" />
               </button>
             )}
@@ -148,7 +151,7 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
             </button>
           </div>
           {error && <p role="alert" className="text-sm text-rose-500">{error}</p>}
-          {shooting && <PhoneCamera single onFile={attach} onClose={() => setShooting(false)} />}
+          {shooting && <PhoneCamera single onFile={f => void attach(f, true)} onClose={() => setShooting(false)} />}
         </div>
       )}
     </section>

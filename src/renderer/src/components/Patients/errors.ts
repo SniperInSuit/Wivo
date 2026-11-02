@@ -40,6 +40,11 @@ export function describeError(err: unknown): string {
   const e = err as { code?: string; message?: string } | null
   const msg = e?.message ?? ''
 
+  // sql/092: text a partner reads named the patient. The database never says
+  // which word: the message would end up in logs.
+  if (e?.code === 'WV001') {
+    return t('privacy.removePatientIdentity')
+  }
   if (e?.code === '42501' || /row-level security/i.test(msg)) {
     return t('patients.theDatabaseRefusedTheWriteRLS')
   }

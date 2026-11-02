@@ -39,6 +39,7 @@ import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
 import { DieShadePicker } from './DieShadePicker'
 import { t } from '@/lib/i18n'
+import { describeError } from '../Patients/errors'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -753,7 +754,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
         setEditing(false)
       }
     } catch (err: unknown) {
-      setSaveError((err as Error)?.message ?? t('jobDetail.savingFailed'))
+      setSaveError(describeError(err) || t('jobDetail.savingFailed'))
     }
   }
 
@@ -1922,6 +1923,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 setQuickRevisionId(null)
               } catch (err) {
                 console.error('Revision save failed:', err)
+                setSaveError(describeError(err))
               }
             }}
             onCancel={() => setQuickRevisionId(null)}

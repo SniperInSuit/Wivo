@@ -13,6 +13,7 @@ import { FolderOpen, Inbox, Link2, EyeOff } from 'lucide-react'
 import { useJobs } from '../../hooks/useJobs'
 import type { Job } from '../../types/job'
 import { enqueueUpload } from '../../lib/uploadQueue'
+import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { fileTypeLabel } from '../Files/JobFiles'
 import { describeError } from '../Patients/errors'
@@ -88,6 +89,7 @@ function UnsortedRow({ file, jobs, onDone, onError }: {
 
   async function attach() {
     if (!jobId) return
+    if (!(await confirmSharedUpload(jobId, [{ name: file.name, type }]))) return
     setBusy(true)
     onError(null)
     try {

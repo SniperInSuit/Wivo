@@ -23,7 +23,8 @@ export interface PartnerOrg {
   country: string
   status: PartnershipStatus
   share_stock: boolean
-  default_visibility: 'partial' | 'full'
+  /** Always partial since sql/092: partners never see who the patient is. */
+  default_visibility: 'partial'
   roles: PartnerRole[]
   i_am_inviter: boolean
 }
@@ -89,7 +90,7 @@ export interface PartnerJob {
   owner_org: string
   owner_org_name: string
   case_type: CaseType
-  visibility: 'partial' | 'full'
+  visibility: 'partial'
   role: PartnerRole
   assigned_stages: string[]
   status: string
@@ -109,9 +110,10 @@ export interface PartnerJob {
   partner_price: number | null
   patient_age: number | null
   patient_sex: string | null
-  patient_name: string | null
-  patient_phone: string | null
-  patient_email: string | null
+  /** Always null since sql/092; the columns stay for older builds. */
+  patient_name: null
+  patient_phone: null
+  patient_email: null
   open_questions: number
   shared_at: string
   /** Sanitised: no prices, notes or staff (sql/084). */

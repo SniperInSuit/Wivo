@@ -14,7 +14,7 @@ let C: Tenant   // stranger
 
 async function partnership(x: Tenant, y: Tenant, status = 'active'): Promise<string> {
   const { rows } = await db.query<{ id: string }>(
-    `insert into public.partnership (org_a, org_b, status, roles, default_visibility) values ($1, $2, $3, array['design', 'surgery'], 'full') returning id`,
+    `insert into public.partnership (org_a, org_b, status, roles) values ($1, $2, $3, array['design', 'surgery']) returning id`,
     [x.clinicId, y.clinicId, status])
   return rows[0].id
 }
@@ -109,7 +109,8 @@ describe('#7 wrong codes typed into accept are counted', () => {
 })
 
 describe('the smaller ones', () => {
-  it('#16 lab work is partial even when full is asked, and even with a full-default partnership', async () => {
+  // A full-default partnership can no longer exist (sql/092, partnership_partial_only).
+  it('#16 lab work is partial even when full is asked', async () => {
     const j = await job()
     await share(j, B)
     const [row] = await rowsAs<{ visibility: string; patient_name: string | null }>(db, { id: B.workerId },

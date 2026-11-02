@@ -2843,6 +2843,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'publicServices.inclVat': "km-ga",
 
   // ── partners ──────────────────────────────────────────────────────────────
+  'partners.neverPatientIdentity': "Partnerid näevad tööd, mitte kunagi seda, kes on patsient: ei nime, kontakte, sünnikuupäeva ega hindu.",
   'partners.revisionN': "Muudatus {n}",
   'partners.revisions': "Muudatused",
   'partners.attachFile': "Lisa fail",
@@ -2856,9 +2857,6 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'partners.dpaPlaceholder': "nt DPA-2026-11, allkirjastatud 1.11.2026",
   'partners.dpaReference': "Allkirjastatud andmetöötlusleping (viide)",
   'partners.roles': "Rollid",
-  'partners.visibilityFull': "Täielik — koos nime ja kontaktidega",
-  'partners.visibilityPartial': "Osaline — ilma patsiendi isikuandmeteta",
-  'partners.defaultVisibility': "Laboritöö vaikimisi nähtavus",
   'partners.shareStock': "Jaga ladu (komisjonikaup teineteise laos)",
   'partners.invitedBy': "Kutsub {name} ({country}), registrikood {reg}.",
   'partners.check': "Kontrolli",
@@ -2886,8 +2884,6 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'partners.changesGoThroughQuestions': "Jagatud tööd muuta ei saa. Kui midagi peab muutuma, küsi allpool lõimes.",
   'partners.workItems': "Tööosad",
   'partners.description': "Kirjeldus",
-  'partners.contact': "Kontakt",
-  'partners.patient': "Patsient",
   'partners.yourPrice': "Sinu hind",
   'partners.patientAge': "Patsiendi vanus",
   'partners.shade': "Toon",
@@ -2924,7 +2920,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'partners.patientInformedAndAgreed': "Patsient teavitatud ja nõustus",
   'partners.chooseAtLeastOneStage': "Vali vähemalt üks etapp.",
   'partners.stagesForPartner': "Etapid, mida partner teeb",
-  'partners.referralHelp': "Partner näeb ka patsiendi nime ja kontakte. Vajab patsiendi nõusolekut.",
+  'partners.referralHelp': "Patsient läheb partneri juurde. Partner näeb ikkagi ainult tööd, mitte patsiendi nime ega kontakte. Patsient toob oma andmed ise kaasa (nupp \"Ekspordi patsiendile\" patsiendi kaardil). Vajab patsiendi nõusolekut.",
   'partners.labWorkHelp': "Partner näeb tööd, hambaid ja patsiendi vanust — mitte nime, kontakte ega hindu.",
   'partners.referral': "Suunamine",
   'partners.labWork': "Laboritöö",
@@ -2977,6 +2973,12 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'mfa.twoFactorSignIn': "Kahefaktoriline sisselogimine",
 
   // ── files ─────────────────────────────────────────────────────────────────
+  'files.couldNotClean': "Wivo ei saanud seda faili lugeda, et peidetud andmeid eemaldada, seega jäi see üles laadimata. Ekspordi fail uuesti või salvesta see teises vormingus.",
+  'files.sharedWarnConfirm': "Kas lisada failid ikkagi?",
+  'files.sharedWarnXray': "Röntgen: patsiendi nimi võib olla pildi sisse põletatud. Wivo eemaldab selle faili andmetest, mitte pildilt. Vaata pilt enne üle.",
+  'files.sharedWarnPhoto': "Foto: pilt, millel on patsiendi nägu, näitab, kes ta on. Lisa ainult pilte, millel nägu ei ole.",
+  'files.sharedWarnPdf': "PDF: saatekirjadel ja tellimustel on sageli patsiendi nimi. Wivo ei saa seda PDF-ist eemaldada.",
+  'files.sharedWarnIntro': "See töö on partneriga jagatud. Partner näeb neid faile ega tohi teada saada, kes on patsient.",
   'files.uploadedBy': "{who}, {when}",
   'files.deleteConfirm': "Kustutada {name}? See kaob töö juurest; fail ise jääb alles, nagu kõik failid.",
   'files.delete': "Kustuta",
@@ -2989,7 +2991,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'files.preparing': "Ettevalmistus",
   'files.waiting': "Ootel",
   'files.failed': "Ebaõnnestus",
-  'files.cleaningNote': "Enne üleslaadimist kaob fotodelt GPS-asukoht ja röntgenitelt patsiendi nimi ning isikukood. Fail nimetatakse töö koodi järgi.",
+  'files.cleaningNote': "Enne üleslaadimist kaovad fotodelt kõik peidetud andmed (asukoht, kaamera, kuupäevad), röntgenitelt patsiendi andmed ja 3D-skaneeringutelt faili sees olev nimi. Fail nimetatakse töö koodi järgi.",
   'files.addFiles': "Lisa failid",
   'files.fileType': "Faili tüüp",
   'files.files': "Failid",
@@ -3146,5 +3148,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'whatsNew.gotIt': "Selge",
   'whatsNew.kicker': "Mis on uut · Wivo {version}",
   'whatsNew.menu': "Mis on uut",
+
+  // ── privacy ───────────────────────────────────────────────────────────────
+  'privacy.removePatientIdentity': "Partnerid loevad seda teksti. Eemalda patsiendi nimi või isikukood ja salvesta uuesti.",
 
 }

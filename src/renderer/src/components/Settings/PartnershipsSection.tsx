@@ -102,7 +102,6 @@ function EnterCode({ onDone }: { onDone: () => void }) {
   const [code, setCode] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
   const [shareStock, setShareStock] = useState(false)
-  const [visibility, setVisibility] = useState<'partial' | 'full'>('partial')
   const [roles, setRoles] = useState<PartnerRole[]>(['design'])
   const [dpa, setDpa] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +120,7 @@ function EnterCode({ onDone }: { onDone: () => void }) {
   async function accept() {
     setError(null)
     const { data, error: err } = await supabase.rpc('accept_partnership_invite', {
-      p_code: code, p_share_stock: shareStock, p_default_visibility: visibility,
+      p_code: code, p_share_stock: shareStock, p_default_visibility: 'partial',
       p_roles: roles, p_dpa_reference: dpa,
     })
     if (err) { setError(explain(err)); return }
@@ -155,13 +154,7 @@ function EnterCode({ onDone }: { onDone: () => void }) {
                 <input type="checkbox" checked={shareStock} onChange={e => setShareStock(e.target.checked)} />
                 {t('partners.shareStock')}
               </label>
-              <label className="block text-sm text-ink">
-                <span className="label">{t('partners.defaultVisibility')}</span>
-                <select className="input w-56" value={visibility} onChange={e => setVisibility(e.target.value as 'partial' | 'full')}>
-                  <option value="partial">{t('partners.visibilityPartial')}</option>
-                  <option value="full">{t('partners.visibilityFull')}</option>
-                </select>
-              </label>
+              <p className="text-xs text-ink-muted">{t('partners.neverPatientIdentity')}</p>
               <fieldset>
                 <legend className="label">{t('partners.roles')}</legend>
                 <div className="flex gap-4">
@@ -205,7 +198,7 @@ function PartnershipRow({ p, onChange }: { p: PartnerOrg; onChange: () => void }
       <div>
         <p className="text-sm font-semibold text-ink">{p.name} <span className="text-ink-muted font-normal">· {p.country}</span></p>
         <p className="text-xs text-ink-muted">
-          {statusLabel(p.status)} · {p.roles.map(roleLabel).join(', ') || '—'} · {p.default_visibility === 'full' ? t('partners.visibilityFull') : t('partners.visibilityPartial')}
+          {statusLabel(p.status)} · {p.roles.map(roleLabel).join(', ') || '—'}
           {p.share_stock ? ` · ${t('partners.stockShared')}` : ''}
         </p>
       </div>

@@ -12,6 +12,7 @@ import { usePartnerJobs, type PartnerJob } from '../hooks/usePartners'
 import { usePipeline } from '../context/PipelineContext'
 import { supabase } from '../lib/supabase'
 import { enqueueUpload } from '../lib/uploadQueue'
+import { confirmSharedUpload } from '../lib/sharedUpload'
 import { StatusPill } from '../components/ui/StatusPill'
 import { JobFiles } from '../components/Files/JobFiles'
 import { JobThread } from '../components/Partners/JobThread'
@@ -72,7 +73,8 @@ function OwnJob({ job }: { job: Job }) {
         {job.kirjeldus && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.kirjeldus}</span>} />}
       </section>
 
-      <button type="button" onClick={() => setShooting(true)}
+      <button type="button"
+        onClick={async () => { if (await confirmSharedUpload(job.id, [{ name: 'photo.jpg', type: 'photo' }])) setShooting(true) }}
         className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
         <Camera size={18} aria-hidden="true" /> {t('mobile.photoOntoJob')}
       </button>

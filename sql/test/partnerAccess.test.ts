@@ -117,20 +117,20 @@ describe('partial visibility (lab work)', () => {
   })
 })
 
-describe('referral (full visibility)', () => {
+describe('referral (sql/092: no longer full visibility)', () => {
   it('needs the consent mark', async () => {
     const j = await job()
     expect(await errorAs(db, { id: A.ownerId },
       `select public.share_job($1, $2, 'referral', 'surgery', array['disain'], null, false)`, [j, B.clinicId])).toMatch(/patient informed/)
   })
 
-  it('with consent: name and contacts, and who marked it', async () => {
+  it('with consent: who marked it — but the partner still sees no name or contacts', async () => {
     const j = await job()
     await share(j, { caseType: 'referral', consent: true, role: 'surgery' })
     const [row] = await view({ id: B.ownerId }, j)
-    expect(row).toMatchObject({ visibility: 'full', patient_name: 'Mari Maasikas', patient_phone: '+372 5555 5555' })
-    const { rows } = await db.query(`select consent_by, consent_at from public.job_share where job_id = $1`, [j])
-    expect(rows[0]).toMatchObject({ consent_by: A.ownerId })
+    expect(row).toMatchObject({ case_type: 'referral', visibility: 'partial', patient_name: null, patient_phone: null, patient_email: null })
+    const { rows } = await db.query(`select consent_by, consent_at, visibility from public.job_share where job_id = $1`, [j])
+    expect(rows[0]).toMatchObject({ consent_by: A.ownerId, visibility: 'partial' })
   })
 
   it('a role outside the partnership is refused', async () => {

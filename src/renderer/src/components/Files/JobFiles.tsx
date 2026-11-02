@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabase'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { enqueueUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
 import { fileDownloadUrl } from '../../lib/fileLink'
+import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
 
@@ -81,15 +82,17 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     qc.invalidateQueries({ queryKey: ['job_previews', done] })
   }), [qc])
 
-  function add(list: FileList | null) {
+  async function add(list: FileList | null) {
     if (!list) return
     const supersedes = versionOf.current
-    for (const f of Array.from(list)) {
-      const prev = supersedes ? files.find(x => x.id === supersedes) : null
-      const chosen = prev?.type ?? (type === 'auto' ? guessFileType(f.name) : type)
-      enqueueUpload(jobId, f, types.includes(chosen) ? chosen : types[0], supersedes)
-    }
     versionOf.current = null
+    const prev = supersedes ? files.find(x => x.id === supersedes) : null
+    const items = Array.from(list).map(f => {
+      const chosen = prev?.type ?? (type === 'auto' ? guessFileType(f.name) : type)
+      return { file: f, type: types.includes(chosen) ? chosen : types[0] }
+    })
+    if (!partner && !(await confirmSharedUpload(jobId, items.map(i => ({ name: i.file.name, type: i.type, mime: i.file.type }))))) return
+    for (const i of items) enqueueUpload(jobId, i.file, i.type, supersedes)
   }
 
   async function download(f: JobFileRow) {
@@ -117,7 +120,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
   return (
     <section className="space-y-3"
       onDragOver={e => e.preventDefault()}
-      onDrop={e => { e.preventDefault(); versionOf.current = null; add(e.dataTransfer.files) }}>
+      onDrop={e => { e.preventDefault(); versionOf.current = null; void add(e.dataTransfer.files) }}>
       <div className="flex items-center gap-2">
         <Paperclip size={13} className="text-ink-muted" aria-hidden="true" />
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">{t('files.files')}</h3>
@@ -130,7 +133,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
           className="btn-ghost text-xs border border-ink-faint/30 flex items-center gap-1">
           <Upload size={12} aria-hidden="true" /> {t('files.addFiles')}
         </button>
-        <input ref={input} type="file" multiple hidden onChange={e => { add(e.target.files); e.target.value = '' }} />
+        <input ref={input} type="file" multiple hidden onChange={e => { void add(e.target.files); e.target.value = '' }} />
       </div>
       <p className="text-[11px] text-ink-muted">{t('files.cleaningNote')}</p>
 
