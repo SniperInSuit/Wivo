@@ -97,7 +97,7 @@ Bug reports
 ## Run 2 (2 Nov 2026, daytime): sounds, soft delete, Phase 1b
 
 - [x] Sound system (Kevin's list) — f94633a
-- [x] Job deletion becomes a soft delete keeping job_file rows (sql/089) — COMMIT_SOFT
+- [x] Job deletion becomes a soft delete keeping job_file rows (sql/089) — 177bca3
 
 Phase 1b: phone (PWA)
 - [ ] PWA from the same React code base, hosted on Cloudflare Pages; same login and MFA

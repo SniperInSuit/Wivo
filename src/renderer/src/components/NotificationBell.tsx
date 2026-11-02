@@ -12,6 +12,7 @@ const text = (n: AppNotification): string => {
   const code = n.job_code ?? '—'
   if (n.kind === 'job_shared') return t('notifications.jobShared', { code, from: String(n.detail.from_org ?? '') })
   if (n.kind === 'stage_handover') return t('notifications.handedOver', { code })
+  if (n.kind === 'files_added') return t('notifications.filesAdded', { code })
   return t('notifications.question', { code })
 }
 

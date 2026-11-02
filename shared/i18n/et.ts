@@ -3003,6 +3003,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'patientExport.madeBy': "Koostas {clinic}, {date}",
 
   // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.filesAdded': "Uued failid tööl {code}",
   'notifications.emailHelp': "E-kirjas on ainult töö kood ja link, mitte kunagi patsiendi andmeid.",
   'notifications.emailMe': "Saada mulle e-kiri, kui partner jagab tööd, annab üle või küsib",
   'notifications.question': "Uus küsimus tööl {code}",

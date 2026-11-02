@@ -13,7 +13,7 @@ export interface AppNotification {
   id: string
   job_id: string | null
   job_code: string | null
-  kind: 'job_shared' | 'stage_handover' | 'question'
+  kind: 'job_shared' | 'stage_handover' | 'question' | 'files_added'
   detail: Record<string, unknown>
   created_at: string
   read_at: string | null
@@ -48,7 +48,7 @@ export function useNotifications() {
           qc.invalidateQueries({ queryKey: ['notifications', user.id] })
           // With the bell's badge — never instead of it.
           const kind = (payload.new as { kind?: string } | undefined)?.kind
-          playSound(kind === 'job_shared' ? 'notify-new-work' : kind === 'stage_handover' ? 'notify-handoff' : 'notify-message')
+          playSound(kind === 'job_shared' || kind === 'files_added' ? 'notify-new-work' : kind === 'stage_handover' ? 'notify-handoff' : 'notify-message')
         })
       .subscribe()
     return () => { void supabase.removeChannel(ch) }

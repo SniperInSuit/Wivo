@@ -407,7 +407,7 @@ event happens.
 
 | Sound | Event | Phase |
 |---|---|---|
-| `notify-new-work` | A job shared with us — **wired** (Phase 1, notification `job_shared`). Files ready for print (a partner uploads a `print` file): needs its own notification kind first | 1 (shared, done) · 1 follow-up (files ready) |
+| `notify-new-work` | A job shared with us, or files added to a shared job by the other side (a print file ready, a photo from the phone) — **wired** (notifications `job_shared`, `files_added`, sql/090) | 1, 1b (done) |
 | `notify-handoff` | A stage handed over to our side — **wired** (notification `stage_handover`) | 1 (done) |
 | `notify-stock-warning` | Stock under its minimum, or consignment goods turning red a month before they are due | 2 |
 | `notify-booking-confirmed` | A booking fee is marked paid and the appointment is confirmed | 4 |

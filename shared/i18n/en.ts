@@ -3017,6 +3017,7 @@ export const en = {
   'patientExport.madeBy': "Prepared by {clinic} on {date}",
 
   // ── notifications ─────────────────────────────────────────────────────────
+  'notifications.filesAdded': "New files on job {code}",
   'notifications.emailHelp': "The e-mail contains only the job code and a link, never patient details.",
   'notifications.emailMe': "E-mail me when a partner shares a job, hands one over or asks a question",
   'notifications.question': "New question on job {code}",
