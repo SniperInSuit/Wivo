@@ -17,10 +17,18 @@
  * scrubbed on the user's machine; a screenshot is never attached to the
  * e-mail — it stays in the private bucket, behind the service key.
  *
+ * Phone push (Phase 1b, sql/090) rides the same minute too: one EMPTY push per
+ * phone that has unread notifications waiting (`pending_pushes()`). The push
+ * carries nothing; the phone says "New in Wivo" and the app shows the rest
+ * after sign-in. E-mail stays the fallback for everyone without push.
+ *
  * Env: RESEND_API_KEY, NOTIFY_FROM (e.g. "Wivo <noreply@wivo.ee>"),
- *      APP_LINK (e.g. "https://app.wivo.ee/job/{id}"), BUG_REPORT_TO.
+ *      APP_LINK (e.g. "https://app.wivo.ee/job/{id}"), BUG_REPORT_TO,
+ *      VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (e.g. "mailto:ops@wivo.ee";
+ *      scripts/vapid-keys.mjs makes the pair).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { vapidSigningKey, vapidAuthorization, sendEmptyPush } from '../_shared/vapid.ts'
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -29,12 +37,12 @@ const db = createClient(
 )
 
 type Lang = 'en' | 'et' | 'ru'
-type Kind = 'job_shared' | 'stage_handover' | 'question'
+type Kind = 'job_shared' | 'stage_handover' | 'question' | 'files_added'
 
 const SUBJECT: Record<Lang, Record<Kind, string>> = {
-  en: { job_shared: 'Job {code} was shared with you', stage_handover: 'Job {code} was handed over to you', question: 'New question on job {code}' },
-  et: { job_shared: 'Töö {code} jagati teiega', stage_handover: 'Töö {code} anti teile üle', question: 'Uus küsimus tööl {code}' },
-  ru: { job_shared: 'Работа {code} передана вам', stage_handover: 'Этап работы {code} передан вам', question: 'Новый вопрос по работе {code}' },
+  en: { job_shared: 'Job {code} was shared with you', stage_handover: 'Job {code} was handed over to you', question: 'New question on job {code}', files_added: 'New files on job {code}' },
+  et: { job_shared: 'Töö {code} jagati teiega', stage_handover: 'Töö {code} anti teile üle', question: 'Uus küsimus tööl {code}', files_added: 'Tööle {code} lisati faile' },
+  ru: { job_shared: 'Работа {code} передана вам', stage_handover: 'Этап работы {code} передан вам', question: 'Новый вопрос по работе {code}', files_added: 'Новые файлы в работе {code}' },
 }
 const OPEN: Record<Lang, string> = { en: 'Open in Wivo', et: 'Ava Wivos', ru: 'Открыть в Wivo' }
 
@@ -62,7 +70,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
   for (const n of (data ?? []) as Pending[]) {
     const lang: Lang = (['en', 'et', 'ru'] as const).includes(n.language as Lang) ? n.language as Lang : 'en'
     const code = n.job_code ?? '—'
-    const subject = SUBJECT[lang][n.kind].replace('{code}', code)
+    // A kind this build does not know yet is still worth an e-mail: never let it
+    // stop the loop (and with it every other e-mail).
+    const subject = (SUBJECT[lang][n.kind] ?? SUBJECT[lang].files_added).replace('{code}', code)
     const url = n.job_id ? link.replace('{id}', n.job_id) : link
     const text = url ? `${subject}\n\n${OPEN[lang]}: ${url}\n` : `${subject}\n`
     if (dry) { sent.push(n.id); continue }
@@ -81,7 +91,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const bugs = await sendBugReports(dry, key, from)
-  return json(200, { ok: true, dry, sent: sent.length, failed, bugs })
+  const pushes = await sendPushes(dry)
+  return json(200, { ok: true, dry, sent: sent.length, failed, bugs, pushes })
 })
 
 interface BugReport {
@@ -115,6 +126,49 @@ async function sendBugReports(dry: boolean, key: string | undefined, from: strin
   }
   if (!dry && done.length > 0) await db.rpc('mark_bug_reports_emailed', { p_ids: done })
   return { sent: done.length }
+}
+
+interface PendingPush { notification_id: string; subscription_id: string; endpoint: string }
+
+/**
+ * One empty push per phone, however many notifications wait for it — the app
+ * shows them all. A notification is done once a phone took the push or turned
+ * out to be gone; one whose phones all failed is tried again next minute, for
+ * an hour (pending_pushes).
+ */
+async function sendPushes(dry: boolean): Promise<{ sent: number; gone: number; error?: string }> {
+  const pub = Deno.env.get('VAPID_PUBLIC_KEY')
+  const priv = Deno.env.get('VAPID_PRIVATE_KEY')
+  const subject = Deno.env.get('VAPID_SUBJECT')
+  if (!pub || !priv || !subject) return { sent: 0, gone: 0, error: 'VAPID keys not set' }
+  const { data, error } = await db.rpc('pending_pushes', { p_limit: 500 })
+  if (error) return { sent: 0, gone: 0, error: error.message }
+  const rows = (data ?? []) as PendingPush[]
+  if (rows.length === 0) return { sent: 0, gone: 0 }
+
+  const phones = new Map<string, { endpoint: string; notifications: string[] }>()
+  for (const r of rows) {
+    const p = phones.get(r.subscription_id) ?? { endpoint: r.endpoint, notifications: [] }
+    p.notifications.push(r.notification_id)
+    phones.set(r.subscription_id, p)
+  }
+  const signing = await vapidSigningKey(pub, priv)
+  const ok: string[] = []
+  const gone: string[] = []
+  const done = new Set<string>()
+  for (const [id, p] of phones) {
+    const result = dry ? 'ok' : await sendEmptyPush(p.endpoint, await vapidAuthorization(p.endpoint, signing, pub, subject))
+    if (result === 'ok') ok.push(id)
+    if (result === 'gone') gone.push(id)
+    if (result !== 'failed') p.notifications.forEach(n => done.add(n))
+  }
+  if (!dry) {
+    const { error: markErr } = await db.rpc('mark_pushed', {
+      p_notifications: [...done], p_ok_subscriptions: ok, p_gone_subscriptions: gone,
+    })
+    if (markErr) return { sent: ok.length, gone: gone.length, error: markErr.message }
+  }
+  return { sent: ok.length, gone: gone.length }
 }
 
 function json(status: number, body: unknown): Response {
