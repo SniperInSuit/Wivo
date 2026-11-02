@@ -1,10 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
+import { supabaseTarget } from './testCopy'
 import type { Job } from '../types/job'
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 
-// Read from .env — never hardcode these values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+// Read from .env — never hardcode these values. In test mode (`npm run
+// dev:test`) from .env.test, and never production: lib/testCopy.
+const target = supabaseTarget(
+  import.meta.env.MODE,
+  import.meta.env.VITE_SUPABASE_URL as string | undefined,
+  import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined,
+)
+const supabaseUrl = target.url
+const supabaseAnonKey = target.key
+/** Why test mode is not connected, if it is not (the banner says it). */
+export const testCopyProblem = target.problem
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(

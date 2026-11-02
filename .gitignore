@@ -2,6 +2,8 @@ node_modules
 dist
 out
 .env
+# Test mode (npm run dev:test): the test copy's URL and anon key only. Never committed.
+.env.test
 *.local
 *.tsbuildinfo
 

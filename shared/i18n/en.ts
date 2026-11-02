@@ -3328,6 +3328,11 @@ export const en = {
   'stock.archive': "Archive",
   'stock.allCategories': "All categories",
   'stock.addGoods': "Add goods",
+
+  // ── testCopy ──────────────────────────────────────────────────────────────
+  'testCopy.production': ".env.test points at PRODUCTION: refused, not connected",
+  'testCopy.missing': ".env.test has no URL or anon key: not connected",
+  'testCopy.label': "TEST COPY",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

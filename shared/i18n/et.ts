@@ -3315,4 +3315,9 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'stock.allCategories': "Kõik kategooriad",
   'stock.addGoods': "Lisa kaupa",
 
+  // ── testCopy ──────────────────────────────────────────────────────────────
+  'testCopy.production': ".env.test osutab TOOTMISELE: keeldutud, ühendust pole",
+  'testCopy.missing': ".env.test failis pole URL-i või anon-võtit: ühendust pole",
+  'testCopy.label': "TESTKOOPIA",
+
 }
