@@ -297,6 +297,25 @@
    reset to 1 as well: a 125% screen preference must not silently rescale a
    document whose page size is fixed in millimetres.
    ------------------------------------------------------------------------- */
+/* ─── Phone PWA ───────────────────────────────────────────────────────────
+   The desktop app sets overflow:hidden on the body and height:100% on
+   html/body/#root because Electron manages its own layout. The phone PWA
+   needs normal page scrolling so nothing is hidden behind the notch or
+   the home indicator. mobile/main.tsx adds the class.
+   ------------------------------------------------------------------------- */
+html.mobile,
+html.mobile body,
+html.mobile #root {
+  height: auto;
+  overflow: visible;
+}
+html.mobile body {
+  overflow-x: hidden;
+}
+html.mobile #root {
+  zoom: 1;
+}
+
 @media print {
   #root {
     zoom: 1;

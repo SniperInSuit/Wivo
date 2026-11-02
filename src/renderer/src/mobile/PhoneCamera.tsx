@@ -64,7 +64,7 @@ export function PhoneCamera({ onFile, onClose, single = false }: { onFile: (file
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black text-white" role="dialog" aria-label={t('mobile.camera')}>
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-3 px-3 pb-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
         <span className="text-sm">{taken > 0 ? t('mobile.photosAdded', { n: taken }) : t('mobile.cameraHint')}</span>
         <button type="button" onClick={onClose} aria-label={t('mobile.done')}
           className="ml-auto rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
@@ -91,7 +91,7 @@ export function PhoneCamera({ onFile, onClose, single = false }: { onFile: (file
       </div>
 
       {state === 'live' && (
-        <div className="flex items-center justify-center p-6">
+        <div className="flex items-center justify-center px-6 pt-6" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
           <button type="button" onClick={() => void shoot()} disabled={busy} aria-label={t('mobile.takePhoto')}
             className="grid place-items-center rounded-full border-4 border-white disabled:opacity-50" style={{ height: 72, width: 72 }}>
             {busy ? <Loader2 className="animate-spin" /> : <Camera />}

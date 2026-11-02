@@ -19,6 +19,8 @@ import { MobileApp } from './MobileApp'
 import { t } from '@/lib/i18n'
 import '../styles/index.css'
 
+document.documentElement.classList.add('mobile')
+
 installErrorLog()
 void initSounds()
 installUiSounds()
