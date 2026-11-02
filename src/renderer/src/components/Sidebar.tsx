@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Kanban, CalendarDays, Table2, Users, BarChart2, Settings,
-  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake, FolderInput, Sparkles
+  PanelLeftClose, PanelLeftOpen, UsersRound, FileText, Wallet, Building2, Inbox, Handshake, FolderInput, Sparkles, Package
 } from 'lucide-react'
 import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
@@ -10,6 +10,7 @@ import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
 import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
 import { usePartnerOrgs } from '../hooks/usePartners'
+import { useStockAlerts } from '../hooks/useStockAlerts'
 import { BugReportButton } from './BugReportButton'
 import { useWhatsNew } from './WhatsNew'
 import { t } from '@/lib/i18n'
@@ -37,6 +38,7 @@ const NAV: {
   { key: 'arved',    label: t('sidebar.invoices'),      icon: FileText,        perm: 'payments.read' },
   { key: 'tootasud', label: t('sidebar.payroll'),   icon: Wallet },
   { key: 'stats',    label: t('sidebar.statistics'), icon: BarChart2,       perm: 'stats.read' },
+  { key: 'stock',    label: t('sidebar.stock'),      icon: Package,         perm: 'stock.read' },
 ]
 
 // Seaded is its own view (since 1.1.6) but stays visually separated below a rule
@@ -50,6 +52,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   // Opens by itself once per person per version; the footer button reopens it.
   const whatsNew = useWhatsNew(running)
   const newRequests = useNewRequestCount()
+  const stockAlerts = useStockAlerts()
   // Only an organisation that has a partnership has partner jobs to look at.
   const { data: partners = [] } = usePartnerOrgs()
   const hasPartners = partners.some(p => p.status !== 'awaiting_inviter' && p.status !== 'awaiting_platform')
@@ -102,6 +105,16 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
                 and it should read as "deal with me" from across the room.
                 No ring: the rail is dark and an active item is light, so any
                 single ring colour would be wrong against one of them. */}
+            {key === 'stock' && stockAlerts > 0 && (
+              <span
+                title={t('sidebar.stockNeedsAttention', { n: stockAlerts })}
+                className={`text-[10px] font-bold rounded-full bg-red-500 text-white min-w-[17px] h-[17px] px-1 flex items-center justify-center ${
+                  wide ? 'ml-auto' : 'absolute top-0.5 right-0.5'
+                }`}
+              >
+                {stockAlerts > 99 ? '99+' : stockAlerts}
+              </span>
+            )}
             {key === 'taotlused' && newRequests > 0 && (
               <span
                 title={t('sidebar.newWaitingForAReplyRequest', { newRequests })}

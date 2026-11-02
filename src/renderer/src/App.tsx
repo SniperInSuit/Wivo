@@ -14,6 +14,8 @@ import { UnsortedView } from './components/Unsorted/UnsortedView'
 import { LanguageSync } from './components/LanguageSync'
 import { supabase } from './lib/supabase'
 import { PartnerJobsView } from './components/Partners/PartnerJobsView'
+import { StockView } from './components/Stock/StockView'
+import { InventoryBanner } from './components/Stock/InventoryBanner'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { jobTotalValue } from './lib/jobPayments'
@@ -352,6 +354,9 @@ function AppContent() {
         <LicenseBanner onOpenSettings={() => setView('settings')} />
         <main className="flex-1 overflow-hidden flex flex-col">
           {view === 'overview' && (
+            <InventoryBanner className="mx-4 mt-4" onOpen={() => setView('stock')} />
+          )}
+          {view === 'overview' && (
             <OverviewView
               jobs={searchedJobs}
               searchActive={search.trim().length > 0}
@@ -421,6 +426,7 @@ function AppContent() {
           {view === 'workers' && <WorkersPage />}
           {view === 'partner' && <PartnerJobsView />}
           {view === 'unsorted' && <UnsortedView />}
+          {view === 'stock' && <StockView jobs={jobs} />}
         </main>
       </div>
 
