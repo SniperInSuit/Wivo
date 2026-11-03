@@ -11,6 +11,8 @@ import { WorkItemsField } from './WorkItemsField'
 import { WorkerSelect } from './WorkerSelect'
 import { ShadePicker } from './ShadePicker'
 import { DieShadePicker } from './DieShadePicker'
+import { SecondMaterialField } from './SecondMaterialField'
+import { splitMaterials, joinMaterials } from '@shared/pricing/materials'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings, countSmallTeeth, countLargeTeeth } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
@@ -387,8 +389,11 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
               {(() => {
                 const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
                 const hasItems = form.work_items.length > 1
-                const currentMat = hasItems && activeItem ? (activeItem.materjal ?? '') : form.materjal
-                const setMat = (val: string) => {
+                // "Apex Base + Apex Teeth" is one string (shared/pricing/materials):
+                // the buttons edit the first, SecondMaterialField the second.
+                const [currentMat, secondMat] = splitMaterials(
+                  hasItems && activeItem ? activeItem.materjal : form.materjal)
+                const setFull = (val: string) => {
                   if (hasItems && activeItem) {
                     setForm(f => ({
                       ...f,
@@ -396,9 +401,17 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                       materjal: f.work_items[0]?.id === activeItem.id ? val : f.materjal,
                     }))
                   } else {
-                    set('materjal', val)
+                    // A lone item follows the field, as on the job page.
+                    setForm(f => ({
+                      ...f,
+                      materjal: val,
+                      work_items: f.work_items.length === 1
+                        ? [{ ...f.work_items[0], materjal: val || undefined }]
+                        : f.work_items,
+                    }))
                   }
                 }
+                const setMat = (val: string) => setFull(joinMaterials(val, secondMat))
                 const sortedMats = [...settings.materjalid].sort((a, b) => b.length - a.length)
                 const baseMat = sortedMats.find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
                 const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
@@ -452,6 +465,14 @@ export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy,
                         })}
                       </div>
                     )}
+                    <SecondMaterialField
+                      too={hasItems ? activeItem?.too : form.work_items[0]?.too}
+                      first={currentMat}
+                      second={secondMat}
+                      onChange={val => setFull(joinMaterials(currentMat, val))}
+                      disabled={hasItems && !activeItem}
+                      tone="dark"
+                    />
                   </>
                 )
               })()}

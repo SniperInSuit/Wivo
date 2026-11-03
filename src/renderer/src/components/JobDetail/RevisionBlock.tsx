@@ -10,6 +10,8 @@ import { WorkerSelect } from './WorkerSelect'
 import { RevisionEditFullscreen } from './RevisionEditFullscreen'
 import { debugLog } from '../Workers/DebugConsole'
 import { ShadePicker } from './ShadePicker'
+import { SecondMaterialField } from './SecondMaterialField'
+import { splitMaterials, joinMaterials } from '@shared/pricing/materials'
 import { usePipeline } from '../../context/PipelineContext'
 import { useSettings } from '../../stores/useSettings'
 import { stageChipStyle } from '../../config/pipeline'
@@ -633,8 +635,11 @@ function RevisionForm({
           // while a single-item revision keeps the plain revision-level field.
           const activeItem = draft.work_items.find(i => i.id === activeWorkItemId)
           const perItem = draft.work_items.length > 1
-          const currentMat = perItem && activeItem ? (activeItem.materjal ?? '') : draft.materjal
-          const setMat = (val: string) => {
+          // "Apex Base + Apex Teeth" is one string (shared/pricing/materials):
+          // the buttons edit the first, SecondMaterialField the second.
+          const [currentMat, secondMat] = splitMaterials(
+            perItem && activeItem ? activeItem.materjal : draft.materjal)
+          const setFull = (val: string) => {
             if (perItem && activeItem) {
               setDraft(d => ({
                 ...d,
@@ -646,9 +651,17 @@ function RevisionForm({
                 materjal: d.work_items[0]?.id === activeItem.id ? val : d.materjal,
               }))
             } else {
-              setDraft(d => ({ ...d, materjal: val }))
+              // A lone item follows the field, as on the job page.
+              setDraft(d => ({
+                ...d,
+                materjal: val,
+                work_items: d.work_items.length === 1
+                  ? [{ ...d.work_items[0], materjal: val || undefined }]
+                  : d.work_items,
+              }))
             }
           }
+          const setMat = (val: string) => setFull(joinMaterials(val, secondMat))
           const baseMat = [...settings.materjalid]
             .sort((a, b) => b.length - a.length)
             .find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
@@ -701,10 +714,18 @@ function RevisionForm({
                   ))}
                 </div>
               )}
-              {currentMat && (
+              <SecondMaterialField
+                too={perItem ? activeItem?.too : draft.work_items[0]?.too}
+                first={currentMat}
+                second={secondMat}
+                onChange={val => setFull(joinMaterials(currentMat, val))}
+                disabled={perItem && !activeItem}
+                tone="dark"
+              />
+              {(currentMat || secondMat) && (
                 <button
                   type="button"
-                  onClick={() => setMat('')}
+                  onClick={() => setFull('')}
                   className="text-[10px] text-slate-500 hover:text-red-400 transition-colors"
                 >
                   {t('jobDetail.clear')}

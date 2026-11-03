@@ -25,6 +25,7 @@ import { pickRateFor, calculateEarnings } from './earnings'
 import { jobMaterialDetail } from './finance'
 import { workTypeConsumables, abutmentUnitPrice, type WorkType } from '../config/workTypes'
 import type { MaterialPricing } from '@shared/pricing/priceBook'
+import { splitMaterials } from '@shared/pricing/materials'
 import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -196,19 +197,23 @@ export function jobCosts(input: JobCostsInput): JobCosts {
     },
     materialCosts, materialPrices
   )
-  const matCost = mat?.summa ?? 0
+  // A second material (a denture's teeth on its base) is its own line, so each
+  // number can be checked against its own price.
+  const firstMaterial = splitMaterials(effectiveMaterial)[0]
+  const matCost = round2((mat?.summa ?? 0) - (mat?.teine?.summa ?? 0))
   // The line SAYS how the number was reached. "42.00 €" against a plate the
   // technician can see is not checkable; "2 kapslit × 21.00 €" is. Per-tooth
   // jobs keep the bare material name, because there the teeth are the answer
   // and they are already on screen.
   const matLabel = !mat || mat.kapsleid == null
-    ? (effectiveMaterial || t('jobCosts.material'))
-    : `${effectiveMaterial || t('jobCosts.material')}: `
+    ? (firstMaterial || t('jobCosts.material'))
+    : `${firstMaterial || t('jobCosts.material')}: `
       + t('jobCosts.capsuleCapsules', { mat, kapsleid: mat.kapsleid })
       + ` × ${mat.tykihind.toFixed(2)} €`
-  const matLines: CostLine[] = matCost > 0
-    ? [{ label: matLabel, amount: matCost }]
-    : []
+  const matLines: CostLine[] = [
+    ...(matCost > 0 ? [{ label: matLabel, amount: matCost }] : []),
+    ...(mat?.teine && mat.teine.summa > 0 ? [{ label: mat.teine.materjal, amount: mat.teine.summa }] : []),
+  ]
 
   // ── Consumables ───────────────────────────────────────────────────────────
   // Per-tooth consumables are hardware: a screw, a ti-base, an abutment. On a

@@ -474,3 +474,38 @@ describe('jobCosts — hardware follows implants, not teeth', () => {
     expect(cat(r, 'tarvikud').amount).toBe(100)
   })
 })
+
+describe('jobCosts — a denture in two materials', () => {
+  const costs = { 'Apex Base': { small: 2, large: 3 }, 'Apex Teeth': { small: 1, large: 1 } }
+  const denture = (over: Partial<JobCostsInput['job']> = {}) => input({
+    job: {
+      ...input().job,
+      work_items: [{ id: 'a', too: 'Proteez', hambad: '11,12,13', materjal: 'Apex Base + Apex Teeth' }],
+      materjal: 'Apex Base + Apex Teeth',
+      ...over,
+    },
+    materialCosts: costs,
+  })
+
+  it('costs base and teeth as two lines', () => {
+    const m = cat(jobCosts(denture()), 'materjal')
+    expect(m.lines).toEqual([
+      { label: 'Apex Base', amount: 6 },
+      { label: 'Apex Teeth', amount: 3 },
+    ])
+    expect(m.computed).toBe(9)
+  })
+
+  it('applies a typed capsule count to the first material only', () => {
+    const m = cat(jobCosts(denture({ materjali_yhikud: 2 })), 'materjal')
+    expect(m.lines.map(l => l.amount)).toEqual([4, 3]) // 2 × 2 €, teeth by tooth
+    expect(m.computed).toBe(7)
+  })
+
+  it('still costs the second when the first has no price', () => {
+    const m = cat(jobCosts(denture({
+      work_items: [{ id: 'a', too: 'Proteez', hambad: '11,12,13', materjal: 'Tundmatu + Apex Teeth' }],
+    })), 'materjal')
+    expect(m.lines).toEqual([{ label: 'Apex Teeth', amount: 3 }])
+  })
+})
