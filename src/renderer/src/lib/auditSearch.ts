@@ -33,11 +33,41 @@ export function actionLabel(a: string): string {
   } as Record<string, string>)[a] ?? a
 }
 
+/** The CSV exports (sql/106), by the name the screen gives them. */
+export function exportKindLabel(kind: string): string {
+  return ({
+    audit_log: t('audit.csvAuditLog'), jobs: t('audit.csvJobs'), customers: t('audit.csvCustomers'),
+    invoices: t('audit.csvInvoices'), patient_contacts: t('audit.csvPatientContacts'), payouts: t('audit.csvPayouts'),
+    payout_lines: t('audit.csvPayoutLines'), revision_repricing: t('audit.csvRevisionRepricing'),
+  } as Record<string, string>)[kind] ?? kind
+}
+
+/** A recorded export's filters, short: "Stage: print · Search". */
+export function filtersText(filters: unknown): string {
+  if (!filters || typeof filters !== 'object') return ''
+  const label = (k: string): string => ({
+    search: t('audit.fSearch'), stage: t('audit.fStage'), period: t('audit.fPeriod'), workTypes: t('audit.fWorkTypes'),
+    pay: t('audit.fPay'), revisions: t('audit.fRevisions'), debtors: t('audit.fDebtors'), archived: t('audit.fArchived'),
+    status: t('audit.fStatus'), person: t('audit.who'), action: t('audit.action'), jobCode: t('audit.jobCode'),
+    from: t('audit.from'), to: t('audit.to'),
+  } as Record<string, string>)[k] ?? k
+  return Object.entries(filters as Record<string, unknown>).map(([k, v]) => {
+    if (v === true) return label(k)
+    const value = Array.isArray(v) ? v.join(', ') : k === 'action' ? actionLabel(String(v)) : String(v)
+    return `${label(k)}: ${value}`
+  }).join(' · ')
+}
+
 /** The detail column, as the screen has always shown it. */
 export function describeEntry(e: AuditEntry): string {
   const d = e.detail ?? {}
   if (e.action === 'stage_move') return `${d.from ?? ''} → ${d.to ?? ''}`
   if (e.action === 'partnership') return String(d.step ?? '')
+  // A CSV export (sql/106): how many rows and with which filters.
+  if (e.action === 'export' && typeof d.kind === 'string') {
+    const f = filtersText(d.filters)
+    return [t('audit.rows', { n: Number(d.rows ?? 0) }), f].filter(Boolean).join(' · ')
+  }
   if (e.action === 'export') return t('audit.files', { n: Number(d.files ?? 0) })
   // Two-factor sign-in (sql/097): whose, which authenticator, why.
   if (e.action === 'mfa_added') return String(d.name ?? '')
@@ -48,7 +78,8 @@ export function describeEntry(e: AuditEntry): string {
 
 export const entryWhen = (e: AuditEntry): string => format(new Date(e.at), 'd MMM yyyy HH:mm:ss', { locale: dateLocale })
 export const entryWho = (e: AuditEntry): string => e.user_name || t('audit.system')
-export const entryWhat = (e: AuditEntry): string => e.job_code ?? e.object
+export const entryWhat = (e: AuditEntry): string =>
+  e.job_code ?? (e.object.startsWith('csv:') ? `CSV: ${exportKindLabel(e.object.slice(4))}` : e.object)
 
 export interface AuditFilters {
   userId: string

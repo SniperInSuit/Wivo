@@ -36,7 +36,8 @@ import { updateProfile, type Engagement, type PayBasis } from '../../lib/supabas
 import { useAuth } from '../../context/AuthContext'
 import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
-import { exportCsv, payoutColumns, payoutLineColumns } from '../../lib/exports'
+import { payoutColumns, payoutLineColumns } from '../../lib/exports'
+import { auditedCsvExport } from '../../lib/exportAudit'
 
 /**
  * The person's own tax settings, as overrides. Undefined where they have none —
@@ -368,7 +369,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             exactly when the payout has already been frozen. */}
         <div className="flex items-center gap-1.5 ml-auto">
           <button
-            onClick={() => exportCsv('valjamaksed', payouts, payoutColumns(nameOf))}
+            onClick={() => void auditedCsvExport('payouts', 'valjamaksed', payouts, payoutColumns(nameOf))}
             disabled={payouts.length === 0}
             className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
             title={t('workers.payoutTotalsCSV')}
@@ -376,8 +377,8 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
             <Download size={13} /> {t('workers.payouts')}
           </button>
           <button
-            onClick={() => exportCsv(
-              'valjamaksed-read',
+            onClick={() => void auditedCsvExport(
+              'payout_lines', 'valjamaksed-read',
               payouts.flatMap(p => p.lines.map(line => ({ payout: p, line }))),
               payoutLineColumns(nameOf),
             )}
@@ -1206,8 +1207,8 @@ function RevaluePanel({ groups, workerName }: {
 
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-ink-faint/15 pt-2">
             <button
-              onClick={() => exportCsv(
-                `muudatuste-umberarvutus-${workerName}`,
+              onClick={() => void auditedCsvExport(
+                'revision_repricing', `muudatuste-umberarvutus-${workerName}`,
                 rows.flatMap(r => r.g.lines.map(l => ({ ...l, correctRate: r.should / (r.g.qty || 1) }))),
                 [
                   { header: 'Kuu', value: l => l.period },
@@ -1219,6 +1220,7 @@ function RevaluePanel({ groups, workerName }: {
                   { header: 'Peaks olema', value: l => (l.qty * l.correctRate).toFixed(2) },
                   { header: 'Vahe', value: l => (l.qty * l.correctRate - l.amount).toFixed(2) },
                 ],
+                { person: workerName },
               )}
               className="btn-ghost mr-auto border border-ink-faint/25 text-xs"
             >

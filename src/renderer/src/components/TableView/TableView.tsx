@@ -17,7 +17,8 @@ import { jobPaymentState } from '../../lib/jobPayments'
 import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
 import { useWorkTypes } from '../../stores/useSettings'
 import { useCustomers } from '../../hooks/useCustomers'
-import { exportCsv, jobColumns } from '../../lib/exports'
+import { jobColumns } from '../../lib/exports'
+import { auditedCsvExport, isSet } from '../../lib/exportAudit'
 import { usePermissions } from '../../hooks/usePermissions'
 import { toDate, fmtDate } from '../../lib/dates'
 import { jobTotalValue } from '../../lib/jobPayments'
@@ -532,12 +533,16 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             from a filtered view is how someone sends the wrong month to their
             accountant. */}
         <button
-          onClick={() => exportCsv('tood', filtered, jobColumns(
+          onClick={() => void auditedCsvExport('jobs', 'tood', filtered, jobColumns(
             key => stages.find(st => st.key === key)?.label ?? key,
             id => customers.find(c => c.id === id)?.name ?? '',
             id => workers.find(w => w.id === id)?.full_name ?? '',
             money,
-          ))}
+          ), {
+            // The search may be a patient's name, and debtors are names: only whether, and how many.
+            search: isSet(search), stage: stageFilter, period: periodFilter, workTypes: [...workTypeFilter],
+            pay: payFilter, revisions: revFilter, debtors: debtorFilter.size,
+          })}
           disabled={filtered.length === 0}
           title={t('tableView.exportToCSVRowRows', { filtered, filteredCount: filtered.length })}
           className="text-xs px-2.5 py-1 rounded-lg font-medium text-ink-muted hover:text-ink bg-bg-sidebar transition-colors flex-shrink-0 flex items-center gap-1.5 disabled:opacity-40 ml-auto"

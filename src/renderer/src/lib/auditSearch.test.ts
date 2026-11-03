@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { toCsv } from '@shared/export/csv'
-import { AUDIT_ACTIONS, AUDIT_CSV_COLUMNS, NO_FILTERS, actionLabel, cursorAfter, describeEntry, entryWhat, filterArgs, type AuditEntry } from './auditSearch'
+import { AUDIT_ACTIONS, AUDIT_CSV_COLUMNS, NO_FILTERS, actionLabel, cursorAfter, describeEntry, entryWhat, filterArgs, filtersText, type AuditEntry } from './auditSearch'
 
 const entry = (p: Partial<AuditEntry> = {}): AuditEntry => ({
   id: 1, at: '2026-03-05T10:00:00Z', user_name: 'Mari', action: 'stage_move', object: 'job:x', job_code: 'TAL-26-0042',
@@ -51,5 +51,27 @@ describe('what is shown, and exported', () => {
     expect(csv).toContain('Mari')
     expect(csv).not.toContain('secret')
     expect(csv).not.toContain('job:x')
+  })
+})
+
+describe('a recorded CSV export, as the log shows it (sql/106)', () => {
+  it('which export, how many rows and the filters', () => {
+    const e = entry({ action: 'export', object: 'csv:jobs', job_code: null,
+      detail: { kind: 'jobs', rows: 120, filters: { stage: 'print', search: true, workTypes: ['Kroon', 'Sild'] } } })
+    expect(entryWhat(e)).toMatch(/^CSV: /)
+    expect(entryWhat(e)).not.toContain('csv:')
+    const d = describeEntry(e)
+    expect(d).toContain('120')
+    expect(d).toContain('print')
+    expect(d).toContain('Kroon, Sild')
+  })
+
+  it('the patient export\'s entry still reads as before (files)', () => {
+    expect(describeEntry(entry({ action: 'export', object: 'patient:x', job_code: null, detail: { files: 3 } }))).toMatch(/3/)
+  })
+
+  it('no filters: nothing after the rows', () => {
+    expect(filtersText({})).toBe('')
+    expect(filtersText(null)).toBe('')
   })
 })

@@ -16,7 +16,8 @@ import { useJobs } from '../../hooks/useJobs'
 import { useInvoices } from '../../hooks/useInvoices'
 import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
-import { exportCsv, CUSTOMER_COLUMNS } from '../../lib/exports'
+import { CUSTOMER_COLUMNS } from '../../lib/exports'
+import { auditedCsvExport, isSet } from '../../lib/exportAudit'
 import { t } from '@/lib/i18n'
 
 export function CustomersView() {
@@ -84,7 +85,7 @@ export function CustomersView() {
           </button>
         )}
         <button
-          onClick={() => exportCsv('kliendid', shown, CUSTOMER_COLUMNS)}
+          onClick={() => void auditedCsvExport('customers', 'kliendid', shown, CUSTOMER_COLUMNS, { search: isSet(query), archived: showArchived })}
           disabled={shown.length === 0}
           className="btn-ghost text-sm border border-ink-faint/25 ml-auto flex-shrink-0 disabled:opacity-40"
           title={t('customers.exportToCSVClientClients', { shown, shownCount: shown.length })}

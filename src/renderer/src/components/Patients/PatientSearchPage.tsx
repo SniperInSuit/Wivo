@@ -8,7 +8,8 @@ import type { Patient } from '../../types/patient'
 import { jobsForPatient, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { usePermissions } from '../../hooks/usePermissions'
-import { exportCsv, PATIENT_MARKETING_COLUMNS } from '../../lib/exports'
+import { PATIENT_MARKETING_COLUMNS } from '../../lib/exports'
+import { auditedCsvExport } from '../../lib/exportAudit'
 import { mayMarket } from '../../types/patient'
 import { t } from '@/lib/i18n'
 
@@ -152,7 +153,7 @@ export function PatientSearchPage({
             A button that quietly exported everyone would hand the clinic a list
             it is not allowed to use, with nothing on screen saying so. */}
         <button
-          onClick={() => exportCsv('turunduskontaktid', marketable, PATIENT_MARKETING_COLUMNS)}
+          onClick={() => void auditedCsvExport('patient_contacts', 'turunduskontaktid', marketable, PATIENT_MARKETING_COLUMNS)}
           disabled={marketable.length === 0}
           title={
             marketable.length === 0

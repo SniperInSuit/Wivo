@@ -22,7 +22,8 @@ import { describeError } from '../Patients/errors'
 import { InvoiceForm } from './InvoiceForm'
 import { PaymentPlansPanel } from './PaymentPlansPanel'
 import { InvoicePrintView } from './InvoicePrintView'
-import { exportCsv, INVOICE_COLUMNS } from '../../lib/exports'
+import { INVOICE_COLUMNS } from '../../lib/exports'
+import { auditedCsvExport, isSet } from '../../lib/exportAudit'
 
 interface InvoicesViewProps {
   jobs: Job[]
@@ -131,7 +132,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
             />
           </div>
           <button
-            onClick={() => exportCsv('arved', filtered, INVOICE_COLUMNS)}
+            onClick={() => void auditedCsvExport('invoices', 'arved', filtered, INVOICE_COLUMNS, { status: filter === 'koik' ? null : filter, search: isSet(search) })}
             disabled={filtered.length === 0}
             title={t('invoices.exportToCSVInvoiceInvoices', { filtered, filteredCount: filtered.length })}
             className="btn-ghost text-sm border border-ink-faint/25 disabled:opacity-40"

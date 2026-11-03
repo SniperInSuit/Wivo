@@ -11,6 +11,7 @@ import { ScrollText, Download, ChevronLeft, ChevronRight, X, Loader2 } from 'luc
 import { supabase } from '../../lib/supabase'
 import { toCsv, csvFileName } from '@shared/export/csv'
 import { downloadCsv } from '../../lib/exports'
+import { recordExport } from '../../lib/exportAudit'
 import {
   AUDIT_ACTIONS, AUDIT_CSV_COLUMNS, CSV_MAX_ROWS, NO_FILTERS, actionLabel, cursorAfter, describeEntry, entryWhat, entryWhen, entryWho, filterArgs,
   type AuditEntry, type AuditFilters, type Cursor,
@@ -74,6 +75,12 @@ export function AuditLogSection() {
         before = cursorAfter(batch)
       }
       const capped = all.slice(0, CSV_MAX_ROWS)
+      // The export itself goes in the log (sql/106) before the file is made:
+      // the filters and the number of rows, never the rows.
+      await recordExport('audit_log', capped.length, {
+        person: people.find(p => p.user_id === filters.userId)?.name ?? null,
+        action: filters.action, jobCode: filters.jobCode.trim(), from: filters.from, to: filters.to,
+      })
       downloadCsv(csvFileName('audit-log', new Date()), toCsv(capped, AUDIT_CSV_COLUMNS))
       if (all.length >= CSV_MAX_ROWS) setExportNote(t('audit.exportCapped', { n: CSV_MAX_ROWS }))
     } catch (e) {
