@@ -11,6 +11,12 @@ import { t, dateLocale } from '@/lib/i18n'
 
 const text = (n: AppNotification, stageLabel: (key: string) => string): string => {
   const code = n.job_code ?? '—'
+  if (n.kind === 'mfa_removed') {
+    return n.detail.signed_out ? t('notifications.mfaRemovedLast') : t('notifications.mfaRemoved', { name: String(n.detail.name ?? '') })
+  }
+  if (n.kind === 'mfa_reset') {
+    return t('notifications.mfaReset', { by: String(n.detail.by ?? ''), reason: String(n.detail.reason ?? '') })
+  }
   if (n.kind === 'stage_reached') {
     const stage = stageLabel(String(n.detail.to ?? ''))
     return n.detail.revision ? t('notifications.remakeReachedStage', { code, stage }) : t('notifications.reachedStage', { code, stage })

@@ -1,7 +1,7 @@
 /**
- * Phone settings: notifications on this phone, sounds, language, signing
- * out (here, and everywhere else for a lost phone). Nothing about the
- * organisation — that is the desktop's job.
+ * Phone settings: notifications on this phone, sounds, language, security
+ * (authenticators, phones, signing out everywhere else for a lost phone),
+ * signing out here. Nothing about the organisation — that is the desktop's job.
  */
 import { useEffect, useState } from 'react'
 import { Bell, LogOut, Languages, Sparkles } from 'lucide-react'
@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase'
 import { pushState, enablePush, disablePush, needsHomeScreen, forgetPushBeforeSignOut, type PushState } from '../lib/push'
 import { SoundSection } from '../components/Settings/SoundSection'
 import { NotificationChannels } from '../components/Settings/NotificationChannels'
-import { SignOutOthersSection } from '../components/Settings/SignOutOthersSection'
+import { SecuritySection } from '../components/Settings/SecuritySection'
 import { describeError } from '../components/Patients/errors'
 import { t, lang, setLang, type Lang } from '@/lib/i18n'
 
@@ -70,7 +70,7 @@ export function MobileSettings({ onWhatsNew }: { onWhatsNew: (() => void) | null
         </button>
       )}
 
-      <SignOutOthersSection />
+      <SecuritySection />
 
       <button type="button" onClick={() => void signOut()}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-ink-faint/30 py-3 text-sm font-semibold text-rose-500">

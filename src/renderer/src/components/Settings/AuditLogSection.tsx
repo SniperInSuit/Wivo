@@ -13,11 +13,12 @@ import { t, dateLocale } from '@/lib/i18n'
 
 interface Entry { id: number; at: string; user_name: string | null; action: string; object: string; job_code: string | null; detail: Record<string, unknown> }
 
-const ACTIONS = ['view', 'download', 'upload', 'share', 'unshare', 'stage_move', 'partnership', 'export', 'question'] as const
+const ACTIONS = ['view', 'download', 'upload', 'share', 'unshare', 'stage_move', 'partnership', 'export', 'question', 'mfa_added', 'mfa_removed', 'mfa_reset'] as const
 const actionLabel = (a: string): string => ({
   view: t('audit.view'), download: t('audit.download'), upload: t('audit.upload'), share: t('audit.share'),
   unshare: t('audit.unshare'), stage_move: t('audit.stageMove'), partnership: t('audit.partnership'),
   export: t('audit.export'), question: t('audit.question'),
+  mfa_added: t('audit.mfaAdded'), mfa_removed: t('audit.mfaRemoved'), mfa_reset: t('audit.mfaReset'),
 } as Record<string, string>)[a] ?? a
 
 function describe(e: Entry): string {
@@ -25,6 +26,10 @@ function describe(e: Entry): string {
   if (e.action === 'stage_move') return `${d.from ?? ''} → ${d.to ?? ''}`
   if (e.action === 'partnership') return String(d.step ?? '')
   if (e.action === 'export') return t('audit.files', { n: Number(d.files ?? 0) })
+  // Two-factor sign-in (sql/097): whose, which authenticator, why.
+  if (e.action === 'mfa_added') return String(d.name ?? '')
+  if (e.action === 'mfa_removed') return t('audit.mfaRemovedDetail', { name: String(d.name ?? ''), how: d.how === 'password' ? t('audit.byPassword') : t('audit.byCode') })
+  if (e.action === 'mfa_reset') return t('audit.mfaResetDetail', { who: String(d.target_name ?? ''), reason: String(d.reason ?? '') })
   return ''
 }
 

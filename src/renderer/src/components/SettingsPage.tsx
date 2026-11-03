@@ -26,7 +26,7 @@ import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
 import { StageTransitionsSection } from './Settings/StageTransitionsSection'
 import { SoundSection } from './Settings/SoundSection'
-import { SignOutOthersSection } from './Settings/SignOutOthersSection'
+import { SecuritySection } from './Settings/SecuritySection'
 import { DeletedJobsSection } from './Settings/DeletedJobsSection'
 import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
 
@@ -38,7 +38,7 @@ const STAGE_PALETTE = [
   '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#64748B', '#0E1116'
 ]
 
-type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents' | 'avalik' | 'epost' | 'andmebaas' | 'partnerlused' | 'auditilogi'
+export type GroupKey = 'profiil' | 'turvalisus' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' | 'hinnad' | 'kalender' | 'valikud' | 'litsents' | 'avalik' | 'epost' | 'andmebaas' | 'partnerlused' | 'auditilogi'
 
 // Personal preferences vs clinic configuration.
 //
@@ -50,7 +50,7 @@ type GroupKey = 'profiil' | 'kliinik' | 'kasutajaliides' | 'etapid' | 'masinad' 
 //
 // Everything below the line is clinic configuration: shared, owner-controlled,
 // and gated on settings.read (pipeline additionally on pipeline.write).
-const PERSONAL_GROUPS: GroupKey[] = ['profiil', 'kasutajaliides']
+const PERSONAL_GROUPS: GroupKey[] = ['profiil', 'turvalisus', 'kasutajaliides']
 
 // Only real, working groups are listed. The rest of a typical settings sidebar
 // (team, notifications, templates, integrations) has nothing behind it yet.
@@ -59,6 +59,7 @@ const NAV_GROUPS: { title: string; items: { key: GroupKey; label: string; icon: 
     title: t('settingsPage.myPreferences'),
     items: [
       { key: 'profiil', label: t('settingsPage.profile'), icon: User },
+      { key: 'turvalisus', label: t('security.title'), icon: ShieldCheck },
       { key: 'kasutajaliides', label: t('settingsPage.interface'), icon: Palette },
     ]
   },
@@ -1297,7 +1298,8 @@ function LanguageSection() {
   )
 }
 
-export function SettingsPage() {
+/** `initialGroup`: where to open (a security notification opens Security). */
+export function SettingsPage({ initialGroup = 'profiil' }: { initialGroup?: GroupKey } = {}) {
   const {
     settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud, setKapslimasinad,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
@@ -1308,7 +1310,7 @@ export function SettingsPage() {
   const auth = useAuth()
   const { can } = usePermissions()
 
-  const [group, setGroup] = useState<GroupKey>('profiil')
+  const [group, setGroup] = useState<GroupKey>(initialGroup)
 
   // Töö etapid is the one clinic group that is not merely readable — every
   // control on it writes — so it takes pipeline.write rather than settings.read.
@@ -1653,12 +1655,10 @@ export function SettingsPage() {
           )}
 
           {/* Your name — stamped as the author on every patient note */}
-          {activeGroup === 'profiil' && (
-          <>
-            <ProfileSection auth={auth} />
-            <SignOutOthersSection />
-          </>
-          )}
+          {activeGroup === 'profiil' && <ProfileSection auth={auth} />}
+
+          {/* Authenticators, phones, sign out elsewhere (sql/097). */}
+          {activeGroup === 'turvalisus' && <section className="2xl:col-span-2"><SecuritySection /></section>}
 
           {/* Clinic settings — owner only */}
           {activeGroup === 'kliinik' && (

@@ -80,6 +80,26 @@ describe('with the e-mail secrets', () => {
     expect(r).toMatchObject({ ok: true, email: { status: 'sent', sent: 1 }, pushes: { sent: 1 } })
   })
 
+  it('a security notice (sql/097) has its own subject, not a job\'s', async () => {
+    const texts: string[] = []
+    const h = harness({
+      env: { ...VAPID, ...EMAIL },
+      emails: [
+        { id: 'n1', email: 'mari@test.invalid', job_id: null, job_code: null, kind: 'mfa_reset', language: 'et' },
+        { id: 'n2', email: 'kai@test.invalid', job_id: null, job_code: null, kind: 'mfa_removed', language: 'en' },
+      ],
+    })
+    const fetch = h.deps.fetch
+    h.deps.fetch = async (url, init) => { texts.push((JSON.parse(init.body) as { text: string }).text); return fetch(url, init) }
+    await runSender(h.deps, false)
+    // The link opens Settings, not a job page with "{id}" in it.
+    expect(texts[0]).toBe('Sinu Wivo kaheastmeline sisselogimine lähtestati\n\nAva Wivos: https://wivo-test.pages.dev/settings\n')
+    expect(h.mailed).toEqual([
+      { to: 'mari@test.invalid', subject: 'Sinu Wivo kaheastmeline sisselogimine lähtestati' },
+      { to: 'kai@test.invalid', subject: 'An authenticator was removed from your Wivo account' },
+    ])
+  })
+
   it('an e-mail error does not stop the pushes', async () => {
     const h = harness({ env: { ...VAPID, ...EMAIL }, pending: [phone('n1')], rpcError: 'pending_notification_emails' })
     const r = await runSender(h.deps, false)

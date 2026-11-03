@@ -422,3 +422,9 @@ enabled = true
 # itself, strictly: supabase/functions/_shared/serviceAuth.ts.
 [functions.send-notifications]
 verify_jwt = false
+
+# account-security is called by the app with the signed-in user's token. The
+# function checks that token itself (PostgREST verifies it on the first call,
+# made as that user) and the database decides: _shared/accountSecurity.ts.
+[functions.account-security]
+verify_jwt = false

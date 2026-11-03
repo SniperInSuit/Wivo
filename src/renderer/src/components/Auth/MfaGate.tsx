@@ -21,6 +21,7 @@ import {
   type AuthApp, type Enrollment, type MfaStep,
 } from '../../lib/mfa'
 import { signOut } from '../../lib/supabase'
+import { recordAuthenticators } from '../../lib/accountSecurity'
 import { describeError } from '../Patients/errors'
 import { RichText } from '../ui/RichText'
 import { t } from '@/lib/i18n'
@@ -65,6 +66,8 @@ export function MfaGate({ children }: { children: ReactNode }) {
           setError(null)
           try {
             await verifyCode(factorId, code)
+            // The organisation's audit log: a new authenticator (sql/097).
+            if (enrolling) void recordAuthenticators().catch(() => {})
             setStep('ok')
           } catch (e) {
             setError(isWrongCode(e) ? t('mfa.wrongCode') : describeError(e))
@@ -123,7 +126,8 @@ const GET = { google: 'mfa.getGoogle', microsoft: 'mfa.getMicrosoft', apple: 'mf
 const SCAN = { google: 'mfa.scanGoogle', microsoft: 'mfa.scanMicrosoft', apple: 'mfa.scanApple' } as const
 const KEY = { google: 'mfa.keyGoogle', microsoft: 'mfa.keyMicrosoft', apple: 'mfa.keyApple' } as const
 
-function EnrollSteps({ enrollment, codeForm }: { enrollment: Enrollment; codeForm: ReactNode }) {
+/** Also Settings → Security, for adding a backup authenticator. */
+export function EnrollSteps({ enrollment, codeForm }: { enrollment: Enrollment; codeForm: ReactNode }) {
   const [app, setApp] = useState<AuthApp>(() => defaultAuthApp(navigator.userAgent))
   // A phone or tablet: the QR code is on the same screen as the camera that
   // would have to scan it.
@@ -226,7 +230,7 @@ function KeyBox({ secret }: { secret: string }) {
   )
 }
 
-function CodeForm({ onSubmit, autoFocus }: { onSubmit: (code: string) => Promise<void>; autoFocus: boolean }) {
+export function CodeForm({ onSubmit, autoFocus }: { onSubmit: (code: string) => Promise<void>; autoFocus: boolean }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   return (

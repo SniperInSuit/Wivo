@@ -477,3 +477,99 @@ Vault goes last: until `wivo_functions_url` exists, the cron job sends nothing. 
   - tests;
   - first on the test copy, then on production the same way.
 - Until then, **invoices stay off.** The `wivo-send-invoices` job keeps calling and getting 401, which sends nothing.
+
+## Settings → Security (testing, sql/097, for 2.1)
+
+A **Security** tab in each person's own settings: on the desktop it sits under "My preferences", and on the phone it is in Settings. Nothing is applied or deployed yet.
+
+**What it does**
+1. **Authenticators.**
+   - It lists the person's verified authenticators, with name and date added.
+   - "Add another authenticator" is recommended as a backup. It uses the same three steps as the first setup, and the person names it (`Wivo 2` by default), because Supabase refuses two authenticators with the same name.
+   - "Remove" works only in a session signed in with the second factor (aal2), and only after a current code from **that** authenticator or the account password.
+2. **The last authenticator.** A red warning and a confirmation come first. Then every session of the person ends and their phones stop getting pushes, and this device signs out. At the next sign-in MfaGate makes them set one up before anything opens. MfaGate itself is unchanged.
+3. **Phones.** The person's `push_subscription` rows, each showing:
+   - the device and browser (from `user_agent`);
+   - the date added;
+   - the last successful push;
+   - "This one" for the current browser;
+   - "Remove this phone".
+
+   "Sign out on all other devices" (the existing section) moved here from Profile.
+4. **Owner reset** (Workers → a member). An owner can reset a member's two-factor sign-in:
+   - signed in with MFA;
+   - with a required reason (3–500 characters);
+   - only for a member of their own organisation, never another owner, never themselves.
+
+   Every authenticator of the member is removed and they are signed out everywhere.
+5. **Records.**
+   - Every add, remove and reset is in the organisation's audit log: `mfa_added`, `mfa_removed` (with how it was confirmed), and `mfa_reset` (with whose and the reason).
+   - The person gets a bell notification (`mfa_removed` / `mfa_reset`, with who did it and the reason), and e-mail and push as they chose.
+   - Clicking it opens Settings → Security.
+
+**How it decides (server-side)**
+- **`sql/097_account_security.sql`.** Each check runs as the signed-in person:
+  - `authorize_mfa_removal(factor, password)`:
+    - aal2;
+    - the factor is the caller's own and verified (someone else's looks exactly like one that does not exist);
+    - proof: a code verified in this session in the last 5 minutes, or the password.
+    - The code proof is read from GoTrue itself: the signed token's `amr` has a `totp` time from the last 5 minutes, and the session (`auth.sessions.factor_id`) or a challenge (`auth.mfa_challenges.verified_at`) names **that** factor.
+    - The password is checked against GoTrue's bcrypt hash with pgcrypto.
+    - Five wrong passwords in 15 minutes and it stops answering. The attempts are in the new `mfa_attempt` table: org_id, RLS, the person sees only their own.
+  - `authorize_mfa_reset(user, reason)`: owner (`role` or `org_role` = owner), aal2, a reason, the same organisation, not an owner, not oneself.
+  - `complete_mfa_change(...)`: **service key only.** It writes the audit row and the notification; when asked, it deletes the person's `auth.sessions` (their refresh tokens go with them) and their `push_subscription` rows.
+  - `record_mfa_factors()`: logs each of the caller's verified authenticators once, read from GoTrue's own list. The app calls it after adding one, both in setup and in Security.
+  - The migration stops at the start if the role running it cannot read `auth.mfa_factors`, `auth.mfa_challenges` and `auth.users`, or delete from `auth.sessions`.
+- **Edge Function `account-security`** (`supabase/functions/account-security`, core in `_shared/accountSecurity.ts`):
+  1. Its own strict caller check: the header must be `Bearer <a signed-in user's access token>`, meaning role `authenticated`, a user id, and not expired. Keys of any kind are refused before anything runs.
+  2. It calls the `authorize_*` function **as that user**, so PostgREST verifies the token's signature and the database decides.
+  3. The answer must match the request and the token (same user, same factor, same member), or nothing happens.
+  4. Only then does the service key remove the factors (GoTrue admin API `mfa.deleteFactor`) and call `complete_mfa_change`.
+  - If a reset removes some factors and then fails, what was removed is still recorded and the member is still signed out.
+  - `verify_jwt = false` in `config.toml` (deploy with `--no-verify-jwt`), for the same gateway reason as send-notifications. The check is the function's own.
+  - **The browser never gets admin rights.**
+- **send-notifications.** E-mail subjects for `mfa_removed` and `mfa_reset` in en, et and ru. The link opens `/settings`, not a job.
+
+**Tests** (all pass, 98 files, 1,442 tests):
+- `sql/test/accountSecurity.test.ts` (19), each rule from the side that must be refused:
+  - aal1;
+  - no proof, a stale code, a fresh code from another authenticator;
+  - someone else's factor (as the owner, with a fresh code, with the owner's own password);
+  - wrong passwords and the lock;
+  - a Google account without a password;
+  - for reset: a worker, an admin, another owner, oneself, another organisation, someone removed;
+  - the helpers and `complete_mfa_change` are not callable from the browser;
+  - **a partner (owner and worker, active partnership) can do none of it and sees none of the records:** audit, bell, phones, attempts.
+- `supabase/functions/_shared/accountSecurity.test.ts` (14): the caller check, and that nothing is removed unless the database said yes about this caller and this factor or member.
+- `src/renderer/src/lib/accountSecurity.test.ts` (11): device names, backup names, error texts.
+- `notifySender.test.ts` (+1): the security e-mail subject and link.
+- The tenant sweep and the Security Advisor lints cover `mfa_attempt` automatically. The SQL test shim got GoTrue's `mfa_factors`, `mfa_challenges`, `sessions` and `refresh_tokens`.
+
+**On the test copy (`jhqyvancrzykxhzwnost`), in this order:**
+1. Apply `sql/097_account_security.sql` (Claude, with Kevin's approval), then `notify pgrst, 'reload schema';`.
+2. Deploy both functions. Kevin runs this, with his own token:
+   ```sh
+   read -rs SUPABASE_ACCESS_TOKEN && export SUPABASE_ACCESS_TOKEN
+   npx supabase functions deploy account-security --project-ref jhqyvancrzykxhzwnost --use-api --no-verify-jwt
+   npx supabase functions deploy send-notifications --project-ref jhqyvancrzykxhzwnost --use-api --no-verify-jwt
+   unset SUPABASE_ACCESS_TOKEN
+   ```
+   `account-security` uses the `WIVO_SERVICE_SECRET_KEY` already set there; the platform provides `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+3. Check by hand (`npm run dev:test`, and the phone on wivo-test.pages.dev):
+   - **Removal with a code.** Add a second authenticator, then remove it with its code. This is the check that matters most: it shows whether GoTrue writes the verified factor into the session (or the challenge) as `mfa_code_fresh` expects. **If a correct code gets "Enter a current code…" (`proof_required`), GoTrue does it differently:** stop and report. The password path still works, and the check fails closed.
+   - Remove with the password; a wrong password five times, then the lock.
+   - Remove the last authenticator: the warning, sign-out on every device (a second device within the hour), setup forced at the next sign-in.
+   - Owner reset of a worker: the reason required; the worker is signed out; their bell says who and why; the audit log has the reason.
+   - The audit log shows "Authenticator added" for each authenticator, existing ones included, the first time each person opens Security.
+   - Phones list and "Remove this phone".
+   - The e-mail for a reset, if the e-mail secrets are set there.
+
+**Known limits (Kevin's call)**
+- **GoTrue's own API** still lets an aal2 session remove its own authenticator directly, without the code-or-password step and without the audit row and notification. GoTrue has no setting for that. The app never uses that path. Closing it would take a trigger on `auth.mfa_factors`, which Supabase discourages, so it was not done.
+- **Sign-out everywhere** ends the sessions at once, but an access token already handed out works until it expires, at most an hour. This is the same as "Sign out on all other devices".
+- **An owner can already set a worker's password** (Workers). With the reset, an owner can now take over a worker's account completely. The audit log and the worker's notification make that visible, but it is possible.
+- **"Phones"** lists browsers that get push notifications. A desktop or a browser without push is not listed; "Sign out on all other devices" still covers them.
+
+**Production impact (not now, and only in a production session)**
+- `sql/097`, the new function `account-security`, and **send-notifications from testing**. The sender on `hotfix-push` does not know `mfa_*`, and would e-mail a security notice with the subject "New files on job —".
+- Both functions use the same `WIVO_SERVICE_SECRET_KEY` as in the production plan above.

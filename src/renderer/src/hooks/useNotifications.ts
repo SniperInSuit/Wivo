@@ -13,10 +13,15 @@ export interface AppNotification {
   id: string
   job_id: string | null
   job_code: string | null
-  kind: 'job_shared' | 'stage_handover' | 'question' | 'files_added' | 'stage_reached' | 'assigned'
+  kind: 'job_shared' | 'stage_handover' | 'question' | 'files_added' | 'stage_reached' | 'assigned' | 'mfa_removed' | 'mfa_reset'
   detail: Record<string, unknown>
   created_at: string
   read_at: string | null
+}
+
+/** About the person's own sign-in (sql/097), not about a job. */
+export function isSecurityNotice(n: Pick<AppNotification, 'kind'>): boolean {
+  return n.kind === 'mfa_removed' || n.kind === 'mfa_reset'
 }
 
 export function useNotifications() {

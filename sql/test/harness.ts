@@ -97,9 +97,10 @@ export async function freshDb(): Promise<PGlite> {
 
 /**
  * Who a query runs as. A user id means a signed-in `authenticated` user;
- * `mfa: true` means they signed in with a second factor (`aal2`).
+ * `mfa: true` means they signed in with a second factor (`aal2`); `claims`
+ * adds to the token (`session_id`, `amr`), as GoTrue would write them.
  */
-export type Actor = { id: string; mfa?: boolean } | 'anon'
+export type Actor = { id: string; mfa?: boolean; claims?: Record<string, unknown> } | 'anon'
 
 /**
  * Runs `fn` as that actor, exactly as PostgREST would: the database role
@@ -112,7 +113,7 @@ export async function as<T>(db: PGlite, actor: Actor, fn: () => Promise<T>): Pro
   const role = actor === 'anon' ? 'anon' : 'authenticated'
   const claims = actor === 'anon'
     ? { role: 'anon' }
-    : { sub: actor.id, role: 'authenticated', aal: actor.mfa ? 'aal2' : 'aal1' }
+    : { ...actor.claims, sub: actor.id, role: 'authenticated', aal: actor.mfa ? 'aal2' : 'aal1' }
   await db.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)])
   await db.exec(`set role ${role}`)
   try {

@@ -3,6 +3,7 @@ import { Users, UserPlus, Shield, Loader2, Trash2, Mail, Check, Lock, Copy } fro
 import { supabase, createSignupClient, isEmailAddress, usernameToEmail, displayIdentity } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
+import { ResetMfaPanel } from './ResetMfaPanel'
 import type { Profile } from '../../lib/supabase'
 import {
   ALL_PERMISSIONS, PERMISSION_LABELS, type PermissionKey
@@ -522,6 +523,9 @@ export function WorkersPage() {
                     {t('workers.aUsernameAccountHasNoMailbox')}
                   </p>
                 </div>
+
+                {/* Two-factor reset: the owner only (the database refuses anyone else). */}
+                {isOwner && <ResetMfaPanel memberId={selected.id} name={selected.full_name || t('workers.thisStaffMember')} />}
 
                 {/* Removal. Not a delete: the account cannot be destroyed from
                     here (that needs a service_role key), and their work history

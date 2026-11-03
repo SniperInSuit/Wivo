@@ -57,9 +57,10 @@ export interface Enrollment {
 /**
  * Starts adding an authenticator. Leftover unverified factors from an
  * abandoned attempt are removed first: Supabase refuses a second factor with
- * the same friendly name, and the user would be stuck.
+ * the same friendly name, and the user would be stuck. A backup added in
+ * Settings → Security needs a name of its own for the same reason.
  */
-export async function startEnrollment(): Promise<Enrollment | 'disabled'> {
+export async function startEnrollment(friendlyName = 'Wivo'): Promise<Enrollment | 'disabled'> {
   const { data: list } = await supabase.auth.mfa.listFactors()
   for (const f of list?.all ?? []) {
     if (f.factor_type === 'totp' && f.status !== 'verified') {
@@ -68,7 +69,7 @@ export async function startEnrollment(): Promise<Enrollment | 'disabled'> {
   }
   // The issuer is the name the authenticator app shows next to the code. Left
   // out, it is the project's site address, which nobody would recognise.
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Wivo', issuer: 'Wivo' })
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName, issuer: 'Wivo' })
   if (error) {
     // The project has MFA (TOTP) switched off: enrolment cannot work for
     // anyone, so the gate must not lock everybody out.

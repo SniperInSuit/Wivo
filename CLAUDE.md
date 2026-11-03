@@ -15,7 +15,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
 
 ## Rules
-- Migrations are numbered SQL files in sql/ (next one is 097_...). Only add new files. Never edit or delete existing ones.
+- Migrations are numbered SQL files in sql/ (next one is 098_...). Only add new files. Never edit or delete existing ones.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test.
 - The app uses only the anon key. The service-role key lives only in Edge Functions.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.

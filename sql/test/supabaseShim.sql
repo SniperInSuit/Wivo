@@ -57,6 +57,44 @@ create table auth.users (
   is_anonymous         boolean not null default false
 );
 
+-- Second factors and sessions, as GoTrue keeps them (sql/097 reads them).
+create type auth.factor_type as enum ('totp', 'webauthn', 'phone');
+create type auth.factor_status as enum ('unverified', 'verified');
+create type auth.aal_level as enum ('aal1', 'aal2', 'aal3');
+create table auth.mfa_factors (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id             uuid not null references auth.users(id) on delete cascade,
+  friendly_name       text,
+  factor_type         auth.factor_type not null default 'totp',
+  status              auth.factor_status not null default 'verified',
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now(),
+  secret              text,
+  last_challenged_at  timestamptz
+);
+create table auth.mfa_challenges (
+  id           uuid primary key default gen_random_uuid(),
+  factor_id    uuid not null references auth.mfa_factors(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  verified_at  timestamptz
+);
+create table auth.sessions (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  factor_id   uuid,
+  aal         auth.aal_level,
+  not_after   timestamptz
+);
+create table auth.refresh_tokens (
+  id          bigserial primary key,
+  token       text,
+  user_id     text,
+  revoked     boolean,
+  session_id  uuid references auth.sessions(id) on delete cascade
+);
+
 -- The same settings PostgREST writes for every request.
 create function auth.jwt() returns jsonb language sql stable as $$
   select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb

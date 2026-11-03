@@ -20,7 +20,8 @@ import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { jobTotalValue } from './lib/jobPayments'
 import { NewJobWizard } from './components/NewJobWizard/NewJobWizard'
-import { SettingsPage } from './components/SettingsPage'
+import { SettingsPage, type GroupKey } from './components/SettingsPage'
+import { isSecurityNotice } from './hooks/useNotifications'
 import { InvoicesView } from './components/Invoices/InvoicesView'
 import { CustomersView } from './components/Customers/CustomersView'
 import { PayrollView } from './components/Workers/PayrollView'
@@ -51,6 +52,10 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const [view, setView] = useState<ViewMode>('overview')
+  // Which settings tab to open; `n` remounts the page when it is already open.
+  const [settingsAt, setSettingsAt] = useState<{ group?: GroupKey; n: number }>({ n: 0 })
+  // Only for that one opening: Settings from the sidebar opens where it always does.
+  useEffect(() => { if (view !== 'settings') setSettingsAt(a => (a.group ? { n: a.n } : a)) }, [view])
   // The 'new' member is now UNREACHABLE from the UI — creating a job goes
   // through NewJobWizard. The branches that test for it (handleSave, the panel
   // key, the onDelete gate) are kept for one release as an escape hatch in case
@@ -334,6 +339,8 @@ function AppContent() {
           onOpenNotification={n => {
             // Our own job opens in the panel; a job shared WITH us is only
             // reachable through the partner view.
+            // A security notice (sql/097) opens Settings → Security.
+            if (isSecurityNotice(n)) { setSettingsAt(a => ({ group: 'turvalisus', n: a.n + 1 })); setView('settings'); return }
             const own = n.job_id ? jobs.find(j => j.id === n.job_id) : undefined
             if (own) openEdit(own)
             else setView('partner')
@@ -422,7 +429,7 @@ function AppContent() {
           {view === 'tootasud' && <PayrollView jobs={jobs} onOpenJob={openEdit} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
           {view === 'taotlused' && <RequestsInbox />}
-          {view === 'settings' && <SettingsPage />}
+          {view === 'settings' && <SettingsPage key={settingsAt.n} initialGroup={settingsAt.group} />}
           {view === 'workers' && <WorkersPage />}
           {view === 'partner' && <PartnerJobsView />}
           {view === 'unsorted' && <UnsortedView />}
