@@ -3462,6 +3462,7 @@ export const en = {
   // ── testCopy ──────────────────────────────────────────────────────────────
   'testCopy.production': ".env.test points at PRODUCTION: refused, not connected",
   'testCopy.missing': ".env.test has no URL or anon key: not connected",
+  'testCopy.notTestCopy': ".env.test points at a project that is not the test copy: refused, not connected",
   'testCopy.label': "TEST COPY",
 
   // ── accounts (docs/ACCOUNTS.md) ───────────────────────────────────────────

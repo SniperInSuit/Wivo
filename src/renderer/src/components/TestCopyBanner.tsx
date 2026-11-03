@@ -20,6 +20,7 @@ export function TestCopyBanner() {
         {t('testCopy.label')}
         {testCopyProblem === 'missing' && <span className="ml-2 font-semibold">· {t('testCopy.missing')}</span>}
         {testCopyProblem === 'production' && <span className="ml-2 font-semibold">· {t('testCopy.production')}</span>}
+        {testCopyProblem === 'not-test-copy' && <span className="ml-2 font-semibold">· {t('testCopy.notTestCopy')}</span>}
       </div>
     </div>
   )

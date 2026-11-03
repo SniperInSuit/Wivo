@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
-import { supabaseTarget } from './testCopy'
+import { supabaseTarget, allowedInTestMode, TestCopyRefused } from './testCopy'
+import { supabaseOptions } from './supabaseOptions'
 import type { Job } from '../types/job'
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 import { STANDIN_DOMAIN, loginAddresses, loginNameOf, normaliseClinicCode } from '@shared/auth/loginAddress'
-import { appHeaders, versionWatchingFetch } from './appVersion'
 
 // Read from .env — never hardcode these values. In test mode (`npm run
 // dev:test`) from .env.test, and never production: lib/testCopy.
@@ -23,18 +23,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Every call carries this build's version (docs/MIN-VERSION.md); a save the
-// database refuses as too old (426) is noticed on the way back.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: { headers: appHeaders(), fetch: versionWatchingFetch((...args) => fetch(...args)) },
-})
+const testMode = import.meta.env.MODE === 'test'
+
+/**
+ * Every call carries this build's version (docs/MIN-VERSION.md); a save the
+ * database refuses as too old (426) is noticed on the way back. In test mode
+ * every call must go to the test copy or it is not sent at all, and the
+ * sign-in is kept under its own key (lib/testCopy).
+ */
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions(testMode))
+
 
 /**
  * For the resumable upload, which talks to Storage's TUS endpoint directly
  * (supabase-js has no TUS client). The anon key is public by design; the
  * user's access token is what Storage authorises against.
  */
-export const storageEndpoint = (): string => `${supabaseUrl}/storage/v1/upload/resumable`
+export const storageEndpoint = (): string => {
+  const endpoint = `${supabaseUrl}/storage/v1/upload/resumable`
+  if (testMode && !allowedInTestMode(endpoint)) throw new TestCopyRefused(endpoint)
+  return endpoint
+}
 export const anonKey = (): string => supabaseAnonKey
 
 // Typed table reference for IDE completion

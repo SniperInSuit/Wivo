@@ -13,6 +13,14 @@ import { trackDownloads, mainBusy } from './busy'
 import { initSentryMain } from './sentry'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
+// Test mode (`npm run dev:test`) keeps everything in its own folder: the
+// window's storage (sign-in, settings, caches), cookies, logs and the
+// single-instance lock. A session from `npm run dev` on the same machine is
+// never seen there, and both can run side by side. Before anything reads it.
+if (import.meta.env.MODE === 'test') {
+  app.setPath('userData', join(app.getPath('appData'), `${app.getName()}-test-copy`))
+}
+
 app.commandLine.appendSwitch('lang', 'et-EE')
 
 function createWindow(): void {

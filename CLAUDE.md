@@ -28,7 +28,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - Every export leaves an audit entry before the file is made (sql/106): a CSV goes through `auditedCsvExport` (lib/exportAudit), recording the row count and the filters in use, never the rows; free text and names only as "set". `lib/exportAudit.test.ts` fails for a screen that makes a CSV any other way.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.
 - Everyday work never connects to the production Supabase project: local Supabase, the PGlite tests or a test copy only.
-- Test mode (`npm run dev:test`, `.env.test`) refuses the production project by its ID, hard-coded in src/renderer/src/lib/testCopy.ts (`PRODUCTION_REF`). If the production project ever changes, update that ID in the same change.
+- Test mode (`npm run dev:test`, `.env.test`) accepts only the test copy, by its ID (`TEST_REF`), and refuses production by its ID (`PRODUCTION_REF`), both hard-coded in src/renderer/src/lib/testCopy.ts; every request to any other Supabase address is refused before it is sent, and test mode keeps its own session and userData folder. If either project ever changes, update its ID in the same change.
 - Production changes happen only in a session Kevin explicitly starts for that purpose. Everything is tested on a test copy first.
 - Until automated migrations exist (docs/MIGRATIONS.md), Kevin applies every migration himself in the Supabase SQL Editor, in order: the test copy first, production later. Claude writes the migration, the exact steps and the read-only checks, and never connects to the test copy or production, nor sets up a connection to either.
 - Never push, merge or force anything.

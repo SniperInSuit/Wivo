@@ -3448,6 +3448,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   // ── testCopy ──────────────────────────────────────────────────────────────
   'testCopy.production': ".env.test osutab TOOTMISELE: keeldutud, ühendust pole",
   'testCopy.missing': ".env.test failis pole URL-i või anon-võtit: ühendust pole",
+  'testCopy.notTestCopy': ".env.test osutab projektile, mis pole testkoopia: keeldutud, ühendust pole",
   'testCopy.label': "TESTKOOPIA",
 
   // ── accounts (docs/ACCOUNTS.md) ───────────────────────────────────────────
