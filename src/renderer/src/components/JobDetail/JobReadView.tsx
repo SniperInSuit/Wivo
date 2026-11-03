@@ -657,7 +657,7 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
               </span>
             )}
             {item.materjal && (
-              <span className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[120px]">{item.materjal}</span>
+              <span title={item.materjal} className="text-[10px] text-ink-muted bg-bg-sidebar px-1.5 py-0.5 rounded truncate max-w-[200px]">{item.materjal}</span>
             )}
             {(() => {
               const summary = abutmentSummary(item)

@@ -14,6 +14,7 @@ import type { PriceMode, WorkType } from './workTypes'
 import { resolveWorkType, tierFor } from './workTypes'
 import type { PriceTier } from './workTypes'
 import { countLargeTeeth, countSmallTeeth } from './teeth'
+import { materialList } from './materials'
 import { t } from '../i18n'
 
 /** €/tooth for a material, split by FDI position class. */
@@ -262,13 +263,17 @@ export function workTypePriceFor(
   }
 }
 
-/** What the material costs to produce across these teeth. 0 = no price set. */
+/**
+ * What the material costs to produce across these teeth. 0 = no price set.
+ * Two materials ("Apex Base + Apex Teeth") are both used for every tooth.
+ */
 export function calcProduction(
   hambad: string,
   material: string,
   prices: Record<string, MaterialPricing>
 ): number {
-  const p = prices[material]
-  if (!p) return 0
-  return countSmallTeeth(hambad) * p.small + countLargeTeeth(hambad) * p.large
+  return materialList(material).reduce((sum, m) => {
+    const p = prices[m]
+    return p ? sum + countSmallTeeth(hambad) * p.small + countLargeTeeth(hambad) * p.large : sum
+  }, 0)
 }

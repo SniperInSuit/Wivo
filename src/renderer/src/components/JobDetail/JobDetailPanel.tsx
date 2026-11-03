@@ -38,6 +38,8 @@ import { MarkPaidDialog } from './MarkPaidDialog'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
 import { DieShadePicker } from './DieShadePicker'
+import { SecondMaterialField } from './SecondMaterialField'
+import { splitMaterials, joinMaterials, materialList } from '@shared/pricing/materials'
 import { t } from '@/lib/i18n'
 
 interface JobDetailPanelProps {
@@ -246,7 +248,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 <div className="flex justify-between text-xs text-ink-muted">
                   <span>{smallCount} × {t('jobDetail.smallTooth')}</span>
                   <span className="font-medium text-ink">
-                    {(smallCount * (settings.materialPrices[form.materjal]?.small ?? 0)).toFixed(2)} €
+                    {(smallCount * materialList(form.materjal).reduce((sum, m) => sum + (settings.materialPrices[m]?.small ?? 0), 0)).toFixed(2)} €
                   </span>
                 </div>
               )}
@@ -254,7 +256,7 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
                 <div className="flex justify-between text-xs text-ink-muted">
                   <span>{largeCount} × {t('jobDetail.largeTooth')}</span>
                   <span className="font-medium text-ink">
-                    {(largeCount * (settings.materialPrices[form.materjal]?.large ?? 0)).toFixed(2)} €
+                    {(largeCount * materialList(form.materjal).reduce((sum, m) => sum + (settings.materialPrices[m]?.large ?? 0), 0)).toFixed(2)} €
                   </span>
                 </div>
               )}
@@ -1435,8 +1437,12 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 {(() => {
                   const activeItem = form.work_items.find(i => i.id === activeWorkItemId)
                   const hasItems = form.work_items.length > 1
-                  const currentMat = hasItems && activeItem ? (activeItem.materjal ?? '') : (form.materjal ?? '')
-                  const setMat = (val: string) => {
+                  // Two materials are one string, "Apex Base + Apex Teeth"
+                  // (shared/pricing/materials): the controls below edit the
+                  // first, SecondMaterialField the second.
+                  const [currentMat, secondMat] = splitMaterials(
+                    hasItems && activeItem ? activeItem.materjal : form.materjal)
+                  const setFull = (val: string) => {
                     if (hasItems && activeItem) {
                       setForm(f => ({
                         ...f,
@@ -1444,9 +1450,18 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         materjal: f.work_items[0]?.id === activeItem.id ? val : f.materjal,
                       }))
                     } else {
-                      set('materjal', val)
+                      // A lone item follows the field: it is what the cost and
+                      // the job sheet read, and it used to keep the old answer.
+                      setForm(f => ({
+                        ...f,
+                        materjal: val,
+                        work_items: f.work_items.length === 1
+                          ? [{ ...f.work_items[0], materjal: val || undefined }]
+                          : f.work_items,
+                      }))
                     }
                   }
+                  const setMat = (val: string) => setFull(joinMaterials(val, secondMat))
                   const sortedMats = [...settings.materjalid].sort((a, b) => b.length - a.length)
                   const baseMat = sortedMats.find(m => currentMat === m || currentMat.startsWith(m + ' ')) ?? null
                   const shades = baseMat ? MATERIAL_SHADES[baseMat] : undefined
@@ -1510,6 +1525,14 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                         onChange={e => setMat(e.target.value)}
                         placeholder={hasItems && !activeItem ? t('jobDetail.chooseAWorkItemFirst') : t('jobDetail.orTypeFreely')}
                         className="input disabled:opacity-30"
+                      />
+                      <SecondMaterialField
+                        too={hasItems ? activeItem?.too : (form.work_items[0]?.too ?? form.too)}
+                        first={currentMat}
+                        second={secondMat}
+                        onChange={val => setFull(joinMaterials(currentMat, val))}
+                        disabled={hasItems && !activeItem}
+                        tone="light"
                       />
                     </>
                   )
