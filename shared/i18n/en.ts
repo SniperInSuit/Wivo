@@ -2260,7 +2260,9 @@ export const en = {
   'tableView.markSelectedJobsAsPaid': "Mark selected jobs as paid",
 
   // ── topBar ────────────────────────────────────────────────────────────────
-  'topBar.searchPatientsJobs': "Search patients, jobs…",
+  'topBar.searchPatientsJobs': "Job code, patient, work…",
+  'topBar.noJobFound': "No job found: {q}",
+  'topBar.manyJobsFound': "{count} jobs match. Type the whole job code to open one.",
   'topBar.newVisit': "New visit",
   'topBar.newJob': "New job",
   'topBar.signOut': "Sign out",

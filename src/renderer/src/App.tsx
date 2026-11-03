@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
-import { TopBar } from './components/TopBar'
+import { TopBar, type SearchNotice } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
 import { LicenseBanner } from './components/LicenseBanner'
 import { Board } from './components/Board/Board'
@@ -19,6 +19,7 @@ import { InventoryBanner } from './components/Stock/InventoryBanner'
 import { OverviewView } from './components/Overview/OverviewView'
 import { JobDetailPanel } from './components/JobDetail/JobDetailPanel'
 import { jobTotalValue } from './lib/jobPayments'
+import { jobMatchesSearch, pickJobForSearch } from './lib/jobSearch'
 import { NewJobWizard } from './components/NewJobWizard/NewJobWizard'
 import { SettingsPage, type GroupKey } from './components/SettingsPage'
 import { isSecurityNotice } from './hooks/useNotifications'
@@ -40,6 +41,7 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { UpdateProvider } from './providers/UpdateProvider'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
+import { t } from '@/lib/i18n'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,17 +103,8 @@ function AppContent() {
 
   // Global search filter — applied to views that display individual jobs
   const searchedJobs = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return jobs
-    return jobs.filter(j =>
-      j.patsient.toLowerCase().includes(q) ||
-      (j.too ?? '').toLowerCase().includes(q) ||
-      (j.hambad ?? '').toLowerCase().includes(q) ||
-      (j.materjal ?? '').toLowerCase().includes(q) ||
-      (j.print_id ?? '').toLowerCase().includes(q) ||
-      (j.mudel_id ?? '').toLowerCase().includes(q) ||
-      (j.kirjeldus ?? '').toLowerCase().includes(q)
-    )
+    if (!search.trim()) return jobs
+    return jobs.filter(j => jobMatchesSearch(j, search))
   }, [jobs, search])
   const panelPosition = settings.paneeliSuund
   const { doneStageKey } = usePipeline()
@@ -128,6 +121,15 @@ function AppContent() {
     setWizardDate(undefined); setWizardOpen(true)
   }, [])
   const openEdit = useCallback((job: Job) => { setPanelJob(job); setPanelRevisionId(undefined); setPanelNoteId(undefined) }, [])
+  // Enter in the search box: a job code opens its job, from any view. The box
+  // is emptied once it has, so the list behind the panel is not left filtered.
+  const submitSearch = useCallback((query: string): SearchNotice | null => {
+    const pick = pickJobForSearch(jobs, query)
+    if (!pick) return null
+    if (pick.kind === 'job') { openEdit(pick.job); setSearch(''); return null }
+    if (pick.kind === 'none') return { tone: 'error', text: t('topBar.noJobFound', { q: query.trim() }) }
+    return { tone: 'info', text: t('topBar.manyJobsFound', { count: pick.count }) }
+  }, [jobs, openEdit])
   const openEditWithRevision = useCallback((job: Job, revId: string) => { setPanelJob(job); setPanelRevisionId(revId); setPanelNoteId(undefined) }, [])
   // Opening a job note from the patient's Märkused panel — scrolls to and
   // highlights that note inside the job's own notes box.
@@ -335,6 +337,7 @@ function AppContent() {
         <TopBar
           search={search}
           onSearchChange={setSearch}
+          onSearchSubmit={submitSearch}
           onNewJob={openNew}
           onOpenNotification={n => {
             // Our own job opens in the panel; a job shared WITH us is only
