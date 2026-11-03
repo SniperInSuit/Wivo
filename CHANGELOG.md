@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.0.1] — 2026-11-03
+
+**Two fixes: a second material on dentures, and push notifications that work
+without e-mail**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone**
+- **A second material on dentures.** A printed denture is a base and teeth in
+  two materials (Apex Base + Apex Teeth). Whole-arch work (dentures, All-on-X)
+  now has a "Second material" in the new-job wizard and on the job and remake
+  edit pages. Both are stored together as "Apex Base + Apex Teeth", so the
+  board, the job sheet, the partner's view and the phone show both.
+- **Price and cost count both materials.** The material-based selling price
+  and the material cost add up both; the cost breakdown shows each material on
+  its own line. A typed capsule count applies to the first material.
+- **Fixed:** on a job with one work item, changing the material on the edit
+  page left the old material on the work item, and the cost and the job sheet
+  read the old one.
+
+**Server (already deployed on production; this brings `main` in line)**
+- `send-notifications` sends phone pushes even when e-mail sending is not set
+  up.
+- `send-notifications` runs with the gateway's JWT check off
+  (`verify_jwt = false` in `supabase/config.toml`) and checks the service key
+  itself (`_shared/serviceAuth.ts`), accepting the new `sb_secret` keys.
+- No database migration.
+
 ## [2.0.0] — 2026-11-02
 
 **Wivo 2.0: a phone app, partners, files and comments on jobs, and two-factor sign-in**
