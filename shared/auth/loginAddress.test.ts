@@ -73,6 +73,7 @@ describe('usernames and codes', () => {
   it('a code is the job-code prefix in lower case', () => {
     expect(normaliseClinicCode('TAL')).toBe('tal')
     expect(normaliseClinicCode('TAL2')).toBe('tal2')
-    for (const bad of ['', null, 'TA L', '2TAL', 'TAL22']) expect(normaliseClinicCode(bad)).toBeNull()
+    expect(normaliseClinicCode('TAL10')).toBe('tal10')
+    for (const bad of ['', null, 'TA L', '2TAL', 'TA2L', 'TAL1234', 'PÄR']) expect(normaliseClinicCode(bad)).toBeNull()
   })
 })

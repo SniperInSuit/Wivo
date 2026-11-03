@@ -5,6 +5,9 @@
 #      confirmed at birth (email_confirm: true).
 #   2. That account signs in with its password.
 #
+# Run it BEFORE applying sql/100: from 100 on, the database refuses a stand-in
+# that does not carry its clinic's invite, and this throwaway account has none.
+#
 # It creates ONE throwaway account (wivo-check-<random>.tst@nomail.wivodent.com,
 # random password, no clinic) and deletes it again at the end, whatever happens.
 # The key is read without echo, never printed, never put on a command line (curl
@@ -74,7 +77,9 @@ if [ "$code" = 200 ] && [ -n "$user_id" ]; then
   if [ -n "$confirmed" ]; then ok "confirmed at birth"; else bad "created but NOT confirmed"; fi
 else
   bad "refused (HTTP $code): $(field error_code "$work/create.json") $(field msg "$work/create.json")"
-  echo; echo "Result: $pass passed, $fail failed. If GoTrue refuses the null MX, try the fallback in docs/ACCOUNTS.md §3.2."
+  echo; echo "Result: $pass passed, $fail failed."
+  echo "A 'Database error' means sql/100 is already applied (see the top of this script)."
+  echo "Anything about the address means GoTrue refuses the null MX: docs/ACCOUNTS.md §3.2, fallback."
   exit 1
 fi
 echo

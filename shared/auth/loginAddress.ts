@@ -24,8 +24,8 @@ const NO_MAIL_DOMAINS = [LEGACY_DOMAIN, 'wivo.invalid', 'wivo.local']
 
 /** A new username: lower case, 2–32 of a–z 0–9 . _ -, starting with a letter or digit. */
 export const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/
-/** A clinic's code as it appears in a login: its job-code prefix, lower case (letters, then an optional digit). */
-export const CLINIC_CODE_RE = /^[a-z]{1,9}[0-9]?$/
+/** A clinic's code as it appears in a login: its job-code prefix, lower case (letters, then a number if the letters were taken, sql/070). */
+export const CLINIC_CODE_RE = /^[a-z]{1,9}[0-9]{0,3}$/
 
 const domainOf = (email: string): string => email.slice(email.lastIndexOf('@') + 1).trim().toLowerCase()
 

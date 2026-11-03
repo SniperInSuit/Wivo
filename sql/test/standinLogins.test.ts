@@ -18,11 +18,14 @@ const run099 = () => applyMigrations(db, ['099_standin_logins.sql'])
 
 /** An account as GoTrue left it, in A's clinic, with that address and username. */
 async function account(email: string, username: string | null, extra: { confirmed?: boolean; deleted?: boolean } = {}): Promise<string> {
+  // Made with a throwaway address and then given its own: from sql/100 on, a
+  // new account on the stand-in domain needs its clinic's invite (accounts.test.ts).
   const { rows } = await db.query<{ id: string }>(
     `insert into auth.users (email, email_confirmed_at, deleted_at, raw_user_meta_data)
      values ($1, case when $2 then now() - interval '1 day' end, case when $3 then now() end, '{"full_name":"X"}')
-     returning id`, [email, !!extra.confirmed, !!extra.deleted])
+     returning id`, [`${crypto.randomUUID()}@test.invalid`, !!extra.confirmed, !!extra.deleted])
   const id = rows[0].id
+  await db.query(`update auth.users set email = $1 where id = $2`, [email, id])
   await db.query(`update public.profiles set clinic_id = $1, username = $2 where id = $3`, [A.clinicId, username, id])
   return id
 }
