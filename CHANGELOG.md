@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.0.4] — 2026-11-03
+
+**Chat attachments open in the viewer, and Wivo asks in its own words**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **Attachments in a job's thread** (also a partner job's) open in the same
+  viewer as the job's files instead of a new tab: images large, moving
+  between the thread's images, zoom and download; a PDF in the PDF viewer;
+  other files download. The same short-lived, audited link as before.
+- **Wivo's own confirmation dialog** replaces the system one ("app.wivodent.com
+  says…"): deleting a file, leaving unsaved patient edits, ending a
+  partnership, signing out other devices. A red button marks what cannot be
+  undone; Esc or a click outside cancels.
+
+**Under the hood**
+- The desktop app's main-process typecheck lists the two shared files it
+  imports; no change to the app.
+
+No database migration.
+
 ## [2.0.3] — 2026-11-03
 
 **See a job's images and PDFs large, without downloading them**
