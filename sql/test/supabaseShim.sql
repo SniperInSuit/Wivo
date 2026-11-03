@@ -18,6 +18,8 @@ create role authenticated nologin noinherit;
 create role service_role nologin noinherit bypassrls;
 create role supabase_auth_admin nologin noinherit;
 create role supabase_storage_admin nologin noinherit;
+-- PostgREST connects as this role; sql/098 sets its db_pre_request.
+create role authenticator nologin noinherit;
 
 grant usage on schema public to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;

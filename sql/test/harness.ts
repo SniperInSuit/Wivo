@@ -96,11 +96,25 @@ export async function freshDb(): Promise<PGlite> {
 // ── Acting as someone ───────────────────────────────────────────────────────
 
 /**
- * Who a query runs as. A user id means a signed-in `authenticated` user;
- * `mfa: true` means they signed in with a second factor (`aal2`); `claims`
- * adds to the token (`session_id`, `amr`), as GoTrue would write them.
+ * Who a query runs as. A user id means a signed-in `authenticated` user.
+ *
+ * Signed in with the second factor (`aal2`) unless `mfa: false` (password
+ * only, `aal1`) — since sql/098 an aal1 session gets nothing, so aal2 is what
+ * every test of ordinary use means. An aal2 actor without a `session_id` claim
+ * is given a live session in auth.sessions, as GoTrue would; `claims` adds to
+ * the token (`session_id`, `amr`), as GoTrue would write them.
  */
 export type Actor = { id: string; mfa?: boolean; claims?: Record<string, unknown> } | 'anon'
+
+/** One live aal2 session per user, made on first use (and again if ended). */
+async function liveSession(db: PGlite, userId: string): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(
+    `select id from auth.sessions where user_id = $1 and aal = 'aal2' order by created_at limit 1`, [userId])
+  if (rows[0]) return rows[0].id
+  const made = await db.query<{ id: string }>(
+    `insert into auth.sessions (user_id, aal) values ($1, 'aal2') returning id`, [userId])
+  return made.rows[0].id
+}
 
 /**
  * Runs `fn` as that actor, exactly as PostgREST would: the database role
@@ -111,9 +125,11 @@ export type Actor = { id: string; mfa?: boolean; claims?: Record<string, unknown
  */
 export async function as<T>(db: PGlite, actor: Actor, fn: () => Promise<T>): Promise<T> {
   const role = actor === 'anon' ? 'anon' : 'authenticated'
+  const aal2 = actor !== 'anon' && actor.mfa !== false
+  const session = aal2 && !actor.claims?.session_id ? { session_id: await liveSession(db, actor.id) } : {}
   const claims = actor === 'anon'
     ? { role: 'anon' }
-    : { ...actor.claims, sub: actor.id, role: 'authenticated', aal: actor.mfa ? 'aal2' : 'aal1' }
+    : { ...session, ...actor.claims, sub: actor.id, role: 'authenticated', aal: aal2 ? 'aal2' : 'aal1' }
   await db.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)])
   await db.exec(`set role ${role}`)
   try {

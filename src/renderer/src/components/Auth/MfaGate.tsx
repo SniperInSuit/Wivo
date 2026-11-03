@@ -17,10 +17,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Loader2, ShieldCheck, LogOut, Copy, Check } from 'lucide-react'
 import {
-  assurance, nextMfaStep, startEnrollment, verifiedTotp, verifyCode, defaultAuthApp, groupKey, isWrongCode,
+  assurance, nextMfaStep, startEnrollment, verifiedTotp, verifyCode, defaultAuthApp, groupKey, isWrongCode, isSessionGone,
   type AuthApp, type Enrollment, type MfaStep,
 } from '../../lib/mfa'
-import { signOut } from '../../lib/supabase'
+import { supabase, signOut } from '../../lib/supabase'
 import { recordAuthenticators } from '../../lib/accountSecurity'
 import { describeError } from '../Patients/errors'
 import { RichText } from '../ui/RichText'
@@ -53,6 +53,21 @@ export function MfaGate({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => { void decide() }, [decide])
+
+  // The server can end this session (an owner's reset, the last authenticator
+  // removed, "sign out on all other devices"); the database then answers it
+  // nothing (sql/098). Noticed here too, so the person lands on the sign-in
+  // page rather than on screens of errors: on returning to the window and once
+  // a minute.
+  useEffect(() => {
+    if (step !== 'ok') return
+    const check = () => {
+      void supabase.auth.getUser().then(({ error }) => { if (isSessionGone(error)) void signOut() }, () => {})
+    }
+    const timer = setInterval(check, 60_000)
+    window.addEventListener('focus', check)
+    return () => { clearInterval(timer); window.removeEventListener('focus', check) }
+  }, [step])
 
   if (step === 'ok' || step === 'disabled') return <>{children}</>
 

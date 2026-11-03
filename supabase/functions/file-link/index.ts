@@ -13,6 +13,7 @@
  * way to a file.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { sessionHasMfa } from '../_shared/requireMfa.ts'
 
 const URL_ = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -35,6 +36,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   // As the user: rights, audit row, grant — all in the database.
   const asUser = createClient(URL_, ANON, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } })
+  // The link is signed with the service key, which no policy stops: so the
+  // second factor is checked here too, by the database (sql/098), before
+  // anything else. A password-only or ended session gets no file.
+  if (!(await sessionHasMfa(fn => asUser.rpc(fn)))) return json(403, { error: 'mfa_required' })
   const { data: path, error } = await asUser.rpc('request_file_download', { p_file: fileId })
   if (error || typeof path !== 'string') return json(403, { error: error?.message ?? 'not allowed' })
 

@@ -61,7 +61,7 @@ beforeAll(async () => {
 describe('removing one\'s own authenticator', () => {
   it('needs a session signed in with the second factor', async () => {
     const f = await addFactor(A.workerId)
-    expect(await errorAs(db, { id: A.workerId }, `select public.authorize_mfa_removal($1, null)`, [f]))
+    expect(await errorAs(db, { id: A.workerId, mfa: false }, `select public.authorize_mfa_removal($1, null)`, [f]))
       .toMatch(/second factor first/)
   })
 
@@ -166,18 +166,19 @@ describe('the owner\'s reset', () => {
 
   it('refused without MFA, without a reason, for oneself, for another owner', async () => {
     const reset = `select public.authorize_mfa_reset($1, $2)`
-    expect(await errorAs(db, { id: A.ownerId }, reset, [member, 'Lost phone'])).toMatch(/second factor first/)
+    expect(await errorAs(db, { id: A.ownerId, mfa: false }, reset, [member, 'Lost phone'])).toMatch(/second factor first/)
     expect(await errorAs(db, withMfa(A.ownerId, ownerSession), reset, [member, ' '])).toMatch(/Give a reason/)
     expect(await errorAs(db, withMfa(A.ownerId, ownerSession), reset, [member, null])).toMatch(/Give a reason/)
     expect(await errorAs(db, withMfa(A.ownerId, ownerSession), reset, [A.ownerId, 'Lost phone'])).toMatch(/Not for yourself/)
     expect(await errorAs(db, withMfa(A.ownerId, ownerSession), reset, [secondOwner, 'Lost phone'])).toMatch(/Another owner/)
-    expect(await errorAs(db, withMfa(secondOwner, ownerSession), reset, [A.ownerId, 'Lost phone'])).toMatch(/Another owner/)
+    // Each in a session of their own: since sql/098 a session counts only for its owner.
+    expect(await errorAs(db, withMfa(secondOwner, await newSession(secondOwner, null)), reset, [A.ownerId, 'Lost phone'])).toMatch(/Another owner/)
   })
 
   it('refused for anyone who is not the owner: a worker, an admin', async () => {
     const reset = `select public.authorize_mfa_reset($1, 'Lost phone')`
-    expect(await errorAs(db, withMfa(A.workerId, ownerSession), reset, [member])).toMatch(/Only the owner/)
-    expect(await errorAs(db, withMfa(admin, ownerSession), reset, [member])).toMatch(/Only the owner/)
+    expect(await errorAs(db, withMfa(A.workerId, await newSession(A.workerId, null)), reset, [member])).toMatch(/Only the owner/)
+    expect(await errorAs(db, withMfa(admin, await newSession(admin, null)), reset, [member])).toMatch(/Only the owner/)
   })
 
   it('refused for someone of another organisation, or someone removed from this one', async () => {
@@ -227,6 +228,11 @@ describe('the record, the bell, the sign-out', () => {
 
     await db.query(`select public.complete_mfa_change('mfa_reset', $1, $2, $3, $4, true)`,
       [A.clinicId, A.ownerId, m, JSON.stringify({ reason: 'Lost phone', factor_ids: ['x'] })])
+    // Checked before Kai reads the bell below: that read is a new sign-in.
+    expect((await db.query(`select 1 from auth.sessions where user_id = $1`, [m])).rows).toHaveLength(0)
+    expect((await db.query(`select 1 from auth.refresh_tokens where user_id = $1`, [m])).rows).toHaveLength(0)
+    expect((await db.query(`select 1 from public.push_subscription where user_id = $1`, [m])).rows).toHaveLength(0)
+    expect((await db.query(`select 1 from auth.sessions where id = $1`, [other])).rows).toHaveLength(1)
 
     const audit = await rowsAs<{ action: string; user_name: string; object: string; detail: Record<string, unknown> }>(db, { id: A.ownerId },
       `select action, user_name, object, detail from public.audit_entries(10, 'mfa_reset', null)`)
@@ -234,10 +240,6 @@ describe('the record, the bell, the sign-out', () => {
       detail: { reason: 'Lost phone', target_name: 'Kai Kask', signed_out: true } })
     const bell = await rowsAs<{ kind: string; detail: Record<string, unknown> }>(db, { id: m }, `select kind, detail from public.notification`)
     expect(bell).toEqual([{ kind: 'mfa_reset', detail: { by: 'Tallinn owner', reason: 'Lost phone', signed_out: true } }])
-    expect((await db.query(`select 1 from auth.sessions where user_id = $1`, [m])).rows).toHaveLength(0)
-    expect((await db.query(`select 1 from auth.refresh_tokens where user_id = $1`, [m])).rows).toHaveLength(0)
-    expect((await db.query(`select 1 from public.push_subscription where user_id = $1`, [m])).rows).toHaveLength(0)
-    expect((await db.query(`select 1 from auth.sessions where id = $1`, [other])).rows).toHaveLength(1)
   })
 
   it('removing one of two: recorded and told, nobody signed out', async () => {
@@ -282,7 +284,7 @@ describe('a partner can do none of it', () => {
     await setPassword(B.ownerId, 'partner pw')
 
     for (const p of [B.ownerId, B.workerId]) {
-      const actor = withMfa(p, s, now())
+      const actor = withMfa(p, p === B.ownerId ? s : await newSession(p, null), now())
       expect(await errorAs(db, actor, `select public.authorize_mfa_reset($1, 'Because')`, [member])).toMatch(/Not a member|Only the owner/)
       expect(await errorAs(db, actor, `select public.authorize_mfa_removal($1, 'partner pw')`, [f])).toMatch(/No such authenticator/)
       expect(await errorAs(db, actor, `select public.complete_mfa_change('mfa_reset', $1, $2, $3, '{}', true)`, [A.clinicId, p, member]))

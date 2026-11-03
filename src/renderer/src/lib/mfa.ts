@@ -104,3 +104,15 @@ export function isWrongCode(e: unknown): boolean {
   return code === 'mfa_verification_failed' || code === 'mfa_challenge_expired'
     || /invalid totp/i.test(typeof message === 'string' ? message : '')
 }
+
+/**
+ * The server has ended this session: an owner's reset, the last authenticator
+ * removed, "sign out on all other devices". The database stops answering such a
+ * session at once (sql/098); this is how the app notices, from GoTrue's answer
+ * to `getUser()`. A network failure has no status and is not this.
+ */
+export function isSessionGone(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const { status, code } = e as { status?: number; code?: string }
+  return status === 401 || status === 403 || code === 'session_not_found'
+}

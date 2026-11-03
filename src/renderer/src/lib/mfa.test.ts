@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextMfaStep, defaultAuthApp, groupKey, isWrongCode } from './mfa'
+import { nextMfaStep, defaultAuthApp, groupKey, isWrongCode, isSessionGone } from './mfa'
 
 describe('nextMfaStep', () => {
   it('signed in with a second factor: nothing to do', () => {
@@ -38,5 +38,19 @@ describe('the setup screen', () => {
     expect(isWrongCode({ message: 'Invalid TOTP code entered' })).toBe(true)
     expect(isWrongCode({ message: 'Failed to fetch' })).toBe(false)
     expect(isWrongCode(null)).toBe(false)
+  })
+})
+
+describe('isSessionGone', () => {
+  it('a session the server ended: 403 session_not_found, or 401', () => {
+    expect(isSessionGone({ status: 403, code: 'session_not_found' })).toBe(true)
+    expect(isSessionGone({ status: 401 })).toBe(true)
+    expect(isSessionGone({ code: 'session_not_found' })).toBe(true)
+  })
+  it('not a dropped connection or a server error', () => {
+    expect(isSessionGone(null)).toBe(false)
+    expect(isSessionGone({ message: 'Failed to fetch' })).toBe(false)
+    expect(isSessionGone({ status: 0 })).toBe(false)
+    expect(isSessionGone({ status: 500 })).toBe(false)
   })
 })

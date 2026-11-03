@@ -566,10 +566,51 @@ A **Security** tab in each person's own settings: on the desktop it sits under "
 
 **Known limits (Kevin's call)**
 - **GoTrue's own API** still lets an aal2 session remove its own authenticator directly, without the code-or-password step and without the audit row and notification. GoTrue has no setting for that. The app never uses that path. Closing it would take a trigger on `auth.mfa_factors`, which Supabase discourages, so it was not done.
-- **Sign-out everywhere** ends the sessions at once, but an access token already handed out works until it expires, at most an hour. This is the same as "Sign out on all other devices".
+- ~~**Sign-out everywhere** ends the sessions at once, but an access token already handed out works until it expires, at most an hour.~~ Closed by sql/098: the database refuses an ended session at once.
 - **An owner can already set a worker's password** (Workers). With the reset, an owner can now take over a worker's account completely. The audit log and the worker's notification make that visible, but it is possible.
 - **"Phones"** lists browsers that get push notifications. A desktop or a browser without push is not listed; "Sign out on all other devices" still covers them.
 
 **Production impact (not now, and only in a production session)**
 - `sql/097`, the new function `account-security`, and **send-notifications from testing**. The sender on `hotfix-push` does not know `mfa_*`, and would e-mail a security notice with the subject "New files on job —".
 - Both functions use the same `WIVO_SERVICE_SECRET_KEY` as in the production plan above.
+
+## The database requires the second factor (testing, sql/098) — security, top priority
+
+**Found on the test copy:** after an owner reset Tehnik's MFA, Tehnik's open session kept using jobs and patients until signing out.
+
+**Why**
+- `complete_mfa_change` does delete every session (and refresh token) at once. But an access token already handed out stays valid up to an hour, and it still says `aal2`.
+- `has_mfa()` read only that token, and it was used by three functions only (partnership admin, stock sharing, 097). **No RLS policy required the second factor.** MFA was enforced by the app's screens alone.
+- **True on production today** (sql/000–091, functions on `main`): a password and the public key (in every app build) are enough to read and change, through the API, everything RLS allows that person: jobs, patients, invoices and payments, pay, audit log, partner jobs; files through storage and through `file-link`.
+
+**The fix (`sql/098_require_mfa.sql`, uses nothing from 092–097)**
+1. `has_mfa()` = `aal2` in the token **and** the token's session still exists in `auth.sessions` (and is the caller's). Ending a session ends its access at once.
+2. A **restrictive** policy `mfa_required` (for `authenticated`) on every table in `public` and on `storage.objects`. Restrictive is ANDed with every other policy. The one exception: reading one's own `profiles` row (the sign-in step needs it). Views are all `security_invoker`, so they follow; Realtime follows too.
+3. **75 SECURITY DEFINER functions** can be called and do not see RLS. So every API request is checked first: PostgREST's `db_pre_request` = `public.require_mfa_for_api()`. Without the second factor: 403 for everything but `GET /profiles`.
+4. `ensure_mfa_policies()` puts the policy on any table that lacks it. Every new table's migration ends with it (CLAUDE.md).
+5. `file-link` (signs links with the service key) asks the database `has_mfa()` first: 403 otherwise. `account-security` already required aal2 in the database; `send-notifications` and `send-invoices` are service-only jobs; `public-booking` serves no clinic data.
+6. The app (`MfaGate`): on returning to the window and once a minute, `getUser()`; if GoTrue says the session is gone, sign out on this device. Without it the person would see screens of errors.
+
+**Tests:** `sql/test/requireMfa.test.ts` (14):
+- the policy is on every table and on storage;
+- an aal1 owner or worker reads, changes or deletes nothing in any table, adds no job, patient or file, and reads only their own profile;
+- an ended session, a reset member's session, someone else's session id, and a missing or malformed one get nothing, with no error;
+- the pre-request refuses aal1 for tables and RPCs (`patient_export`, `job_files`, `request_file_download`, `audit_entries`) and passes aal2 and anon;
+- **098 applies on production's base (000–091)**, and `ensure_mfa_policies()` covers a table added afterwards.
+
+The test harness now signs actors in with the second factor and a live session by default; `mfa: false` means password only.
+
+**Production, in this order** (each only in a production session Kevin starts):
+1. **Test copy first:** apply 098 (with approval), then `notify pgrst, 'reload config'; notify pgrst, 'reload schema';`. Deploy `file-link` from `testing`. Check:
+   - sign in with code: everything works, desktop and phone;
+   - sign in with the password only: the MFA step, and nothing behind it;
+   - an owner reset: the member's app goes to the sign-in page within a minute, and the database refuses at once;
+   - a file download.
+2. **Production database:** apply 098 directly on top of 091, then the two `notify` lines. From that moment the API needs the code. Clients on 2.0.x keep working. A 1.x client (no MFA step) gets empty screens until it updates.
+3. **Production `file-link`:** deploy the `testing` version (needs 098's `has_mfa()`).
+4. **The app change** (MfaGate sign-out) has no database change: it can go to `main` as a small fix, or with the next release. The database does not depend on it.
+5. **Later, when 092–097 reach production:** apply 098 again after 097 (it is safe to re-run), so the tables those files add get the policy.
+
+**Not part of this, found on the way**
+- Most of the 75 functions can also be executed by `anon`. They check `auth.uid()` themselves, but `revoke execute … from anon` would be tidier.
+- `send-invoices` still trusts the gateway's JWT check alone (above): any signed-in user can start an invoice run.

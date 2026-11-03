@@ -63,7 +63,7 @@ describe('creating an invite (step 1)', () => {
   })
 
   it('an admin without MFA cannot', async () => {
-    expect(await errorAs(db, { id: A.ownerId }, `select public.create_partnership_invite()`)).toMatch(/two-factor/)
+    expect(await errorAs(db, { id: A.ownerId, mfa: false }, `select public.create_partnership_invite()`)).toMatch(/two-factor/)
   })
 
   it('an admin with MFA gets a code; only its hash is stored', async () => {

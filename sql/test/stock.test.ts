@@ -296,7 +296,7 @@ describe('share_stock: the owner switches it, logged', () => {
   it('not a worker, not without the second factor, not a stranger, not before it is accepted', async () => {
     const p = await pid()
     expect(await errorAs(db, { id: A.workerId, mfa: true }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/Only the owner/)
-    expect(await errorAs(db, { id: A.ownerId }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/second factor/)
+    expect(await errorAs(db, { id: A.ownerId, mfa: false }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/second factor/)
     expect(await errorAs(db, { id: C.ownerId, mfa: true }, `select public.set_partnership_share_stock($1, false)`, [p])).toMatch(/not found/)
     const { rows } = await db.query<{ id: string }>(
       `insert into public.partnership (org_a, org_b, status, roles) values ($1, $2, 'awaiting_platform', array['design']) returning id`, [A.clinicId, C.clinicId])

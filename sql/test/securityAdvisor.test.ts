@@ -63,7 +63,9 @@ describe('Security Advisor lints', () => {
     expect(await names(`
       select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
        where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-         and not exists (select 1 from pg_policy p where p.polrelid = c.oid)
+         -- Since sql/098 every table has the restrictive "mfa_required"; locked
+         -- shut means no policy that could let anyone in.
+         and not exists (select 1 from pg_policy p where p.polrelid = c.oid and p.polpermissive)
        order by 1`)).toEqual(['bug_report'])
   })
 })
