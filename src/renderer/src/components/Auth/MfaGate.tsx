@@ -22,6 +22,7 @@ import {
 } from '../../lib/mfa'
 import { supabase, signOut } from '../../lib/supabase'
 import { recordAuthenticators } from '../../lib/accountSecurity'
+import { syncPushSubscription } from '../../lib/push'
 import { describeError } from '../Patients/errors'
 import { RichText } from '../ui/RichText'
 import { t } from '@/lib/i18n'
@@ -67,6 +68,14 @@ export function MfaGate({ children }: { children: ReactNode }) {
     const timer = setInterval(check, 60_000)
     window.addEventListener('focus', check)
     return () => { clearInterval(timer); window.removeEventListener('focus', check) }
+  }, [step])
+
+  // Signed in all the way: this browser's push subscription may have been
+  // deleted on the server meanwhile (an owner's reset, the last authenticator
+  // removed). Checked and repaired after every sign-in, phone and desktop
+  // browser alike (lib/push.ts).
+  useEffect(() => {
+    if (step === 'ok' || step === 'disabled') void syncPushSubscription().catch(() => {})
   }, [step])
 
   if (step === 'ok' || step === 'disabled') return <>{children}</>

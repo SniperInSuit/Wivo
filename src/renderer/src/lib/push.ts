@@ -31,13 +31,86 @@ function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
   return out
 }
 
-export async function pushState(): Promise<PushState> {
-  if (!pushSupported()) return 'unsupported'
-  if (!VAPID_PUBLIC_KEY) return 'not-configured'
-  if (Notification.permission === 'denied') return 'denied'
-  const reg = await navigator.serviceWorker.getRegistration()
-  const sub = await reg?.pushManager.getSubscription()
-  return sub && Notification.permission === 'granted' ? 'on' : 'off'
+// ── Checked against the server ─────────────────────────────────────────────
+//
+// The browser's own subscription is not the whole truth: the server deletes a
+// person's subscriptions when an owner resets their second factor or they
+// remove their last authenticator (sql/097). The phone's switch then still
+// said "on" and pushes silently stopped. So after every sign-in (MfaGate) and
+// whenever the switch is shown, this browser's subscription is looked up on
+// the server: still there → on; gone, with permission still granted → the
+// same subscription is registered again (no tap needed, unlike a new one);
+// otherwise → off.
+
+/** One browser subscription, as much of it as this needs. */
+export interface LocalSubscription {
+  endpoint: string
+  toJSON(): PushSubscriptionJSON
+  unsubscribe(): Promise<boolean>
+}
+
+/** Everything the check talks to, so it can be tested without a browser. */
+export interface PushEnv {
+  supported: boolean
+  configured: boolean
+  permission: () => NotificationPermission
+  subscription: () => Promise<LocalSubscription | null>
+  /** Is this endpoint this person's on the server? null: could not ask (offline, not signed in). */
+  onServer: (endpoint: string) => Promise<boolean | null>
+  /** save_push_subscription for this subscription. */
+  save: (json: PushSubscriptionJSON) => Promise<{ error: unknown }>
+}
+
+export async function syncPushWith(env: PushEnv): Promise<PushState> {
+  if (!env.supported) return 'unsupported'
+  if (!env.configured) return 'not-configured'
+  const permission = env.permission()
+  const sub = await env.subscription()
+  if (!sub) return permission === 'denied' ? 'denied' : 'off'
+  // Permission taken away in the browser's settings: nothing can be shown, so
+  // the subscription is of no use. Dropped here; the server row goes when the
+  // push service reports it gone.
+  if (permission !== 'granted') {
+    await sub.unsubscribe().catch(() => false)
+    return permission === 'denied' ? 'denied' : 'off'
+  }
+  const registered = await env.onServer(sub.endpoint)
+  if (registered === null) return 'on'  // could not ask: change nothing
+  if (registered) return 'on'
+  // Gone on the server. Registered again as it is. If the server refuses
+  // (another account's endpoint on a shared browser, sql/091), it is left
+  // alone and the switch reads off: switching on makes a fresh one.
+  const { error } = await env.save(sub.toJSON())
+  return error ? 'off' : 'on'
+}
+
+function browserPushEnv(): PushEnv {
+  const supported = pushSupported()
+  return {
+    supported,
+    configured: !!VAPID_PUBLIC_KEY,
+    permission: () => Notification.permission,
+    subscription: async () => {
+      const reg = await navigator.serviceWorker.getRegistration()
+      return (await reg?.pushManager.getSubscription()) ?? null
+    },
+    onServer: async endpoint => {
+      // RLS: a person reads only their own subscriptions (sql/090).
+      const { data, error } = await supabase.from('push_subscription').select('id').eq('endpoint', endpoint).maybeSingle()
+      return error ? null : !!data
+    },
+    save: async json => await supabase.rpc('save_push_subscription', {
+      p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_user_agent: navigator.userAgent,
+    }),
+  }
+}
+
+let syncing: Promise<PushState> | null = null
+
+/** This browser's push state, checked against the server and repaired where it can be. One at a time. */
+export function syncPushSubscription(): Promise<PushState> {
+  syncing ??= syncPushWith(browserPushEnv()).finally(() => { syncing = null })
+  return syncing
 }
 
 /** Must run from a tap (the permission prompt needs one). */

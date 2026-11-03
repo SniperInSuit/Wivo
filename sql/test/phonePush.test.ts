@@ -49,6 +49,22 @@ describe('push subscriptions', () => {
     expect(await rowsAs(db, { id: A.ownerId }, `select 1 from public.push_subscription`)).toEqual([])
   })
 
+  it('after an owner\'s reset deleted them, the person, signed in again, can register the same browser again (the app\'s check, lib/push.ts)', async () => {
+    const endpoint = 'https://web.push.apple.com/reset-me'
+    const mine = `select 1 from public.push_subscription where endpoint = '${endpoint}'`
+    await rowsAs(db, { id: A.workerId }, `select public.save_push_subscription('${endpoint}', 'k', 'a', 'iPhone')`)
+    await db.query(`select public.complete_mfa_change('mfa_reset', $1, $2, $3, '{"reason":"Lost phone"}', true)`,
+      [A.clinicId, A.ownerId, A.workerId])
+    // What the app asks after the next sign-in: is this browser still mine? No.
+    expect(await rowsAs(db, { id: A.workerId }, mine)).toEqual([])
+    expect(await errorAs(db, { id: A.workerId },
+      `select public.save_push_subscription('${endpoint}', 'k', 'a', 'iPhone')`)).toBeNull()
+    expect(await rowsAs(db, { id: A.workerId }, mine)).toHaveLength(1)
+    // Another account still cannot take it over (sql/091).
+    expect(await errorAs(db, { id: A.ownerId },
+      `select public.save_push_subscription('${endpoint}', 'k', 'a', 'iPhone')`)).toMatch(/another account/)
+  })
+
   it('refuses something that is not a push endpoint', async () => {
     expect(await errorAs(db, { id: A.workerId },
       `select public.save_push_subscription('http://evil.example', 'k', 'a', 'x')`)).toMatch(/push endpoint/)

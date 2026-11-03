@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { Bell, LogOut, Languages, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { pushState, enablePush, disablePush, needsHomeScreen, forgetPushBeforeSignOut, type PushState } from '../lib/push'
+import { syncPushSubscription, enablePush, disablePush, needsHomeScreen, forgetPushBeforeSignOut, type PushState } from '../lib/push'
 import { SoundSection } from '../components/Settings/SoundSection'
 import { NotificationChannels } from '../components/Settings/NotificationChannels'
 import { SecuritySection } from '../components/Settings/SecuritySection'
@@ -85,7 +85,8 @@ function PushSection() {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => { void pushState().then(setState, () => setState('unsupported')) }, [])
+  // Checked against the server, not only the browser: see syncPushSubscription.
+  useEffect(() => { void syncPushSubscription().then(setState, () => setState('unsupported')) }, [])
 
   async function toggle(on: boolean) {
     setBusy(true)
