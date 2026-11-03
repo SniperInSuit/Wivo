@@ -11,7 +11,9 @@ import { HelpCircle, CheckCircle2, Send, Paperclip, Loader2, Camera } from 'luci
 import { useJobThread, usePostJobComment, useResolveQuestion } from '@/hooks/usePartners'
 import { describeError } from '../Patients/errors'
 import { enqueueUpload } from '../../lib/uploadQueue'
-import { fileDownloadUrl } from '../../lib/fileLink'
+import { saveFile } from '../../lib/fileLink'
+import { attachmentViewerFor } from '../../lib/fileViewer'
+import { FileViewer, type ViewerFile } from '../Files/FileViewer'
 import { guessFileType } from '../../lib/fileClean'
 import { playSound } from '../../lib/sound'
 import { useAuth } from '../../context/AuthContext'
@@ -56,12 +58,25 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
     enqueueUpload(jobId, file, type, null, id => setAttachment(a => (a ? { ...a, id } : a)))
   }
 
-  async function open(fileId: string, name: string) {
+  // An image or a PDF opens in the same viewer as the job's files (images move
+  // between the thread's images); anything else downloads. Same signed,
+  // audited link either way (lib/fileLink).
+  const [viewing, setViewing] = useState<{ files: ViewerFile[]; start: number } | null>(null)
+  const attachments: ViewerFile[] = messages.filter(m => m.file_id && m.file_name).map(m => ({ id: m.file_id!, file_name: m.file_name! }))
+
+  async function download(f: ViewerFile) {
     try {
-      window.open(await fileDownloadUrl(fileId, name))
+      await saveFile(f.id, f.file_name)
     } catch (e) {
       setError(describeError(e))
     }
+  }
+
+  function open(fileId: string, name: string) {
+    const f = { id: fileId, file_name: name }
+    const view = attachmentViewerFor(f, attachments)
+    if (view) setViewing(view)
+    else void download(f)
   }
 
   async function send() {
@@ -103,7 +118,7 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
               </div>
               <p className="mt-1 whitespace-pre-wrap text-ink">{m.body}</p>
               {m.file_id && m.file_name && (
-                <button type="button" onClick={() => void open(m.file_id!, m.file_name!)}
+                <button type="button" onClick={() => open(m.file_id!, m.file_name!)}
                   className="mt-1 flex items-center gap-1 text-xs font-mono text-accent hover:underline">
                   <Paperclip size={11} aria-hidden="true" /> {m.file_name}
                 </button>
@@ -150,6 +165,9 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
           {error && <p role="alert" className="text-sm text-rose-500">{error}</p>}
           {shooting && <PhoneCamera single onFile={attach} onClose={() => setShooting(false)} />}
         </div>
+      )}
+      {viewing && (
+        <FileViewer files={viewing.files} start={viewing.start} onClose={() => setViewing(null)} onDownload={f => void download(f)} />
       )}
     </section>
   )

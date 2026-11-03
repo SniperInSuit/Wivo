@@ -14,7 +14,7 @@ import { Download, Upload, Trash2, RotateCw, X, History, Paperclip } from 'lucid
 import { supabase } from '../../lib/supabase'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { enqueueUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
-import { fileDownloadUrl } from '../../lib/fileLink'
+import { saveFile } from '../../lib/fileLink'
 import { viewKind, viewerFor } from '../../lib/fileViewer'
 import { FileViewer, type ViewerFile } from './FileViewer'
 import { describeError } from '../Patients/errors'
@@ -101,10 +101,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
   async function download(f: ViewerFile) {
     setActionError(null)
     try {
-      const a = document.createElement('a')
-      a.href = await fileDownloadUrl(f.id, f.file_name)
-      a.download = f.file_name
-      a.click()
+      await saveFile(f.id, f.file_name)
     } catch (e) {
       setActionError(describeError(e))
     }

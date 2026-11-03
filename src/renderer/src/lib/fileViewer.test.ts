@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { viewKind, stepIndex, clampZoom, zoomStep, clampPan, swipeDirection, viewerFor, MAX_ZOOM } from './fileViewer'
+import { viewKind, stepIndex, clampZoom, zoomStep, clampPan, swipeDirection, viewerFor, attachmentViewerFor, MAX_ZOOM } from './fileViewer'
 
 describe('which files open in the viewer', () => {
   it('images and PDFs; everything else downloads', () => {
@@ -64,5 +64,24 @@ describe('what opens when a file is clicked', () => {
 
   it('anything else does not open (it downloads)', () => {
     expect(viewerFor(files[1], files)).toBeNull()
+  })
+})
+
+describe('a chat attachment clicked in a job\'s thread', () => {
+  const a = (id: string, file_name: string) => ({ id, file_name })
+  const thread = [a('p1', 'first.jpg'), a('s1', 'scan.stl'), a('p2', 'second.png'), a('d1', 'saatekiri.pdf'), a('p1', 'first.jpg'), a('p3', 'third.webp')]
+
+  it('an image: among the thread\'s images, in thread order, each file once', () => {
+    expect(attachmentViewerFor(thread[2], thread)).toEqual({ files: [thread[0], thread[2], thread[5]], start: 1 })
+    expect(attachmentViewerFor(thread[4], thread)).toEqual({ files: [thread[0], thread[2], thread[5]], start: 0 })
+  })
+
+  it('a PDF alone; anything else does not open (it downloads)', () => {
+    expect(attachmentViewerFor(thread[3], thread)).toEqual({ files: [thread[3]], start: 0 })
+    expect(attachmentViewerFor(thread[1], thread)).toBeNull()
+  })
+
+  it('an image not (yet) in the list still opens, alone', () => {
+    expect(attachmentViewerFor(a('new', 'new.jpg'), thread)).toEqual({ files: [a('new', 'new.jpg')], start: 0 })
   })
 })
