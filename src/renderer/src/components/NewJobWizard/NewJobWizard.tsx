@@ -32,6 +32,7 @@ import { describeError } from '../Patients/errors'
 import { PartnerShareContext } from './production/PartnerShare'
 import { shareJob, shareSpecProblem, type ShareSpec } from '@/hooks/usePartners'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 export interface NewJobWizardProps {
   /** App renders <AnimatePresence>{open && <NewJobWizard …/>}</AnimatePresence>. */
@@ -77,6 +78,8 @@ export function NewJobWizard({
   }, [initialDate])
 
   const wizard = useNewJobWizard(init)
+  // An update restart waits for typed-in work (lib/restartGuard).
+  useHoldRestart(wizard.isDirty)
 
   const [created, setCreated] = useState<Job | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)

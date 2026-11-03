@@ -23,6 +23,7 @@ import { useWorkerRates } from '../../hooks/useWorkerPay'
 import { resolveWorkType, abutmentUnitPrice, abutmentUnitParts } from '../../config/workTypes'
 import { usesCapsules } from '@shared/pricing/priceBook'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 interface RevisionEditFullscreenProps {
   revision: Revision
@@ -43,6 +44,8 @@ interface RevisionEditFullscreenProps {
 }
 
 export function RevisionEditFullscreen({ revision, jobAssignedTo, jobDesignedBy, jobMasina, onSave, onCancel, saving }: RevisionEditFullscreenProps) {
+  // An update restart waits while a remake is being edited (lib/restartGuard).
+  useHoldRestart()
   const { stages } = usePipeline()
   const { settings } = useSettings()
   const wt = settings.tooTuubid

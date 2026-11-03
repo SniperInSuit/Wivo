@@ -18,6 +18,7 @@ import { playSound } from '../../lib/sound'
 import { useAuth } from '../../context/AuthContext'
 import { PhoneCamera } from '../../mobile/PhoneCamera'
 import { t, dateLocale } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 /** `camera`: a button for a photo taken inside the app (the phone app; never for a partner). */
 export function JobThread({ jobId, readOnly = false, partner = false, camera = false }: { jobId: string; readOnly?: boolean; partner?: boolean; camera?: boolean }) {
@@ -25,6 +26,8 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
   const post = usePostJobComment(jobId)
   const resolve = useResolveQuestion(jobId)
   const [body, setBody] = useState('')
+  // An update restart or reload waits while a message is being typed (lib/restartGuard).
+  useHoldRestart(body.trim().length > 0)
   const [asQuestion, setAsQuestion] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // A file for the comment: uploaded the normal way first (same rules — a

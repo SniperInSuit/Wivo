@@ -1,7 +1,12 @@
 # Minimum app version
 
-Plan only. Nothing is built yet. Branch: `testing`. Next migration: `sql/104`.
-Kevin applies migrations in the SQL Editor, test copy first (CLAUDE.md).
+**Built on `testing`. Ships with 2.1.** Not applied anywhere yet. Kevin's steps are in §8.
+Kevin applies migrations in the SQL Editor, test copy first (CLAUDE.md). **Kevin sets the minimum only after every machine runs 2.1**: every build before 2.1 sends no version, so a minimum set earlier refuses all their saves.
+
+**Decisions (Kevin, 2026-11-03):**
+- Old builds may still read; only saves are refused.
+- A required restart: a 60-second countdown, at most three postponements of 15 minutes each. Never while a form has unsaved input or an upload, download or print is running.
+- On the desktop, the "Update Wivo" message has a "Restart now" button.
 
 ## Why
 
@@ -26,7 +31,8 @@ The goal: a build that is too old may still be opened and read, but it can't sav
 - **supabase-js sends global headers on every request:** PostgREST, Storage, Edge Functions (`functions.invoke`), Auth.
 - **The Edge Functions** that call the database *as the user* (`account-security`, `team-account`, `file-link`) pass the caller's `x-wivo-version` on, so a function call from an old build is treated the same way.
 - **CORS:** the browser asks before sending a custom header.
-  - Our Edge Functions list their allowed headers, so `x-wivo-version` and `x-wivo-client` are added to `account-security`, `team-account`, `file-link` and `_shared/cors.ts`. Without that, every function call from the new app would fail.
+  - The three functions the app calls (`account-security`, `team-account`, `file-link`) allow both headers (`_shared/appVersion.ts`). A test fails if a function the app calls doesn't. Without that, every function call from the new app would fail.
+  - `public-booking` (`_shared/cors.ts`) is called by the public booking page, not by the app, so it is unchanged.
   - Supabase's own API (PostgREST, Storage, Auth) answers with the headers asked for, as it already does for `x-client-info`. **This is checked first on the test copy**, see the spike in §7.
 
 ## 2. The database refuses saves from builds below the minimum
@@ -110,12 +116,13 @@ What exists: `UpdateBanner` (corner toast) shows "Update ready … applied at th
 
 The change:
 
-- **When an update has been downloaded,** the toast becomes a clearer **banner** at the top: "Wivo X.Y.Z is ready. Restart to update" with a **Restart** button. It can be dismissed, and it comes back on the next launch or the next version. The button uses the existing `installNow` (`quitAndInstall(true, true)`).
+- **When an update has been downloaded,** the corner notice now reads **"Restart to update"**, "Wivo X.Y.Z is downloaded. Restart now, or it is applied the next time you start Wivo", with **Restart now**. As built, it stays a corner notice rather than a top banner, so it doesn't push the screen down; the "Update Wivo" message below is the top banner. The button uses the existing `installNow` (`quitAndInstall(true, true)`).
+- **A save refused for the version (426):** a banner at the top, "Update Wivo: this version can no longer save…". It has **Restart now** once the update is downloaded; until then it says "Getting the update…" and asks the updater at once (`components/UpdateRequired.tsx`).
 - **A required release:** the running version is below a minimum marked `required` (§2), and the update is downloaded. Then Wivo restarts by itself, but only when nothing is open:
   - **no form with unsaved input:** a small registry (`useBlocksRestart()`) that the job form, the new-job wizard, the remake editor, the invoice form, settings with unsaved changes and Team's add-member dialog switch on while open;
   - **no upload in the queue** (`uploadQueue`), no file download running, no print running;
   - **checked again every 30 s;**
-  - **a 60-second visible countdown first** ("Restarting to update in 60 s… Wait"). "Wait" postpones it by 10 minutes, at most three times. After that it restarts when the next form closes.
+  - **a 60-second visible countdown first** ("Wivo restarts in 60 s to update to X.Y.Z", with "Restart now" and "Wait 15 min (n left)"). "Wait" postpones it by 15 minutes, at most three times; after that only "Restart now" is offered. If something is opened during the countdown, the countdown stops and it waits again.
 - **Where the "required" flag comes from:** the same row in `app_min_version`, read on start and every 30 minutes with the update check (the read is allowed, §2). So marking a release as required is the same SQL statement with `required = true`. No release metadata and no new build are needed.
 - The rule at the top of `updater.ts` stays: an update must never stop somebody working. Every failure still ends with the app open on the installed version, and saves refused with the clear message.
 
@@ -126,9 +133,9 @@ The logic is kept in pure functions so it can be tested: `shouldAutoRestart(runn
 The phone app is a web page. A fresh start already loads the newest `index.html` (`sw.js` fetches pages from the network first), so an old build mostly means a phone app left open in the background for days.
 
 - **On start and every time the app comes back to the screen** (`visibilitychange`), once signed in, it reads the minimum. If its own version is below it, it reloads.
-- **Loop guard:** at most one reload per 10 minutes, kept in `sessionStorage`. If the reloaded page is still too old (Cloudflare hasn't finished publishing, or the phone is offline), it shows a full-width notice "Update Wivo: reload the page" with a button instead of reloading again.
+- **Loop guard:** at most one reload per 10 minutes, kept in `sessionStorage` (`mobile/PhoneVersionGuard.tsx`). If the reloaded page is still too old (Cloudflare hasn't finished publishing, or the phone is offline), it shows a full-width notice "Update Wivo: reload the page" with a button instead of reloading again.
 - **A 426 from any save** does the same.
-- Nothing typed is lost to a reload. The app is checked on start and when it returns, so a half-written chat message is the one thing a reload could drop. The check waits while the chat box or the camera is open.
+- Nothing typed is lost to a reload: it waits while the camera is open, a message is being typed, or an upload is running.
 
 ## 6. Rollout (once built)
 
@@ -170,7 +177,41 @@ The phone app is a web page. A fresh start already loads the newest `index.html`
    - CLAUDE.md: a new Edge Function lists `x-wivo-version` in its CORS headers;
    - this file: from plan to built.
 
-## Open questions for Kevin
+## 8. What is built, and Kevin's steps (test copy only)
 
-1. **Reads from an old build:** this plan lets them through, so a stuck machine can still look things up. Or should an old build be blocked entirely, reads included?
-2. **The 60-second countdown and three postponements** for a required restart: are those the right numbers for the lab?
+**Built:**
+- **sql/104** with tests (`sql/test/minAppVersion.test.ts`).
+- **Edge Functions:** headers allowed and passed on; tests in `_shared/appVersion.test.ts`.
+- **The app:**
+  - headers on every call, and the 426 watch (`lib/appVersion.ts`);
+  - "Update Wivo" in `describeError`;
+  - desktop: `components/UpdateRequired.tsx` and the "Restart to update" text;
+  - phone: `mobile/PhoneVersionGuard.tsx`;
+  - the restart guard (`lib/restartGuard.ts`): forms, the camera, a message being typed, uploads; and `main/busy.ts` for downloads, prints and PDFs;
+  - the decisions as pure functions with tests (`lib/updatePolicy.ts`).
+- **The check script:** `scripts/check-version-header.sh`.
+
+**Steps:**
+1. **Before sql/104:** `bash scripts/check-version-header.sh --cors`. The database, storage and sign-in should PASS. The three Edge Functions FAIL until step 3.
+2. Run `sql/104_min_app_version.sql`, then `notify pgrst, 'reload config'; notify pgrst, 'reload schema';` as a separate query.
+3. Deploy the three functions to the test copy:
+   ```sh
+   supabase functions deploy file-link --project-ref jhqyvancrzykxhzwnost
+   supabase functions deploy team-account --project-ref jhqyvancrzykxhzwnost --no-verify-jwt
+   supabase functions deploy account-security --project-ref jhqyvancrzykxhzwnost --no-verify-jwt
+   ```
+4. `bash scripts/check-version-header.sh`: everything PASS, including that the database sees the header and that a refusal arrives as HTTP 426. It asks for the test copy's secret key without showing it.
+5. Push `testing`. Then hand test with `npm run dev:test`, which sends the current version:
+   - In the SQL Editor on the test copy: `select public.set_app_min_version('9.9.9', false, 'test');`.
+     - Saving a job is refused with "Update Wivo…".
+     - Lists, a job and its files still open.
+     - The top banner shows.
+     - On the phone (wivo-test.pages.dev), a save is refused and the page reloads once; on a second refusal within 10 minutes, the notice with "Reload" shows.
+   - `select public.clear_app_min_version();`: saving works again at once.
+   - **The required restart** needs an installed build and a newer release to update to, so it can only be tried with 2.1 itself on a test machine. The timing rules are covered by tests.
+6. **Production, in a session Kevin starts, with the 2.1 release:** sql/104, then the functions. **Set the minimum only after every machine runs 2.1.**
+
+## Open questions answered
+
+1. **Reads from an old build:** allowed; only saves are refused.
+2. **A required restart:** a 60-second countdown, at most three postponements of 15 minutes each, never while something is open. The desktop's "Update Wivo" message has "Restart now".

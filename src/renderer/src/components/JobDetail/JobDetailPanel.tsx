@@ -43,6 +43,7 @@ import { SecondMaterialField } from './SecondMaterialField'
 import { splitMaterials, joinMaterials, materialList } from '@shared/pricing/materials'
 import { t } from '@/lib/i18n'
 import { describeError } from '../Patients/errors'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 interface JobDetailPanelProps {
   job: Job | null       // null = create mode
@@ -460,6 +461,8 @@ function PricingBlock({ form, set, settings, smallCount, largeCount, prodPrice, 
 }
 
 export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, position = 'side', initialDate, highlightRevisionId, highlightNoteId, onOpenPatient }: JobDetailPanelProps) {
+  // An update restart waits while a job's form is open (lib/restartGuard).
+  useHoldRestart()
   const isBottom = position === 'bottom'
   const isFullscreen = position === 'fullscreen'
   // Both bottom and fullscreen are sheets: they rise from the bottom edge and

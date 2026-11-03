@@ -22,6 +22,7 @@ import { PanelCard } from './PanelCard'
 import { ToothChart } from './ToothChart'
 import { ToothLegend } from './ToothLegend'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 interface ToothStatusPanelProps {
   patient: Patient
@@ -86,6 +87,7 @@ export function ToothStatusPanel({ patient, patientJobs, onError }: ToothStatusP
   }
 
   const dirty = draft.size > 0
+  useHoldRestart(dirty)
 
   function cancelEdits() {
     setDraft(new Map())

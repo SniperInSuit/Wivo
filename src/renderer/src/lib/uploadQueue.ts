@@ -44,6 +44,11 @@ const emit = () => { tasks = [...tasks]; listeners.forEach(l => l()) }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 const snapshot = () => tasks
 
+/** Uploads still on their way: an update restart waits for them (lib/restartGuard). */
+export function activeUploads(): number {
+  return tasks.filter(t => t.status === 'queued' || t.status === 'preparing' || t.status === 'uploading').length
+}
+
 /**
  * Told the job id whenever one of its uploads completes. A set, not one
  * callback: two file panels can be open at once (side and bottom), and the

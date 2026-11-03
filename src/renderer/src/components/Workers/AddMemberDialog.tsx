@@ -14,6 +14,7 @@ import { inviteMember, createLogin, teamErrorMessage, TeamAccountError, type Lan
 import { MIN_PASSWORD } from '../../lib/authConfirm'
 import { normaliseUsername } from '@shared/auth/loginAddress'
 import { t, lang } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 /** Each language named in itself, as in Settings. */
 const LANGUAGES: { key: Language; label: string }[] = [
@@ -29,6 +30,8 @@ type Result =
   | { kind: 'login'; login: string; password: string }
 
 export function AddMemberDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  // An update restart waits while someone is being added (lib/restartGuard).
+  useHoldRestart()
   const [mode, setMode] = useState<Mode>('email')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

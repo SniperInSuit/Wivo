@@ -9,6 +9,7 @@ import {
 } from './updater'
 import { currentLicence, installLicence, licensingEnforced } from './license'
 import { registerWatchFolder } from './watchFolder'
+import { trackDownloads, mainBusy } from './busy'
 import { initSentryMain } from './sentry'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
@@ -154,6 +155,10 @@ app.whenReady().then(async () => {
     }
   })
   ipcMain.handle('wivo:teeth-model', () => readTeethModel())
+
+  // An update restart waits while a download, a print or a PDF is running (busy.ts).
+  trackDownloads()
+  ipcMain.handle('wivo:busy', e => mainBusy(BrowserWindow.fromWebContents(e.sender)))
 
   // Licence lives in the main process — see license.ts for why.
   ipcMain.handle('wivo:license-status', () => currentLicence())

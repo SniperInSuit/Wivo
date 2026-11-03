@@ -14,6 +14,7 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { sessionHasMfa } from '../_shared/requireMfa.ts'
+import { APP_ALLOWED_HEADERS, callerVersionHeaders } from '../_shared/appVersion.ts'
 
 const URL_ = Deno.env.get('SUPABASE_URL') ?? ''
 const ANON = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -22,7 +23,7 @@ const LIFETIME_SECONDS = 60
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': APP_ALLOWED_HEADERS,
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -35,7 +36,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!fileId) return json(400, { error: 'fileId required' })
 
   // As the user: rights, audit row, grant — all in the database.
-  const asUser = createClient(URL_, ANON, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } })
+  const asUser = createClient(URL_, ANON, { global: { headers: { Authorization: auth, ...callerVersionHeaders(req) } }, auth: { persistSession: false } })
   // The link is signed with the service key, which no policy stops: so the
   // second factor is checked here too, by the database (sql/098), before
   // anything else. A password-only or ended session gets no file.

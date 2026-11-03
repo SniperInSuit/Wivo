@@ -20,6 +20,7 @@ import { VisitsPanel } from './VisitsPanel'
 import { VisitForm } from '../CalendarView/VisitForm'
 import type { Visit } from '../../types/visit'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 interface PatientProfileProps {
   patient: Patient
@@ -137,6 +138,7 @@ export function PatientProfile({
   // Only the fields this form owns; markused is written by NotesPanel and is an
   // array, so a reference compare would read permanently dirty.
   const dirty = editing && FORM_FIELDS.some(k => (form[k] ?? '') !== (patient[k] ?? ''))
+  useHoldRestart(dirty)
 
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])

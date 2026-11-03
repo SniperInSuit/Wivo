@@ -22,6 +22,7 @@ import { toDate } from '../../lib/dates'
 import { instalmentSchedule, scheduleProblems } from '@shared/billing/instalments'
 import { useCreatePaymentPlan } from '../../hooks/usePaymentPlans'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../../lib/restartGuard'
 
 interface DraftLine {
   key: string
@@ -40,6 +41,8 @@ interface InvoiceFormProps {
 }
 
 export function InvoiceForm({ jobs, initialPatient, onClose, onCreated }: InvoiceFormProps) {
+  // An update restart waits while an invoice is being written (lib/restartGuard).
+  useHoldRestart()
   const { settings } = useSettings()
   const createInvoice = useCreateInvoice()
   const createPlan = useCreatePaymentPlan()

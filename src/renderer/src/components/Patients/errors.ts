@@ -1,6 +1,7 @@
 // Turn a Supabase/PostgREST error into something actionable in Estonian.
 // 42501 = RLS denial, which otherwise just looks like "the button does nothing".
 import { t } from '@/lib/i18n'
+import { isUpdateRequired } from '../../lib/appVersion'
 
 /**
  * Which migration adds a given column.
@@ -40,6 +41,10 @@ export function describeError(err: unknown): string {
   const e = err as { code?: string; message?: string } | null
   const msg = e?.message ?? ''
 
+  // sql/104: this build is below the minimum version; saves are refused.
+  if (isUpdateRequired(err)) {
+    return t('app.updateRequired')
+  }
   // sql/092: text a partner reads named the patient. The database never says
   // which word: the message would end up in logs.
   if (e?.code === 'WV001') {

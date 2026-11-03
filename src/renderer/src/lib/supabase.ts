@@ -3,6 +3,7 @@ import { supabaseTarget } from './testCopy'
 import type { Job } from '../types/job'
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 import { STANDIN_DOMAIN, loginAddresses, loginNameOf, normaliseClinicCode } from '@shared/auth/loginAddress'
+import { appHeaders, versionWatchingFetch } from './appVersion'
 
 // Read from .env — never hardcode these values. In test mode (`npm run
 // dev:test`) from .env.test, and never production: lib/testCopy.
@@ -22,7 +23,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Every call carries this build's version (docs/MIN-VERSION.md); a save the
+// database refuses as too old (426) is noticed on the way back.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { headers: appHeaders(), fetch: versionWatchingFetch((...args) => fetch(...args)) },
+})
 
 /**
  * For the resumable upload, which talks to Storage's TUS endpoint directly

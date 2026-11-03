@@ -14,10 +14,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Loader2 } from 'lucide-react'
 import { t } from '@/lib/i18n'
+import { useHoldRestart } from '../lib/restartGuard'
 
 const stamp = (d = new Date()) => d.toISOString().slice(0, 19).replace(/\D/g, '')
 
 export function PhoneCamera({ onFile, onClose, single = false }: { onFile: (file: File) => void; onClose: () => void; single?: boolean }) {
+  // A reload to update waits while the camera is open (lib/restartGuard).
+  useHoldRestart()
   const video = useRef<HTMLVideoElement>(null)
   const fallback = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<'starting' | 'live' | 'fallback'>('starting')

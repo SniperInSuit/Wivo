@@ -20,10 +20,11 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
 
 ## Rules
-- Migrations are numbered SQL files in sql/ (next one is 104_...). Only add new files. Never edit or delete existing ones.
+- Migrations are numbered SQL files in sql/ (next one is 105_...). Only add new files. Never edit or delete existing ones.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test, and ends with `select public.ensure_mfa_policies();` (sql/098: nothing without the second factor; sql/test/requireMfa.test.ts fails for a table without it).
 - Every migration that adds a function ends with `select public.lock_anon_functions();` (sql/101: the anon key runs nothing but `require_mfa_for_api()`; a function that must run before sign-in goes into `anon_allowed_functions()` with the reason; sql/test/anonFunctions.test.ts fails otherwise).
 - The app uses only the anon key. The service-role key lives only in Edge Functions.
+- Every request from the app carries `x-wivo-version` (docs/MIN-VERSION.md). An Edge Function the app calls allows it in its CORS headers (`APP_ALLOWED_HEADERS`) and passes it on when it calls the database as the user (`callerVersionHeaders`); `supabase/functions/_shared/appVersion.test.ts` fails otherwise. A database function that only reads is declared `stable`: a `volatile` one counts as a save and is refused to builds below the minimum.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.
 - Everyday work never connects to the production Supabase project: local Supabase, the PGlite tests or a test copy only.
 - Test mode (`npm run dev:test`, `.env.test`) refuses the production project by its ID, hard-coded in src/renderer/src/lib/testCopy.ts (`PRODUCTION_REF`). If the production project ever changes, update that ID in the same change.

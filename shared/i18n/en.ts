@@ -2275,8 +2275,8 @@ export const en = {
   'topBar.signOut': "Sign out",
 
   // ── updateBanner ──────────────────────────────────────────────────────────
-  'updateBanner.updateReady': "Update ready",
-  'updateBanner.versionWillBeAppliedTheNext': "Version {version} will be applied the next time you start Wivo.",
+  'updateBanner.updateReady': "Restart to update",
+  'updateBanner.versionWillBeAppliedTheNext': "Wivo {version} is downloaded. Restart now, or it is applied the next time you start Wivo.",
   'updateBanner.restartNow': "Restart now",
   'updateBanner.updateFailed': "Update failed",
   'updateBanner.wivoKeepsRunningVersion': "Wivo keeps running version {running}.",
@@ -3491,6 +3491,14 @@ export const en = {
   'team.technicianPresetHelp': "Edit jobs and use stock; no money, no deleting, no other people's jobs or pay.",
   'team.technicianPresetConfirm': "Replace this person's permissions with the technician defaults?",
   'team.technicianPresetYes': "Yes, replace",
+
+  // ── minimum app version (docs/MIN-VERSION.md) ──────────────────────────────
+  'app.updateRequired': "Update Wivo: this version can no longer save. Restart Wivo, or reload the page.",
+  'updateRequired.restartingIn': "Wivo restarts in {seconds} s to update to {version}.",
+  'updateRequired.wait15': "Wait 15 min ({left} left)",
+  'updateRequired.fetching': "Getting the update…",
+  'updateRequired.phoneNotice': "Update Wivo: this version can no longer save. Reload the page to get the new one.",
+  'updateRequired.reload': "Reload",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

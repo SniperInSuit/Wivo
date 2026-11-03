@@ -167,6 +167,11 @@ look arbitrary until the day someone undoes it.
   and `handle_new_user()` would accumulate junk `profiles` rows for every
   visitor. Public surfaces go through an edge function holding the service key,
   never through an anon session.
+- **Minimum app version** (docs/MIN-VERSION.md, sql/104): every request carries
+  `x-wivo-version`; below `app_min_version` a signed-in user's saves get HTTP 426
+  "Update Wivo", reads go on. A guard against old builds, not a security control.
+  Set with `select public.set_app_min_version('2.1.0');` only once every machine
+  runs a build that sends the header (2.1).
 - **Accounts are made only on the server** (docs/ACCOUNTS.md): the Edge
   Function `team-account` (owner + second factor + the database's invite
   token). The app never calls `signUp`; public sign-up is to be switched off.

@@ -2262,8 +2262,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'topBar.signOut': "Logi välja",
 
   // ── updateBanner ──────────────────────────────────────────────────────────
-  'updateBanner.updateReady': "Uuendus on valmis",
-  'updateBanner.versionWillBeAppliedTheNext': "Versioon {version} rakendub, kui Wivo järgmine kord käivitad.",
+  'updateBanner.updateReady': "Taaskäivita uuendamiseks",
+  'updateBanner.versionWillBeAppliedTheNext': "Wivo {version} on alla laaditud. Taaskäivita kohe või see rakendub, kui Wivo järgmine kord käivitad.",
   'updateBanner.restartNow': "Taaskäivita kohe",
   'updateBanner.updateFailed': "Uuendus ei õnnestunud",
   'updateBanner.wivoKeepsRunningVersion': "Wivo töötab edasi versiooniga {running}.",
@@ -3477,4 +3477,12 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'team.technicianPresetHelp': "Töid muuta ja ladu kasutada; ei raha, kustutamist ega teiste töid või palka.",
   'team.technicianPresetConfirm': "Kas asendada selle inimese õigused tehniku vaikeõigustega?",
   'team.technicianPresetYes': "Jah, asenda",
+
+  // ── minimum app version (docs/MIN-VERSION.md) ──────────────────────────────
+  'app.updateRequired': "Uuenda Wivo: see versioon ei saa enam salvestada. Taaskäivita Wivo või laadi leht uuesti.",
+  'updateRequired.restartingIn': "Wivo taaskäivitub {seconds} s pärast, et uueneda versioonile {version}.",
+  'updateRequired.wait15': "Oota 15 min ({left} korda veel)",
+  'updateRequired.fetching': "Laen uuendust…",
+  'updateRequired.phoneNotice': "Uuenda Wivo: see versioon ei saa enam salvestada. Laadi leht uuesti, et saada uus.",
+  'updateRequired.reload': "Laadi uuesti",
 }

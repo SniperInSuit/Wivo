@@ -19,6 +19,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { handleTeamRequest } from '../_shared/teamAccount.ts'
 import { serviceClientKey } from '../_shared/serviceAuth.ts'
 import { sessionHasMfa } from '../_shared/requireMfa.ts'
+import { APP_ALLOWED_HEADERS, callerVersionHeaders } from '../_shared/appVersion.ts'
 
 const env = (name: string) => Deno.env.get(name)
 const URL_ = env('SUPABASE_URL') ?? ''
@@ -29,7 +30,7 @@ const service = createClient(URL_, serviceClientKey(env), { auth: noSession })
 // A bearer token, not a cookie: any origin may ask, only a signed-in user gets an answer.
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': APP_ALLOWED_HEADERS,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -42,7 +43,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try { body = await req.json() } catch { /* answered as bad_request */ }
 
   const asUser = createClient(URL_, env('SUPABASE_ANON_KEY') ?? '', {
-    global: { headers: { Authorization: authorization ?? '' } }, auth: noSession,
+    global: { headers: { Authorization: authorization ?? '', ...callerVersionHeaders(req) } }, auth: noSession,
   })
   const answer = await handleTeamRequest(authorization, body, {
     asUser: async (fn, args) => await asUser.rpc(fn, args),

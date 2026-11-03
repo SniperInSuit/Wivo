@@ -57,6 +57,8 @@ const wivoAPI = {
   installNow: (): Promise<void> => ipcRenderer.invoke('wivo:install-now'),
   /** Force a check. For Seaded, and for "press this and tell me what it says". */
   checkNow: (): Promise<void> => ipcRenderer.invoke('wivo:check-now'),
+  /** A download, a print or a PDF in progress: an update restart waits (main/busy.ts). */
+  busy: (): Promise<{ downloads: number; otherWindows: number }> => ipcRenderer.invoke('wivo:busy'),
 
   // ── Updater splash window only ────────────────────────────────────────────
   onSplashState: (cb: (s: UpdaterSplashState) => void): (() => void) =>

@@ -34,6 +34,8 @@ interface Window {
     ) => () => void
     installNow: () => Promise<void>
     checkNow: () => Promise<void>
+    /** Older builds of the preload do not have it. */
+    busy?: () => Promise<{ downloads: number; otherWindows: number }>
     onSplashState: (
       cb: (s: import('../../types/update').UpdaterSplashState) => void
     ) => () => void
