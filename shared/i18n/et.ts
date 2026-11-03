@@ -3519,4 +3519,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'updateRequired.fetching': "Laen uuendust…",
   'updateRequired.phoneNotice': "Uuenda Wivo: see versioon ei saa enam salvestada. Laadi leht uuesti, et saada uus.",
   'updateRequired.reload': "Laadi uuesti",
+
+  // ── confirmation dialog (lib/confirm) ─────────────────────────────────────
+  'confirm.confirm': "Kinnita",
+  'confirm.cancel': "Tühista",
 }

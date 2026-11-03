@@ -18,6 +18,7 @@ import { MobileAuthGuard } from './MobileAuthGuard'
 import { MobileApp } from './MobileApp'
 import { AuthConfirmPage } from '../components/Auth/AuthConfirmPage'
 import { isConfirmPath } from '../lib/authConfirm'
+import { ConfirmHost } from '../components/ui/ConfirmHost'
 import { t } from '@/lib/i18n'
 import '../styles/index.css'
 
@@ -41,6 +42,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <ConfirmHost />
           {/* The e-mails' links (invite, new password, new address): before sign-in. */}
           {isConfirmPath(location.pathname) ? <AuthConfirmPage /> : (
             <MobileAuthGuard>

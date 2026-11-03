@@ -11,13 +11,14 @@ import { supabase } from '../../lib/supabase'
 import { forgetOtherPhones } from '../../lib/push'
 import { describeError } from '../Patients/errors'
 import { t } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 export function SignOutOthersSection() {
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle')
   const [error, setError] = useState<string | null>(null)
 
   async function run() {
-    if (!window.confirm(t('signOutOthers.confirm'))) return
+    if (!(await confirmDialog({ message: t('signOutOthers.confirm'), danger: true }))) return
     setState('busy')
     setError(null)
     const { error: err } = await supabase.auth.signOut({ scope: 'others' })

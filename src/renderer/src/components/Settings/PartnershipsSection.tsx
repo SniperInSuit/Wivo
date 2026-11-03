@@ -14,6 +14,7 @@ import { usePartnerOrgs, type PartnerOrg, type PartnerRole, type PartnershipStat
 import { describeError } from '../Patients/errors'
 import { useAuth } from '../../context/AuthContext'
 import { t } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 const ROLES: PartnerRole[] = ['design', 'surgery', 'supplier']
 const roleLabel = (r: PartnerRole): string =>
@@ -225,7 +226,8 @@ function PartnershipRow({ p, onChange }: { p: PartnerOrg; onChange: () => void }
         )}
         {(p.status === 'active' || p.status === 'suspended') && (
           <button type="button" className="btn-ghost text-xs border border-rose-400/40 text-rose-500"
-            onClick={() => { if (window.confirm(t('partners.endConfirm'))) void call('set_partnership_status', { p_id: p.partnership_id, p_status: 'ended' }) }}>
+            onClick={() => void confirmDialog({ message: t('partners.endConfirm'), confirmLabel: t('partners.end'), danger: true })
+              .then(yes => { if (yes) void call('set_partnership_status', { p_id: p.partnership_id, p_status: 'ended' }) })}>
             {t('partners.end')}
           </button>
         )}

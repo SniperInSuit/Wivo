@@ -3533,6 +3533,10 @@ export const en = {
   'updateRequired.fetching': "Getting the update…",
   'updateRequired.phoneNotice': "Update Wivo: this version can no longer save. Reload the page to get the new one.",
   'updateRequired.reload': "Reload",
+
+  // ── confirmation dialog (lib/confirm) ─────────────────────────────────────
+  'confirm.confirm': "Confirm",
+  'confirm.cancel': "Cancel",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */
