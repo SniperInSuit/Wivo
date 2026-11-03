@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.0.3] — 2026-11-03
+
+**See a job's images and PDFs large, without downloading them**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **Click an image on a job** (its name or its thumbnail) and it opens large
+  over the screen. Move between the job's images with the arrows, the arrow
+  keys or a swipe; zoom with + and −, the mouse wheel, a double click or two
+  fingers, and drag a zoomed image to look around. A download button is there
+  too. Esc, the × or a click outside the image closes it.
+- **A PDF opens in the viewer as well,** in the built-in PDF viewer. This
+  desktop version turns that viewer on; before it, a PDF could only be
+  downloaded.
+- Every file is fetched with the same short-lived, audited link as a
+  download, only when it is shown. Scans, STL files and iPhone (HEIC) photos
+  still download as before.
+
+**Server (no app change, deployed separately)**
+- **Invoice sending accepts only the server's own key.** Before, any signed-in
+  user, or the app's public key, could start an invoice run. Now only the
+  scheduled job can. Deploy `send-invoices` with `--no-verify-jwt`.
+
+No database migration.
+
 ## [2.0.2] — 2026-11-03
 
 **Find a job by its code, whatever dates are on screen**
