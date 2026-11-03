@@ -428,3 +428,9 @@ verify_jwt = false
 # made as that user) and the database decides: _shared/accountSecurity.ts.
 [functions.account-security]
 verify_jwt = false
+
+# team-account makes accounts on the server (docs/ACCOUNTS.md), called by the
+# app with the signed-in owner's (or, for add_email, the person's own) token.
+# Checked as for account-security: _shared/teamAccount.ts.
+[functions.team-account]
+verify_jwt = false

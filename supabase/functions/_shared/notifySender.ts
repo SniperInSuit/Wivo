@@ -11,9 +11,12 @@
  * pushes still go. Until this file, a missing e-mail secret returned 500
  * before any push was sent — phones never rang.
  *
- * No imports on purpose: Deno wants `.ts` in import paths and Vitest does
- * not need them; with none, both load this file as it is.
+ * EMAIL_ALLOW_ONLY (the test copy only, mailAllow.ts): a notice for any
+ * other address is marked done without being sent.
+ *
+ * One import, with its `.ts`: Deno needs the extension and Vitest accepts it.
  */
+import { mayMail } from './mailAllow.ts'
 
 export type PushResult = 'ok' | 'gone' | 'failed'
 
@@ -76,7 +79,7 @@ async function sendEmails(deps: SenderDeps, dry: boolean, key: string | undefine
     const subject = (SUBJECT[lang][n.kind] ?? SUBJECT[lang].files_added).replace('{code}', code)
     const url = n.job_id ? link.replace('{id}', n.job_id) : appPage(link, n.kind.startsWith('mfa_') ? '/settings' : '/')
     const text = url ? `${subject}\n\n${OPEN[lang]}: ${url}\n` : `${subject}\n`
-    if (dry) { sent.push(n.id); continue }
+    if (dry || !mayMail(n.email, deps.env('EMAIL_ALLOW_ONLY'))) { sent.push(n.id); continue }
     const res = await deps.fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },

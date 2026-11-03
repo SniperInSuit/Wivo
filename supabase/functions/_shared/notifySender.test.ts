@@ -80,6 +80,19 @@ describe('with the e-mail secrets', () => {
     expect(r).toMatchObject({ ok: true, email: { status: 'sent', sent: 1 }, pushes: { sent: 1 } })
   })
 
+  it('on the test copy (EMAIL_ALLOW_ONLY) only allowed addresses are mailed; the rest are marked done', async () => {
+    const h = harness({
+      env: { ...VAPID, ...EMAIL, EMAIL_ALLOW_ONLY: '@wivodent.com' },
+      emails: [
+        { id: 'n1', email: 'kevin@wivodent.com', job_id: 'j1', job_code: 'TAL-26-0001', kind: 'question', language: 'en' },
+        { id: 'n2', email: 'real.person@kliinik.ee', job_id: 'j1', job_code: 'TAL-26-0001', kind: 'question', language: 'en' },
+      ],
+    })
+    await runSender(h.deps, false)
+    expect(h.mailed.map(m => m.to)).toEqual(['kevin@wivodent.com'])
+    expect(h.called('mark_notifications_emailed')[0].args).toEqual({ p_ids: ['n1', 'n2'] })
+  })
+
   it('a security notice (sql/097) has its own subject, not a job\'s', async () => {
     const texts: string[] = []
     const h = harness({
