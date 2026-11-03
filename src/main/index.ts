@@ -25,7 +25,10 @@ function createWindow(): void {
     backgroundColor: '#F7F9FA',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      // Chromium's own PDF viewer, so a job's PDF shows in the file viewer
+      // (components/Files/FileViewer) instead of downloading.
+      plugins: true
     }
   })
 

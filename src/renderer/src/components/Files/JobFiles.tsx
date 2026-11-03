@@ -15,6 +15,8 @@ import { supabase } from '../../lib/supabase'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { enqueueUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
 import { fileDownloadUrl } from '../../lib/fileLink'
+import { viewKind, viewerFor } from '../../lib/fileViewer'
+import { FileViewer, type ViewerFile } from './FileViewer'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
 
@@ -92,7 +94,11 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     versionOf.current = null
   }
 
-  async function download(f: JobFileRow) {
+  // Click an image or a PDF: it opens large. Images move between the job's images.
+  const [viewing, setViewing] = useState<{ files: ViewerFile[]; start: number } | null>(null)
+  const view = (f: JobFileRow) => setViewing(viewerFor(f, files))
+
+  async function download(f: ViewerFile) {
     setActionError(null)
     try {
       const a = document.createElement('a')
@@ -171,11 +177,14 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
             {active.map(f => (
               <FileRow key={f.id} f={f} preview={previews?.get(f.id)} history={older.filter(o => chainOf(o, files).includes(f.id))}
                 canDelete={!partner} canVersion={types.includes(f.type)}
-                onDownload={download} onDelete={remove}
+                onDownload={download} onDelete={remove} onView={view}
                 onVersion={() => { versionOf.current = f.id; input.current?.click() }} />
             ))}
           </ul>
         )}
+      {viewing && (
+        <FileViewer files={viewing.files} start={viewing.start} onClose={() => setViewing(null)} onDownload={download} />
+      )}
     </section>
   )
 }
@@ -188,7 +197,7 @@ function chainOf(f: JobFileRow, all: JobFileRow[]): string[] {
   return out
 }
 
-function FileRow({ f, preview, history, canDelete, canVersion, onDownload, onDelete, onVersion }: {
+function FileRow({ f, preview, history, canDelete, canVersion, onDownload, onDelete, onVersion, onView }: {
   f: JobFileRow
   preview?: string
   history: JobFileRow[]
@@ -197,13 +206,25 @@ function FileRow({ f, preview, history, canDelete, canVersion, onDownload, onDel
   onDownload: (f: JobFileRow) => void
   onDelete: (f: JobFileRow) => void
   onVersion: () => void
+  onView: (f: JobFileRow) => void
 }) {
+  const viewable = viewKind(f.file_name) !== null
   const [open, setOpen] = useState(false)
   return (
     <li className="rounded-lg border border-ink-faint/15 px-3 py-2 text-xs">
       <div className="flex items-center gap-2">
-        {preview && <img src={preview} alt="" className="h-10 w-10 rounded object-contain bg-bg-sidebar flex-shrink-0" />}
-        <span className="font-mono text-ink truncate">{f.file_name}</span>
+        {viewable ? (
+          <button type="button" onClick={() => onView(f)} title={t('files.open')}
+            className="flex min-w-0 items-center gap-2 text-left hover:text-accent">
+            {preview && <img src={preview} alt="" className="h-10 w-10 rounded object-contain bg-bg-sidebar flex-shrink-0" />}
+            <span className="font-mono text-ink truncate underline-offset-2 hover:underline">{f.file_name}</span>
+          </button>
+        ) : (
+          <>
+            {preview && <img src={preview} alt="" className="h-10 w-10 rounded object-contain bg-bg-sidebar flex-shrink-0" />}
+            <span className="font-mono text-ink truncate">{f.file_name}</span>
+          </>
+        )}
         <span className="rounded bg-bg-sidebar px-1.5 py-0.5 text-ink-soft">{fileTypeLabel(f.type)}</span>
         <span className="text-ink-muted">{sizeText(f.size)}</span>
         <span className="ml-auto flex items-center gap-2 text-ink-muted">
@@ -233,7 +254,11 @@ function FileRow({ f, preview, history, canDelete, canVersion, onDownload, onDel
       </p>
       {open && history.map(h => (
         <div key={h.id} className="mt-1 flex items-center gap-2 text-ink-muted">
-          <span className="font-mono">{h.file_name}</span>
+          {viewKind(h.file_name) ? (
+            <button type="button" onClick={() => onView(h)} title={t('files.open')} className="font-mono hover:text-accent hover:underline">{h.file_name}</button>
+          ) : (
+            <span className="font-mono">{h.file_name}</span>
+          )}
           <button type="button" onClick={() => onDownload(h)} aria-label={t('files.download')}><Download size={11} /></button>
         </div>
       ))}
