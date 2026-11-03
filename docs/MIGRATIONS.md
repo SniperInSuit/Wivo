@@ -369,7 +369,7 @@ production-database:
 
 ### 2e. Before anything deploys by itself
 
-- **`config.toml`:** add `[functions.public-booking] verify_jwt = false`. Today only the README says so. The other functions keep their present setting. `account-security` and `send-notifications` already say `false`, and `file-link` and `send-invoices` use the default (`true`).
+- **`config.toml`:** add `[functions.public-booking] verify_jwt = false`. Today only the README says so. The other functions keep their present setting. `account-security`, `team-account`, `send-notifications` and `send-invoices` already say `false` (each checks its caller itself), and `file-link` uses the default (`true`).
 - **Function secrets** (VAPID, Resend, `APP_LINK`, `WIVO_SERVICE_SECRET_KEY`) stay set by hand per project, as today. **The workflows never set them,** so no function secret passes through GitHub.
 - **The warning in `config.toml` stays:** the workflows never run `supabase config push`, `db reset`, `db pull` or `db dump`.
 
@@ -419,7 +419,7 @@ The build (steps 1, 3 and 4) is about **2–3 days** of work, not counting waiti
 ## 5. Decisions for Kevin
 
 1. **The CI access token:** a separate `wivo-ci` Supabase account with the Developer role (recommended), or Kevin's own token. Can the test copy move to its own Supabase organisation?
-2. **Which functions are live, per project.** These become the `functions` lists in `projects.json`. Is `public-booking` deployed on production? Does `send-invoices` stay off until it has its own key check (RUN-4)?
+2. **Which functions are live, per project.** These become the `functions` lists in `projects.json`. Is `public-booking` deployed on production? `send-invoices` has its own key check now (the service key only, as send-notifications), so it can be listed wherever invoices are on.
 3. **The phone app:** switch `wivo` to being published from the workflow, with Cloudflare's automatic production deploys off. Without that, the phone app cannot wait for the database. `wivo-test` too, or later?
 4. **The repair:** through the `migration-repair` workflow (recommended), or by hand with the CLI commands in 1d.
 5. **Test copy drift:** a one-off repair SQL for the test copy (recommended), or rebuild the test copy's schema from the baseline.
