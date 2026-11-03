@@ -35,6 +35,7 @@ import { AuthGuard } from './components/Auth/AuthGuard'
 import { ClinicSettingsSync } from './components/ClinicSettingsSync'
 import { UiPrefsSync } from './components/UiPrefsSync'
 import { UpdateBanner } from './components/UpdateBanner'
+import { ConfirmHost } from './components/ui/ConfirmHost'
 import { UpdateProvider } from './providers/UpdateProvider'
 import type { Job, JobInput, StageKey } from './types/job'
 import type { ViewMode } from './types/view'
@@ -487,6 +488,7 @@ export default function App() {
             <UpdateProvider>
               <AppContent />
               <UpdateBanner />
+              <ConfirmHost />
             </UpdateProvider>
           </PipelineProvider>
         </AuthGuard>

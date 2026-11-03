@@ -16,6 +16,7 @@ import { ClinicSettingsSync } from '../components/ClinicSettingsSync'
 import { LanguageSync } from '../components/LanguageSync'
 import { MobileAuthGuard } from './MobileAuthGuard'
 import { MobileApp } from './MobileApp'
+import { ConfirmHost } from '../components/ui/ConfirmHost'
 import { t } from '@/lib/i18n'
 import '../styles/index.css'
 
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <ConfirmHost />
           <MobileAuthGuard>
             <PipelineProvider>
               <ClinicSettingsSync />

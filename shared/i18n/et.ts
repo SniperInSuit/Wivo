@@ -3164,4 +3164,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'whatsNew.kicker': "Mis on uut · Wivo {version}",
   'whatsNew.menu': "Mis on uut",
 
+  // ── confirmation dialog (lib/confirm) ─────────────────────────────────────
+  'confirm.confirm': "Kinnita",
+  'confirm.cancel': "Tühista",
 }

@@ -3177,6 +3177,10 @@ export const en = {
   'whatsNew.gotIt': "Got it",
   'whatsNew.kicker': "What's new · Wivo {version}",
   'whatsNew.menu': "What's new",
+
+  // ── confirmation dialog (lib/confirm) ─────────────────────────────────────
+  'confirm.confirm': "Confirm",
+  'confirm.cancel': "Cancel",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

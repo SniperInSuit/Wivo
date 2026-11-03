@@ -19,6 +19,7 @@ import { viewKind, viewerFor } from '../../lib/fileViewer'
 import { FileViewer, type ViewerFile } from './FileViewer'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 interface JobFileRow {
   id: string
@@ -108,7 +109,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
   }
 
   async function remove(f: JobFileRow) {
-    if (!window.confirm(t('files.deleteConfirm', { name: f.file_name }))) return
+    if (!(await confirmDialog({ message: t('files.deleteConfirm', { name: f.file_name }), confirmLabel: t('files.delete'), danger: true }))) return
     const { error: err } = await supabase.rpc('delete_job_file', { p_file: f.id })
     if (err) setActionError(describeError(err))
     else qc.invalidateQueries({ queryKey: ['job_files', jobId] })

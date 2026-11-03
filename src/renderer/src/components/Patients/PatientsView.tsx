@@ -7,6 +7,7 @@ import { describeError } from './errors'
 import { PatientProfile } from './PatientProfile'
 import { PatientSearchPage } from './PatientSearchPage'
 import { t } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 interface PatientsViewProps {
   jobs: Job[]
@@ -80,8 +81,8 @@ export function PatientsView({
     onFocusHandled?.()
   }, [focusPatientId, onFocusHandled])
 
-  const goBack = useCallback(() => {
-    if (profileDirty && !window.confirm(t('patients.unsavedChangesWillBeLostContinue'))) return
+  const goBack = useCallback(async () => {
+    if (profileDirty && !(await confirmDialog({ message: t('patients.unsavedChangesWillBeLostContinue'), danger: true }))) return
     setProfileDirty(false)
     setSelectedId(null)
   }, [profileDirty])
