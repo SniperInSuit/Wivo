@@ -268,6 +268,11 @@ function sample(type: string): unknown {
   return `t${++seq}`
 }
 
+/** Values a column's CHECK wants in a shape the generic sample cannot guess (a pattern, not a list). */
+const SAMPLE_OVERRIDE: Record<string, unknown> = {
+  'app_min_version.min_version': '1.0.0',
+}
+
 /**
  * One row in `table` that belongs to `tenant`, made as the superuser.
  *
@@ -300,7 +305,7 @@ export async function makeRow(
       else values[c.name] = (await makeRow(db, fk.refTable, tenant, depth + 1))[fk.refColumn]
       continue
     }
-    values[c.name] = (await allowedValue(db, table, c.name, c.type)) ?? sample(c.type)
+    values[c.name] = SAMPLE_OVERRIDE[`${table}.${c.name}`] ?? (await allowedValue(db, table, c.name, c.type)) ?? sample(c.type)
   }
   const names = Object.keys(values)
   const sql = names.length

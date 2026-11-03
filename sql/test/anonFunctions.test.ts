@@ -26,8 +26,10 @@ async function runnable(d: PGlite, role: string): Promise<string[]> {
 }
 
 describe('the anonymous key', () => {
-  it('can run require_mfa_for_api() and nothing else in public', async () => {
-    expect(await runnable(db, 'anon')).toEqual(['require_mfa_for_api()'])
+  it('can run the pre-request check and nothing else in public', async () => {
+    // sql/104: PostgREST runs pre_request(); require_mfa_for_api() stays allowed
+    // for the moment between the migration and 'reload config'.
+    expect(await runnable(db, 'anon')).toEqual(['pre_request()', 'require_mfa_for_api()'])
   })
 
   it('the ones that worked for anyone are refused: chat_prune, purge_visit_requests, recalc_invoice_totals', async () => {
@@ -84,7 +86,7 @@ describe('later functions', () => {
     await db.exec(`create function public.later_fn() returns int language sql as 'select 1'`)
     expect(await runnable(db, 'anon')).toContain('later_fn()')
     await db.exec(`select public.lock_anon_functions()`)
-    expect(await runnable(db, 'anon')).toEqual(['require_mfa_for_api()'])
+    expect(await runnable(db, 'anon')).toEqual(['pre_request()', 'require_mfa_for_api()'])
     expect(await runnable(db, 'authenticated')).toContain('later_fn()')
     await db.exec(`drop function public.later_fn()`)
   })

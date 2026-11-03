@@ -168,7 +168,8 @@ describe('every API request (db_pre_request)', () => {
 
   it('is what PostgREST runs before each request', async () => {
     const { rows } = await db.query<{ cfg: string[] }>(`select rolconfig as cfg from pg_roles where rolname = 'authenticator'`)
-    expect(rows[0].cfg).toContain('pgrst.db_pre_request=public.require_mfa_for_api')
+    // Since sql/104 through pre_request(), which runs require_mfa_for_api() first.
+    expect(rows[0].cfg).toContain('pgrst.db_pre_request=public.pre_request')
   })
 
   it('refuses a password-only session everything but reading its own profile — functions included', async () => {
