@@ -8,6 +8,7 @@ import { useSettings } from '../../stores/useSettings'
 import { CalculatorEditor } from './CalculatorEditor'
 import { BookingHoursSection, type BookingConfig } from './BookingHoursSection'
 import { supabase, getActiveClinicId } from '../../lib/supabase'
+import { fetchPrivateSettings } from '../../lib/clinicSettings'
 import { BookingReadiness } from './BookingReadiness'
 import { t } from '@/lib/i18n'
 import { translate } from '@shared/i18n'
@@ -40,9 +41,12 @@ export function PublicServicesSection() {
   useEffect(() => {
     const clinicId = getActiveClinicId()
     if (!clinicId) return
-    supabase.from('clinic_settings').select('broneering').eq('clinic_id', clinicId)
-      .maybeSingle()
-      .then(({ data }) => setBroneering(((data?.broneering as BookingConfig) ?? {})))
+    // Owners and admins only, through clinic_settings_private (sql/102).
+    void fetchPrivateSettings().then(async priv => {
+      const value = priv ? priv.broneering : (await supabase
+        .from('clinic_settings').select('broneering').eq('clinic_id', clinicId).maybeSingle()).data?.broneering
+      setBroneering((value as BookingConfig) ?? {})
+    })
     supabase.from('clinics').select('public_slug').eq('id', clinicId).maybeSingle()
       .then(({ data }) => setClinicSlug((data?.public_slug as string) ?? null))
   }, [])

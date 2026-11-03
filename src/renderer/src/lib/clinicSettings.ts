@@ -199,14 +199,49 @@ export const COLUMN_OF: Record<string, ClinicColumn> = {
   visiidiKestus: 'calendar',
 }
 
+/**
+ * The columns every member may read (sql/102). The rest — e-mail, public
+ * services, booking, chat, material costs — come from clinic_settings_private(),
+ * which answers each one only to those allowed it.
+ */
+export const SHARED_COLUMNS = [
+  'clinic_id', 'work_types', 'visit_types', 'materials', 'material_prices', 'machines',
+  'pipeline_stages', 'pricing', 'calendar', 'payroll', 'features', 'updated_at',
+] as const
+
+/** The private settings this person may read; `{}` when none. A database before sql/102 answers null. */
+export async function fetchPrivateSettings(): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase.rpc('clinic_settings_private')
+  if (error) return isMissingFunction(error) ? null : {}
+  return data && typeof data === 'object' ? data as Record<string, unknown> : {}
+}
+
+const isMissingFunction = (e: { code?: string }): boolean => e.code === 'PGRST202' || e.code === '42883'
+
+/**
+ * The shared row and what this person may read of the rest. Material costs not
+ * readable are blanked rather than left out: the local copy is per machine, and
+ * a technician signing in where the owner was must not inherit the owner's.
+ */
+export function mergeSettings(shared: Record<string, unknown>, priv: Record<string, unknown>): ClinicSettingsRow {
+  return { ...shared, ...priv, material_costs: (priv.material_costs ?? {}) } as unknown as ClinicSettingsRow
+}
+
 export async function fetchClinicSettings(clinicId: string): Promise<ClinicSettingsRow | null> {
+  const priv = await fetchPrivateSettings()
+  if (priv === null) {
+    // A database before sql/102: everything is one readable row.
+    const { data, error } = await supabase.from('clinic_settings').select('*').eq('clinic_id', clinicId).maybeSingle()
+    if (error) throw error
+    return (data as ClinicSettingsRow) ?? null
+  }
   const { data, error } = await supabase
     .from('clinic_settings')
-    .select('*')
+    .select(SHARED_COLUMNS.join(', '))
     .eq('clinic_id', clinicId)
     .maybeSingle()
   if (error) throw error
-  return (data as ClinicSettingsRow) ?? null
+  return data ? mergeSettings(data as unknown as Record<string, unknown>, priv) : null
 }
 
 /**
@@ -238,6 +273,11 @@ export async function pushClinicSettings(clinicId: string, patch: ClinicPatch): 
   if (error) throw error
 }
 
+/**
+ * A change on another machine is read again rather than taken from the event:
+ * what this person may read is decided by the database (sql/102), not by
+ * whatever the event carries.
+ */
 export function subscribeClinicSettings(
   clinicId: string,
   onChange: (row: ClinicSettingsRow) => void
@@ -247,9 +287,8 @@ export function subscribeClinicSettings(
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'clinic_settings', filter: `clinic_id=eq.${clinicId}` },
-      payload => {
-        const row = payload.new as ClinicSettingsRow
-        if (row?.clinic_id) onChange(row)
+      () => {
+        void fetchClinicSettings(clinicId).then(row => { if (row) onChange(row) }, () => {})
       }
     )
     .subscribe()

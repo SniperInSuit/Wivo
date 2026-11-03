@@ -6,6 +6,7 @@ import type { Patient, PatientInput } from '../../types/patient'
 import { useUpdatePatient, useDeletePatient } from '../../hooks/usePatients'
 import { jobsForPatient, buildOrderRefs, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
+import { usePermissions } from '../../hooks/usePermissions'
 import { PatientHeaderCard } from './PatientHeaderCard'
 import { PatientExport } from './PatientExport'
 import { PatientStatStrip } from './PatientStatStrip'
@@ -106,6 +107,8 @@ export function PatientProfile({
   const patientJobs = useMemo(() => jobsForPatient(jobs, patient), [jobs, patient])
   const orderRefs = useMemo(() => buildOrderRefs(patient, patientJobs), [patient, patientJobs])
   const { data: payments = [] } = usePayments()
+  // Invoices and payments: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   const { data: invoices = [] } = useInvoices()
 
   // A payment belongs to this patient if it settles one of their jobs or one of
@@ -266,7 +269,7 @@ export function PatientProfile({
               onOpenJobNote={onJobNoteClick}
             />
           </div>
-          <InvoicesPanel stats={stats} payments={patientPayments} />
+          {money && <InvoicesPanel stats={stats} payments={patientPayments} />}
           <LastModifiedPanel patient={patient} patientJobs={patientJobs} />
         </div>
       </div>

@@ -6,6 +6,7 @@ import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes } from '../../stores/useSettings'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
+import { usePermissions } from '../../hooks/usePermissions'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { ShadeChip } from '../ui/ShadeChip'
@@ -21,6 +22,8 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProps) {
+  // Price and payment: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   const { data: questions } = useOpenQuestions()
   const openQuestions = questions?.get(job.id) ?? 0
   const { stages } = usePipeline()
@@ -100,7 +103,7 @@ export function JobCard({ job, onClick, onStageChange, isDragging }: JobCardProp
               <MessageSquare size={13} className="text-amber-500" />
             </span>
           )}
-          {job.hind != null && (
+          {money && job.hind != null && (
             <span title={pay.settled ? t('board.paid', { hind: job.hind }) : pay.partial ? `${pay.paid.toFixed(0)}/${job.hind} €` : t('board.unpaid', { hind: job.hind })}
               className={`text-[9px] font-bold px-1 py-0.5 rounded ${
                 pay.settled

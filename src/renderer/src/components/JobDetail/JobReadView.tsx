@@ -90,6 +90,7 @@ export function JobReadView({
   const isDone = job.status === doneStageKey
   const updateJob = useUpdateJob()
   const showCosts = can('payroll.manage')
+  const money = can('payments.read')
   // The whole case, remakes included. `jobTotalCosts` runs `jobCosts` inside
   // itself, so the original's four categories and the case total come from one
   // call and cannot disagree about what the original cost.
@@ -390,6 +391,9 @@ export function JobReadView({
 
           <div className="order-4 space-y-3">
             <JobPayCard job={job} />
+            {/* The price and what has been paid: payments.read only (sql/102). The pay
+                card above stays: it shows only the viewer's own pay. */}
+            {money && (
             <Card title={t('jobDetail.pRICEANDPAYMENT')} icon={Euro}>
               <div className="space-y-1.5">
                 {rev ? (
@@ -479,6 +483,7 @@ export function JobReadView({
                 </button>
               )}
             </Card>
+            )}
 
             {/* The cost table, the same one the edit form shows — one component,
                 one computation. A revision is deliberately excluded: this is what

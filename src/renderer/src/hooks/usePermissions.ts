@@ -2,23 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLicense } from './useLicense'
+import { decidePermission, type PermissionKey } from '@shared/permissions'
 import { t } from '@/lib/i18n'
 
-export type PermissionKey =
-  | 'jobs.read' | 'jobs.write'
-  | 'patients.read' | 'patients.write'
-  | 'visits.read' | 'visits.write'
-  | 'stats.read'
-  | 'payments.read' | 'payments.write'
-  | 'settings.read'
-  | 'pipeline.write'
-  | 'payroll.manage'
-  | 'stock.read' | 'stock.write'
+export type { PermissionKey }
 
 // Human-readable labels for the permissions UI
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
   'jobs.read':       { label: t('usePermissions.viewJobs'), description: t('usePermissions.seesAllJobsOnTheBoard') },
   'jobs.write':      { label: t('usePermissions.editJobs'), description: t('usePermissions.canCreateAndEditJobs') },
+  'jobs.delete':     { label: t('usePermissions.deleteJobs'), description: t('usePermissions.canDeleteAndRestoreJobs') },
   'patients.read':   { label: t('usePermissions.viewPatients'), description: t('usePermissions.seesThePatientListAndProfiles') },
   'patients.write':  { label: t('usePermissions.editPatients'), description: t('usePermissions.canEditPatientHealthData') },
   'visits.read':     { label: t('usePermissions.viewVisits'), description: t('usePermissions.seesAllVisitsInTheCalendar') },
@@ -43,11 +36,14 @@ interface PermissionRow {
 /**
  * Returns the current user's effective permissions.
  * - Owner: everything is allowed (no DB check needed)
+ * - Organisation admin: also ADMIN_PERMISSIONS without a grant, as the
+ *   database's has_perm_or_admin() (sql/102)
  * - Worker: fetches from worker_permissions table, defaults to false
  * - Patient: hardcoded minimal set
  */
 export function usePermissions() {
-  const { role, user, status } = useAuth()
+  const { role, user, status, profile } = useAuth()
+  const isOrgAdmin = profile?.org_role === 'admin' || profile?.org_role === 'owner'
   const { canWrite: licenceCanWrite } = useLicense()
 
   const { data: rows = [] } = useQuery<PermissionRow[]>({
@@ -65,22 +61,10 @@ export function usePermissions() {
   })
 
   function can(perm: PermissionKey): boolean {
-    // An expired licence makes the app read-only. Enforced HERE because every
-    // write button in the app already asks this question — gating it anywhere
-    // else would mean finding and patching each of them, and missing some.
-    // Reading is deliberately untouched: a lab must always be able to look up
-    // what it promised a customer, whatever the state of its invoice to us.
-    if (!licenceCanWrite && (perm.endsWith('.write') || perm === 'payroll.manage')) {
-      return false
-    }
-    if (role === 'owner') return true
-    if (role === 'patient') {
-      // Patients can only view their own visits
-      return perm === 'visits.read'
-    }
-    // Worker: check the DB rows, default to false if not explicitly granted
-    const row = rows.find(r => r.permission === perm)
-    return row?.granted ?? false
+    return decidePermission(perm, {
+      role, isOrgAdmin, licenceCanWrite,
+      granted: p => rows.find(r => r.permission === p)?.granted ?? false,
+    })
   }
 
   return { can, role, isOwner: role === 'owner', licenceCanWrite }

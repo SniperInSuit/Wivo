@@ -3,6 +3,7 @@ import { Users, UserPlus, Shield, Loader2, Trash2, Check, Lock, Copy } from 'luc
 import { supabase, displayIdentity } from '../../lib/supabase'
 import { AddMemberDialog } from './AddMemberDialog'
 import { teamAccounts, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
+import { TECHNICIAN_PRESET } from '@shared/permissions'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
 import { ResetMfaPanel } from './ResetMfaPanel'
@@ -92,6 +93,7 @@ export function WorkersPage() {
   // How each member signs in, and whether an invite still waits (sql/100).
   const [accounts, setAccounts] = useState<Map<string, TeamAccount>>(new Map())
   const [resend, setResend] = useState<{ id: string; state: 'busy' | 'sent' | string } | null>(null)
+  const [presetConfirm, setPresetConfirm] = useState<string | null>(null)
   const [removed, setRemoved] = useState<Profile[]>([])
   const [removing, setRemoving] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
@@ -284,6 +286,26 @@ export function WorkersPage() {
     }
   }
 
+  /** Every permission set to the technician's defaults: the preset on, the rest off. */
+  async function applyTechnicianPreset(profileId: string) {
+    if (!clinicId) return
+    setSaving(true)
+    setPresetConfirm(null)
+    try {
+      const rows = ALL_PERMISSIONS.map(perm => ({
+        profile_id: profileId, clinic_id: clinicId, permission: perm, granted: TECHNICIAN_PRESET.includes(perm),
+      }))
+      const { error } = await supabase.from('worker_permissions').upsert(rows, { onConflict: 'profile_id,permission' })
+      if (error) throw error
+      setWorkers(prev => prev.map(w => w.id !== profileId ? w
+        : { ...w, permissions: new Map(rows.map(r => [r.permission, r.granted])) }))
+    } catch (err) {
+      setRemoveError(teamErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function sendInviteAgain(profile: Profile) {
     setResend({ id: profile.id, state: 'busy' })
     try {
@@ -389,6 +411,24 @@ export function WorkersPage() {
                     </div>
                   </div>
                 )}
+
+                {/* The defaults a new technician gets (sql/102), for anyone made before. */}
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {presetConfirm === selected.id ? (
+                    <>
+                      <span className="text-ink-muted">{t('team.technicianPresetConfirm')}</span>
+                      <button onClick={() => void applyTechnicianPreset(selected.id)} disabled={saving}
+                        className="btn-primary text-xs px-2.5 py-1 disabled:opacity-50">{t('team.technicianPresetYes')}</button>
+                      <button onClick={() => setPresetConfirm(null)} className="btn-ghost text-xs">{t('workers.cancel')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setPresetConfirm(selected.id)} disabled={saving}
+                        className="btn-ghost border border-ink-faint/25 text-xs disabled:opacity-50">{t('team.technicianPreset')}</button>
+                      <span className="text-ink-faint">{t('team.technicianPresetHelp')}</span>
+                    </>
+                  )}
+                </div>
 
                 <div className="space-y-1">
                   {ALL_PERMISSIONS.map(perm => {

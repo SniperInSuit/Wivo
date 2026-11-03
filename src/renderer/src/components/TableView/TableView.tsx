@@ -18,6 +18,7 @@ import { SelectMenu, MultiFilterMenu } from '../ui/FilterMenu'
 import { useWorkTypes } from '../../stores/useSettings'
 import { useCustomers } from '../../hooks/useCustomers'
 import { exportCsv, jobColumns } from '../../lib/exports'
+import { usePermissions } from '../../hooks/usePermissions'
 import { toDate, fmtDate } from '../../lib/dates'
 import { jobTotalValue } from '../../lib/jobPayments'
 import { debtors, type DebtorRow } from '../../lib/debtors'
@@ -115,6 +116,9 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
   // the other three. Empty set means no filter.
   const [workTypeFilter, setWorkTypeFilter] = useState<Set<string>>(new Set())
   const [payFilter, setPayFilter] = useState<PayFilter>('all')
+  // Price, payment and debtors: payments.read only (sql/102). Without it the
+  // database returns no payments, so "unpaid" would be said of every job.
+  const money = usePermissions().can('payments.read')
   const [revFilter, setRevFilter] = useState<RevFilter>('all')
   // A debtor KEY from lib/debtors — 'klient:<id>' or 'patsient:<name>' — not a
   // name. Two patients can share a name; a key cannot collide with the other.
@@ -462,12 +466,14 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           />
         )}
 
-        <SelectMenu
-          icon={Wallet}
-          value={payFilter}
-          options={PAY_OPTIONS}
-          onChange={setPayFilter}
-        />
+        {money && (
+          <SelectMenu
+            icon={Wallet}
+            value={payFilter}
+            options={PAY_OPTIONS}
+            onChange={setPayFilter}
+          />
+        )}
 
         {/* Only when there is something to filter — an empty menu is a button
             that does nothing. The blank-reason count is in the label, because
@@ -486,7 +492,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
         {/* The debtor list. Only appears when somebody owes something — an empty
             menu is a button that does nothing. The amount is IN the option
             label, so "kes kui palju võlgu on" is answered without picking one. */}
-        {debt.rows.length > 0 && (
+        {money && debt.rows.length > 0 && (
           <MultiFilterMenu
             label={`${t('tableView.debtor')}${debt.outstanding > 0 ? ` · ${debt.outstanding.toFixed(0)} €` : ''}`}
             icon={HandCoins}
@@ -530,6 +536,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
             key => stages.find(st => st.key === key)?.label ?? key,
             id => customers.find(c => c.id === id)?.name ?? '',
             id => workers.find(w => w.id === id)?.full_name ?? '',
+            money,
           ))}
           disabled={filtered.length === 0}
           title={t('tableView.exportToCSVRowRows', { filtered, filteredCount: filtered.length })}
@@ -689,10 +696,12 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                 {t('tableView.teeth')}
               </th>
               <Th label={t('tableView.dueDate')}   field="valmis_aeg" />
-              <Th label={t('tableView.price')}      field="hind" />
-              <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                {t('tableView.paid')}
-              </th>
+              {money && <Th label={t('tableView.price')}      field="hind" />}
+              {money && (
+                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide">
+                  {t('tableView.paid')}
+                </th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase tracking-wide min-w-[200px]">
                 {t('tableView.revisions')}
               </th>
@@ -702,7 +711,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={15} className="text-center py-16 text-ink-faint text-sm">
+                <td colSpan={money ? 15 : 13} className="text-center py-16 text-ink-faint text-sm">
                   {hasFilters ? t('tableView.noResults') : t('tableView.noJobsAddedYet')}
                 </td>
               </tr>
@@ -811,13 +820,13 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                   </td>
 
                   {/* Hind */}
-                  <td className="px-4 py-3 text-sm font-medium text-ink-soft whitespace-nowrap">
+                  {money && <td className="px-4 py-3 text-sm font-medium text-ink-soft whitespace-nowrap">
                     {job.hind != null ? `${job.hind.toFixed(2)} €` : <span className="text-ink-faint">—</span>}
-                  </td>
+                  </td>}
 
                   {/* Makstud — with the AMOUNT, because "osaliselt" on its own
                       does not answer "kui palju ta maksnud on". */}
-                  <td className="px-4 py-3">
+                  {money && <td className="px-4 py-3">
                     {(() => {
                       const pay = jobPaymentState(job, allPayments, allInvoices)
                       const late = (debtorOfJob.get(job.id)?.overdue ?? 0) > 0
@@ -844,7 +853,7 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
                         <span className="text-ink-faint text-xs">—</span>
                       )
                     })()}
-                  </td>
+                  </td>}
 
                   {/* Muudatused */}
                   <td className="px-4 py-3">

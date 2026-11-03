@@ -12,6 +12,7 @@ import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { t } from '@/lib/i18n'
 
 interface MergedValmisCardProps {
@@ -23,6 +24,8 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
   const { doneStageKey } = usePipeline()
   const wt = useWorkTypes()
   const { settings } = useSettings()
+  // Price and payment: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   const revisions = job.revisions ?? []
   // Show the most recently completed revision as the "active" one
   const latest = [...revisions]
@@ -118,7 +121,7 @@ export function MergedValmisCard({ job, onClick }: MergedValmisCardProps) {
               </span>
             )}
           </div>
-          {job.hind != null && (
+          {money && job.hind != null && (
             <div className="flex items-center gap-1 text-[10px] text-ink-faint mt-auto">
               <Euro size={9} />
               <span className={job.makstud ? 'text-green-600 font-semibold' : 'text-red-400 font-semibold'}>

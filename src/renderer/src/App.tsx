@@ -30,6 +30,7 @@ import { RequestsInbox } from './components/CalendarView/RequestsInbox'
 import { WorkersPage } from './components/Workers/WorkersPage'
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from './hooks/useJobs'
 import { useMarkJobsPaid } from './hooks/useInvoices'
+import { usePermissions } from './hooks/usePermissions'
 import type { PaidDetails } from './components/JobDetail/MarkPaidDialog'
 import { PipelineProvider, usePipeline } from './context/PipelineContext'
 import { useSettings } from './stores/useSettings'
@@ -110,6 +111,10 @@ function AppContent() {
   const createJob = useCreateJob()
   const updateJob = useUpdateJob()
   const deleteJob = useDeleteJob()
+  // sql/102: deleting a job is its own permission; marking paid writes payments.
+  const { can } = usePermissions()
+  const canDelete = can('jobs.delete')
+  const canMarkPaid = can('payments.write')
   const markJobsPaid = useMarkJobsPaid()
 
   // "Uus töö" opens the WIZARD. The job panel is closed first: both are fixed
@@ -388,8 +393,8 @@ function AppContent() {
               onJobClick={openEdit}
               onJobEye={openBottom}
               onBulkStatusChange={handleBulkStatusChange}
-              onBulkMarkPaid={handleBulkMarkPaid}
-              onBulkDelete={handleBulkDelete}
+              onBulkMarkPaid={canMarkPaid ? handleBulkMarkPaid : undefined}
+              onBulkDelete={canDelete ? handleBulkDelete : undefined}
               onBulkAssign={handleBulkAssign}
               search={search}
               onSearchChange={setSearch}
@@ -440,7 +445,7 @@ function AppContent() {
             job={panelJobOrNull}
             onClose={closePanel}
             onSave={handleSave}
-            onDelete={panelJob !== 'new' ? handleDelete : undefined}
+            onDelete={panelJob !== 'new' && canDelete ? handleDelete : undefined}
             saving={createJob.isPending || updateJob.isPending}
             position={panelPosition}
             initialDate={newJobDate}
@@ -471,7 +476,7 @@ function AppContent() {
           job={bottomJobLive}
           onClose={closeBottom}
           onSave={handleBottomSave}
-          onDelete={handleDelete}
+          onDelete={canDelete ? handleDelete : undefined}
           saving={updateJob.isPending}
           position={panelPosition}
           highlightRevisionId={bottomRevisionId}

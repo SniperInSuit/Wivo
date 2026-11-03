@@ -40,12 +40,16 @@ export function exportCsv<T>(
 
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 
+/** Price and payment columns: left out for someone without payments.read (sql/102). */
+const MONEY_HEADERS = new Set(['Hind', 'Disaini hind', 'Lisateenused', 'Kokku', 'Makstud'])
+
 export function jobColumns(
   stageLabel: (key: string) => string,
   customerName: (id: string | null) => string,
   workerName: (id: string | null) => string,
+  money = true,
 ): CsvColumn<Job>[] {
-  return [
+  const columns: CsvColumn<Job>[] = [
     { header: 'Kuupäev',       value: j => j.kuupaev },
     { header: 'Staatus',       value: j => stageLabel(j.status) },
     { header: 'Tellija',       value: j => customerName(j.customer_id) },
@@ -79,6 +83,7 @@ export function jobColumns(
     { header: 'Makstud',       value: j => j.makstud },
     { header: 'Muudatusi',     value: j => (j.revisions ?? []).length },
   ]
+  return money ? columns : columns.filter(c => !MONEY_HEADERS.has(c.header))
 }
 
 // ─── Invoices ─────────────────────────────────────────────────────────────────

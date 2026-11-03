@@ -54,11 +54,14 @@ describe('the anonymous key', () => {
 
 describe('a signed-in user and the service role', () => {
   it('can run exactly what they could before 101', async () => {
+    // Compared right after 101: later migrations change grants on purpose.
     const before = await emptyDb()
     await applyMigrations(before, migrationFiles().filter(f => f < '101'))
+    const after = await emptyDb()
+    await applyMigrations(after, migrationFiles().filter(f => f < '102'))
     const added = ['anon_allowed_functions()']  // new in 101, for them to read
     for (const role of ['authenticated', 'service_role']) {
-      expect((await runnable(db, role)).filter(f => !added.includes(f))).toEqual(await runnable(before, role))
+      expect((await runnable(after, role)).filter(f => !added.includes(f))).toEqual(await runnable(before, role))
       expect(await runnable(db, role)).not.toContain('lock_anon_functions()')
     }
   }, 120_000)

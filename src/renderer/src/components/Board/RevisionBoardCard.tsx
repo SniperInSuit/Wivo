@@ -7,6 +7,7 @@ import { CornerDownLeft, ChevronLeft, ChevronRight, Euro, Zap } from 'lucide-rea
 import type { Job, StageKey, Revision } from '../../types/job'
 import { jobWorkItems } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { DeadlineChip } from '../ui/DeadlineChip'
 import { t } from '@/lib/i18n'
@@ -26,6 +27,8 @@ export function RevisionBoardCard({
   const { stages, doneStageKey } = usePipeline()
   const wt = useWorkTypes()
   const { settings } = useSettings()
+  // Price and payment: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   // What was REDONE, chipped the same way the job card chips what was made. A
   // remake that names its own work items is about those; one that names none is
   // about the job's, which is the same fallback the pay engine uses.
@@ -81,7 +84,7 @@ export function RevisionBoardCard({
             <Zap size={8} /> {settings.kiirtooKordaja}×
           </span>
         )}
-        {job.hind != null && (
+        {money && job.hind != null && (
           <span className={`ml-auto text-[9px] font-bold px-1 py-0.5 rounded ${
             job.makstud ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
           }`}>

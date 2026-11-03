@@ -2601,6 +2601,8 @@ export const en = {
   'usePermissions.seesAllJobsOnTheBoard': "Sees all jobs on the board and in the table",
   'usePermissions.editJobs': "Edit jobs",
   'usePermissions.canCreateAndEditJobs': "Can create and edit jobs",
+  'usePermissions.deleteJobs': "Delete jobs",
+  'usePermissions.canDeleteAndRestoreJobs': "Can delete jobs and restore deleted ones. Owners and admins always can.",
   'usePermissions.viewPatients': "View patients",
   'usePermissions.seesThePatientListAndProfiles': "Sees the patient list and profiles",
   'usePermissions.editPatients': "Edit patients",
@@ -3477,6 +3479,10 @@ export const en = {
   'team.addEmailSend': "Send link",
   'team.addEmailHelp': "A link goes to that address. Once you open it, you sign in with the address and can reset your own password.",
   'team.addEmailSent': "A link is on its way to {email}. Open it to finish; until then you sign in as before.",
+  'team.technicianPreset': "Technician defaults",
+  'team.technicianPresetHelp': "Edit jobs and use stock; no money, no deleting, no other people's jobs or pay.",
+  'team.technicianPresetConfirm': "Replace this person's permissions with the technician defaults?",
+  'team.technicianPresetYes': "Yes, replace",
 } satisfies Record<string, Message>
 
 /** Every message key there is. Translations may cover fewer. */

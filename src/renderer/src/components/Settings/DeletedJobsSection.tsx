@@ -1,11 +1,12 @@
 /**
  * Deleted jobs, and the way back (sql/089: a delete keeps the job). Needs
- * jobs.write, like deleting does.
+ * jobs.delete, like deleting does (sql/102).
  */
 import { format } from 'date-fns'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Undo2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
 import { useState } from 'react'
@@ -13,6 +14,11 @@ import { useState } from 'react'
 interface DeletedJob { id: string; job_code: string | null; patient: string | null; work_type: string | null; deleted_at: string; deleted_by_name: string | null }
 
 export function DeletedJobsSection() {
+  const allowed = usePermissions().can('jobs.delete')
+  return allowed ? <DeletedJobsList /> : null
+}
+
+function DeletedJobsList() {
   const qc = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const { data = [] } = useQuery<DeletedJob[]>({

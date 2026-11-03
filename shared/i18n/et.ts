@@ -2588,6 +2588,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'usePermissions.seesAllJobsOnTheBoard': "Näeb kõiki töid tahvlil ja tabelis",
   'usePermissions.editJobs': "Töid muuta",
   'usePermissions.canCreateAndEditJobs': "Saab luua ja muuta töid",
+  'usePermissions.deleteJobs': "Kustutada töid",
+  'usePermissions.canDeleteAndRestoreJobs': "Saab töid kustutada ja kustutatud töid taastada. Omanik ja administraator saavad alati.",
   'usePermissions.viewPatients': "Patsiente vaadata",
   'usePermissions.seesThePatientListAndProfiles': "Näeb patsientide nimekirja ja profiile",
   'usePermissions.editPatients': "Patsiente muuta",
@@ -3463,4 +3465,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'team.addEmailSend': "Saada link",
   'team.addEmailHelp': "Sellele aadressile läheb link. Kui oled selle avanud, logid sisse aadressiga ja saad oma parooli ise lähtestada.",
   'team.addEmailSent': "Link on teel aadressile {email}. Ava see, et lõpetada; seni logid sisse nagu varem.",
+  'team.technicianPreset': "Tehniku vaikeõigused",
+  'team.technicianPresetHelp': "Töid muuta ja ladu kasutada; ei raha, kustutamist ega teiste töid või palka.",
+  'team.technicianPresetConfirm': "Kas asendada selle inimese õigused tehniku vaikeõigustega?",
+  'team.technicianPresetYes': "Jah, asenda",
 }

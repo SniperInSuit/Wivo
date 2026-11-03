@@ -35,6 +35,7 @@ import { usesCapsules } from '@shared/pricing/priceBook'
 import { jobCosts } from '../../lib/jobCosts'
 import { CostBreakdown } from './CostBreakdown'
 import { MarkPaidDialog } from './MarkPaidDialog'
+import { usePermissions } from '../../hooks/usePermissions'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { normalizeDateTime, toLocalInput, fromLocalInput } from '../../lib/dates'
 import { DieShadePicker } from './DieShadePicker'
@@ -468,6 +469,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const isSheet = isBottom || isFullscreen
   const { settings } = useSettings()
   const wt = useWorkTypes()
+  const money = usePermissions().can('payments.read')
   // Full price vs the type's discount price. Per job, not a setting: the person
   // filling the form is the one who knows whether this case is discounted.
   const [useDiscount, setUseDiscount] = useState(false)
@@ -1883,8 +1885,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </div>
               )}
 
-              {/* Pricing block — after teeth in both modes */}
-              <PricingBlock
+              {/* Pricing block — after teeth in both modes. Price and payment:
+                  payments.read only (sql/102); hidden, the values are kept as they are. */}
+              {money && <PricingBlock
                 form={form} set={set} settings={settings}
                 smallCount={smallCount} largeCount={largeCount}
                 prodPrice={prodPrice} hasCalc={hasCalc}
@@ -1894,7 +1897,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 paidSoFar={job ? jobPayments.filter(p => p.job_id === job.id)
                   .reduce((s, p) => s + Number(p.amount), 0) : 0}
                 allRates={workerRates}
-              />
+              />}
 
               {/* Muudatused */}
               <RevisionBlock

@@ -14,6 +14,7 @@ import {
 } from '../../hooks/useCustomers'
 import { useJobs } from '../../hooks/useJobs'
 import { useInvoices } from '../../hooks/useInvoices'
+import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
 import { exportCsv, CUSTOMER_COLUMNS } from '../../lib/exports'
 import { t } from '@/lib/i18n'
@@ -22,6 +23,11 @@ export function CustomersView() {
   const { data: customers = [], isLoading } = useCustomers()
   const { data: jobs = [] } = useJobs()
   const { data: invoices = [] } = useInvoices()
+  const { can } = usePermissions()
+  // sql/102: invoice counts are money (payments.read); adding or changing a
+  // customer needs jobs.write.
+  const money = can('payments.read')
+  const canEdit = can('jobs.write')
   const [query, setQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Customer | 'new' | null>(null)
@@ -85,9 +91,11 @@ export function CustomersView() {
         >
           <Download size={14} /> CSV
         </button>
-        <button onClick={() => setEditing('new')} className="btn-primary flex-shrink-0">
-          <Plus size={15} /> {t('customers.newClient')}
-        </button>
+        {canEdit && (
+          <button onClick={() => setEditing('new')} className="btn-primary flex-shrink-0">
+            <Plus size={15} /> {t('customers.newClient')}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -113,7 +121,7 @@ export function CustomersView() {
                 <th className="px-4 py-3 text-left">{t('customers.contact')}</th>
                 <th className="px-4 py-3 text-left">{t('customers.billing')}</th>
                 <th className="px-4 py-3 text-right">{t('customers.jobs')}</th>
-                <th className="px-4 py-3 text-right">{t('customers.invoices')}</th>
+                {money && <th className="px-4 py-3 text-right">{t('customers.invoices')}</th>}
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -123,8 +131,8 @@ export function CustomersView() {
                 return (
                   <tr
                     key={c.id}
-                    onClick={() => setEditing(c)}
-                    className={`border-b border-ink-faint/10 cursor-pointer hover:bg-bg-sidebar/50 transition-colors ${
+                    onClick={canEdit ? () => setEditing(c) : undefined}
+                    className={`border-b border-ink-faint/10 ${canEdit ? 'cursor-pointer hover:bg-bg-sidebar/50' : ''} transition-colors ${
                       c.archived_at ? 'opacity-50' : ''
                     }`}
                   >
@@ -142,9 +150,9 @@ export function CustomersView() {
                       <span className="text-ink-faint"> · {c.payment_terms_days} {t('customers.d')}</span>
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{s.jobs || '—'}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{s.invoices || '—'}</td>
+                    {money && <td className="px-4 py-2.5 text-right tabular-nums text-ink-muted">{s.invoices || '—'}</td>}
                     <td className="px-4 py-2.5 text-right">
-                      <Pencil size={13} className="text-ink-faint inline" />
+                      {canEdit && <Pencil size={13} className="text-ink-faint inline" />}
                     </td>
                   </tr>
                 )

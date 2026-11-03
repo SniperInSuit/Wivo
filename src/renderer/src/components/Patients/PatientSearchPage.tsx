@@ -7,6 +7,7 @@ import type { Job } from '../../types/job'
 import type { Patient } from '../../types/patient'
 import { jobsForPatient, patientStats } from './derive'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
+import { usePermissions } from '../../hooks/usePermissions'
 import { exportCsv, PATIENT_MARKETING_COLUMNS } from '../../lib/exports'
 import { mayMarket } from '../../types/patient'
 import { t } from '@/lib/i18n'
@@ -58,6 +59,8 @@ export function PatientSearchPage({
   const [arstFilter, setArstFilter] = useState('')
   const [kliinikFilter, setKliinikFilter] = useState('')
   const [onlyUnpaid, setOnlyUnpaid] = useState(false)
+  // Invoiced and unpaid: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   const [onlyWithoutJobs, setOnlyWithoutJobs] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('nimi')
 
@@ -184,7 +187,7 @@ export function PatientSearchPage({
           {kliinikOptions.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
 
-        <Toggle active={onlyUnpaid} onClick={() => setOnlyUnpaid(v => !v)} label={t('patients.unpaidOnly')} />
+        {money && <Toggle active={onlyUnpaid} onClick={() => setOnlyUnpaid(v => !v)} label={t('patients.unpaidOnly')} />}
         <Toggle active={onlyWithoutJobs} onClick={() => setOnlyWithoutJobs(v => !v)} label={t('patients.withoutJobs')} />
 
         <div className="ml-auto flex items-center gap-2">
@@ -192,7 +195,7 @@ export function PatientSearchPage({
             <option value="nimi">{t('patients.sortName')}</option>
             <option value="tood">{t('patients.sortTotalJobs')}</option>
             <option value="viimane">{t('patients.sortLatestJob')}</option>
-            <option value="tasumata">{t('patients.sortUnpaid')}</option>
+            {money && <option value="tasumata">{t('patients.sortUnpaid')}</option>}
           </select>
           {filtersActive && (
             <button onClick={clearFilters} className="btn-ghost text-xs">
@@ -261,8 +264,8 @@ export function PatientSearchPage({
                   <th className="px-4 py-2 text-right">{t('patients.jobs')}</th>
                   <th className="px-4 py-2 text-right">{t('patients.teeth')}</th>
                   <th className="px-4 py-2">{t('patients.latestJob')}</th>
-                  <th className="px-4 py-2 text-right">{t('patients.invoiced')}</th>
-                  <th className="px-4 py-2 text-right">{t('patients.unpaid')}</th>
+                  {money && <th className="px-4 py-2 text-right">{t('patients.invoiced')}</th>}
+                  {money && <th className="px-4 py-2 text-right">{t('patients.unpaid')}</th>}
                   <th className="px-4 py-2 w-8" />
                 </tr>
               </thead>
@@ -284,10 +287,10 @@ export function PatientSearchPage({
                       <td className="px-4 py-2.5 text-ink-muted text-xs">
                         {d && isValid(d) ? format(d, 'dd.MM.yyyy') : '—'}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-ink-soft">{r.totalInvoiced.toFixed(2)} €</td>
-                      <td className={`px-4 py-2.5 text-right font-medium ${r.unpaidTotal > 0 ? 'text-orange-600' : 'text-ink-faint'}`}>
+                      {money && <td className="px-4 py-2.5 text-right text-ink-soft">{r.totalInvoiced.toFixed(2)} €</td>}
+                      {money && <td className={`px-4 py-2.5 text-right font-medium ${r.unpaidTotal > 0 ? 'text-orange-600' : 'text-ink-faint'}`}>
                         {r.unpaidTotal.toFixed(2)} €
-                      </td>
+                      </td>}
                       <td className="px-4 py-2.5 text-ink-faint"><ChevronRight size={14} /></td>
                     </tr>
                   )

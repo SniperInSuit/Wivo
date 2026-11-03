@@ -3,6 +3,7 @@ import { format, parseISO, isValid } from 'date-fns'
 import type { Job, Revision } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { usePayments, useInvoices } from '../../hooks/useInvoices'
+import { usePermissions } from '../../hooks/usePermissions'
 import { jobPaymentState } from '../../lib/jobPayments'
 import { ShadeChip } from '../ui/ShadeChip'
 import { ToothBadges } from '../ui/ToothBadges'
@@ -66,6 +67,8 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
   // without them every billed job here reads "Maksmata".
   const { data: invoices = [] } = useInvoices()
   const payState = (job: Job) => jobPaymentState(job, payments, invoices)
+  // Price and payment: payments.read only (sql/102).
+  const money = usePermissions().can('payments.read')
   const { stageMap } = usePipeline()
   const lines = buildLines(jobs)
   const revisionCount = lines.filter(l => l.revision).length
@@ -99,8 +102,8 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                 <Th>{t('patients.job')}</Th>
                 <Th>{t('patients.materialShade')}</Th>
                 <Th>{t('patients.teeth')}</Th>
-                <Th align="right">{t('patients.price')}</Th>
-                <Th>{t('patients.paid')}</Th>
+                {money && <Th align="right">{t('patients.price')}</Th>}
+                {money && <Th>{t('patients.paid')}</Th>}
               </tr>
             </thead>
             <tbody>
@@ -162,10 +165,10 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                     <td className="py-2 pr-3">
                       <ToothBadges hambad={teeth} max={4} />
                     </td>
-                    <td className="py-2 pr-3 text-right font-semibold text-ink whitespace-nowrap">
+                    {money && <td className="py-2 pr-3 text-right font-semibold text-ink whitespace-nowrap">
                       {price.toFixed(2)} €
-                    </td>
-                    <td
+                    </td>}
+                    {money && <td
                       className={`py-2 text-[11px] font-medium whitespace-nowrap ${
                         payState(job).settled ? 'text-emerald-600'
                           : payState(job).partial ? 'text-amber-600' : 'text-orange-600'
@@ -180,7 +183,7 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                         if (st.partial) return t('patients.partlyLeft', { outstanding: st.outstanding.toFixed(2) })
                         return t('patients.unpaid2')
                       })()}
-                    </td>
+                    </td>}
                   </tr>
                 )
               })}
@@ -197,7 +200,7 @@ export function JobHistoryPanel({ jobs, orderRefs, onJobClick, onRevisionClick }
                   {st.label}
                 </span>
               ))}
-              {revisionCount > 0 && (
+              {money && revisionCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] text-ink-faint ml-auto">
                   <CornerDownRight size={9} />
                   {t('patients.indentRevisionTotal')} {jobs.reduce((s, j) => s + jobTotal(j), 0).toFixed(2)} €

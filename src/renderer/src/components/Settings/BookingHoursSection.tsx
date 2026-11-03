@@ -16,6 +16,7 @@
 import { useState } from 'react'
 import { Clock, Plus, Trash2, CalendarOff, Save, Loader2 } from 'lucide-react'
 import { supabase, getActiveClinicId } from '../../lib/supabase'
+import { fetchPrivateSettings } from '../../lib/clinicSettings'
 import { describeError } from '../Patients/errors'
 import type { BookingRules, OpenPeriod } from '@shared/portal/slots'
 import { openWindows, toClock } from '@shared/portal/slots'
@@ -72,9 +73,11 @@ export function BookingHoursSection({ value, onSaved }: {
       if (!clinicId) throw new Error(t('settings.noClinic'))
       // Merged, never written whole: the payment settings live in the same
       // column and a full overwrite from this screen would erase them.
-      const { data: row } = await supabase
-        .from('clinic_settings').select('broneering').eq('clinic_id', clinicId).maybeSingle()
-      const merged = { ...((row?.broneering as object) ?? {}), ...cfg }
+      // Read through clinic_settings_private (sql/102): owners and admins only.
+      const priv = await fetchPrivateSettings()
+      const current = priv ? priv.broneering : (await supabase
+        .from('clinic_settings').select('broneering').eq('clinic_id', clinicId).maybeSingle()).data?.broneering
+      const merged = { ...((current as object) ?? {}), ...cfg }
       const { error: err } = await supabase
         .from('clinic_settings').update({ broneering: merged }).eq('clinic_id', clinicId)
       if (err) throw err

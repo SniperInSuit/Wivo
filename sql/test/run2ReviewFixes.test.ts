@@ -99,10 +99,12 @@ describe('2. a deleted job stays out of reach', () => {
 })
 
 describe('3. deleted jobs: only what you could read', () => {
-  it('jobs.write without jobs.read lists and restores only their own deleted jobs', async () => {
+  // Since sql/102 the trash follows jobs.delete, not jobs.write; the rule tested
+  // here (only what you could read) is the same.
+  it('jobs.delete without jobs.read lists and restores only their own deleted jobs', async () => {
     const w = await createUser(db, 'Writer only')
     await db.query(`update public.profiles set clinic_id = $1, role = 'worker' where id = $2`, [A.clinicId, w])
-    await grant(db, A, w, ['jobs.write'])
+    await grant(db, A, w, ['jobs.write', 'jobs.delete'])
     const secret = await makeRow(db, 'jobs', A)
     const mine = await makeRow(db, 'jobs', A)
     await db.query(`update public.jobs set patsient = 'Secret Patient' where id = $1`, [secret.id])

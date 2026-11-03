@@ -22,6 +22,7 @@ import {
 } from './chartTheme'
 import { MyView } from './MyView'
 import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { t } from '@/lib/i18n'
 
 const PERIOD_OPTIONS: { key: Period; label: string }[] = [
@@ -63,6 +64,11 @@ export function Dashboard({ jobs }: DashboardProps) {
   const [custom, setCustom] = useState<DateRange>({ start: '', end: '' })
   const [tab, setTab] = useState<'minu' | 'tootmine' | 'rahandus'>('minu')
   const { role } = useAuth()
+  // Money only with payments.read (sql/102): the Finance tab, the payments and
+  // revenue sections. Without it the database returns no invoices or payments,
+  // so these would show zeros as if they were facts.
+  const money = usePermissions().can('payments.read')
+  const shownTab = tab === 'rahandus' && !money ? 'minu' : tab
   // Visits and patients may not exist yet (migrations 001/007) — the hook takes
   // empty arrays and simply reports zeroes rather than breaking the page.
   const { data: visits = [] } = useVisits()
@@ -90,12 +96,12 @@ export function Dashboard({ jobs }: DashboardProps) {
           { key: 'minu', label: t('dashboard.myView') },
           { key: 'tootmine', label: t('dashboard.production') },
           { key: 'rahandus', label: t('dashboard.finance') },
-        ] as const).map(opt => (
+        ] as const).filter(opt => opt.key !== 'rahandus' || money).map(opt => (
           <button
             key={opt.key}
             onClick={() => setTab(opt.key)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              tab === opt.key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
+              shownTab === opt.key ? 'bg-accent text-white' : 'text-ink-muted hover:text-ink'
             }`}
           >
             {opt.label}
@@ -184,13 +190,13 @@ export function Dashboard({ jobs }: DashboardProps) {
         )}
       </div>
 
-      {tab === 'minu' && (
+      {shownTab === 'minu' && (
         <MyView jobs={jobs} period={period} window={window} role={role} />
       )}
 
-      {tab === 'rahandus' && <FinanceView jobs={jobs} period={period} custom={window} />}
+      {shownTab === 'rahandus' && <FinanceView jobs={jobs} period={period} custom={window} />}
 
-      {tab === 'tootmine' && (<>
+      {shownTab === 'tootmine' && (<>
       {/* ─── Summary cards ─── */}
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
@@ -232,6 +238,8 @@ export function Dashboard({ jobs }: DashboardProps) {
       </section>
 
       {/* ─── Payment stats ─── */}
+      {/* Payments: money, payments.read only (sql/102). */}
+      {money && (
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-2">
           <Euro size={13} /> {t('dashboard.payments')}
@@ -328,6 +336,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
         </div>
       </section>
+      )}
 
       {/* ─── Material stats ─── */}
       <section>
@@ -463,7 +472,7 @@ export function Dashboard({ jobs }: DashboardProps) {
             icon={Zap}
             label={t('dashboard.rushJobs')}
             value={stats.kiirtooJobs.length}
-            sub={t('dashboard.revenue2', { kiirtooRevenue: stats.kiirtooRevenue.toFixed(2) })}
+            sub={money ? t('dashboard.revenue2', { kiirtooRevenue: stats.kiirtooRevenue.toFixed(2) }) : undefined}
             accent="#F97316"
           />
           <StatTile
@@ -821,6 +830,8 @@ export function Dashboard({ jobs }: DashboardProps) {
       </section>
 
       {/* ─── Kust töö tuleb ─── */}
+      {/* Revenue by dentist and by work type: money, payments.read only (sql/102). */}
+      {money && (
       <section>
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
           {t('dashboard.whereTheWorkComesFrom')}
@@ -870,6 +881,7 @@ export function Dashboard({ jobs }: DashboardProps) {
           </div>
         </div>
       </section>
+      )}
 
       {/* ─── Patsiendid ─── */}
       <section>

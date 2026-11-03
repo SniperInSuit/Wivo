@@ -18,6 +18,7 @@ import { usePayments, useInvoices } from '../../hooks/useInvoices'
 import { jobPaymentState, jobsPaymentTotals } from '../../lib/jobPayments'
 import { openDeadlines } from '../../lib/deadlines'
 import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { stageChipStyle } from '../../config/pipeline'
 import { DayTimeline } from './DayTimeline'
 import { periodMetrics, unitSplitLabel, teethSplitLabel } from '../../lib/periodMetrics'
@@ -63,6 +64,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
   // — "kogu aeg" is the literal truth — but the search box silently reduces the
   // set, and a card that keeps claiming "kogu aeg" while it does is lying.
   const scopeLabel = searchActive ? t('overview.searchResults') : t('overview.allTime')
+  const money = usePermissions().can('payments.read')
   const { stages, stageMap, doneStageKey } = usePipeline()
   const { data: patients = [] } = usePatients()
   const { settings } = useSettings()
@@ -217,7 +219,7 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
       </div>
 
       {/* ─── KPI row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-2 ${money ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-4`}>
         <Kpi
           label={t('overview.jobsTotal')} scope={scopeLabel}
           value={String(allTime.yksused)} icon={FileText}
@@ -245,15 +247,16 @@ export function OverviewView({ jobs, searchActive = false, loading, onJobClick, 
           delta={stats.teethDelta} deltaLabel={t('overview.comparedWithLastWeek')}
         />
         {/* "Maksete seis" said nothing about which way the € pointed, so a big
-            red number read as turnover. It is a DEBT: what clients still owe. */}
-        <Kpi
+            red number read as turnover. It is a DEBT: what clients still owe.
+            Money: payments.read only (sql/102). */}
+        {money && <Kpi
           label={t('overview.outstanding')} scope={scopeLabel}
           value={`${stats.unpaidTotal.toFixed(2)} €`} icon={Euro}
           tint="bg-rose-50 text-rose-500"
           sub={t('overview.ofTotalValueReceived', { billedTotal: stats.billedTotal.toFixed(2), paidTotal: stats.paidTotal.toFixed(2) })}
           note={t('overview.paidPartlyUnpaid', { paidCount: stats.paidCount, partialCount: stats.partialCount, untouchedCount: stats.untouchedCount })}
           noteDanger={stats.untouchedCount + stats.partialCount > 0}
-        />
+        />}
       </div>
 
       {/* ─── Hero ─────────────────────────────────────────────────────────── */}
