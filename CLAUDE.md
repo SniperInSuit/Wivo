@@ -9,9 +9,14 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
 ## Branches
-- `main` = production: the desktop release, the phone app at app.wivodent.com (Cloudflare Pages project `wivo`) and the production database. Pushed only for a release; a push to `main` with a new version in package.json publishes the desktop update to every machine (.github/workflows/build.yml).
-- `testing` = the test site wivo-test.pages.dev (Cloudflare Pages project `wivo-test`) and the test copy database. **All new work goes on `testing`.**
-- `2.0` and `2.1` are old branches. Don't build on them.
+- `main` = production: the desktop release, the phone app at app.wivodent.com (Cloudflare Pages project `wivo`) and the production database. A push to `main` with a new version in package.json publishes the desktop update to every machine (.github/workflows/build.yml).
+- `testing` = the test site wivo-test.pages.dev (Cloudflare Pages project `wivo-test`) and the test copy database.
+- **Only these two branches.** No hotfix-*, release-* or other branches, and no worktrees.
+- **A small fix with no database change:** make it directly on `main`, then cherry-pick it onto `testing`. Leave the folder on `main` and tell Kevin "ready to push main". After Kevin has pushed, switch the folder back to `testing`.
+- **Anything with a migration:** only on `testing`, tested on the test copy, and released later by merging `testing` into `main`.
+- **A release:** the version bump in package.json is the last commit on `main`. A push to `main` without a version bump updates the phone app (Cloudflare) but not the desktop.
+- **Kevin does every push.** Claude never pushes.
+- Until the commit that stops tracking `supabase/.temp` reaches `main`, checking out `main` restores production's ref in `supabase/.temp/project-ref`: run no `supabase` command while on `main`.
 - Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
 
 ## Rules
