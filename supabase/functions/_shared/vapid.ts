@@ -1,8 +1,10 @@
 /**
- * Web Push for the phone app (Phase 1b), the payloadless kind: the push says
- * only "something happened" and carries no data (sql/090), so there is
- * nothing to encrypt — just the VAPID token (RFC 8292) that proves the push
- * comes from Wivo's server.
+ * Web Push for the phone app (Phase 1b): the VAPID token (RFC 8292) that
+ * proves the push comes from Wivo's server, and since sql/103 a short text —
+ * a title and a hint in the person's language, never a job code, patient or
+ * name (pushText.ts) — encrypted for that one browser (RFC 8291, aes128gcm),
+ * so the push service carries it without being able to read it. The lock
+ * screen shows it, which is why it says so little.
  *
  * WebCrypto only and no imports, so the same file runs in the Edge Function
  * (Deno) and in the tests (vapid.test.ts, run by vitest).
@@ -54,6 +56,62 @@ export async function vapidAuthorization(
 
 export type PushResult = 'ok' | 'gone' | 'failed'
 
+/** A browser's subscription keys, as the browser gives them (base64url). */
+export interface PushKeys { p256dh: string; auth: string }
+
+/** What goes inside one push: the text, and the keys to encrypt it for this browser. */
+export interface PushMessage { keys: PushKeys; text: string }
+
+const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
+  let at = 0
+  for (const p of parts) { out.set(p, at); at += p.length }
+  return out
+}
+
+async function hkdf(salt: Uint8Array<ArrayBuffer>, ikm: Uint8Array<ArrayBuffer>, info: Uint8Array<ArrayBuffer>, bytes: number): Promise<Uint8Array<ArrayBuffer>> {
+  const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits'])
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, key, bytes * 8))
+}
+
+/**
+ * RFC 8291: the body of one push carrying `plaintext`, readable only by the
+ * browser with these keys. One record (a push holds 4 KB at most, and this
+ * text is a few dozen bytes). `salt` and `sender` are for the RFC's test
+ * vector only; normally both are new for every push.
+ */
+export async function encryptPushPayload(
+  keys: PushKeys, plaintext: Uint8Array,
+  test: { salt?: Uint8Array<ArrayBuffer>; sender?: CryptoKeyPair } = {},
+): Promise<Uint8Array<ArrayBuffer>> {
+  const uaPublic = fromB64url(keys.p256dh)
+  const authSecret = fromB64url(keys.auth)
+  if (uaPublic.length !== 65 || uaPublic[0] !== 4) throw new Error('p256dh must be an uncompressed P-256 point')
+  if (authSecret.length !== 16) throw new Error('auth must be 16 bytes')
+  if (plaintext.length > 3000) throw new Error('push text too long')
+
+  const sender = test.sender
+    ?? await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', sender.publicKey))
+  const uaKey = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, sender.privateKey, 256))
+
+  const ikm = await hkdf(authSecret, shared, concat(enc.encode('WebPush: info\0'), uaPublic, asPublic), 32)
+  const salt = test.salt ?? crypto.getRandomValues(new Uint8Array(16))
+  const cek = await hkdf(salt, ikm, enc.encode('Content-Encoding: aes128gcm\0'), 16)
+  const nonce = await hkdf(salt, ikm, enc.encode('Content-Encoding: nonce\0'), 12)
+  const aes = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt'])
+  // The last (and only) record ends with the delimiter 0x02.
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aes, concat(plaintext, new Uint8Array([2]))))
+
+  const header = new Uint8Array(16 + 4 + 1 + asPublic.length)
+  header.set(salt, 0)
+  new DataView(header.buffer).setUint32(16, 4096)
+  header[20] = asPublic.length
+  header.set(asPublic, 21)
+  return concat(header, cipher)
+}
+
 /** The push services Wivo talks to — the same list as public.is_push_endpoint (sql/091). */
 export function isPushEndpoint(endpoint: string): boolean {
   try {
@@ -65,14 +123,21 @@ export function isPushEndpoint(endpoint: string): boolean {
   }
 }
 
-/** One empty push. `gone`: the subscription no longer exists (unsubscribed, phone reset). */
-export async function sendEmptyPush(
-  endpoint: string, authorization: string, doFetch: typeof fetch = fetch,
+/**
+ * One push, with an encrypted body or without one. `gone`: the subscription
+ * no longer exists (unsubscribed, phone reset).
+ */
+export async function sendPush(
+  endpoint: string, authorization: string, doFetch: typeof fetch = fetch, body: Uint8Array<ArrayBuffer> | null = null,
 ): Promise<PushResult> {
   try {
     const res = await doFetch(endpoint, {
       method: 'POST',
-      headers: { Authorization: authorization, TTL: '86400', Urgency: 'normal' },
+      headers: {
+        Authorization: authorization, TTL: '86400', Urgency: 'normal',
+        ...(body ? { 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream' } : {}),
+      },
+      ...(body ? { body } : {}),
       signal: AbortSignal.timeout(10_000),
     })
     if (res.status === 404 || res.status === 410) return 'gone'
@@ -82,16 +147,28 @@ export async function sendEmptyPush(
   }
 }
 
+/** One empty push (the phone shows its generic line). */
+export const sendEmptyPush = (endpoint: string, authorization: string, doFetch: typeof fetch = fetch): Promise<PushResult> =>
+  sendPush(endpoint, authorization, doFetch, null)
+
 /**
  * One phone, never throwing: a bad row must not stop the others. An endpoint
  * that is not a known push service counts as gone, so the sender removes it.
+ * With a message, its text goes encrypted; keys that cannot be used (a row
+ * saved before the keys were checked) send an empty push instead, which the
+ * phone shows as its generic line.
  */
 export async function pushToPhone(
   endpoint: string, key: CryptoKey, publicKey: string, subject: string, doFetch: typeof fetch = fetch,
+  message: PushMessage | null = null,
 ): Promise<PushResult> {
   if (!isPushEndpoint(endpoint)) return 'gone'
   try {
-    return await sendEmptyPush(endpoint, await vapidAuthorization(endpoint, key, publicKey, subject), doFetch)
+    let body: Uint8Array<ArrayBuffer> | null = null
+    if (message) {
+      try { body = await encryptPushPayload(message.keys, enc.encode(message.text)) } catch { body = null }
+    }
+    return await sendPush(endpoint, await vapidAuthorization(endpoint, key, publicKey, subject), doFetch, body)
   } catch {
     return 'failed'
   }

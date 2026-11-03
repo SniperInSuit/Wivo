@@ -3176,7 +3176,7 @@ export const en = {
   'deletedJobs.deletedJobs': "Deleted jobs",
 
   // ── mobile ────────────────────────────────────────────────────────────────
-  'mobile.pushBody': "New in Wivo",
+  'mobile.pushFallbackTitle': "New notification",
   'mobile.pushDenied': "Notifications are blocked for Wivo in this phone's settings. Allow them there to switch them on.",
   'mobile.pushNotConfigured': "Phone notifications are not switched on for Wivo yet. You still get e-mails.",
   'mobile.pushUnsupported': "This browser cannot show notifications. You still get e-mails.",

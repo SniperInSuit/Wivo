@@ -5,11 +5,17 @@
  * and job data come from Supabase under RLS, every time, and are not kept on
  * the phone by this worker.
  *
- * Push messages carry NO content (sql/090): the push only says "something
- * happened", the notification says "New in Wivo", and tapping it opens the
- * app, which reads the details after sign-in. That one line comes in the
- * user's language: the app leaves it in the TEXT cache (mobile/main.tsx),
- * because a worker cannot load the i18n catalog.
+ * A push carries a title and a short hint and nothing else (sql/103):
+ * "Work assigned" / "Open Wivo to see the job", or "3 new notifications" —
+ * never a job code, patient or name, because it shows on the lock screen. The
+ * sender writes them in the person's language and encrypts them for this
+ * browser. A push without them (an older sender) shows one line in the
+ * user's language, which the app leaves in the TEXT cache (mobile/main.tsx)
+ * because a worker cannot load the i18n catalog. The title never repeats
+ * "Wivo": the phone already shows the app's name beside it.
+ *
+ * Tapping it opens the bell list: an open window is told to, otherwise the
+ * app opens on /?notifications=1 (NotificationBell).
  */
 const CACHE = 'wivo-shell-v1'
 const TEXT = 'wivo-text'
@@ -48,12 +54,26 @@ self.addEventListener('fetch', event => {
   }
 })
 
+/** The title and hint inside a push, or null. Short, whatever arrives. */
+function pushWords(data) {
+  try {
+    const d = data ? data.json() : null
+    if (d && typeof d.title === 'string' && d.title.trim()) {
+      return { title: d.title.trim().slice(0, 80), body: typeof d.body === 'string' ? d.body.trim().slice(0, 120) : '' }
+    }
+  } catch { /* not ours, or no text: the generic line */ }
+  return null
+}
+
 self.addEventListener('push', event => {
   event.waitUntil((async () => {
-    const saved = await caches.open(TEXT).then(c => c.match('/push-text')).catch(() => undefined)
-    const body = (saved && (await saved.text()).trim()) || 'New in Wivo'
-    await self.registration.showNotification('Wivo', {
-      body,
+    let words = pushWords(event.data)
+    if (!words) {
+      const saved = await caches.open(TEXT).then(c => c.match('/push-text')).catch(() => undefined)
+      words = { title: (saved && (await saved.text()).trim()) || 'New notification', body: '' }
+    }
+    await self.registration.showNotification(words.title, {
+      body: words.body,
       icon: '/icon-256.png',
       badge: '/icon-256.png',
       tag: 'wivo',
@@ -66,7 +86,10 @@ self.addEventListener('notificationclick', event => {
   event.notification.close()
   event.waitUntil((async () => {
     const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    if (open.length) return open[0].focus()
-    return self.clients.openWindow('/')
+    if (open.length) {
+      open[0].postMessage({ type: 'wivo:open-notifications' })
+      return open[0].focus()
+    }
+    return self.clients.openWindow('/?notifications=1')
   })())
 })

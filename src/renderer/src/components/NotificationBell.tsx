@@ -2,7 +2,8 @@
  * The bell in the top bar. Says what happened and to which job (by code) —
  * the same and only facts the e-mail carries.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { takeOpenNotificationsRequest, onOpenNotificationsRequest } from '../lib/openNotifications'
 import { formatDistanceToNow } from 'date-fns'
 import { Bell } from 'lucide-react'
 import { useNotifications, type AppNotification } from '../hooks/useNotifications'
@@ -35,6 +36,11 @@ export function NotificationBell({ onOpen }: { onOpen: (n: AppNotification) => v
   const { stageMap } = usePipeline()
   const stageLabel = (key: string): string => stageMap[key]?.label ?? key
   const [open, setOpen] = useState(false)
+  // A tapped push opens this list (sw.js, lib/openNotifications).
+  useEffect(() => {
+    if (takeOpenNotificationsRequest()) setOpen(true)
+    return onOpenNotificationsRequest(() => setOpen(true))
+  }, [])
 
   return (
     <div className="relative">

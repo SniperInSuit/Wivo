@@ -61,7 +61,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     rpc: async (fn, args) => await db.rpc(fn, args),
     fetch: (url, init) => fetch(url, init),
     signingKey: vapidSigningKey,
-    push: pushToPhone,
+    push: (endpoint, signing, publicKey, subject, message) => pushToPhone(endpoint, signing, publicKey, subject, fetch, message),
     warn: message => console.warn(`[send-notifications] ${message}`),
   }, dry)
   return json(200, result)

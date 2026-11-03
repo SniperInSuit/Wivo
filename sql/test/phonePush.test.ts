@@ -79,3 +79,27 @@ describe('push subscriptions', () => {
     expect((await db.query(`select 1 from public.push_subscription where id = $1`, [rows[0].subscription_id])).rows).toEqual([])
   })
 })
+
+describe('what a push says (sql/103)', () => {
+  it('the sender gets each pending push\'s kind, the person\'s language and their unread count — nothing that names anyone', async () => {
+    const endpoint = 'https://fcm.googleapis.com/fcm/send/words'
+    await db.query(`update public.profiles set language = 'et', notify_push = true where id = $1`, [A.workerId])
+    await rowsAs(db, { id: A.workerId }, `select public.save_push_subscription($1, 'BPkey', 'authkey', 'Android')`, [endpoint])
+    await db.query(`update public.notification set read_at = now() where user_id = $1`, [A.workerId])
+    for (const kind of ['assigned', 'stage_reached']) {
+      await db.query(`insert into public.notification (org_id, user_id, job_id, job_code, kind) values ($1, $2, $3, 'TAL-26-0001', $4)`,
+        [A.clinicId, A.workerId, jobId, kind])
+    }
+    const { rows } = await db.query<Record<string, unknown>>(`select * from public.pending_pushes() where endpoint = $1 order by kind`, [endpoint])
+    expect(rows.map(r => ({ kind: r.kind, language: r.language, unread: r.unread, p256dh: r.p256dh, auth: r.auth }))).toEqual([
+      { kind: 'assigned', language: 'et', unread: 2, p256dh: 'BPkey', auth: 'authkey' },
+      { kind: 'stage_reached', language: 'et', unread: 2, p256dh: 'BPkey', auth: 'authkey' },
+    ])
+    expect(Object.keys(rows[0]).sort()).toEqual(['auth', 'endpoint', 'kind', 'language', 'notification_id', 'p256dh', 'subscription_id', 'unread'])
+  })
+
+  it('stays the service role\'s alone', async () => {
+    expect(await errorAs(db, { id: A.workerId }, `select * from public.pending_pushes()`)).toMatch(/permission denied/)
+    expect(await errorAs(db, 'anon', `select * from public.pending_pushes()`)).toMatch(/permission denied/)
+  })
+})

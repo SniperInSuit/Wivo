@@ -29,8 +29,9 @@ installUiSounds()
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js') })
-  // The push notification's one line, in this user's language (sw.js reads it).
-  void caches.open('wivo-text').then(c => c.put('/push-text', new Response(t('mobile.pushBody')))).catch(() => {})
+  // The title of a push that came without its own words (an older sender), in
+  // this user's language: sw.js reads it, as a worker cannot load the catalog.
+  void caches.open('wivo-text').then(c => c.put('/push-text', new Response(t('mobile.pushFallbackTitle')))).catch(() => {})
 }
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } })

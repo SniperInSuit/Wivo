@@ -14,9 +14,10 @@
  * EMAIL_ALLOW_ONLY (the test copy only, mailAllow.ts): a notice for any
  * other address is marked done without being sent.
  *
- * One import, with its `.ts`: Deno needs the extension and Vitest accepts it.
+ * Imports carry their `.ts`: Deno needs the extension and Vitest accepts it.
  */
 import { mayMail } from './mailAllow.ts'
+import { pushText, pushLang } from './pushText.ts'
 
 export type PushResult = 'ok' | 'gone' | 'failed'
 
@@ -25,7 +26,9 @@ export interface SenderDeps {
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
   fetch: (url: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<{ ok: boolean; status: number; text: () => Promise<string> }>
   signingKey: (publicKey: string, privateKey: string) => Promise<CryptoKey>
-  push: (endpoint: string, signing: CryptoKey, publicKey: string, subject: string) => Promise<PushResult>
+  /** One phone. `message`: the text and that browser's keys (vapid.ts encrypts it); null: an empty push. */
+  push: (endpoint: string, signing: CryptoKey, publicKey: string, subject: string,
+         message: { keys: { p256dh: string; auth: string }; text: string } | null) => Promise<PushResult>
   warn: (message: string) => void
 }
 
@@ -134,11 +137,16 @@ async function sendBugReports(deps: SenderDeps, dry: boolean, key: string | unde
   return { sent: done.length }
 }
 
-interface PendingPush { notification_id: string; subscription_id: string; endpoint: string }
+interface PendingPush {
+  notification_id: string; subscription_id: string; endpoint: string
+  p256dh?: string | null; auth?: string | null
+  /** sql/103; absent before it. */
+  kind?: string | null; language?: string | null; unread?: number | null
+}
 
 /**
- * One empty push per phone, however many notifications wait for it — the app
- * shows them all. A notification is done once a phone took the push or turned
+ * One push per phone, however many notifications wait for it — its title
+ * says what happened or how many wait, and the app shows them all. A notification is done once a phone took the push or turned
  * out to be gone; one whose phones all failed is tried again next minute, for
  * an hour (pending_pushes). Twenty phones at a time, ten seconds each at most.
  */
@@ -153,11 +161,19 @@ async function sendPushes(deps: SenderDeps, dry: boolean): Promise<SenderResult[
   const rows = (data ?? []) as PendingPush[]
   if (rows.length === 0) return { sent: 0, gone: 0 }
 
-  const phones = new Map<string, { endpoint: string; notifications: string[] }>()
+  const phones = new Map<string, { endpoint: string; notifications: string[]; kinds: string[]; row: PendingPush }>()
   for (const r of rows) {
-    const p = phones.get(r.subscription_id) ?? { endpoint: r.endpoint, notifications: [] }
+    const p = phones.get(r.subscription_id) ?? { endpoint: r.endpoint, notifications: [], kinds: [], row: r }
     p.notifications.push(r.notification_id)
+    if (r.kind) p.kinds.push(r.kind)
     phones.set(r.subscription_id, p)
+  }
+  // The words, per phone: what happened, or how many wait (pushText.ts). No
+  // job code, patient or name, ever. Encrypted for that browser by `push`.
+  const messageFor = (p: { kinds: string[]; row: PendingPush }) => {
+    if (!p.row.p256dh || !p.row.auth) return null
+    const words = pushText(p.kinds, p.row.unread ?? 0, pushLang(p.row.language))
+    return { keys: { p256dh: p.row.p256dh, auth: p.row.auth }, text: JSON.stringify(words) }
   }
   const signing = await deps.signingKey(pub, priv)
   const ok: string[] = []
@@ -167,7 +183,7 @@ async function sendPushes(deps: SenderDeps, dry: boolean): Promise<SenderResult[
   for (let i = 0; i < list.length; i += 20) {
     const slice = list.slice(i, i + 20)
     const results: PushResult[] = await Promise.all(slice.map(([, p]) =>
-      dry ? Promise.resolve<PushResult>('ok') : deps.push(p.endpoint, signing, pub, subject)))
+      dry ? Promise.resolve<PushResult>('ok') : deps.push(p.endpoint, signing, pub, subject, messageFor(p))))
     slice.forEach(([id, p], k) => {
       if (results[k] === 'ok') ok.push(id)
       if (results[k] === 'gone') gone.push(id)

@@ -3162,7 +3162,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'deletedJobs.deletedJobs': "Kustutatud tööd",
 
   // ── mobile ────────────────────────────────────────────────────────────────
-  'mobile.pushBody': "Wivos on uut",
+  'mobile.pushFallbackTitle': "Uus teavitus",
   'mobile.pushDenied': "Wivo teavitused on selle telefoni seadetes keelatud. Luba need seal, et neid sisse lülitada.",
   'mobile.pushNotConfigured': "Telefoniteavitused ei ole Wivos veel sisse lülitatud. E-kirjad tulevad edasi.",
   'mobile.pushUnsupported': "See brauser ei oska teavitusi näidata. E-kirjad tulevad edasi.",

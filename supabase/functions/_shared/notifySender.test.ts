@@ -12,13 +12,14 @@ const EMAIL = { RESEND_API_KEY: 're_test', NOTIFY_FROM: 'Wivo <noreply@test.inva
 
 function harness(opts: {
   env?: Record<string, string>
-  pending?: { notification_id: string; subscription_id: string; endpoint: string }[]
+  pending?: ({ notification_id: string; subscription_id: string; endpoint: string } & Record<string, unknown>)[]
   emails?: { id: string; email: string; job_id: string | null; job_code: string | null; kind: string; language: string }[]
   push?: (endpoint: string) => PushResult
   rpcError?: string
 } = {}) {
   const calls: { fn: string; args: Record<string, unknown> }[] = []
   const pushed: string[] = []
+  const messages: ({ keys: { p256dh: string; auth: string }; text: string } | null)[] = []
   const mailed: { to: string; subject: string }[] = []
   const warnings: string[] = []
   const deps: SenderDeps = {
@@ -36,11 +37,11 @@ function harness(opts: {
       return { ok: true, status: 200, text: async () => '' }
     },
     signingKey: async () => ({}) as CryptoKey,
-    push: async endpoint => { pushed.push(endpoint); return opts.push?.(endpoint) ?? 'ok' },
+    push: async (endpoint, _s, _p, _sub, message) => { pushed.push(endpoint); messages.push(message); return opts.push?.(endpoint) ?? 'ok' },
     warn: m => warnings.push(m),
   }
   const called = (fn: string) => calls.filter(c => c.fn === fn)
-  return { deps, calls, called, pushed, mailed, warnings }
+  return { deps, calls, called, pushed, messages, mailed, warnings }
 }
 
 const phone = (n: string, sub = 's1') => ({ notification_id: n, subscription_id: sub, endpoint: `https://web.push.apple.com/${sub}` })
@@ -135,6 +136,24 @@ describe('pushes', () => {
       p_notifications: ['n1', 'n2', 'n3'], p_ok_subscriptions: ['a'], p_gone_subscriptions: ['gone'],
     })
     expect(r.pushes).toEqual({ sent: 1, gone: 1 })
+  })
+
+  it('each phone gets its words in its person\'s language, with no job code or name; several waiting: how many', async () => {
+    const keys = { p256dh: 'BP', auth: 'au' }
+    const row = (n: string, sub: string, kind: string, language: string, unread: number) =>
+      ({ ...phone(n, sub), ...keys, kind, language, unread })
+    const h = harness({ env: VAPID, pending: [row('n1', 'et1', 'assigned', 'et', 1), row('n2', 'en3', 'stage_reached', 'en', 3)] })
+    await runSender(h.deps, false)
+    const byEndpoint = Object.fromEntries(h.pushed.map((e, i) => [e.split('/').pop(), h.messages[i]]))
+    expect(JSON.parse(byEndpoint.et1!.text)).toEqual({ title: 'Sulle määrati töö', body: 'Ava Wivo, et tööd näha' })
+    expect(JSON.parse(byEndpoint.en3!.text)).toEqual({ title: '3 new notifications', body: 'Open Wivo to see them' })
+    expect(byEndpoint.et1!.keys).toEqual(keys)
+  })
+
+  it('a phone without keys (or before sql/103) still gets a push, an empty one', async () => {
+    const h = harness({ env: VAPID, pending: [phone('n1')] })
+    await runSender(h.deps, false)
+    expect(h.messages).toEqual([null])
   })
 
   it('without the VAPID keys: nothing pushed, said in the result and the log', async () => {
