@@ -3074,6 +3074,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'notifications.filesAdded': "Uued failid tööl {code}",
   'notifications.emailHelp': "E-kirjas on ainult töö kood ja link, mitte kunagi patsiendi andmeid.",
   'notifications.emailMe': "Saada mulle samad teavitused ka e-kirjaga",
+  'notifications.emailNoAddress': "Sellel kontol ei ole e-posti aadressi, seega jõuavad teavitused sulle ainult kellukesse ja tõuketeavitusena.",
   'notifications.question': "Uus küsimus tööl {code}",
   'notifications.handedOver': "Töö {code} anti teile üle",
   'notifications.jobShared': "{from} jagas teiega tööd {code}",

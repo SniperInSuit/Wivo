@@ -3088,6 +3088,7 @@ export const en = {
   'notifications.filesAdded': "New files on job {code}",
   'notifications.emailHelp': "The e-mail contains only the job code and a link, never patient details.",
   'notifications.emailMe': "E-mail me the same notifications",
+  'notifications.emailNoAddress': "This account has no e-mail address, so notifications reach you in the bell and by push only.",
   'notifications.question': "New question on job {code}",
   'notifications.handedOver': "Job {code} was handed over to you",
   'notifications.jobShared': "{from} shared job {code} with you",

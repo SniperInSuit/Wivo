@@ -2,11 +2,14 @@
  * Where a person's notifications reach them, besides the bell (which always
  * shows everything): push to all their phones (sql/095) and e-mail (sql/075).
  * Their own choice, in their own settings, on the desktop and on the phone.
+ * An account without a real address (a stand-in, docs/ACCOUNTS.md) is never
+ * mailed (sql/099), so it is not offered the e-mail switch.
  */
 import { useState } from 'react'
 import { BellRing } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { isStandinEmail } from '@shared/auth/loginAddress'
 import { t } from '@/lib/i18n'
 
 type Channel = 'notify_push' | 'notify_email'
@@ -51,7 +54,9 @@ export function NotificationChannels() {
       </div>
       <p className="text-xs text-ink-faint">{t('notifications.channelsHelp')}</p>
       {row('notify_push', t('notifications.pushMe'), t('notifications.pushHelp'))}
-      {row('notify_email', t('notifications.emailMe'), t('notifications.emailHelp'))}
+      {isStandinEmail(auth.user?.email)
+        ? <p className="text-xs text-ink-muted">{t('notifications.emailNoAddress')}</p>
+        : row('notify_email', t('notifications.emailMe'), t('notifications.emailHelp'))}
       {error && <p role="alert" className="text-xs text-rose-500">{error}</p>}
     </section>
   )
