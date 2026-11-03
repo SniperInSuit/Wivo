@@ -422,3 +422,8 @@ enabled = true
 # itself, strictly: supabase/functions/_shared/serviceAuth.ts.
 [functions.send-notifications]
 verify_jwt = false
+
+# send-invoices: the same, for the same reason. With the gateway's check on,
+# the public anon key or any signed-in user's token could start an invoice run.
+[functions.send-invoices]
+verify_jwt = false
