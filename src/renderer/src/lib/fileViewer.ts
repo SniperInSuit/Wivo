@@ -70,3 +70,18 @@ export function viewerFor<T extends ListedFile>(f: T, files: T[]): { files: T[];
   }
   return { files: [f], start: 0 }
 }
+
+/**
+ * A chat attachment clicked in a job's thread: an image opens among the
+ * thread's image attachments (in the thread's order, each file once), a PDF
+ * alone, anything else not at all (it downloads).
+ */
+export function attachmentViewerFor<T extends { id: string; file_name: string }>(f: T, attachments: T[]): { files: T[]; start: number } | null {
+  const kind = viewKind(f.file_name)
+  if (!kind) return null
+  if (kind === 'pdf') return { files: [f], start: 0 }
+  const seen = new Set<string>()
+  const images = attachments.filter(a => viewKind(a.file_name) === 'image' && !seen.has(a.id) && seen.add(a.id))
+  const at = images.findIndex(a => a.id === f.id)
+  return at >= 0 ? { files: images, start: at } : { files: [f], start: 0 }
+}

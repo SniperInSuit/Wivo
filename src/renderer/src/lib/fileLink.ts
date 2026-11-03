@@ -21,6 +21,14 @@ export async function fileDownloadUrl(fileId: string, fileName: string): Promise
   return link.signedUrl
 }
 
+/** Save a job's file: the same signed, audited link, opened as a download. */
+export async function saveFile(fileId: string, fileName: string): Promise<void> {
+  const a = document.createElement('a')
+  a.href = await fileDownloadUrl(fileId, fileName)
+  a.download = fileName
+  a.click()
+}
+
 /**
  * A PDF to show in the viewer, from the same signed link as a download. That
  * link tells the browser to save the file, which a frame obeys; read into
