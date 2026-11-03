@@ -17,7 +17,7 @@ Status: **plan only, nothing built.** Written on 3 November 2026, on branch `tes
   - Settings → Database guesses by probing columns, and its list stops at 064.
   - Production got them out of order: 000–082, then 083 and 084, then 088–091, then 085–087 (RUN-3).
   - 092–097 exist only on `testing`. Which of them the test copy has is not written down anywhere: the comparison in step 1 will show it.
-- **The test copy drifted once already.** After a restore it lacked 12 triggers and the Storage policies (RUN-3). The policies were re-applied; whether the triggers were is not recorded.
+- **The test copy drifted once already.** After a restore it lacked 12 triggers and the Storage policies (RUN-3). The policies were re-applied; whether the triggers were is not recorded. It also lacked foreign keys (found 2026-11-03: none on `invoices` or `invoice_lines`, so PostgREST could not embed lines in invoices); `sql/107` puts back every foreign key the migrations define and changes nothing where they exist.
 - **Some things live outside the `public` schema**, so a plain schema dump of `public` misses them:
   - 3 Storage policies and 2 buckets (sql/072, 073, 079);
   - the `on_auth_user_created` trigger on `auth.users` (sql/012);

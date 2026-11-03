@@ -3,39 +3,6 @@
 import { t } from '@/lib/i18n'
 import { isUpdateRequired } from '../../lib/appVersion'
 
-/**
- * Which migration adds a given column.
- *
- * Every insert in this app is a raw spread, so a column the schema does not
- * have yet rejects the WHOLE row — one un-run migration and nothing saves at
- * all. Naming the exact file turns that from "Loo töö ei tööta" into a fix the
- * owner can carry out without opening the repo.
- */
-const COLUMN_MIGRATION: Record<string, string> = {
-  kirjeldus:       'sql/010_job_kirjeldus.sql',
-  disain_id:       'sql/011_job_disain_id.sql',
-  valmis_kuupaev:  'sql/025_job_completed_date.sql',
-  work_items:      'sql/032_work_items.sql',
-  extras:          'sql/033_job_extras.sql',
-  // NOT 033 — that adds `extras`, a different column for the priced services
-  // picked from settings. `extra_costs` is the free-text cost list and got its
-  // own migration late, which is how this map was wrong the first time.
-  extra_costs:     'sql/043_job_extra_costs.sql',
-  customer_id:     'sql/035_customers.sql',
-  customer_ref:    'sql/035_customers.sql',
-  delivery_status: 'sql/035_customers.sql',
-  delivered_at:    'sql/035_customers.sql',
-  mudel:           'sql/038_job_mudel.sql',
-  mudel_id:        'sql/041_job_mudel_id.sql',
-  kondivarv:       'sql/042_job_kondivarv.sql',
-}
-
-/** PostgREST says: Could not find the 'mudel_id' column of 'jobs' in the schema cache */
-function missingColumn(message: string): string | null {
-  return message.match(/'([a-z0-9_]+)' column/i)?.[1]
-    ?? message.match(/column "?([a-z0-9_]+)"? does not exist/i)?.[1]
-    ?? null
-}
 
 export function describeError(err: unknown): string {
   const e = err as { code?: string; message?: string } | null
@@ -54,24 +21,16 @@ export function describeError(err: unknown): string {
   if (e?.code === 'WV002') {
     return t('stock.expiredCannotUse')
   }
+  // Refused by the database's rules: since sql/102 that is what a missing
+  // permission looks like. Never "run this SQL": nobody using Wivo should.
   if (e?.code === '42501' || /row-level security/i.test(msg)) {
-    return t('patients.theDatabaseRefusedTheWriteRLS')
+    return t('app.noPermission')
   }
-  // Checked before 42P01: a missing column also says "does not exist", and the
-  // fix is a different migration.
-  if (e?.code === 'PGRST204' || e?.code === '42703' || /column .* does not exist/i.test(msg)) {
-    const col = missingColumn(msg)
-    const file = col ? COLUMN_MIGRATION[col] : undefined
-    if (col && file) {
-      return t('patients.theDatabaseIsMissingTheColumn', { col, file })
-    }
-    if (col) {
-      return t('patients.theDatabaseIsMissingTheColumn2', { col })
-    }
-    return t('patients.aDatabaseColumnIsMissingRun')
-  }
-  if (e?.code === '42P01' || /does not exist/i.test(msg)) {
-    return t('patients.theTableDoesNotExistRun')
+  // A column, table, function or relationship this database does not have
+  // (yet): a neutral message; the technical one stays for support.
+  if (['PGRST204', '42703', '42P01', 'PGRST200', 'PGRST202', '42883'].includes(e?.code ?? '')
+      || /does not exist|could not find .* in the schema cache/i.test(msg)) {
+    return `${t('app.notAvailableYet')}`
   }
   return msg || t('patients.unknownError')
 }

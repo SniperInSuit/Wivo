@@ -87,9 +87,7 @@ export function RequestsInbox() {
           <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-ink">{t('calendarView.theRequestsTableDoesNotExist')}</p>
-            <p className="text-xs text-ink-muted mt-1">
-              {t('calendarView.run2')} <code className="text-accent">sql/059_visit_requests.sql</code> {t('calendarView.inTheSupabaseSQLEditorUntil')}
-            </p>
+            <p className="text-xs text-ink-muted mt-1">{t('app.notAvailableYet')}</p>
             <p className="text-[11px] text-ink-faint mt-2">{describeError(error)}</p>
           </div>
         </div>

@@ -52,7 +52,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
       const e = err as { code?: string; message?: string }
       setError(
         e?.code === 'PGRST204' || e?.code === '42703'
-          ? t('jobDetail.runSql005JobNotesSql')
+          ? t('app.notAvailableYet')
           : e?.message ?? t('jobDetail.savingFailed')
       )
     }

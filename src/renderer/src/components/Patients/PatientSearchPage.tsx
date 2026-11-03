@@ -248,8 +248,7 @@ export function PatientSearchPage({
             </p>
             {patients.length === 0 && unlinkedCount > 0 && (
               <p className="text-xs text-ink-faint leading-relaxed">
-                {t('patients.youHaveWithPatientNamesClick', { unlinkedCount })}{' '}
-                {t('patients.ifNothingHappens')} <code>sql/002_patients_rls.sql</code> {t('patients.hasNotBeenRunYet')}
+                {t('patients.youHaveWithPatientNamesClick', { unlinkedCount })}
               </p>
             )}
           </div>

@@ -51,7 +51,7 @@ export function VisitsPanel({ patient, onVisitClick, onAddVisit }: VisitsPanelPr
     >
       {isError ? (
         <p className="text-[11px] text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-2">
-          {t('patients.noVisitsTableRunSql007')}
+          {t('app.notAvailableYet')}
         </p>
       ) : mine.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('patients.noVisits')}</p>

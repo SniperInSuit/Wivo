@@ -104,11 +104,8 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
         <div className="card p-4 flex items-start gap-2 max-w-2xl">
           <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-ink">{t('invoices.invoicesTableNotFound')}</p>
-            <p className="text-xs text-ink-muted">
-              {t('invoices.run')} <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>{' '}
-              {t('invoices.inTheSupabaseSQLEditorWith')}
-            </p>
+            <p className="text-sm font-semibold text-ink">{t('invoices.couldNotLoad')}</p>
+            <p className="text-xs text-ink-muted">{t('app.contactSupport')}</p>
             <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
           </div>
         </div>

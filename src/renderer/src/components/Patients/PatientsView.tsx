@@ -93,12 +93,7 @@ export function PatientsView({
         <div className="card p-6 max-w-lg text-center space-y-2">
           <ShieldAlert className="mx-auto text-orange-500" size={28} />
           <p className="font-semibold text-ink">{t('patients.patientsTableNotFound')}</p>
-          <p className="text-sm text-ink-muted">
-            {t('patients.run')} <code className="px-1 rounded bg-bg-sidebar">sql/001_patients.sql</code>,{' '}
-            <code className="px-1 rounded bg-bg-sidebar">sql/002_patients_rls.sql</code> {t('patients.and')}{' '}
-            <code className="px-1 rounded bg-bg-sidebar">sql/003_patient_teeth.sql</code>{' '}
-            {t('patients.inTheSupabaseSQLEditorThen')}
-          </p>
+          <p className="text-sm text-ink-muted">{t('app.notAvailableYet')}</p>
           <p className="text-xs text-ink-faint">{(error as Error)?.message}</p>
         </div>
       </div>

@@ -146,8 +146,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
         <div className="card p-3 flex items-start gap-2">
           <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-ink-muted">
-            {t('dashboard.invoicesTableNotFoundTheRevenue')}{' '}
-            <code className="px-1 rounded bg-bg-sidebar">sql/020_invoices.sql</code>.
+            {t('dashboard.invoicesCouldNotLoad')} {t('app.contactSupport')}
           </p>
         </div>
       )}

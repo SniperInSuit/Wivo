@@ -384,11 +384,7 @@ export function CalendarView({
               <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-ink">{t('calendarView.visitsTableNotFound')}</p>
-                <p className="text-xs text-ink-muted">
-                  {t('calendarView.run')} <code className="px-1 rounded bg-bg-sidebar">sql/007_visits.sql</code> {t('calendarView.and')}{' '}
-                  <code className="px-1 rounded bg-bg-sidebar">sql/008_visits_realtime.sql</code>{' '}
-                  {t('calendarView.inTheSupabaseSQLEditorThe')}
-                </p>
+                <p className="text-xs text-ink-muted">{t('app.notAvailableYet')}</p>
                 <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
               </div>
             </div>

@@ -345,10 +345,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-ink">{t('workers.payrollTablesNotFound')}</p>
-            <p className="text-xs text-ink-muted">
-              {t('workers.run')} <code className="px-1 rounded bg-bg-sidebar">sql/022_worker_pay.sql</code>{' '}
-              {t('workers.inTheSupabaseSQLEditorWith')}
-            </p>
+            <p className="text-xs text-ink-muted">{t('app.notAvailableYet')}</p>
             <p className="text-[10px] text-ink-faint mt-1">{(error as Error)?.message}</p>
           </div>
         </div>

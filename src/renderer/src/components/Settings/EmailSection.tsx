@@ -321,13 +321,7 @@ export function EmailSection() {
               </p>
               {heartbeat.stale && (
                 <p className="text-[11px] text-orange-800 leading-relaxed mt-0.5">
-                  {t('settings.itShouldRunEveryHourCheck')}{' '}
-                  <code>cron.job_run_details</code>{' '}
-                  {t('settings.saysSucceededEvenWhenTheAnswer')}
-                  <br />
-                  <code className="text-[10px]">
-                    select status_code, left(content,200), created from net._http_response order by created desc limit 5;
-                  </code>
+                  {t('settings.itShouldRunEveryHourCheck')}
                 </p>
               )}
             </div>

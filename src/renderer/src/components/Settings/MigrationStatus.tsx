@@ -24,7 +24,6 @@ import { supabase } from '../../lib/supabase'
 import { t } from '@/lib/i18n'
 
 interface Probe {
-  fail: string
   table: string
   column: string
   mis: string
@@ -47,38 +46,38 @@ interface Probe {
  * absent rather than guessed at.
  */
 const PROBES: Probe[] = [
-  { fail: 'sql/064_permission_rls.sql', table: 'rpc', column: 'has_perm',
+  { table: 'rpc', column: 'has_perm',
     rpc: { fn: 'has_perm', args: { perm: 'jobs.read' } },
     mis: t('settings.permissionTicksApplyOnTheServer') },
-  { fail: 'sql/000_jobs.sql', table: 'jobs', column: 'revisions',
+  { table: 'jobs', column: 'revisions',
     mis: t('settings.theJobsTableItselfBeforeThis') },
-  { fail: 'sql/063_job_material_units.sql', table: 'jobs', column: 'materjali_yhikud',
+  { table: 'jobs', column: 'materjali_yhikud',
     mis: t('settings.howManyCapsulesAJobActually') },
-  { fail: 'sql/062_visit_requests_realtime.sql', table: 'visit_requests', column: 'id',
+  { table: 'visit_requests', column: 'id',
     mis: t('settings.requestsInRealTimeSameTable') },
-  { fail: 'sql/061_visit_request_payment.sql', table: 'visit_requests', column: 'soovitud_algus',
+  { table: 'visit_requests', column: 'soovitud_algus',
     mis: t('settings.visitFeeAndTheTimePicked') },
-  { fail: 'sql/059_visit_requests.sql', table: 'visit_requests', column: 'idempotency_key',
+  { table: 'visit_requests', column: 'idempotency_key',
     mis: t('settings.visitRequestInbox') },
-  { fail: 'sql/058_payout_line_key.sql', table: 'worker_payout_lines', column: 'line_key',
+  { table: 'worker_payout_lines', column: 'line_key',
     mis: t('settings.aPayoutLineRemembersWhichLine') },
-  { fail: 'sql/057_job_cost_override.sql', table: 'jobs', column: 'kulu_yle',
+  { table: 'jobs', column: 'kulu_yle',
     mis: t('settings.manualCostOverride') },
-  { fail: 'sql/055_profile_ui_prefs.sql', table: 'profiles', column: 'ui_prefs',
+  { table: 'profiles', column: 'ui_prefs',
     mis: t('settings.personalViewSettingsMyView') },
-  { fail: 'sql/054_worker_net_pay.sql', table: 'profiles', column: 'tasu_arvestus',
+  { table: 'profiles', column: 'tasu_arvestus',
     mis: t('settings.netGrossPayAndTaxProfile') },
-  { fail: 'sql/053_patient_marketing.sql', table: 'patients', column: 'turundusnousolek',
+  { table: 'patients', column: 'turundusnousolek',
     mis: t('settings.marketingConsentAndContactExport') },
-  { fail: 'sql/051_email_settings.sql', table: 'clinic_settings', column: 'email',
+  { table: 'clinic_settings', column: 'email',
     mis: t('settings.emailSettingsAndSendingPermissions') },
-  { fail: 'sql/050_invoice_sending.sql', table: 'invoices', column: 'sent_at',
+  { table: 'invoices', column: 'sent_at',
     mis: t('settings.invoiceSendingSentAt') },
-  { fail: 'sql/049_payment_plans.sql', table: 'payment_plans', column: 'id',
+  { table: 'payment_plans', column: 'id',
     mis: t('settings.paymentPlans') },
-  { fail: 'sql/061_visit_request_payment.sql', table: 'clinic_settings', column: 'broneering',
+  { table: 'clinic_settings', column: 'broneering',
     mis: t('settings.onlineBookingSettingsOpeningHoursVisit') },
-  { fail: 'sql/047_public_services.sql', table: 'clinic_settings', column: 'public_services',
+  { table: 'clinic_settings', column: 'public_services',
     mis: t('settings.patientPriceListWithoutItThe') },
 ]
 
@@ -118,8 +117,6 @@ export function MigrationStatus() {
   useEffect(() => { check() }, [])
 
   const missing = PROBES.filter(p => state[`${p.table}.${p.column}`] === 'missing')
-  // One file can back several probes; the list is what to RUN, so it is unique.
-  const files = [...new Set(missing.map(p => p.fail))].sort()
 
   return (
     <section>
@@ -139,19 +136,10 @@ export function MigrationStatus() {
         {t('settings.askedOfTheDatabaseNotFrom')}
       </p>
 
-      {files.length > 0 && (
+      {missing.length > 0 && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 mb-3">
-          <p className="text-xs font-semibold text-orange-800 mb-1">
-            {t('settings.notRunFileFiles', { files })}
-          </p>
-          <p className="text-[11px] text-orange-700 mb-1.5">
-            {t('settings.inTheSupabaseSQLEditorIn')}{' '}
-            <code>notify pgrst, 'reload schema';</code>{' '}
-            {t('settings.postgRESTCachesTheSchemaAndWon')}
-          </p>
-          <ul className="text-[11px] text-orange-800 font-mono space-y-0.5">
-            {files.map(f => <li key={f}>{f}</li>)}
-          </ul>
+          <p className="text-xs font-semibold text-orange-800">{t('settings.notAvailableN', { n: missing.length })}</p>
+          <p className="text-[11px] text-orange-700 mt-0.5">{t('app.contactSupport')}</p>
         </div>
       )}
 
@@ -159,7 +147,7 @@ export function MigrationStatus() {
         {PROBES.map(p => {
           const s = state[`${p.table}.${p.column}`]
           return (
-            <div key={`${p.fail}|${p.table}.${p.column}`} className="flex items-start gap-2">
+            <div key={`${p.table}.${p.column}`} className="flex items-start gap-2">
               {s === 'ok' && <Check size={12} className="text-emerald-600 flex-shrink-0 mt-0.5" />}
               {s === 'missing' && <X size={12} className="text-red-500 flex-shrink-0 mt-0.5" />}
               {(s === 'unknown' || !s) && (
@@ -170,7 +158,7 @@ export function MigrationStatus() {
                   {p.mis}
                 </p>
                 <p className="text-[10px] text-ink-faint font-mono">
-                  {p.fail} · {p.table}.{p.column}
+                  {p.table}.{p.column}
                   {s === 'unknown' && t('settings.couldNotCheck')}
                 </p>
               </div>
