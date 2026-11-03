@@ -423,6 +423,11 @@ enabled = true
 [functions.send-notifications]
 verify_jwt = false
 
+# send-invoices: the same, for the same reason. With the gateway's check on,
+# the public anon key or any signed-in user's token could start an invoice run.
+[functions.send-invoices]
+verify_jwt = false
+
 # account-security is called by the app with the signed-in user's token. The
 # function checks that token itself (PostgREST verifies it on the first call,
 # made as that user) and the database decides: _shared/accountSecurity.ts.

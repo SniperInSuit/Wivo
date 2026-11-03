@@ -1,9 +1,17 @@
 /**
  * Sends the invoices that are due. Called by pg_cron once a day.
  *
- * NOT PUBLIC. Deployed WITHOUT `--no-verify-jwt`, unlike `public-booking`: this
- * one sends mail from the clinic's main address, so an unauthenticated caller
- * would be handed a mail cannon. The caller is pg_cron holding the service key.
+ * NOT PUBLIC: this one sends mail from the clinic's main address, so any
+ * other caller would be handed a mail cannon. The only caller is pg_cron
+ * holding the service key (sql/052, sql/056).
+ *
+ * THE CALLER CHECK IS OUR OWN, as for send-notifications. The gateway's JWT
+ * check (verify_jwt) accepted ANY valid JWT of the project — the public anon
+ * key, or any signed-in user's token — so anyone could start an invoice run.
+ * It is off now (verify_jwt = false in supabase/config.toml; deploy with
+ * --no-verify-jwt), and the function accepts this project's service key and
+ * nothing else: the legacy service_role JWT or an sb_secret key
+ * (_shared/serviceAuth.ts, tested).
  *
  * IT DECIDES NOTHING ITSELF
  * Every "may this go out" answer comes from `shared/billing/sendGuard.ts` — the
@@ -22,10 +30,13 @@ import type { MailPolicy } from '@shared/billing/sendGuard.ts'
 import { invoiceHtml, invoiceText, invoiceSubject } from '../_shared/invoiceHtml.ts'
 import { openSmtp, smtpProblems, safeError } from '../_shared/mail.ts'
 import { invoicePdf, invoicePdfName } from '../_shared/invoicePdf.ts'
+import { isServiceRequest, serviceClientKey } from '../_shared/serviceAuth.ts'
+
+const env = (name: string) => Deno.env.get(name)
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  serviceClientKey(env),
   { auth: { persistSession: false, autoRefreshToken: false } },
 )
 
@@ -47,6 +58,10 @@ interface Outcome {
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+  // Before anything else, a dry run included: it reads every clinic's queue.
+  if (!isServiceRequest(req.headers.get('Authorization'), env)) {
+    return json(401, { ok: false, error: 'service key required' })
+  }
   const dry = new URL(req.url).searchParams.get('dry') === '1'
   const day = today()
   const results: Outcome[] = []
