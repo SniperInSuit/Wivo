@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Camera, Loader2, Zap } from 'lucide-react'
 import { useJobs } from '../hooks/useJobs'
+import { useJobById } from '../hooks/useJobSearch'
 import { usePartnerJobs, type PartnerJob } from '../hooks/usePartners'
 import { usePipeline } from '../context/PipelineContext'
 import { supabase } from '../lib/supabase'
@@ -23,12 +24,16 @@ import { t, dateLocale } from '@/lib/i18n'
 export function MobileJob({ id, onClose }: { id: string; onClose: () => void }) {
   const { data: jobs, isLoading } = useJobs()
   const { data: shared, isLoading: sharedLoading } = usePartnerJobs('')
-  const own = jobs?.find(j => j.id === id)
+  const loaded = jobs?.find(j => j.id === id)
   const partner = shared?.find(s => s.job_id === id)
+  // A search result can be a job outside the ones loaded (an old one): ask
+  // for it by id. RLS answers as for the list.
+  const byId = useJobById(id, !isLoading && !loaded && !sharedLoading && !partner)
+  const own = loaded ?? byId.data ?? undefined
 
   if (own) return <OwnJob job={own} />
   if (partner) return <SharedJob job={partner} onClose={onClose} />
-  if (isLoading || sharedLoading) return <div className="grid place-items-center py-10"><Loader2 className="animate-spin text-accent" /></div>
+  if (isLoading || sharedLoading || byId.isLoading) return <div className="grid place-items-center py-10"><Loader2 className="animate-spin text-accent" /></div>
   return <p className="p-6 text-center text-sm text-ink-muted">{t('mobile.jobNotFound')}</p>
 }
 

@@ -11,6 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { jobCodeCandidates, partialCodePattern } from '../lib/jobSearch'
 
 export type PartnerRole = 'design' | 'surgery' | 'supplier'
 export type CaseType = 'lab_work' | 'referral'
@@ -125,8 +126,12 @@ export function usePartnerJobs(search: string) {
     enabled: !!clinicId,
     queryFn: async () => {
       let q = supabase.from('partner_job_view').select('*').order('due_at', { ascending: true, nullsFirst: false })
-      const code = search.trim()
-      if (code) q = q.ilike('job_code', `%${code}%`)
+      // The code however its dashes were typed (lib/jobSearch); a partner view
+      // has no patient, so the code is all there is to search.
+      const text = search.trim()
+      const codes = jobCodeCandidates(text)
+      if (codes.length > 0) q = q.in('job_code', codes)
+      else if (text) q = q.ilike('job_code', partialCodePattern(text))
       const { data, error } = await q
       if (error) {
         if (error.code === '42P01' || error.code === 'PGRST205') return []

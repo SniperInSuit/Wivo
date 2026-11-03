@@ -8,6 +8,9 @@ import { useAuth } from '../context/AuthContext'
 import { usePipeline } from '../context/PipelineContext'
 import { StatusPill } from '../components/ui/StatusPill'
 import { phoneLists, type PhoneJobItem } from './jobLists'
+import { useJobSearch, searchJobs } from '../hooks/useJobSearch'
+import { normCode } from '../lib/jobSearch'
+import type { Job } from '../types/job'
 import { t, dateLocale } from '@/lib/i18n'
 
 type Tab = 'mine' | 'active' | 'shared'
@@ -18,10 +21,28 @@ export function MobileHome({ onOpen }: { onOpen: (jobId: string) => void }) {
   const { data: jobs = [], isLoading } = useJobs()
   const { data: shared = [] } = usePartnerJobs('')
   const [query, setQuery] = useState('')
+  const [notFound, setNotFound] = useState(false)
+  // Two letters and up: the database's answer, not only the jobs loaded.
+  const { data: found } = useJobSearch(query)
+  const searching = query.trim().length >= 2
   const lists = useMemo(
-    () => phoneLists({ jobs, shared, me: user?.id ?? '', doneStage: doneStageKey, query }),
-    [jobs, shared, user?.id, doneStageKey, query],
+    () => phoneLists({ jobs, shared, me: user?.id ?? '', doneStage: doneStageKey, query, found: searching ? found ?? [] : undefined }),
+    [jobs, shared, user?.id, doneStageKey, query, found, searching],
   )
+
+  // "Search" on the keyboard: an exact code opens at once (ours first, then
+  // one shared with us), else the only result; nothing found is said.
+  async function submit() {
+    const q = query.trim()
+    if (!q) return
+    let own: Job[] = []
+    try { own = await searchJobs(q) } catch { /* the lists below still show what is known */ }
+    const exact = own.find(j => normCode(j.job_code) === normCode(q))?.id
+      ?? lists.shared.find(i => normCode(i.code) === normCode(q))?.id
+    const only = own.length + lists.shared.length === 1 ? (own[0]?.id ?? lists.shared[0]?.id) : undefined
+    if (exact ?? only) onOpen((exact ?? only)!)
+    else if (own.length === 0 && lists.shared.length === 0) setNotFound(true)
+  }
   // Start where the work is: my own jobs if I have any.
   const [tab, setTab] = useState<Tab | null>(null)
   const current: Tab = tab ?? (lists.mine.length > 0 || isLoading ? 'mine' : 'active')
@@ -36,10 +57,12 @@ export function MobileHome({ onOpen }: { onOpen: (jobId: string) => void }) {
     <main className="space-y-3 p-3">
       <label className="flex items-center gap-2 rounded-xl border border-ink-faint/30 bg-bg-card px-3 py-2">
         <Search size={16} className="text-ink-muted" aria-hidden="true" />
-        <input type="search" value={query} onChange={e => setQuery(e.target.value)} inputMode="search"
+        <input type="search" value={query} onChange={e => { setQuery(e.target.value); setNotFound(false) }} inputMode="search"
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void submit() } }}
           placeholder={t('mobile.searchByCode')} aria-label={t('mobile.searchByCode')}
           className="w-full bg-transparent text-base outline-none" />
       </label>
+      {notFound && <p role="alert" className="text-sm text-red-700 px-1">{t('mobile.noJobFound', { q: query.trim() })}</p>}
 
       <div role="tablist" className="flex gap-1 rounded-xl bg-bg-sidebar p-1">
         {tabs.map(tb => (

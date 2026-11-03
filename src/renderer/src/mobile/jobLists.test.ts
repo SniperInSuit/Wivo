@@ -41,3 +41,19 @@ describe('phoneLists', () => {
     expect(r.active.map(i => i.code)).toEqual(['A', 'B', 'C'])
   })
 })
+
+describe('phoneLists while searching the database', () => {
+  it('shows what the database found, finished jobs too, the exact code first', () => {
+    const done = job({ job_code: 'TAL-25-0042', status: 'valmis' })
+    const exact = job({ job_code: 'TAL-26-0042', valmis_aeg: '2027-01-01' })
+    const r = phoneLists({ ...base, jobs: [], shared: [], query: 'tal260042', found: [done, exact] })
+    expect(r.active.map(i => i.code)).toEqual(['TAL-26-0042', 'TAL-25-0042'])
+  })
+
+  it('finds a shared job by its code without the dashes, never by a name', () => {
+    const r = phoneLists({ ...base, jobs: [], shared: [shared({ job_code: 'RIG-26-0007' })], query: 'rig260007', found: [] })
+    expect(r.shared).toHaveLength(1)
+    const byName = phoneLists({ ...base, jobs: [], shared: [shared({ owner_org_name: 'Jaan' })], query: 'jaan', found: [] })
+    expect(byName.shared).toHaveLength(0)
+  })
+})
