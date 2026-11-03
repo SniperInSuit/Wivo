@@ -1,0 +1,8 @@
+<!-- Supabase → Authentication → Emails → Templates → Change email address (docs/ACCOUNTS.md §6.3).
+     For someone who already has a real address and changes it; secure e-mail change
+     sends this to both the old and the new address.
+     Subject: Wivo: kinnita e-posti muutmine · Confirm your new e-mail · Подтвердите новый адрес -->
+<p><a href="{{ .SiteURL }}/auth/confirm?type=email_change&token_hash={{ .TokenHash }}&lang={{ .Data.language }}">Kinnita · Confirm · Подтвердить</a></p>
+<p>Sinu Wivo konto e-posti aadressi muudetakse: {{ .Email }} → {{ .NewEmail }}. Link töötab ühe korra, 24 tundi. Kui sa seda ei küsinud, jäta kiri tähelepanuta ja anna teada oma kliiniku omanikule.</p>
+<p>The e-mail address of your Wivo account is being changed: {{ .Email }} → {{ .NewEmail }}. The link works once, for 24 hours. If you did not ask for this, ignore this e-mail and tell your clinic's owner.</p>
+<p>Адрес электронной почты вашей учётной записи Wivo меняется: {{ .Email }} → {{ .NewEmail }}. Ссылка работает один раз, 24 часа. Если вы этого не запрашивали, проигнорируйте письмо и сообщите владельцу клиники.</p>

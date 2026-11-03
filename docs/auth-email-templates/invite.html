@@ -1,0 +1,8 @@
+<!-- Supabase → Authentication → Emails → Templates → Invite user (docs/ACCOUNTS.md §6.3).
+     Used only when Kevin invites a new clinic's founder from the dashboard; staff
+     invites are Wivo's own e-mail (Edge Function team-account).
+     Subject: Kutse Wivosse · Your Wivo invitation · Приглашение в Wivo -->
+<p><a href="{{ .SiteURL }}/auth/confirm?type=invite&token_hash={{ .TokenHash }}&lang={{ .Data.language }}">Ava kutse · Open the invitation · Открыть приглашение</a></p>
+<p>Sind kutsuti Wivosse. Lingi kaudu määrad oma parooli ja sisselogimiskoodi. See töötab ühe korra, 24 tundi.</p>
+<p>You have been invited to Wivo. The link lets you set your password and your sign-in code. It works once, for 24 hours.</p>
+<p>Вас пригласили в Wivo. По ссылке вы зададите пароль и код для входа. Она работает один раз, 24 часа.</p>

@@ -1,18 +1,23 @@
 # Accounts: real e-mail first, usernames as a fallback
 
-Plan only. Nothing here is built yet. Status: waiting for Kevin's go-ahead.
-Branch: `testing`. Never production; Kevin applies every migration in the SQL Editor (CLAUDE.md).
+Status: **built on `testing`** (§7), not applied anywhere yet. Kevin's next steps are in §7.
+Never production; Kevin applies every migration in the SQL Editor (CLAUDE.md).
 
 ---
 
-## 0. What Kevin decides before the build starts
+## 0. Decisions (Kevin, 2026-11-03)
 
-1. **The stand-in domain:** `nomail.wivodent.com`, a subdomain of a domain Wivo owns, with a *null MX* record (RFC 7505), so it can never receive mail (§3.2).
-2. **The login name for username accounts:** `tehnik@tal`, meaning the username, then `@`, then the clinic's code (§3.3). Existing accounts keep their plain `tehnik` login.
-3. **The sending domain for Resend:** `mail.wivodent.com`, a subdomain, so the root domain's existing mail and SPF stay untouched (§6.1).
-4. **Who writes invite e-mails:** Wivo itself, through Resend, in the person's language. Supabase's SMTP is used only for the two e-mails a signed-out person triggers: password recovery and e-mail change (§2.2).
-
-If any of these four is wrong, the rest of the plan still holds. Only names and the DNS records change.
+1. **Stand-in domain:** `nomail.wivodent.com`, with a null MX record (`MX 0 .`), `v=spf1 -all` and DMARC `p=reject`, so it can never send or receive mail (§3.2, §6.2).
+2. **Sign-in format:** `tehnik@tal`. A device also remembers the last clinic code, so on a clinic computer staff can type just `tehnik` (§3.3). Existing plain logins keep working.
+3. **Sending domain:** `mail.wivodent.com`, in Resend's EU region (§6.1).
+4. **Invites:** Wivo sends them itself, in each person's language (§2.2).
+5. **Order:**
+   - first, stop e-mails to stand-in addresses and confirm the existing stand-ins (sql/099), on the test copy first, so nobody gets locked out and nothing bounces;
+   - then the rest.
+6. **The four checks** (§7, step 4):
+   - Checks 1 and 2: Kevin runs `scripts/check-standin-auth.sh` himself, with the test copy's secret key.
+   - Checks 3 and 4: tested on the test copy after the build, with the fallbacks ready.
+7. **The test copy's mail is limited to Kevin's own addresses** (`EMAIL_ALLOW_ONLY`, §6.4).
 
 ---
 
@@ -112,14 +117,17 @@ Recovery and e-mail change are started by GoTrue, so they use Supabase's SMTP (R
 
 ### 3.3 What a person types at sign-in
 
-`lib/supabase.ts` gets one function, `loginAddress(typed)`, tested:
+`loginAddresses(typed)` in `shared/auth/loginAddress.ts` (tested) gives the addresses to try, in order:
 
-| Typed | Means | Address |
+| Typed | Means | Tried |
 |---|---|---|
 | `mari@kliinik.ee` (`@`, and a dot after it) | real e-mail | as typed |
 | `tehnik@tal` (`@`, no dot after it) | username at a clinic | `tehnik.tal@nomail.wivodent.com` |
-| `tehnik` (no `@`) | **existing** account (before this change) | `tehnik@example.com`, unchanged |
+| `tehnik` (no `@`), on a device that remembers clinic TAL | that clinic's username, or an existing plain login | `tehnik.tal@nomail.wivodent.com`, then `tehnik@example.com` |
+| `tehnik` (no `@`), on a device that remembers no clinic | **existing** account (before this change) | `tehnik@example.com`, unchanged |
 
+- **Which clinic a device remembers:** the code of the last person who signed in there, once their clinic loaded (after the second factor). The sign-in page says so: "On this device, a username alone signs in at TAL."
+- **When the next address is tried:** only after "wrong password". So an old `tehnik` still signs in on a computer that remembers a clinic that has its own `tehnik`.
 - Existing accounts keep their login.
 - No anonymous lookup endpoint is needed: the address comes from what was typed, so nobody can ask "does this user exist?".
 - **New usernames:** `[a-z0-9._-]`, 2–32 characters, starting with a letter or digit, unique **per clinic**.
@@ -159,44 +167,53 @@ How to read it:
 - Rows of kind 1 with `confirmed = false` are what 099 will confirm, and the number 099 will report.
 - Kind 2 should be 0. If it isn't, 099 leaves those accounts alone and they are looked at one by one.
 
-### 4.2 `sql/099_confirm_standin_logins.sql`: the one-time confirmation
+### 4.2 `sql/099_standin_logins.sql`: no mail to stand-ins, and the one-time confirmation
 
-It is small and self-contained: it uses nothing after sql/029, so like 098 it can run on production's base (091). It confirms an account **only** when all of these hold:
-- the address is `<username>@example.com` (or the older `wivo.invalid` or `wivo.local`);
-- the local part is exactly that account's `profiles.username`;
-- the account is not confirmed yet;
-- the account is not deleted.
+099 is small and uses nothing after sql/075, so like 098 it can run on production's base (091).
 
-Real addresses, `example.com` addresses that don't match a Wivo username, and already-confirmed accounts are untouched. It sets `email_confirmed_at = now()` and nothing else. (`confirmed_at` is a generated column and isn't written.) It reports how many accounts it confirmed (`raise notice`), to compare with §4.1.
+1. **No mail to a stand-in.**
+   - `public.is_standin_email(text)` is true for `nomail.wivodent.com`, every `example.com` address (that domain accepts no mail), `wivo.invalid` and `wivo.local`.
+   - `pending_notification_emails` (replacing 075's) skips those addresses.
+   - In the app, a stand-in account sees no "E-mail me" switch, but "Add an e-mail address" instead (§4.4).
+2. **The one-time confirmation.** It confirms an account **only** when all of these hold:
+   - the address is `<username>@example.com` (or `wivo.invalid` or `wivo.local`);
+   - the local part is exactly that account's own `profiles.username`;
+   - the account is not confirmed yet;
+   - it is not deleted.
 
-It doesn't rename anyone, so every existing login keeps working.
+   It sets `email_confirmed_at = now()` and nothing else. It reports the count (`raise notice '099: confirmed N stand-in account(s)'`), to compare with §4.1. It renames nobody, so every existing login keeps working. Running it again confirms nothing new.
 
-**Tests** (PGlite, `sql/test/confirmStandins.test.ts`):
-- an unconfirmed stand-in is confirmed;
-- each of these is untouched: a real address, an `example.com` address that isn't a username, an already-confirmed account, a deleted account;
-- running it twice changes nothing;
-- it applies on 000–091 + 099.
+**Tests:** `sql/test/standinLogins.test.ts`.
+- Which addresses count as stand-ins.
+- The pending list leaves out the old and the new stand-ins and keeps a real address.
+- Exactly the right accounts are confirmed. These stay untouched: a real address, a real address with a username, an `example.com` address that isn't the account's username, one without a username, a deleted account, an already-confirmed account.
+- Running it twice changes nothing.
+- It applies on 000–091 + 099.
 
-### 4.3 `sql/100_accounts.sql`: per-clinic usernames and the safety fixes
+### 4.3 `sql/100_accounts.sql`: per-clinic usernames, and stand-ins only with an invite
 
-1. **Usernames per clinic.**
-   - Drop `profiles_username_key`.
-   - Add a unique index on `(clinic_id, lower(username))` where `username is not null`.
-   - Add `handle_new_user` (replacing 086): it checks the name only within the invite's clinic and stores `language` from the metadata.
-   - This needs no new table. If one turns out to be needed, it gets org_id, RLS, a leak test and `select public.ensure_mfa_policies();` (CLAUDE.md).
-2. **No mail to stand-ins.**
-   - Add `public.is_standin_email(text)`: the current stand-in domain, `example.com` where it matches the username, `wivo.invalid` and `wivo.local`.
-   - `pending_notification_emails` (replacing 075) skips those addresses.
-   - In the app, the "E-mail me" switch is hidden for a stand-in account and replaced by "Add an e-mail address" (§4.4).
-3. **When a stand-in is replaced by a real e-mail**, a trigger on `auth.users` (after update of `email`) clears `profiles.username`. The person now signs in with the e-mail, and the name no longer holds a username in the clinic.
+1. **Usernames are unique per clinic.**
+   - `profiles_username_key` is replaced by a unique index on `(clinic_id, lower(username))`.
+   - `handle_new_user` (replacing 086's) checks the name only within the invite's clinic.
+2. **A stand-in only with its clinic's invite.**
+   - A new account on `nomail.wivodent.com` is refused unless it carries a valid, unused invite of the clinic whose code is in the address, and the address is exactly `<username>.<code>`.
+   - So nobody can take another clinic's `tehnik` through the public sign-up while it is still on (§5), and a bug in the function can't put a person in the wrong clinic.
+   - **This is why `scripts/check-standin-auth.sh` must run before 100:** its throwaway account carries no invite.
+3. **The person's language** comes from the invite and goes onto their profile.
+4. **When a real e-mail replaces a stand-in**, a trigger on `auth.users` (after an update of `email`) clears `profiles.username`.
+5. **`team_accounts()`** gives the owner's Team page how each member signs in (`tehnik@tal`, an old `tehnik`, or the address) and whether an invite is still waiting. It answers only the owner, with the second factor, about their own clinic.
 
-**Tests:**
-- two clinics both have `tehnik`;
-- a second `tehnik` in the same clinic is refused;
-- the invite trigger works with per-clinic names;
-- stand-ins never appear in `pending_notification_emails`;
-- the username is cleared after an e-mail change;
-- the existing MFA, leak and Advisor tests still pass.
+There is no new table.
+
+**Tests:** `sql/test/accounts.test.ts`.
+- Two clinics can both have `tehnik`.
+- The same clinic can't have two.
+- An old build's sign-up with `example.com` still works.
+- Refused: a stand-in with no invite, with another clinic's invite, with a used invite, or with an address that doesn't match.
+- A refused one leaves nothing behind and doesn't use up the invite.
+- The language is stored.
+- The username is cleared on an e-mail change.
+- `team_accounts`: the owner sees their own clinic; a worker, aal1 and anon are refused.
 
 ### 4.4 Adding a real e-mail later (a change with a confirmation link)
 
@@ -309,11 +326,14 @@ All of this is in the Supabase dashboard of the **test copy** project (`jhqyvanc
    - **Email OTP Expiration:** `86400` (24 h). This is how long invite and recovery links last.
    - **Minimum password length:** recommended `10` (the app's check moves with it).
    - **"Allow new users to sign up":** stays on until §5.
-5. **Authentication → Emails → Templates.** I'll write the exact text in the build, in et, en and ru, with no patient data. Each link uses Wivo's page, not GoTrue's redirect:
-   - **Invite user** (used only for founders Kevin invites from the dashboard):
-     `{{ .SiteURL }}/auth/confirm?type=invite&token_hash={{ .TokenHash }}`
-   - **Reset password:** `{{ .SiteURL }}/auth/confirm?type=recovery&token_hash={{ .TokenHash }}`
-   - **Change email address:** `{{ .SiteURL }}/auth/confirm?type=email_change&token_hash={{ .TokenHash }}`
+5. **Authentication → Emails → Templates.**
+   - Paste the subject and body from these files:
+     - `docs/auth-email-templates/reset-password.html` for **Reset password**;
+     - `docs/auth-email-templates/invite.html` for **Invite user** (used only for founders you invite from the dashboard);
+     - `docs/auth-email-templates/change-email.html` for **Change email address**.
+   - The subject is in each file's first comment. Paste the body without that comment.
+   - Each body is in Estonian, English and Russian, with no patient data.
+   - Each link goes to Wivo's page (`{{ .SiteURL }}/auth/confirm?type=…&token_hash={{ .TokenHash }}&lang={{ .Data.language }}`), not GoTrue's redirect.
 6. **Test it:** dashboard → Authentication → Users → **Invite user** with your own address. The e-mail arrives from `no-reply@mail.wivodent.com`. Resend → **Emails** shows it as *Delivered*.
 
 ### 6.4 Edge Function secrets (test copy)
@@ -324,52 +344,135 @@ In the test copy's dashboard → **Edge Functions → Secrets**:
 |---|---|
 | `RESEND_API_KEY` | the `wivo-test-functions` key |
 | `NOTIFY_FROM` | `Wivo <no-reply@mail.wivodent.com>` |
-| `APP_LINK` | `https://wivo-test.pages.dev` |
-| `STANDIN_DOMAIN` | `nomail.wivodent.com` |
+| `APP_LINK` | `https://wivo-test.pages.dev/job/{id}` (as send-notifications already reads it; team-account uses its origin) |
+| `STANDIN_DOMAIN` | optional; the default is `nomail.wivodent.com` |
+| `EMAIL_ALLOW_ONLY` | **test copy only:** your own addresses, for example `@wivodent.com,fullgevity@` |
 
-Setting `RESEND_API_KEY` also turns on the notification e-mails that send-notifications already has (deferred until now, GAP-ANALYSIS). That makes §4.3's "no mail to stand-ins" a **precondition**: 100 is applied before the key is set.
+**Setting `RESEND_API_KEY` also turns on send-notifications' notification e-mails**, which have been deferred until now (GAP-ANALYSIS). That makes "no mail to stand-ins" a **precondition**: 099 is applied before the key is set (§7.2, step A).
 
-**The test copy is a copy of production's data.** Its `auth.users` may hold real staff addresses. Once its SMTP and Resend are live it can send real e-mails to real people: invites from the test copy go only to your own addresses. As a safety net, I'll add an `EMAIL_ALLOW_ONLY` secret that the functions honour on the test copy, for example `@wivodent.com,fullgevity@`. Set it there and never on production.
+**The test copy is a copy of production's data.** Its `auth.users` may hold real staff addresses. `EMAIL_ALLOW_ONLY` keeps both functions' mail to your own addresses:
+- `team-account` refuses an invite to any other address, before anything is created;
+- send-notifications marks such a notice as done without sending it.
 
----
+`EMAIL_ALLOW_ONLY` is never set on production.
 
-## 7. Build order (after the go-ahead)
-
-All of it on `testing`. Kevin applies the SQL; I write the steps and the read-only checks.
-
-| # | What | Database | Can go to production |
-|---|---|---|---|
-| 1 | §4.1 count query | read-only | Kevin runs it on production now |
-| 2 | `sql/099` the one-time confirmation + tests | yes | yes, on its own, like 098 (runs on 091); test copy first |
-| 3 | §6 outside setup on the test copy (Resend, DNS, SMTP, templates) | no | — |
-| 4 | **Spike on the test copy, before writing the UI:** null-MX stand-in accepted by `createUser`; password sign-in works with it; `email_change_new` completes with secure change on; password update after recovery with an authenticator | no | — |
-| 5 | `sql/100` (per-clinic usernames, no mail to stand-ins, username cleared on e-mail change) + tests | yes | with the next release from `testing` |
-| 6 | `team-account` Edge Function + `_shared/teamAccount.ts` + tests (owner and aal2 check, stand-in derivation, invite link, no logging of addresses or tokens, `EMAIL_ALLOW_ONLY`) | no | deploy to the test copy |
-| 7 | App: `loginAddress`, Team "Add member" (e-mail / without e-mail), "Send again", "Forgot password?", `/auth/confirm` (invite, recovery, email_change), Settings "Add an e-mail address"; i18n en/et/ru | no | with the release |
-| 8 | Hand test on the test copy (checklist below) | — | — |
-| 9 | Release (merge `testing` → `main`, bump last); then, after every machine updates, §5 sign-up off | — | yes |
-
-**Hand-test checklist (test copy):**
-- **Invite:** invite your own address. The e-mail arrives in the chosen language. Continue, password, authenticator, then sign in on desktop and phone. The person is in the clinic as a technician.
-- **Invite link:** opening it twice works the first time only. A link older than 24 h is refused with a clear message.
-- **Usernames:**
-  - create `tehnik` in two different test clinics; both sign in as `tehnik@<code>`;
-  - a second `tehnik` in the same clinic is refused;
-  - an existing `tehnik` (old format) still signs in with plain `tehnik`.
-- **Username accounts are never mailed:** no notification e-mail to a stand-in (Resend → Emails shows none); "E-mail me" is hidden for that account.
-- **Add an e-mail:** a username account adds your address, clicks the link, then signs in with the e-mail, and "Forgot password?" works for it.
-- **Recovery:**
-  - "Forgot password?" for an unknown address shows the same message.
-  - For a real address: link, authenticator code, new password. Other sessions are ended.
-- **Caller check:**
-  - a non-owner, or an owner at aal1, calling `team-account` gets 403;
-  - a partner organisation's owner can only add people to their own organisation.
-- **Sign-up off:**
-  - after §5, `signUp` with the anon key is refused;
-  - invites and username accounts still work;
-  - a dashboard "Invite user" for a new founder reaches `ClinicSetupWizard`.
+Supabase's own e-mails (recovery, e-mail change) don't read this secret. On the test copy, use "Forgot password?" only with your own addresses.
 
 ---
+
+## 7. What is built, and Kevin's steps
+
+### 7.1 Built on `testing` (not pushed)
+
+| Commit | What |
+|---|---|
+| Step 1 | `sql/099` (§4.2) + tests; `shared/auth/loginAddress.ts` (the sign-in rules, tested); no "E-mail me" switch for a stand-in |
+| Script | `scripts/check-standin-auth.sh`: checks 1 and 2, for Kevin to run |
+| Step 2 | `sql/100` (§4.3) + tests |
+| Step 3 | Edge Function `team-account` + `_shared/teamAccount.ts` (tested): invite, login without e-mail, send again, add an e-mail. `EMAIL_ALLOW_ONLY` also limits send-notifications. `_shared/generated/loginAddress.ts` is a checked copy, because a deploy may not bundle imports from outside `supabase/` |
+| Step 4 | The app: Team "Add staff member" (with or without e-mail, invite status, "Send again"); sign-in with `tehnik@tal` and the remembered clinic; "Forgot password?"; the phone app's `/auth/confirm` (invite, recovery, e-mail change); Settings "Add an e-mail address"; en and et text (ru falls back to en, as everywhere) |
+
+The app no longer calls `signUp` anywhere.
+
+### 7.2 Kevin's steps, in order (test copy `jhqyvancrzykxhzwnost` only)
+
+**A. Nobody locked out, nothing mailed to stand-ins (099)**
+
+1. On production, run the read-only count query in §4.1. Note the kind-1, `confirmed = false` number.
+2. On the test copy, in the SQL Editor, run `sql/099_standin_logins.sql`. The output shows `099: confirmed N stand-in account(s)`.
+3. As a separate query, run `notify pgrst, 'reload schema';`.
+4. Read-only checks. Expect `0`, then `true` and `false`:
+
+   ```sql
+   select count(*) as unconfirmed_wivo_standins
+     from auth.users u join public.profiles p on p.id = u.id
+    where p.username is not null and u.email_confirmed_at is null and u.deleted_at is null
+      and lower(u.email) in (lower(p.username) || '@example.com', lower(p.username) || '@wivo.invalid', lower(p.username) || '@wivo.local');
+   select public.is_standin_email('x@example.com') as standin, public.is_standin_email('x@kliinik.ee') as real;
+   ```
+
+**B. DNS, then checks 1 and 2**
+
+5. Create the DNS records in §6.2 (`nomail`). `dig +short MX nomail.wivodent.com` should print `0 .`.
+6. **Before** step 7, run `bash scripts/check-standin-auth.sh`.
+   - It asks for the test copy's secret key without showing it, and refuses production.
+   - It creates one throwaway account and deletes it again.
+   - Expected result: all PASS. If GoTrue refuses the null MX, stop and tell me (§3.2, fallback).
+
+**C. The rest of the database (100)**
+
+7. On the test copy, run `sql/100_accounts.sql`, then `notify pgrst, 'reload schema';` as a separate query.
+8. Read-only checks:
+
+   ```sql
+   -- only profiles_clinic_username_key
+   select indexname from pg_indexes where schemaname = 'public' and tablename = 'profiles' and indexname like 'profiles_%username%';
+   -- on_auth_user_created, on_auth_email_changed
+   select tgname from pg_trigger where tgrelid = 'auth.users'::regclass and not tgisinternal order by 1;
+   -- 0: no clinic has the same username twice
+   select count(*) from (select clinic_id, lower(username) from public.profiles where username is not null group by 1, 2 having count(*) > 1) d;
+   ```
+
+**D. E-mail and the function**
+
+9. Resend (§6.1), DNS for `mail` (§6.1), Supabase SMTP, URL configuration, Email settings and templates (§6.3).
+10. Edge Function secrets on the test copy (§6.4):
+    - `RESEND_API_KEY`
+    - `NOTIFY_FROM`
+    - `APP_LINK`, set to `https://wivo-test.pages.dev/job/{id}`, as send-notifications uses it
+    - **`EMAIL_ALLOW_ONLY`**, set to your own addresses, for example `@wivodent.com,fullgevity@`
+11. Deploy both functions to the test copy only:
+
+    ```sh
+    supabase functions deploy team-account --project-ref jhqyvancrzykxhzwnost --no-verify-jwt
+    supabase functions deploy send-notifications --project-ref jhqyvancrzykxhzwnost --no-verify-jwt
+    ```
+
+    If the deploy can't bundle `_shared/generated/…`, tell me; the other imports are the same as account-security's.
+12. Push `testing`, so `wivo-test.pages.dev` serves `/auth/confirm`. Then run `npm run dev:test` for the desktop app against the test copy.
+
+**E. Hand test on the test copy**, including checks 3 and 4 (§7.3).
+
+**F. Later:**
+- production, in a session you start: 099, 100, §6 for production (without `EMAIL_ALLOW_ONLY`), then the release;
+- §5, sign-up off, once every machine runs the release.
+
+### 7.3 Hand test (test copy)
+
+- **Check 3: adding an e-mail.**
+  1. A username account (Settings) adds your address.
+  2. The link arrives. Opening it switches the address, and the username is gone from Team.
+  3. Sign in with the address; "Forgot password?" works for it.
+  - If the link doesn't complete while "Secure email change" is on, the fallback in §4.4 is ready to build.
+- **Check 4: recovery with an authenticator.**
+  1. "Forgot password?" for your address.
+  2. The link asks for the code first, then the new password.
+  3. Other sessions are signed out.
+  - "Forgot password?" for an unknown address gives the same message.
+- **Invite:**
+  1. Invite your own address in Estonian. The e-mail arrives in Estonian from `no-reply@mail.wivodent.com`.
+  2. Continue, set a password, add the authenticator. Then sign in on the desktop and the phone. The person is in the clinic as a technician.
+  3. Opening the link a second time says it was used.
+  - Inviting an address outside `EMAIL_ALLOW_ONLY` is refused, and nothing is created.
+- **Without e-mail:**
+  1. Create `tehnik` in two test clinics. Both sign in as `tehnik@<code>`.
+  2. On a computer where someone from that clinic signed in, `tehnik` alone works.
+  3. A second `tehnik` in the same clinic is refused.
+  4. An old plain login still works, on that computer too.
+- **No mail to stand-ins:** a notice for a username account sends no e-mail (Resend → Emails), and the switch is replaced by "Add an e-mail address".
+- **The caller check:**
+  - a worker's Team page can't add anyone;
+  - an owner without the second factor gets "Sign in with your second factor first";
+  - a partner organisation's owner adds people only to their own organisation.
+- **"Send again":** a waiting invite shows "Invite not accepted yet"; "Send again" mails a new link, and the old one stops working.
+
+### 7.4 Known limit until §5
+
+Old app builds (2.0.2 and earlier) still create username accounts with the public `signUp` and `<username>@example.com`.
+- 100 still lets them work, with the invite.
+- But with "Confirm email" on, such an account is unconfirmed and locked out. Run 099 again (it is safe to repeat) until every machine runs the release.
+- Once Supabase's SMTP is live, that sign-up also tries to send a confirmation e-mail to `example.com`, which bounces.
+- So on production: **release the new build before turning on custom SMTP**, then switch sign-up off (§5).
 
 ## 8. Not in this plan
 
