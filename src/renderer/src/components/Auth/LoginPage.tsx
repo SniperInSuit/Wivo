@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Loader2, Lock, Eye, EyeOff, Mail } from 'lucide-react'
-import { signIn } from '../../lib/supabase'
+import { signIn, sendPasswordReset, rememberedClinicCode } from '../../lib/supabase'
+import { loginAddresses } from '@shared/auth/loginAddress'
 import wivoLogo from '../../assets/Wivo Logo.png'
 import { t } from '@/lib/i18n'
 
@@ -10,6 +11,23 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [resetNote, setResetNote] = useState<string | null>(null)
+  const [code] = useState(rememberedClinicCode)
+
+  // A link only to a real address. A login without e-mail cannot receive one:
+  // the clinic's owner sets a new password (Team).
+  async function forgotPassword() {
+    setError(null)
+    const typed = email.trim()
+    const real = typed.includes('@') && loginAddresses(typed)[0] === typed
+    if (!real) { setResetNote(t('auth.resetNoEmail')); return }
+    setLoading(true)
+    const { error: err } = await sendPasswordReset(typed)
+    setLoading(false)
+    // The same answer whether or not the address has an account.
+    if (err && /rate limit/i.test(err.message)) setError(t('auth.resetTooOften'))
+    else setResetNote(t('auth.resetSent'))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -55,6 +73,7 @@ export function LoginPage() {
                 autoFocus
               />
             </div>
+            {code && <p className="mt-1 text-[11px] text-ink-faint">{t('auth.usernameAtClinicHere', { code: code.toUpperCase() })}</p>}
           </div>
 
           <div>
@@ -86,6 +105,7 @@ export function LoginPage() {
               {error}
             </p>
           )}
+          {resetNote && <p role="status" className="text-sm text-ink-soft">{resetNote}</p>}
 
           <button
             type="submit"
@@ -93,6 +113,10 @@ export function LoginPage() {
             className="btn-primary w-full justify-center disabled:opacity-50"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : t('auth.signIn')}
+          </button>
+          <button type="button" onClick={() => void forgotPassword()} disabled={loading}
+            className="block w-full text-center text-xs text-accent hover:underline disabled:opacity-50">
+            {t('auth.forgotPassword')}
           </button>
         </form>
 

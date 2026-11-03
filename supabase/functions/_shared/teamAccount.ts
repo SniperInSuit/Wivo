@@ -156,8 +156,9 @@ export function appOrigin(appLink: string | undefined): string | null {
   try { return appLink ? new URL(appLink.replace('{id}', 'x')).origin : null } catch { return null }
 }
 
-export function confirmLink(origin: string, type: 'invite' | 'email_change', hashedToken: string): string {
-  return `${origin}/auth/confirm?type=${type}&token_hash=${encodeURIComponent(hashedToken)}`
+/** The page opens in the person's language on a device where nobody chose one. */
+export function confirmLink(origin: string, type: 'invite' | 'email_change', hashedToken: string, language: Lang): string {
+  return `${origin}/auth/confirm?type=${type}&token_hash=${encodeURIComponent(hashedToken)}&lang=${language}`
 }
 
 // ── The requests ────────────────────────────────────────────────────────────
@@ -222,7 +223,7 @@ async function invite(caller: string, req: Extract<TeamRequest, { action: 'invit
 
 async function mailInvite(to: string, clinic: string, language: Lang, hashedToken: string, userId: string, deps: TeamAccountDeps): Promise<Answer> {
   const t = INVITE[language]
-  const url = confirmLink(appOrigin(deps.env('APP_LINK'))!, 'invite', hashedToken)
+  const url = confirmLink(appOrigin(deps.env('APP_LINK'))!, 'invite', hashedToken, language)
   const sent = await deps.sendMail({ to, subject: fill(t.subject, { clinic }), text: fill(t.text, { clinic, link: url }) })
   if (!sent.ok) {
     // The account is made and in the clinic; "Send again" retries the e-mail.
@@ -300,7 +301,7 @@ async function addEmail(caller: string, req: Extract<TeamRequest, { action: 'add
   }
   if (!link.hashedToken) return fail(502, 'failed')
   const t = ADD_EMAIL[req.language]
-  const url = confirmLink(appOrigin(deps.env('APP_LINK'))!, 'email_change', link.hashedToken)
+  const url = confirmLink(appOrigin(deps.env('APP_LINK'))!, 'email_change', link.hashedToken, req.language)
   const sent = await deps.sendMail({ to: req.email, subject: t.subject, text: fill(t.text, { link: url }) })
   if (!sent.ok) {
     deps.warn(`add_email: e-mail not sent: ${scrub(sent.error ?? '')}`)

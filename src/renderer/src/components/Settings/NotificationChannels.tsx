@@ -10,6 +10,7 @@ import { BellRing } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { isStandinEmail } from '@shared/auth/loginAddress'
+import { AddOwnEmail } from './AddOwnEmail'
 import { t } from '@/lib/i18n'
 
 type Channel = 'notify_push' | 'notify_email'
@@ -55,7 +56,7 @@ export function NotificationChannels() {
       <p className="text-xs text-ink-faint">{t('notifications.channelsHelp')}</p>
       {row('notify_push', t('notifications.pushMe'), t('notifications.pushHelp'))}
       {isStandinEmail(auth.user?.email)
-        ? <p className="text-xs text-ink-muted">{t('notifications.emailNoAddress')}</p>
+        ? <><p className="text-xs text-ink-muted">{t('notifications.emailNoAddress')}</p><AddOwnEmail /></>
         : row('notify_email', t('notifications.emailMe'), t('notifications.emailHelp'))}
       {error && <p role="alert" className="text-xs text-rose-500">{error}</p>}
     </section>

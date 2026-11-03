@@ -107,7 +107,7 @@ describe('invite: a real e-mail', () => {
     const m = calls.mails[0]
     expect(m.to).toBe('mari@kliinik.ee')
     expect(m.subject).toBe('Hambalabor OÜ kutsub sind Wivosse')
-    expect(m.text).toContain('https://app.wivodent.com/auth/confirm?type=invite&token_hash=hashed%2Btoken%2F1')
+    expect(m.text).toContain('https://app.wivodent.com/auth/confirm?type=invite&token_hash=hashed%2Btoken%2F1&lang=et')
   })
 
   it('an address that already has an account', async () => {
@@ -246,7 +246,7 @@ describe('helpers', () => {
     expect(appOrigin('https://wivo-test.pages.dev/job/{id}')).toBe('https://wivo-test.pages.dev')
     expect(appOrigin(undefined)).toBeNull()
     expect(appOrigin('not a url')).toBeNull()
-    expect(confirmLink('https://x.dev', 'invite', 'a b')).toBe('https://x.dev/auth/confirm?type=invite&token_hash=a%20b')
+    expect(confirmLink('https://x.dev', 'invite', 'a b', 'ru')).toBe('https://x.dev/auth/confirm?type=invite&token_hash=a%20b&lang=ru')
   })
 
   it('logs never carry an address', () => {

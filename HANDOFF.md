@@ -167,16 +167,18 @@ look arbitrary until the day someone undoes it.
   and `handle_new_user()` would accumulate junk `profiles` rows for every
   visitor. Public surfaces go through an edge function holding the service key,
   never through an anon session.
-- **Creating another user MUST go through `createSignupClient()`.** `signUp` on
-  the main client signs the new user in and swaps the owner's session.
-- Username login: `<username>@example.com` (override `VITE_USERNAME_DOMAIN`) is
-  SYNTHETIC and must never be shown — use `displayIdentity()`. Do **not** use
-  `.invalid` or `.local`: GoTrue rejects them outright. Consequence: those
-  accounts cannot self-reset a password, and usernames are unique project-wide.
-- `admin_set_worker_password()` and `admin_delete_worker()` are the **only**
-  places that write to the `auth` schema (bcrypt via pgcrypto). Not a
-  Supabase-supported interface — if a GoTrue upgrade breaks logins, check these
-  first.
+- **Accounts are made only on the server** (docs/ACCOUNTS.md): the Edge
+  Function `team-account` (owner + second factor + the database's invite
+  token). The app never calls `signUp`; public sign-up is to be switched off.
+- Logins without e-mail: a stand-in `<username>.<clinic code>@nomail.wivodent.com`
+  (unique per clinic; typed as `tehnik@tal`, or `tehnik` on a device that
+  remembers the clinic). Older ones keep `<username>@example.com` and their
+  plain login. A stand-in is never shown (`displayIdentity()`) and never
+  mailed (sql/099). Rules: shared/auth/loginAddress.ts.
+- `admin_set_worker_password()` and `admin_delete_worker()` write to the `auth`
+  schema (bcrypt via pgcrypto), and sql/099 confirmed the old stand-ins once.
+  Not a Supabase-supported interface — if a GoTrue upgrade breaks logins,
+  check these first.
 - Removing a worker UNLINKS the profile (`clinic_id = null`) and clears
   permissions; it cannot delete the account (needs `service_role`, which must
   never ship in a client). Permanent delete is refused if any history exists.

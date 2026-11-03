@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import type { ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import {
-  supabase, getSession, getProfile, onAuthStateChange, signOut as doSignOut,
+  supabase, getSession, getProfile, onAuthStateChange, signOut as doSignOut, rememberClinicCode,
   setActiveClinicId, type Profile, type UserRole
 } from '../lib/supabase'
 
@@ -83,6 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profile?.clinic_id) {
       clinic = await fetchClinic(profile.clinic_id)
     }
+    // A username alone then signs in at this clinic on this device (docs/ACCOUNTS.md).
+    rememberClinicCode(clinic?.code_prefix)
     setActiveClinicId(profile?.clinic_id ?? null)
     setState({ status: 'authenticated', user, profile, clinic })
   }, [])

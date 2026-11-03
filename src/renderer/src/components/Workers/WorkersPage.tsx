@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Users, UserPlus, Shield, Loader2, Trash2, Mail, Check, Lock, Copy } from 'lucide-react'
-import { supabase, createSignupClient, isEmailAddress, usernameToEmail, displayIdentity } from '../../lib/supabase'
+import { Users, UserPlus, Shield, Loader2, Trash2, Check, Lock, Copy } from 'lucide-react'
+import { supabase, displayIdentity } from '../../lib/supabase'
+import { AddMemberDialog } from './AddMemberDialog'
+import { teamAccounts, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
 import { ResetMfaPanel } from './ResetMfaPanel'
@@ -8,7 +10,7 @@ import type { Profile } from '../../lib/supabase'
 import {
   ALL_PERMISSIONS, PERMISSION_LABELS, type PermissionKey
 } from '../../hooks/usePermissions'
-import { t } from '@/lib/i18n'
+import { t, lang } from '@/lib/i18n'
 
 interface WorkerWithPerms extends Profile {
   permissions: Map<string, boolean>
@@ -86,15 +88,10 @@ export function WorkersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Invite state
   const [showInvite, setShowInvite] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteName, setInviteName] = useState('')
-  const [invitePassword, setInvitePassword] = useState('')
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [inviting, setInviting] = useState(false)
-  const [invited, setInvited] = useState(false)
-  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null)
+  // How each member signs in, and whether an invite still waits (sql/100).
+  const [accounts, setAccounts] = useState<Map<string, TeamAccount>>(new Map())
+  const [resend, setResend] = useState<{ id: string; state: 'busy' | 'sent' | string } | null>(null)
   const [removed, setRemoved] = useState<Profile[]>([])
   const [removing, setRemoving] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
@@ -132,6 +129,7 @@ export function WorkersPage() {
         ...p,
         permissions: permMap.get(p.id) ?? new Map()
       })))
+      setAccounts(await teamAccounts())
 
       // People removed from the clinic. The account itself cannot be deleted
       // from here — that needs the service_role key, which has no business
@@ -286,88 +284,13 @@ export function WorkersPage() {
     }
   }
 
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault()
-    if (!inviteEmail.trim() || !invitePassword.trim()) return
-    if (invitePassword.length < 6) { setInviteError(t('workers.passwordMustBeAtLeast6')); return }
-    setInviteError(null)
-    setInviting(true)
+  async function sendInviteAgain(profile: Profile) {
+    setResend({ id: profile.id, state: 'busy' })
     try {
-      const identifier = inviteEmail.trim()
-      const password = invitePassword.trim()
-      // A username is the normal case here: a technician has no company mailbox,
-      // and inventing one for them is a lie that becomes a support problem the
-      // first time someone tries a password reset. A real address still works.
-      const usesEmail = isEmailAddress(identifier)
-      const username = usesEmail ? null : identifier.toLowerCase().replace(/\s+/g, '')
-      const email = usesEmail ? identifier : usernameToEmail(identifier)
-
-      // A one-time invite token (sql/086): the signup trigger puts the new
-      // account straight into this clinic, so nothing has to find and link a
-      // clinic-less profile afterwards. A database without 086 has no such
-      // function; then the old link-after-signup below still applies.
-      const { data: inviteToken, error: inviteErr } = await supabase.rpc('create_worker_invite')
-      const tokenFlow = !inviteErr && typeof inviteToken === 'string'
-
-      // Created on an isolated client so the owner stays logged in as themselves
-      // — see createSignupClient().
-      const { data: signUpData, error } = await createSignupClient().auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: inviteName.trim() || identifier.split('@')[0],
-            ...(tokenFlow ? { invite_token: inviteToken, ...(username ? { username } : {}) } : {}),
-          }
-        }
-      })
-      if (error) throw error
-
-      const newUserId = signUpData.user?.id
-      if (tokenFlow && newUserId) {
-        // Already in the clinic. The one thing to confirm: a username someone
-        // else holds is left empty by the trigger rather than failing signup.
-        const { data: created } = await supabase.from('profiles').select('clinic_id, username').eq('id', newUserId).maybeSingle()
-        if (!created?.clinic_id) throw new Error(t('workers.inviteNotApplied'))
-        if (username && created.username !== username) throw new Error(t('workers.thisUsernameIsAlreadyTakenThe'))
-      }
-
-      // Older databases: link the new profile to this clinic (trigger creates
-      // profile with 'worker' role). Retry a few times since the trigger may not have fired yet
-      if (!tokenFlow && newUserId && clinicId) {
-        for (let attempt = 0; attempt < 5; attempt++) {
-          await new Promise(r => setTimeout(r, 500))
-          const { error: linkErr } = await supabase
-            .from('profiles')
-            .update({
-              clinic_id: clinicId,
-              ...(username ? { username } : {}),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', newUserId)
-          if (!linkErr) break
-        }
-      }
-
-      setCreatedCredentials({ email: username ?? email, password })
-      setInvited(true)
-      await loadWorkers()
-    } catch (err: unknown) {
-      const msg = (err as Error)?.message ?? t('workers.creatingTheAccountFailed')
-      if (msg.includes('already registered')) setInviteError(
-        t('workers.thisUsernameIsAlreadyTakenThe')
-      )
-      else if (msg.toLowerCase().includes('rate limit')) {
-        // Supabase's built-in SMTP allows only a couple of messages an hour, and
-        // a signup only sends one at all when confirmation is switched on —
-        // which it does not need to be for in-house accounts.
-        setInviteError(
-          t('workers.supabaseEmailLimitReachedTurnOff')
-        )
-      }
-      else setInviteError(msg)
-    } finally {
-      setInviting(false)
+      await resendInvite(profile.id, profile.language ?? lang)
+      setResend({ id: profile.id, state: 'sent' })
+    } catch (err) {
+      setResend({ id: profile.id, state: teamErrorMessage(err) })
     }
   }
 
@@ -410,8 +333,11 @@ export function WorkersPage() {
               >
                 <p className="text-sm font-semibold truncate">{w.full_name || '—'}</p>
                 <p className="text-[11px] text-ink-faint truncate">
-                  {displayIdentity(null, w.username)}
+                  {accounts.get(w.id)?.login ?? displayIdentity(null, w.username)}
                 </p>
+                {accounts.get(w.id)?.invite_pending && (
+                  <p className="text-[11px] text-amber-600">{t('team.invitePending')}</p>
+                )}
                 <p className="text-[11px] text-ink-faint flex items-center gap-1.5">
                   <Shield size={10} />
                   {w.role === 'owner' ? t('workers.owner2') : t('workers.staffMember')}
@@ -449,6 +375,20 @@ export function WorkersPage() {
                   <h2 className="text-base font-semibold text-ink">{selected.full_name || '—'}</h2>
                   <p className="text-xs text-ink-muted">{t('workers.staffPermissions')}</p>
                 </div>
+
+                {accounts.get(selected.id)?.invite_pending && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs space-y-1.5">
+                    <p className="text-amber-800">{t('team.invitePendingHelp', { email: accounts.get(selected.id)!.login })}</p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => void sendInviteAgain(selected)} disabled={resend?.id === selected.id && resend.state === 'busy'}
+                        className="btn-ghost border border-amber-300 text-xs disabled:opacity-50">
+                        {resend?.id === selected.id && resend.state === 'busy' ? <Loader2 size={12} className="animate-spin" /> : t('team.sendAgain')}
+                      </button>
+                      {resend?.id === selected.id && resend.state === 'sent' && <span className="text-emerald-700">{t('team.sentAgain')}</span>}
+                      {resend?.id === selected.id && resend.state !== 'sent' && resend.state !== 'busy' && <span className="text-red-700">{resend.state}</span>}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   {ALL_PERMISSIONS.map(perm => {
@@ -608,141 +548,8 @@ export function WorkersPage() {
           </div>
         </div>
 
-        {/* Invite modal */}
         {showInvite && (
-          <>
-            <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setShowInvite(false)} />
-            <div className="fixed inset-0 flex items-center justify-center z-50" onClick={() => setShowInvite(false)}>
-              <div className="bg-bg-card rounded-2xl shadow-panel p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
-                {invited && createdCredentials ? (
-                  <>
-                    <h3 className="text-base font-semibold text-ink flex items-center gap-2">
-                      <Check size={16} className="text-emerald-500" /> {t('workers.accountCreated')}
-                    </h3>
-                    <p className="text-sm text-ink-muted">
-                      {t('workers.giveTheseDetailsToTheStaff')}
-                    </p>
-                    <div className="bg-bg-sidebar rounded-xl p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] text-ink-faint uppercase font-semibold">{t('workers.username')}</p>
-                          <p className="text-sm font-mono text-ink">{createdCredentials.email}</p>
-                        </div>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(createdCredentials.email)}
-                          className="p-1.5 text-ink-faint hover:text-accent transition-colors"
-                          title={t('workers.copy')}
-                        >
-                          <Copy size={13} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] text-ink-faint uppercase font-semibold">{t('workers.password')}</p>
-                          <p className="text-sm font-mono text-ink">{createdCredentials.password}</p>
-                        </div>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(createdCredentials.password)}
-                          className="p-1.5 text-ink-faint hover:text-accent transition-colors"
-                          title={t('workers.copy')}
-                        >
-                          <Copy size={13} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-ink-faint">
-                      {t('workers.theStaffMemberCanChangeThe')}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowInvite(false)
-                        setInvited(false)
-                        setCreatedCredentials(null)
-                        setInviteEmail('')
-                        setInviteName('')
-                        setInvitePassword('')
-                      }}
-                      className="btn-primary w-full justify-center"
-                    >
-                      {t('workers.close')}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-base font-semibold text-ink flex items-center gap-2">
-                      <UserPlus size={16} /> {t('workers.addStaffMember')}
-                    </h3>
-                    <form onSubmit={handleInvite} className="space-y-3">
-                      <div>
-                        <label className="label">{t('workers.name')}</label>
-                        <input
-                          type="text"
-                          value={inviteName}
-                          onChange={e => setInviteName(e.target.value)}
-                          placeholder={t('workers.staffMemberName')}
-                          className="input"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">{t('workers.username2')}</label>
-                        <div className="relative">
-                          <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-                          <input
-                            type="text"
-                            value={inviteEmail}
-                            onChange={e => setInviteEmail(e.target.value)}
-                            placeholder={t('workers.technician')}
-                            className="input pl-9"
-                            autoCapitalize="none"
-                            autoCorrect="off"
-                            required
-                          />
-                        </div>
-                        <p className="text-[10px] text-ink-faint mt-1 leading-relaxed">
-                          {t('workers.noEmailNeededIfYouLike')}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="label">{t('workers.password2')}</label>
-                        <div className="relative">
-                          <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-                          <input
-                            type="text"
-                            value={invitePassword}
-                            onChange={e => setInvitePassword(e.target.value)}
-                            placeholder={t('workers.atLeast6Characters')}
-                            className="input pl-9"
-                            required
-                            minLength={6}
-                          />
-                        </div>
-                        <p className="text-[11px] text-ink-faint mt-1">{t('workers.youSetThePasswordGiveIt')}</p>
-                      </div>
-                      {inviteError && (
-                        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{inviteError}</p>
-                      )}
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          type="submit"
-                          disabled={inviting}
-                          className="btn-primary disabled:opacity-50"
-                        >
-                          {inviting ? <Loader2 size={14} className="animate-spin" /> : t('workers.createAccount')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setShowInvite(false); setInviteError(null) }}
-                          className="btn-ghost"
-                        >
-                          {t('workers.cancel2')}
-                        </button>
-                      </div>
-                    </form>
-                  </>
-                )}
-              </div>
-            </div>
-          </>
+          <AddMemberDialog onClose={() => setShowInvite(false)} onCreated={() => void loadWorkers()} />
         )}
         <DebugConsole />
       </div>

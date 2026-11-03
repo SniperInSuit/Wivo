@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { supabaseTarget } from './testCopy'
 import type { Job } from '../types/job'
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
+import { STANDIN_DOMAIN, loginAddresses, loginNameOf, normaliseClinicCode } from '@shared/auth/loginAddress'
 
 // Read from .env — never hardcode these values. In test mode (`npm run
 // dev:test`) from .env.test, and never production: lib/testCopy.
@@ -30,24 +31,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  */
 export const storageEndpoint = (): string => `${supabaseUrl}/storage/v1/upload/resumable`
 export const anonKey = (): string => supabaseAnonKey
-
-/**
- * A throwaway client for creating someone ELSE's account.
- *
- * `signUp` signs the new user in on whichever client made the call. On the main
- * client that silently swaps the owner's session for the new worker's — they
- * would finish creating a technician and find themselves logged in as one.
- * (It only bites once email confirmation is off, because a confirmed-by-email
- * signup returns no session, which is why it stayed hidden.)
- *
- * This client keeps nothing: no storage, no refresh, no session. The new user's
- * token dies with the function call.
- */
-export function createSignupClient() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  })
-}
 
 // Typed table reference for IDE completion
 export type JobRow = Job
@@ -114,54 +97,59 @@ export interface Profile {
 }
 
 /**
- * Login identity.
+ * Login identity: docs/ACCOUNTS.md, rules in shared/auth/loginAddress.ts.
  *
- * Supabase Auth requires an email; a lab bench does not have one per person. A
- * username is therefore mapped to a synthetic address that users never see.
+ * A real e-mail is the normal way. A person without one has a stand-in that
+ * can never receive mail, `<username>.<clinic code>@nomail.wivodent.com`, and
+ * types `tehnik@tal`, or just `tehnik` on a device that remembers the clinic.
+ * Accounts made before that keep `<username>@example.com` and their plain
+ * login. Stand-ins are made only on the server (Edge Function team-account).
  *
- * The domain is `example.com` by default. It is RFC 2606-reserved, so it can
- * never be registered by anyone and IANA's servers discard mail sent to it —
- * which is the same guarantee `.invalid` gives, except that GoTrue's email
- * validator ACCEPTS it. `.invalid` and `.local` are rejected outright ("Email
- * address is invalid"), which is what this replaced.
- *
- * Override with VITE_USERNAME_DOMAIN if you own a domain and would rather these
- * read as `tehnik@users.sinukliinik.ee`. Changing it AFTER accounts exist
- * orphans them: their stored address keeps the old domain and the derived one
- * will no longer match, so pick it before creating staff logins.
+ * VITE_STANDIN_DOMAIN must match the function's STANDIN_DOMAIN (another
+ * instance only); changing it after accounts exist orphans their logins.
  */
-export const USERNAME_DOMAIN =
-  (import.meta.env.VITE_USERNAME_DOMAIN as string | undefined)?.trim() || 'example.com'
+export const LOGIN_STANDIN_DOMAIN =
+  (import.meta.env.VITE_STANDIN_DOMAIN as string | undefined)?.trim() || STANDIN_DOMAIN
 
-/** Domains that have ever been used for synthetic logins, so display code can
- *  recognise and hide them all. */
-const SYNTHETIC_DOMAINS = [USERNAME_DOMAIN, 'wivo.invalid', 'wivo.local']
+const LOGIN_CODE_KEY = 'wivo.loginClinicCode'
 
-export const isEmailAddress = (identifier: string): boolean => identifier.includes('@')
-
-export function usernameToEmail(username: string): string {
-  return `${username.trim().toLowerCase().replace(/\s+/g, '')}@${USERNAME_DOMAIN}`
+/** The clinic this device last signed in to, so a username alone is enough here. */
+export function rememberedClinicCode(): string | null {
+  try { return normaliseClinicCode(localStorage.getItem(LOGIN_CODE_KEY)) } catch { return null }
 }
 
-/** Hide the synthetic address wherever an email would normally be displayed. */
+export function rememberClinicCode(code: string | null | undefined): void {
+  const c = normaliseClinicCode(code)
+  if (!c) return
+  try { localStorage.setItem(LOGIN_CODE_KEY, c) } catch { /* private mode: type the code */ }
+}
+
+/** How a person signs in, for display: `tehnik@tal`, an old `tehnik`, or the address. */
 export function displayIdentity(email: string | null | undefined, username?: string | null): string {
-  if (username?.trim()) return username.trim()
-  if (email && SYNTHETIC_DOMAINS.some(d => email.endsWith(`@${d}`))) return email.split('@')[0]
-  return email ?? '—'
+  if (email) return loginNameOf(email, LOGIN_STANDIN_DOMAIN)
+  return username?.trim() || '—'
 }
 
-/** Accepts either a username or a real email address. */
+/**
+ * A real address, `username@code`, or a plain username (this device's clinic
+ * first, then the old login). Each address is tried in turn while the answer
+ * is "wrong password", so an old `tehnik` still works on a device that
+ * remembers a clinic with its own `tehnik`.
+ */
 export async function signIn(identifier: string, password: string) {
-  const email = isEmailAddress(identifier) ? identifier.trim() : usernameToEmail(identifier)
-  return supabase.auth.signInWithPassword({ email, password })
+  const tries = loginAddresses(identifier, { rememberedCode: rememberedClinicCode(), standinDomain: LOGIN_STANDIN_DOMAIN })
+  if (tries.length === 0) return supabase.auth.signInWithPassword({ email: identifier.trim(), password })
+  let result = await supabase.auth.signInWithPassword({ email: tries[0], password })
+  for (const email of tries.slice(1)) {
+    if (!result.error || !/Invalid login credentials/i.test(result.error.message)) break
+    result = await supabase.auth.signInWithPassword({ email, password })
+  }
+  return result
 }
 
-export async function signUp(email: string, password: string, fullName: string) {
-  return supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } }
-  })
+/** "Forgot password?": a link to a real address. Same answer whether or not it has an account. */
+export async function sendPasswordReset(email: string) {
+  return supabase.auth.resetPasswordForEmail(email.trim())
 }
 
 export async function signOut() {

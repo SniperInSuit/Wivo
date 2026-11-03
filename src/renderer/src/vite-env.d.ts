@@ -5,9 +5,9 @@
 // tsconfig.web.json only includes src/renderer/src/**/*.
 declare const __APP_VERSION__: string
 
-// Optional override for the synthetic login domain (see lib/supabase.ts).
+// Optional: another instance's stand-in login domain (see lib/supabase.ts).
 interface ImportMetaEnv {
-  readonly VITE_USERNAME_DOMAIN?: string
+  readonly VITE_STANDIN_DOMAIN?: string
   /** Optional. Without it Sentry is not loaded at all. */
   readonly VITE_SENTRY_DSN?: string
   /** Phone app only (lib/push.ts). Without it "Notifications on this phone" says push is not set up. */
