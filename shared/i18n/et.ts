@@ -2240,7 +2240,9 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'tableView.markSelectedJobsAsPaid': "Märgi valitud tööd makstuks",
 
   // ── topBar ────────────────────────────────────────────────────────────────
-  'topBar.searchPatientsJobs': "Otsi patsienti, tööd…",
+  'topBar.searchPatientsJobs': "Töö kood, patsient, töö…",
+  'topBar.noJobFound': "Tööd ei leitud: {q}",
+  'topBar.manyJobsFound': "{count} tööd sobivad. Ühe avamiseks kirjuta kogu töö kood.",
   'topBar.newVisit': "Uus visiit",
   'topBar.newJob': "Uus töö",
   'topBar.signOut': "Logi välja",
