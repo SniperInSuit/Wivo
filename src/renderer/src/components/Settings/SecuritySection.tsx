@@ -25,6 +25,7 @@ import { EnrollSteps, CodeForm } from '../Auth/MfaGate'
 import { SignOutOthersSection } from './SignOutOthersSection'
 import { describeError } from '../Patients/errors'
 import { t, dateLocale } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 const day = (iso: string): string => format(new Date(iso), 'd MMM yyyy', { locale: dateLocale })
 
@@ -201,7 +202,7 @@ function RemoveAuthenticator({ factor, last, onCancel, onDone }: {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (last && !window.confirm(t('security.lastConfirm'))) return
+    if (last && !(await confirmDialog({ message: t('security.lastConfirm'), danger: true }))) return
     setBusy(true)
     setError(null)
     try {
@@ -274,7 +275,7 @@ function PhonesSection() {
   useEffect(() => { void load() }, [load])
 
   async function remove(p: Phone) {
-    if (!window.confirm(t('security.removePhoneConfirm'))) return
+    if (!(await confirmDialog({ message: t('security.removePhoneConfirm'), danger: true }))) return
     setError(null)
     try { await removePhone(p.id); await load() } catch (e) { setError(describeError(e)) }
   }

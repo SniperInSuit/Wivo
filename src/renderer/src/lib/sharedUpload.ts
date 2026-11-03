@@ -10,6 +10,7 @@
 import { supabase } from './supabase'
 import { extensionOf, type JobFileType } from './fileClean'
 import { t } from './i18n'
+import { confirmDialog } from './confirm'
 
 export type SharedFileWarning = 'pdf' | 'photo' | 'xray'
 
@@ -54,5 +55,5 @@ async function isJobShared(jobId: string): Promise<boolean> {
 export async function confirmSharedUpload(jobId: string, files: OutgoingFile[]): Promise<boolean> {
   const warnings = sharedFileWarnings(files)
   if (warnings.length === 0 || !(await isJobShared(jobId))) return true
-  return window.confirm([t('files.sharedWarnIntro'), ...warnings.map(w => t(TEXT[w])), t('files.sharedWarnConfirm')].join('\n\n'))
+  return confirmDialog({ message: [t('files.sharedWarnIntro'), ...warnings.map(w => t(TEXT[w])), t('files.sharedWarnConfirm')].join('\n\n') })
 }

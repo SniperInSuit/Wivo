@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { ShieldOff, Check } from 'lucide-react'
 import { resetMemberMfa, securityErrorText } from '../../lib/accountSecurity'
 import { t } from '@/lib/i18n'
+import { confirmDialog } from '../../lib/confirm'
 
 export function ResetMfaPanel({ memberId, name }: { memberId: string; name: string }) {
   const [reason, setReason] = useState('')
@@ -21,7 +22,7 @@ export function ResetMfaPanel({ memberId, name }: { memberId: string; name: stri
   useEffect(() => { setReason(''); setDone(false); setError(null) }, [memberId])
 
   async function reset() {
-    if (!window.confirm(t('workers.mfaResetConfirm', { name }))) return
+    if (!(await confirmDialog({ message: t('workers.mfaResetConfirm', { name }), danger: true }))) return
     setBusy(true)
     setError(null)
     try {
