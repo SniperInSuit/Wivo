@@ -442,3 +442,38 @@ What the answers mean:
 4. **Release 2.0.0:** push `main` as it is, with the version bump `ad078af` still the newest commit, so CI publishes. Independent of steps 1–3.
 5. **Bring the fix into `main`:** merge `hotfix-push` into `main` and push. That push builds but publishes nothing.
 6. **Test on a phone:** lock an iPhone with Wivo closed, trigger a notification from another account, and check it arrives.
+
+## Production session, step 1: the hotfix branch (3 November 2026)
+
+Git only, no database and no deploy. Kevin ran the production checks himself:
+- `pg_cron` and `pg_net` are on, and all four cron jobs exist and run.
+- **Vault has no `wivo_functions_url`**, so `wivo-send-notifications` has never sent anything.
+- `wivo_service_role_key` is neither a JWT nor an `sb_secret` key.
+- The only reply in the last hour is from **send-invoices: `401 UNAUTHORIZED_INVALID_JWT_FORMAT`**. Invoices already fail, so switching Vault to an `sb_secret` key breaks nothing that works today.
+
+**Decision:** production gets the setup that worked on the test copy: send-notifications deployed with `--no-verify-jwt`, a new `sb_secret` key in Vault and as `WIVO_SERVICE_SECRET_KEY`, and `wivo_functions_url` set.
+
+**`hotfix-push`** was made from `origin/main` (`061989c`, 1.109.0):
+- `e26933b`: cherry-pick of `e0214fe`. `index.ts` conflicted and the `testing` version was taken.
+- `2eac090`: cherry-pick of `e8783a3`, including `supabase/config.toml` with `verify_jwt = false`.
+- Tests on `hotfix-push`: 83 files and 1,268 tests pass, including the 17 function tests. They were run with `npx vitest run --mode unit`: main's `npm test` uses Vitest's default mode, which would read the local `.env.test`.
+- Not pushed. Its upstream was removed: git had linked it to `origin/main`, and a push from GitHub Desktop could have gone to `main`.
+
+**Next (Kevin runs these):**
+1. Set the function secret `WIVO_SERVICE_SECRET_KEY` on production.
+2. Deploy send-notifications from `hotfix-push` with `--no-verify-jwt`.
+3. Put the `sb_secret` key and `wivo_functions_url` in Vault, with SQL that refuses anything but an `sb_secret_` key and production's own functions URL.
+4. Check `net._http_response`.
+5. Test on a locked iPhone.
+
+Vault goes last: until `wivo_functions_url` exists, the cron job sends nothing. So the function is ready before the first call reaches it.
+
+**Invoices stay off until `send-invoices` has its own service-key check.**
+- `send-invoices` relies on the gateway's JWT check alone. On production the gateway already refuses the Vault value (`UNAUTHORIZED_INVALID_JWT_FORMAT`), and after the switch Vault holds an `sb_secret` key, which that gateway check will never accept.
+- So **before e-mail (invoice sending) is switched on**, `send-invoices` needs the same treatment as send-notifications:
+  - `isServiceRequest` from `_shared/serviceAuth.ts`, accepting `sb_secret`;
+  - `verify_jwt = false` in `config.toml`;
+  - its own database client on `serviceClientKey`;
+  - tests;
+  - first on the test copy, then on production the same way.
+- Until then, **invoices stay off.** The `wivo-send-invoices` job keeps calling and getting 401, which sends nothing.
