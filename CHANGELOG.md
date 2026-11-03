@@ -1,5 +1,73 @@
 # Changelog
 
+## [2.0.4] — 2026-11-03
+
+**Chat attachments open in the viewer, and Wivo asks in its own words**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **Attachments in a job's thread** (also a partner job's) open in the same
+  viewer as the job's files instead of a new tab: images large, moving
+  between the thread's images, zoom and download; a PDF in the PDF viewer;
+  other files download. The same short-lived, audited link as before.
+- **Wivo's own confirmation dialog** replaces the system one ("app.wivodent.com
+  says…"): deleting a file, leaving unsaved patient edits, ending a
+  partnership, signing out other devices. A red button marks what cannot be
+  undone; Esc or a click outside cancels.
+
+**Under the hood**
+- The desktop app's main-process typecheck lists the two shared files it
+  imports; no change to the app.
+
+No database migration.
+
+## [2.0.3] — 2026-11-03
+
+**See a job's images and PDFs large, without downloading them**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **Click an image on a job** (its name or its thumbnail) and it opens large
+  over the screen. Move between the job's images with the arrows, the arrow
+  keys or a swipe; zoom with + and −, the mouse wheel, a double click or two
+  fingers, and drag a zoomed image to look around. A download button is there
+  too. Esc, the × or a click outside the image closes it.
+- **A PDF opens in the viewer as well,** in the built-in PDF viewer. This
+  desktop version turns that viewer on; before it, a PDF could only be
+  downloaded.
+- Every file is fetched with the same short-lived, audited link as a
+  download, only when it is shown. Scans, STL files and iPhone (HEIC) photos
+  still download as before.
+
+**Server (no app change, deployed separately)**
+- **Invoice sending accepts only the server's own key.** Before, any signed-in
+  user, or the app's public key, could start an invoice run. Now only the
+  scheduled job can. Deploy `send-invoices` with `--no-verify-jwt`.
+
+No database migration.
+
+## [2.0.2] — 2026-11-03
+
+**Find a job by its code, whatever dates are on screen**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **The search finds job codes.** Type or paste a code in the search at the
+  top (on the phone, on the home screen). Case, outer spaces and missing or
+  extra dashes don't matter: `tal-26-0042`, `TAL260042` and ` TAL-26-0042 `
+  all find TAL-26-0042.
+- **It searches the database,** not only the jobs on screen: any date, any
+  stage. Codes and patient names; at most 20 results, the exact code first.
+- **Enter opens the job:** the exact code at once, else the only result. If
+  nothing is found, the search says so.
+- Only your own organisation's jobs that you may read; deleted jobs never.
+  Partners search jobs shared with them in the partner view, which shows no
+  patient.
+- No database migration, no server change.
+
 ## [2.0.1] — 2026-11-03
 
 **Two fixes: a second material on dentures, and push notifications that work
