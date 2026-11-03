@@ -16,7 +16,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - **Anything with a migration:** only on `testing`, tested on the test copy, and released later by merging `testing` into `main`.
 - **A release:** the version bump in package.json is the last commit on `main`. A push to `main` without a version bump updates the phone app (Cloudflare) but not the desktop.
 - **Kevin does every push.** Claude never pushes.
-- Until the commit that stops tracking `supabase/.temp` reaches `main`, checking out `main` restores production's ref in `supabase/.temp/project-ref`: run no `supabase` command while on `main`.
+- **Every `supabase` command gets `--project-ref`.** There is no default project: never run `supabase link`. (Until the commit that stops tracking `supabase/.temp` reaches `main`, checking out `main` puts production's ref back in `supabase/.temp/project-ref`.)
 - Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
 
 ## Rules
