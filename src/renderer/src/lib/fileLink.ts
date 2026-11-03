@@ -20,3 +20,14 @@ export async function fileDownloadUrl(fileId: string, fileName: string): Promise
   if (linkError || !link) throw linkError ?? new Error('No link')
   return link.signedUrl
 }
+
+/**
+ * A PDF to show in the viewer, from the same signed link as a download. That
+ * link tells the browser to save the file, which a frame obeys; read into
+ * memory first, it displays instead. The caller revokes the address when done.
+ */
+export async function filePdfObjectUrl(fileId: string, fileName: string): Promise<string> {
+  const res = await fetch(await fileDownloadUrl(fileId, fileName))
+  if (!res.ok) throw new Error(`${res.status}`)
+  return URL.createObjectURL(new Blob([await res.arrayBuffer()], { type: 'application/pdf' }))
+}
