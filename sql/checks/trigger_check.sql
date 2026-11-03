@@ -6,7 +6,8 @@
 -- ============================================================================
 --
 -- Paste into the SQL Editor of a project that has every migration applied
--- (the test copy). It is one SELECT: it reads the catalog and changes nothing.
+-- (the test copy). It is one SELECT: it reads the
+-- catalog and changes nothing.
 --
 -- One row per difference:
 --   missing   the migrations define it; this database does not have it
@@ -106,6 +107,39 @@ select 'policy', p.schemaname || '.' || p.tablename || '.' || p.policyname,
          || ' using (' || coalesce(p.qual, '') || ') check (' || coalesce(p.with_check, '') || ')'
   from pg_policies p
  where p.schemaname in ('public', 'storage')
+union all
+select 'function', 'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+       case when p.prosecdef then 'security definer' else 'security invoker' end
+         || ', ' || case p.provolatile when 'i' then 'immutable' when 's' then 'stable' else 'volatile' end
+         || coalesce(', ' || array_to_string(p.proconfig, ', '), '')
+         || ', body md5 ' || md5(coalesce(p.prosrc, ''))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.prokind in ('f', 'p')
+   and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+union all
+select 'grant', g.target || ' to ' || g.grantee, string_agg(g.privilege, ',' order by g.privilege)
+  from (
+    select 'public.' || c.relname as target, coalesce(r.rolname, 'PUBLIC') as grantee, x.privilege_type as privilege
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'S')
+    union all
+    select 'public.' || c.relname || '.' || a.attname, coalesce(r.rolname, 'PUBLIC'), x.privilege_type
+      from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+      cross join lateral aclexplode(a.attacl) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and a.attnum > 0 and not a.attisdropped and a.attacl is not null
+    union all
+    select 'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', coalesce(r.rolname, 'PUBLIC'), x.privilege_type
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and p.prokind in ('f', 'p')
+       and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+  ) g
+ where g.grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
+ group by g.target, g.grantee
 ) catalog where kind in ('trigger')),
 norm as (
   select coalesce(e.kind, a.kind) as kind, coalesce(e.key, a.key) as key,

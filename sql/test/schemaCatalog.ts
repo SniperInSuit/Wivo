@@ -1,7 +1,10 @@
 /**
  * What a database HAS, as one list of (kind, key, def) rows: triggers on our
  * functions, indexes, constraints, NOT NULL columns, column defaults, identity
- * columns, sequence ownership, views, row security and policies.
+ * columns, sequence ownership, views, row security, policies, our functions
+ * (settings and a fingerprint of the body: prosrc is the text as written, the
+ * same on every Postgres) and what anon, authenticated, service_role and
+ * PUBLIC may do with each table, column and function.
  *
  * The same query builds two things (schemaCheck.test.ts keeps them current):
  *  - the expected list, run on a database built from the migrations (PGlite);
@@ -69,6 +72,39 @@ select 'policy', p.schemaname || '.' || p.tablename || '.' || p.policyname,
          || ' using (' || coalesce(p.qual, '') || ') check (' || coalesce(p.with_check, '') || ')'
   from pg_policies p
  where p.schemaname in ('public', 'storage')
+union all
+select 'function', 'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+       case when p.prosecdef then 'security definer' else 'security invoker' end
+         || ', ' || case p.provolatile when 'i' then 'immutable' when 's' then 'stable' else 'volatile' end
+         || coalesce(', ' || array_to_string(p.proconfig, ', '), '')
+         || ', body md5 ' || md5(coalesce(p.prosrc, ''))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.prokind in ('f', 'p')
+   and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+union all
+select 'grant', g.target || ' to ' || g.grantee, string_agg(g.privilege, ',' order by g.privilege)
+  from (
+    select 'public.' || c.relname as target, coalesce(r.rolname, 'PUBLIC') as grantee, x.privilege_type as privilege
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'S')
+    union all
+    select 'public.' || c.relname || '.' || a.attname, coalesce(r.rolname, 'PUBLIC'), x.privilege_type
+      from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+      cross join lateral aclexplode(a.attacl) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and a.attnum > 0 and not a.attisdropped and a.attacl is not null
+    union all
+    select 'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', coalesce(r.rolname, 'PUBLIC'), x.privilege_type
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) x
+      left join pg_roles r on r.oid = x.grantee
+     where n.nspname = 'public' and p.prokind in ('f', 'p')
+       and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+  ) g
+ where g.grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
+ group by g.target, g.grantee
 `
 
 export interface CatalogRow { kind: string; key: string; def: string }
@@ -80,20 +116,28 @@ const quote = (s: string): string => `'${s.replace(/'/g, "''")}'`
  * SELECT; it reads the catalog and changes nothing. With `kinds`, only those
  * (sql/checks/trigger_check.sql: the triggers alone).
  */
-export function renderCheck(all: CatalogRow[], kinds?: string[]): string {
+export interface CheckOptions {
+  /** Only these kinds (trigger_check.sql: ['trigger']). */
+  kinds?: string[]
+  /** Which migrations the expected rows come from, and where to run it. */
+  built?: string
+  runOn?: string
+}
+
+export function renderCheck(all: CatalogRow[], { kinds, built = 'sql/000 … the newest migration', runOn = 'a project that has every migration applied\n-- (the test copy)' }: CheckOptions = {}): string {
   const expected = kinds ? all.filter(r => kinds.includes(r.kind)) : all
   const only = kinds ? ` where kind in (${kinds.map(quote).join(', ')})` : ''
   const title = kinds ? `${kinds.join(', ')} only` : 'does this database match the migrations?'
   const values = expected.map(r => `    (${quote(r.kind)}, ${quote(r.key)}, ${quote(r.def)})`).join(',\n')
   return `-- ============================================================================
 -- Wivo — read-only schema check: ${title}
--- GENERATED from a database built from sql/000 … the newest migration
+-- GENERATED from a database built from ${built}
 -- (sql/test/schemaCheck.test.ts); do not edit by hand. Regenerate with:
 --   WRITE_SCHEMA_CHECK=1 npx vitest run --mode unit sql/test/schemaCheck.test.ts
 -- ============================================================================
 --
--- Paste into the SQL Editor of a project that has every migration applied
--- (the test copy). It is one SELECT: it reads the catalog and changes nothing.
+-- Paste into the SQL Editor of ${runOn}. It is one SELECT: it reads the
+-- catalog and changes nothing.
 --
 -- One row per difference:
 --   missing   the migrations define it; this database does not have it
@@ -106,7 +150,10 @@ export function renderCheck(all: CatalogRow[], kinds?: string[]): string {
 -- Covered: ${kinds ? kinds.join(', ') : `triggers on our functions (public and auth.users), indexes,
 -- primary-key, unique, check, foreign-key and exclusion constraints, NOT NULL
 -- columns, column defaults, identity columns, sequence ownership, views (with
--- their options), row security, and policies (public and storage)`}.
+-- their options), row security, policies (public and storage), our functions
+-- (security, volatility, settings, a fingerprint of the body) and the grants
+-- to anon, authenticated, service_role and PUBLIC on tables, columns and
+-- functions`}.
 -- Expected rows: ${expected.length}.
 -- ============================================================================
 
