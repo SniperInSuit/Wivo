@@ -24,6 +24,7 @@ import type { WorkType } from '../config/workTypes'
 import { resolveWorkType, workTypeConsumables, abutmentUnitPrice } from '../config/workTypes'
 import { countSmallTeeth, countLargeTeeth } from '../stores/useSettings'
 import { materialUnitCost, materialPiecePrice, overheadsMonthly } from '@shared/pricing/priceBook'
+import { splitMaterials } from '@shared/pricing/materials'
 import {
   calculateEarnings, earningsTotal, grossOf,
   type WorkerRate, type WorkHours, type PayrollTaxRates,
@@ -75,9 +76,30 @@ export interface MaterialDetail {
   kasitsi: boolean
   /** € for one piece of this material, after machine resolution. */
   tykihind: number
+  /**
+   * The second material's share of `summa` ("Apex Base + Apex Teeth", see
+   * shared/pricing/materials). The other fields describe the first.
+   */
+  teine?: { materjal: string; summa: number }
 }
 
 export function jobMaterialDetail(
+  job: Pick<Job, 'materjal' | 'hambad' | 'masina' | 'materjali_yhikud'>,
+  costs: Record<string, MaterialPricing>,
+  fallbackPrices?: Record<string, MaterialPricing>
+): MaterialDetail | null {
+  const [first, second] = splitMaterials(job.materjal)
+  const one = oneMaterialDetail({ ...job, materjal: first }, costs, fallbackPrices)
+  if (!second) return one
+  // By tooth, always: a typed capsule count is the job's one number, and the
+  // person typing it was counting the first material's plate.
+  const two = oneMaterialDetail({ ...job, materjal: second, materjali_yhikud: null }, costs, fallbackPrices)
+  if (!two) return one
+  const base = one ?? { summa: 0, kapsleid: null, kasitsi: false, tykihind: 0 }
+  return { ...base, summa: round2(base.summa + two.summa), teine: { materjal: second, summa: two.summa } }
+}
+
+function oneMaterialDetail(
   job: Pick<Job, 'materjal' | 'hambad' | 'masina' | 'materjali_yhikud'>,
   costs: Record<string, MaterialPricing>,
   fallbackPrices?: Record<string, MaterialPricing>

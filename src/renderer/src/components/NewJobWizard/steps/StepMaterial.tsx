@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Eraser, Info } from 'lucide-react'
-import { baseTypeName } from '@shared/wizard'
+import { baseTypeName, workTypeRules } from '@shared/wizard'
+import { splitMaterials, joinMaterials } from '@shared/pricing/materials'
 import { useWorkTypes } from '@/stores/useSettings'
 import type { WizardStepComponent } from '../types'
 import { fieldErrors } from '../types'
@@ -81,13 +82,19 @@ function OptionRow({ label, options, value, onChange }: {
  */
 export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors, showErrors }) => {
   const materialError = showErrors ? fieldErrors(errors, 'materials')[0] : undefined
-  const { hex } = useWorkTypes()
+  const { hex, types } = useWorkTypes()
 
   // Which piece of work the picker below assigns to. Defaults to the first, so
   // a single-type job behaves exactly as it did — pick a material, continue.
   const [activeKey, setActiveKey] = useState(state.jobTypes[0] ?? '')
   const active = state.jobTypes.includes(activeKey) ? activeKey : state.jobTypes[0] ?? ''
   const multi = state.jobTypes.length > 1
+
+  // A denture is two prints glued together — base and teeth — so whole-arch
+  // work gets a second material. Both go into one string, "Apex Base + Apex
+  // Teeth" (shared/pricing/materials).
+  const [first, second] = splitMaterials(state.materialByType[active])
+  const offerSecond = !!active && workTypeRules(active, types).toothMode === 'arch'
 
   const assign = (material: string | null) => {
     const next = { ...state.materialByType }
@@ -145,12 +152,26 @@ export const StepMaterial: WizardStepComponent = ({ state, patch, rules, errors,
         )}
 
         <MaterialPicker
-          value={state.materialByType[active] ?? null}
-          onChange={assign}
+          value={first || null}
+          onChange={m => assign(joinMaterials(m, second) || null)}
           invalid={!!materialError}
           labelledBy="wizard-materjal-label"
           describedBy={materialError ? 'wizard-materjal-error' : undefined}
         />
+        {(offerSecond || second) && first && (
+          <div className="mt-8">
+            <SectionHeading
+              id="wizard-materjal2-label"
+              title={t('wizard.secondMaterial')}
+              help={t('wizard.secondMaterialHelp')}
+            />
+            <MaterialPicker
+              value={second || null}
+              onChange={m => assign(joinMaterials(first, m) || null)}
+              labelledBy="wizard-materjal2-label"
+            />
+          </div>
+        )}
         {/* Said plainly rather than left to be discovered on the price page:
             unassigned work is quoted with the job's first material. */}
         {multi && state.jobTypes.some(k => !state.materialByType[k]?.trim()) && (
