@@ -4,6 +4,7 @@
  */
 import type { Job } from '../types/job'
 import type { PartnerJob } from '../hooks/usePartners'
+import { normCode } from '../lib/jobSearch'
 
 export interface PhoneJobItem {
   kind: 'own' | 'partner'
@@ -29,10 +30,17 @@ export function phoneLists(args: {
   me: string
   doneStage: string
   query: string
+  /**
+   * The database's answer to `query` (useJobSearch), ranked: while searching,
+   * our own jobs come from here — any stage, any date, the exact code first —
+   * not from the jobs loaded.
+   */
+  found?: Job[]
 }): { mine: PhoneJobItem[]; active: PhoneJobItem[]; shared: PhoneJobItem[] } {
   const q = args.query.trim().toLowerCase()
-  const own = args.jobs
-    .filter(j => j.status !== args.doneStage)
+  const code = normCode(args.query)
+  const searching = !!q && !!args.found
+  const own = (searching ? args.found! : args.jobs.filter(j => j.status !== args.doneStage))
     .map((j): PhoneJobItem & { mine: boolean } => ({
       kind: 'own', id: j.id, code: j.job_code ?? null, title: j.patsient || '—',
       work: j.too, stage: j.status, due: j.valmis_aeg, mine: isMine(j, args.me),
@@ -41,13 +49,19 @@ export function phoneLists(args: {
     kind: 'partner', id: s.job_id, code: s.job_code, title: s.owner_org_name,
     work: s.work_type, stage: s.status, due: s.due_at,
   }))
-  // Search: the job code always; the patient name only on our own jobs.
-  const hit = (i: PhoneJobItem) => !q || (i.code ?? '').toLowerCase().includes(q)
+  // Search: the job code always (case, spaces and dashes aside); the patient
+  // name only on our own jobs. The database's results already matched.
+  const hit = (i: PhoneJobItem) => !q || searching && i.kind === 'own'
+    || (!!code && normCode(i.code).includes(code))
     || (i.kind === 'own' && i.title.toLowerCase().includes(q))
+  // Searching, the exact code leads and the database's order stands.
+  const exactFirst = (a: PhoneJobItem, b: PhoneJobItem) =>
+    Number(normCode(b.code) === code) - Number(normCode(a.code) === code) || byDue(a, b)
+  const order = searching ? (a: PhoneJobItem, b: PhoneJobItem) => Number(normCode(b.code) === code) - Number(normCode(a.code) === code) : byDue
   const strip = ({ mine: _m, ...rest }: PhoneJobItem & { mine?: boolean }): PhoneJobItem => rest
   return {
-    mine: own.filter(i => i.mine && hit(i)).map(strip).sort(byDue),
-    active: own.filter(hit).map(strip).sort(byDue),
-    shared: shared.filter(hit).sort(byDue),
+    mine: own.filter(i => i.mine && hit(i)).map(strip).sort(order),
+    active: own.filter(hit).map(strip).sort(order),
+    shared: shared.filter(hit).sort(q ? exactFirst : byDue),
   }
 }
