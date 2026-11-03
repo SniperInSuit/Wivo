@@ -43,3 +43,42 @@ These are not revisited per feature. A feature that needs one changed stops and 
 **No personal data crosses borders between clinics.** Partners see job information only, never who the patient is (lawyer's decision, 2 November 2026; enforced by sql/092). A lab job created from a plan carries the work, not the patient.
 
 These sit alongside the locked decisions in wivo-2.0-spec.md (Estonian), which still hold. In particular: Wivo does not recommend, rank or derive treatment from patient data.
+
+## Ecosystem
+
+Where the companies around Wivo are heading, so features are built in the right place. **Nothing here is built now.** A feature for one of these companies starts only when Kevin asks for it, with its own spec.
+
+| Company | What it is | How it relates to Wivo |
+|---|---|---|
+| **Wivo** | The clinic and lab management software: this repository. | Supplier-neutral. Any lab, supplier or clinic can use it. |
+| **WivoLab** | A separate distribution company. It supplies Wivo clinics with premium but cheaper solutions for cases: implants, designs, materials. | A supplier and partner in Wivo like any other (rule b). |
+| **The third company** (name not decided; shortlist: WivoChair, WivoShift, WivoGo) | Fully equipped, fully supplied clinic rooms that dentists book by the hour or by the day, together with patient cases that are ready to treat. Dentists pick the cases that fit them, do the work and earn their share: "Uber/Bolt for dentists". | It would run on Wivo and be supplied by WivoLab. In Wivo it is a customer like any other (rule b). |
+| **Later ideas** | WivoHub (a community product) and WivoSpace (events). | Not planned. |
+
+### Guardrails
+
+These are locked rules, like those above. A feature that needs one changed stops and asks.
+
+**a. Data walls.**
+- A clinic's data in Wivo is never used by WivoLab or the third company, and never shared with them, unless that clinic explicitly opts in.
+- The licence agreement will say so.
+- No report, export, statistic or "insight" built for a sister company reads another clinic's data without that clinic's opt-in.
+- The opt-in is per clinic, recorded and revocable. This is the same rule as a clinic's purchase data never being shown to suppliers (Neutrality, above).
+
+**b. No back door.** The sister companies are ordinary Wivo customers or partners, with the same rights and rules as anyone else. That means:
+- no special roles, no service key, no direct database access;
+- no hidden data flows and no feature only they can see;
+- the same partnership model, RLS, second factor and audit log;
+- in the marketplace, the same verification criteria, transparent ranking and labelling as any other supplier. Being a sister company earns no placement.
+
+**c. Open question for the lawyer, before the third company starts:**
+- who is the healthcare provider for the patient (the activity licence for the room);
+- who is liable for the treatment;
+- who is the data controller for the patient's data. That includes what a dentist who books a room may see, and how the "no personal data crosses borders between clinics" rule applies when the dentist, the room and the patient's clinic are different parties.
+
+  Nothing for the third company is built before these answers.
+
+**d. Separate, optional modules.**
+- Features that serve the sister companies (booking rooms, a case marketplace, a dentist's share of a case) are separate modules, switched on per organisation. They are never part of the core.
+- A clinic that never uses them sees no trace of them and loses nothing.
+- The core never depends on them.
