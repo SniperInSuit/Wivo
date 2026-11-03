@@ -242,6 +242,8 @@ To check: a minute later, `select created, status_code, left(content, 300) from 
 
 **Production: same bug, not touched yet. Plan:**
 
+*Superseded: see "Production plan (current)" at the end of this file.*
+
 1. **What production runs:** the function deployed in Run 3, so phones there get no push either until this is fixed.
 2. **Compatibility:** the fixed function works against production's database as it is. It only calls functions production already has:
    - `pending_notification_emails` and `mark_notifications_emailed` (075);
@@ -320,6 +322,8 @@ select created, status_code, left(content, 300) from net._http_response order by
 - Still **401 `UNAUTHORIZED_LEGACY_JWT`**: the gateway check is still on, so the deploy didn't take the setting. Check the dashboard: Edge Functions → send-notifications → "Enforce JWT verification" should be off.
 
 **Production:**
+
+*Superseded: see "Production plan (current)" at the end of this file.*
 1. **Does it need the same change?** Almost certainly. Its cron sends the same kind of legacy service_role JWT, and its function has both bugs: the e-mail early return (`e0214fe`) and the gateway check. Confirm first, read-only, in production's SQL editor:
 
    ```sql
@@ -342,3 +346,99 @@ select created, status_code, left(content, 300) from net._http_response order by
    4. Then merge `hotfix-push` into `main` and push. That push builds but publishes nothing, since the version is unchanged.
 
    Steps 2 and 3 are independent: deploying a function needs no git push, and the desktop release doesn't touch functions. The fix can go out before or after the release.
+
+## Push works on the test copy (Kevin, 3 November 2026)
+
+A locked iPhone with Wivo closed got "Wivos on uut" from the test copy. It took four things:
+
+1. **The function:** `send-notifications` deployed from `testing` (`e0214fe` and `e8783a3`) with `--no-verify-jwt`.
+2. **The cron job and Vault:** `wivo-send-notifications` recreated as in `sql/077`, and both Vault secrets set (`wivo_service_role_key`, `wivo_functions_url`). Both had been lost when the copy was restored.
+3. **`cron.job_run_details`:** it held **production's** run history, copied in by the restore, and new runs were blocked until those rows were deleted.
+4. **The key:** the legacy service_role JWT didn't work, so the test copy now uses a new **`sb_secret_` key**, in two places:
+   - in Vault as `wivo_service_role_key` (what the cron job sends);
+   - as the function secret `WIVO_SERVICE_SECRET_KEY` (what the function accepts, `serviceAuth.ts`).
+
+## Production plan (current)
+
+This replaces the two earlier production plans in this file. Nothing has been done on production. All of it happens in a production session Kevin starts.
+
+**Which of the four production will need:**
+
+| Test copy step | Production | Why |
+|---|---|---|
+| 1. Function with `--no-verify-jwt` | **Yes** | It runs the old function: e-mail early return and gateway check on. |
+| 2. Cron job and Vault | **Probably not.** Check | Production wasn't restored; 077 and Vault were set up in Run 1. Confirm with the checks below. |
+| 3. `cron.job_run_details` clean-up | **No** | That was a restore artifact: production's history copied into the test copy. Production's history is its own. Check only that runs are still happening and how big the table has grown. |
+| 4. `sb_secret` key | **Likely**, but decide after the checks | The legacy key failed on the test copy, and the same probably holds on production. But the Vault secret `wivo_service_role_key` is shared with the **`wivo-send-invoices`** job (`sql/052`): that function still has the gateway check on, and the gateway accepts only a JWT. Switching the Vault value to an `sb_secret` key would stop the invoice cron. |
+
+**Read-only checks first** (production SQL editor, one at a time):
+
+```sql
+-- a. Extensions
+select extname from pg_extension where extname in ('pg_cron', 'pg_net');
+```
+```sql
+-- b. Cron jobs (no command column: it can hold the key)
+select jobid, jobname, schedule, active from cron.job order by jobname;
+```
+```sql
+-- c. Recent runs of the two jobs that call functions, and is anything still running?
+select j.jobname, d.status, d.return_message, d.start_time
+  from cron.job_run_details d join cron.job j on j.jobid = d.jobid
+ where j.jobname in ('wivo-send-notifications', 'wivo-send-invoices')
+ order by d.start_time desc limit 10;
+```
+```sql
+-- d. How big the run history has grown
+select count(*), min(start_time), max(start_time) from cron.job_run_details;
+```
+```sql
+-- e. What the functions actually answered
+select created, status_code, left(content, 200) as content from net._http_response order by created desc limit 10;
+```
+```sql
+-- f. Vault: present, what kind of key (never the key itself), where the URL points
+select name,
+       case when name = 'wivo_functions_url' then decrypted_secret
+            when decrypted_secret like 'sb_secret_%' then 'sb_secret key'
+            when decrypted_secret like 'eyJ%' then 'legacy JWT'
+            else 'something else' end as value_or_kind
+  from vault.decrypted_secrets
+ where name in ('wivo_service_role_key', 'wivo_functions_url');
+```
+```sh
+# g. Function secrets: names only (Kevin runs it)
+npx supabase secrets list --project-ref wrtucsfmpbwekugzzzxw
+```
+
+What the answers mean:
+- **(e) shows `UNAUTHORIZED_LEGACY_JWT`** for send-notifications: step 1 is needed, as expected. For send-invoices: the invoice cron is broken too.
+- **(e) shows 200 for send-invoices:** the legacy key still works at production's gateway for that function. Then **don't** switch Vault to an `sb_secret` key yet, or invoices stop.
+- **(b) or (f) missing a row:** recreate as on the test copy, with production's own URL and key. `wivo_functions_url` must be `https://wrtucsfmpbwekugzzzxw.functions.supabase.co`.
+- **(c) has no recent rows:** cron isn't running. Look at (d) and at whether the job is `active`.
+- **(g):** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `APP_LINK` should be there (set in Run 3).
+
+**Then, in this order:**
+1. **Prepare the hotfix:** make `hotfix-push` from `origin/main` and cherry-pick `e0214fe` and `e8783a3`. For `index.ts` take the `testing` version; `config.toml` is new on main. Run `npm test`.
+2. **Deploy it** to production (Kevin runs it):
+
+   ```sh
+   npx supabase functions deploy send-notifications --project-ref wrtucsfmpbwekugzzzxw --use-api --no-verify-jwt
+   ```
+
+   Watch (e) for a minute.
+   - **200:** done, keep the legacy key.
+   - **Our own 401 "service key required":** the legacy key doesn't work there either. Go to step 3.
+3. **Switch to an `sb_secret` key, only if step 2 needs it:**
+   1. Create a secret key in production's Settings → API Keys.
+   2. Set it as the function secret `WIVO_SERVICE_SECRET_KEY`.
+   3. Put it in Vault as `wivo_service_role_key`.
+
+   Because that Vault secret is shared, do one of these first:
+   - fix `send-invoices` the same way (`isServiceRequest`, gateway check off), as a separate change tested on the test copy; or
+   - give the notification job its own Vault secret, which means a new migration that changes the cron command.
+
+   Don't break invoices to fix push.
+4. **Release 2.0.0:** push `main` as it is, with the version bump `ad078af` still the newest commit, so CI publishes. Independent of steps 1–3.
+5. **Bring the fix into `main`:** merge `hotfix-push` into `main` and push. That push builds but publishes nothing.
+6. **Test on a phone:** lock an iPhone with Wivo closed, trigger a notification from another account, and check it arrives.
