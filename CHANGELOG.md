@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.2] — 2026-11-03
+
+**Find a job by its code, whatever dates are on screen**
+
+No "What's new" window: a patch keeps the 2.0.0 notes.
+
+**For everyone, desktop and phone**
+- **The search finds job codes.** Type or paste a code in the search at the
+  top (on the phone, on the home screen). Case, outer spaces and missing or
+  extra dashes don't matter: `tal-26-0042`, `TAL260042` and ` TAL-26-0042 `
+  all find TAL-26-0042.
+- **It searches the database,** not only the jobs on screen: any date, any
+  stage. Codes and patient names; at most 20 results, the exact code first.
+- **Enter opens the job:** the exact code at once, else the only result. If
+  nothing is found, the search says so.
+- Only your own organisation's jobs that you may read; deleted jobs never.
+  Partners search jobs shared with them in the partner view, which shows no
+  patient.
+- No database migration, no server change.
+
 ## [2.0.1] — 2026-11-03
 
 **Two fixes: a second material on dentures, and push notifications that work
