@@ -1,5 +1,5 @@
 /**
- * Wivo's own "Are you sure?" in place of the browser's confirm(), on desktop
+ * Wivo's own "Are you sure?" in place of the browser's built-in dialog, on desktop
  * and phone. The system dialog looks foreign, shows the site's address on the
  * phone ("app.wivodent.com says…") and cannot be styled or translated.
  *

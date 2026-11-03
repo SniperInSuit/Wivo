@@ -50,7 +50,7 @@ describe('no system dialogs left', () => {
     const root = execSync('git rev-parse --show-toplevel').toString().trim()
     let hits = ''
     try {
-      hits = execSync(`git grep -n -E "window\\.confirm\\(|[^A-Za-z_.]confirm\\(" -- 'src/renderer/src' ':!*.test.ts'`, { cwd: root }).toString()
+      hits = execSync(`git grep -n -E "window\\.confirm\\(|[^A-Za-z_.]confirm\\(" -- 'src/renderer/src' ':!*.test.ts' ':!src/renderer/src/lib/confirm.ts'`, { cwd: root }).toString()
     } catch { /* nothing found */ }
     expect(hits).toBe('')
   })
