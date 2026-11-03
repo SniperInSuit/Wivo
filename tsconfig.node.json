@@ -8,5 +8,8 @@
     "skipLibCheck": true,
     "types": ["electron-vite/node"]
   },
-  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/types/**/*"]
+  "include": [
+    "electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/types/**/*",
+    "shared/license/token.ts", "shared/privacy/scrub.ts"
+  ]
 }
