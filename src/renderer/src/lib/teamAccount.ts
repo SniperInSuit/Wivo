@@ -84,10 +84,17 @@ export function addOwnEmail(email: string): Promise<unknown> {
   return call({ action: 'add_email', email, language: lang })
 }
 
-export interface TeamAccount { id: string; login: string; has_email: boolean; invite_pending: boolean }
+export interface TeamAccount {
+  id: string
+  login: string
+  has_email: boolean
+  invite_pending: boolean
+  /** A verified authenticator (sql/112); missing on a database without it. */
+  has_authenticator?: boolean
+}
 
 /**
- * The owner's view of how each member signs in (sql/100, 111). An older
+ * The owner's view of how each member signs in (sql/100, 111, 112). An older
  * database has no such function: empty. Any other failure: null, and the
  * Team page says so rather than showing everyone as a username account.
  */
@@ -95,4 +102,23 @@ export async function teamAccounts(): Promise<Map<string, TeamAccount> | null> {
   const { data, error } = await supabase.rpc('team_accounts')
   if (error) return error.code === 'PGRST202' ? new Map() : null
   return new Map(((data ?? []) as TeamAccount[]).map(r => [r.id, r]))
+}
+
+export interface AccountBadge { label: MessageKey; ok: boolean }
+
+/**
+ * The Team page's badges for one member: the invite (e-mail accounts only),
+ * then the authenticator. Nothing for what is not known: no account details,
+ * or a database without sql/112.
+ */
+export function accountBadges(account: TeamAccount | undefined): AccountBadge[] {
+  if (!account) return []
+  const badges: AccountBadge[] = []
+  if (account.has_email) {
+    badges.push(account.invite_pending ? { label: 'team.invitePending', ok: false } : { label: 'team.verified', ok: true })
+  }
+  if (typeof account.has_authenticator === 'boolean') {
+    badges.push(account.has_authenticator ? { label: 'team.authenticator', ok: true } : { label: 'team.noAuthenticator', ok: false })
+  }
+  return badges
 }

@@ -202,6 +202,8 @@ How to read it:
 3. **The person's language** comes from the invite and goes onto their profile.
 4. **When a real e-mail replaces a stand-in**, a trigger on `auth.users` (after an update of `email`) clears `profiles.username`.
 5. **`team_accounts()`** gives the owner's Team page how each member signs in (`tehnik@tal`, an old `tehnik`, or the address) and whether an invite is still waiting. It answers only the owner, with the second factor, about their own clinic.
+   - sql/111 makes it work on Supabase (the address is `varchar(255)` there).
+   - sql/112 adds `has_authenticator`: yes/no, whether the member has a verified authenticator. Nothing else about the factors. The Team page shows it as a badge, next to "Verified" or "Invite not accepted yet" for an e-mail account.
 
 There is no new table.
 
@@ -213,7 +215,7 @@ There is no new table.
 - A refused one leaves nothing behind and doesn't use up the invite.
 - The language is stored.
 - The username is cleared on an e-mail change.
-- `team_accounts`: the owner sees their own clinic; a worker, aal1 and anon are refused.
+- `team_accounts`: the owner sees their own clinic; a worker, aal1 and anon are refused; `has_authenticator` counts only a verified factor, and no other factor detail is returned.
 
 ### 4.4 Adding a real e-mail later (a change with a confirmation link)
 

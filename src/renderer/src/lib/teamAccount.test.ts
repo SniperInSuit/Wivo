@@ -5,7 +5,7 @@ const invoke = vi.fn()
 vi.mock('./supabase', () => ({
   supabase: { rpc: (...a: unknown[]) => rpc(...a), functions: { invoke: (...a: unknown[]) => invoke(...a) } },
 }))
-const { inviteMember, teamAccounts, teamErrorMessage, TeamAccountError, TEAM_CALL_TIMEOUT_MS } = await import('./teamAccount')
+const { inviteMember, teamAccounts, accountBadges, teamErrorMessage, TeamAccountError, TEAM_CALL_TIMEOUT_MS } = await import('./teamAccount')
 
 const invite = { email: 'mari@kliinik.ee', fullName: 'Mari', language: 'et' as const }
 
@@ -52,5 +52,27 @@ describe('how members sign in (team_accounts)', () => {
     const row = { id: 'u1', login: 'mari@kliinik.ee', has_email: true, invite_pending: true }
     rpc.mockResolvedValue({ data: [row], error: null })
     expect((await teamAccounts())?.get('u1')).toEqual(row)
+  })
+})
+
+describe('the Team page\'s badges', () => {
+  const account = { id: 'u1', login: 'mari@kliinik.ee', has_email: true, invite_pending: false, has_authenticator: true }
+  const labels = (a?: Parameters<typeof accountBadges>[0]) => accountBadges(a).map(b => `${b.label} ${b.ok}`)
+
+  it('an e-mail account: the invite, then the authenticator', () => {
+    expect(labels(account)).toEqual(['team.verified true', 'team.authenticator true'])
+    expect(labels({ ...account, invite_pending: true, has_authenticator: false }))
+      .toEqual(['team.invitePending false', 'team.noAuthenticator false'])
+  })
+
+  it('a username account: only the authenticator', () => {
+    expect(labels({ ...account, login: 'tehnik@tal', has_email: false })).toEqual(['team.authenticator true'])
+    expect(labels({ ...account, login: 'tehnik@tal', has_email: false, has_authenticator: false })).toEqual(['team.noAuthenticator false'])
+  })
+
+  it('nothing that is not known: no details, or a database without sql/112', () => {
+    expect(labels(undefined)).toEqual([])
+    const { has_authenticator: _, ...older } = account
+    expect(labels(older)).toEqual(['team.verified true'])
   })
 })

@@ -1,7 +1,8 @@
 /**
  * sql/100 (docs/ACCOUNTS.md): usernames per clinic, stand-ins only with the
  * clinic's invite, the language from the invite, the username cleared when a
- * real e-mail replaces the stand-in, and the owner's view of how members sign in.
+ * real e-mail replaces the stand-in, and the owner's view of how members sign in
+ * (with sql/111's column types and sql/112's authenticator flag).
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
@@ -144,6 +145,24 @@ describe('team_accounts(): how each member signs in', () => {
       `select format_type(atttypid, atttypmod) as t from pg_attribute where attrelid = 'auth.users'::regclass and attname = 'email'`)
     expect(t).toBe('character varying(255)')
     expect(await errorAs(db, { id: A.ownerId }, `select * from public.team_accounts()`)).toBeNull()
+  })
+
+  it('whether each has an authenticator: yes only for a verified one, and nothing else about it (sql/112)', async () => {
+    const withOne = await createAuthUser('tal-kood@kliinik.test', { invite_token: await invite(A) })
+    const halfway = await createAuthUser('poolel@kliinik.test', { invite_token: await invite(A) })
+    const without = await createAuthUser(standin('ilmata', codeA), { username: 'ilmata', invite_token: await invite(A) })
+    const factor = (user: string, status: string) => db.query(
+      `insert into auth.mfa_factors (user_id, friendly_name, status) values ($1, 'Telefon', $2::auth.factor_status)`, [user, status])
+    await factor(withOne, 'verified')
+    await factor(withOne, 'unverified')
+    await factor(halfway, 'unverified')
+
+    const rows = await rowsAs<Record<string, unknown>>(db, { id: A.ownerId }, `select * from public.team_accounts()`)
+    const byId = new Map(rows.map(r => [r.id, r]))
+    expect(byId.get(withOne)?.has_authenticator).toBe(true)
+    expect(byId.get(halfway)?.has_authenticator).toBe(false)
+    expect(byId.get(without)?.has_authenticator).toBe(false)
+    expect(Object.keys(rows[0]).sort()).toEqual(['has_authenticator', 'has_email', 'id', 'invite_pending', 'login'])
   })
 
   it('a worker, an owner without the second factor and an anonymous caller get nothing', async () => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Users, UserPlus, Shield, Loader2, Trash2, Check, Lock, Copy } from 'lucide-react'
 import { supabase, displayIdentity } from '../../lib/supabase'
 import { AddMemberDialog } from './AddMemberDialog'
-import { teamAccounts, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
+import { teamAccounts, accountBadges, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
 import { TECHNICIAN_PRESET } from '@shared/permissions'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
@@ -15,6 +15,24 @@ import { t, lang } from '@/lib/i18n'
 
 interface WorkerWithPerms extends Profile {
   permissions: Map<string, boolean>
+}
+
+// Whether the invite was accepted and whether they have an authenticator
+// (sql/100, 112). Nothing is shown for what is not known.
+function AccountBadges({ account }: { account: TeamAccount | undefined }) {
+  const badges = accountBadges(account)
+  if (badges.length === 0) return null
+  return (
+    <div className="flex flex-wrap justify-end gap-1 ml-auto">
+      {badges.map(b => (
+        <span key={b.label} className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap ${
+          b.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+          {b.ok && <Check size={10} aria-hidden="true" />}
+          {t(b.label)}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 // Permanent, so it says so and asks twice. The database is the real guard —
@@ -362,13 +380,13 @@ export function WorkersPage() {
                     : 'bg-bg-card border-ink-faint/15 text-ink-muted hover:border-ink-faint/30'
                 }`}
               >
-                <p className="text-sm font-semibold truncate">{w.full_name || '—'}</p>
+                <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                  <p className="text-sm font-semibold truncate min-w-0 flex-1 basis-20">{w.full_name || '—'}</p>
+                  <AccountBadges account={accounts.get(w.id)} />
+                </div>
                 <p className="text-[11px] text-ink-faint truncate">
                   {accounts.get(w.id)?.login ?? displayIdentity(null, w.username)}
                 </p>
-                {accounts.get(w.id)?.invite_pending && (
-                  <p className="text-[11px] text-amber-600">{t('team.invitePending')}</p>
-                )}
                 <p className="text-[11px] text-ink-faint flex items-center gap-1.5">
                   <Shield size={10} />
                   {w.role === 'owner' ? t('workers.owner2') : t('workers.staffMember')}
@@ -395,16 +413,22 @@ export function WorkersPage() {
               </div>
             ) : selected.role === 'owner' ? (
               <div className="card p-5">
-                <h2 className="text-base font-semibold text-ink mb-1">{selected.full_name}</h2>
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-1">
+                  <h2 className="text-base font-semibold text-ink min-w-0">{selected.full_name}</h2>
+                  <AccountBadges account={accounts.get(selected.id)} />
+                </div>
                 <p className="text-sm text-ink-muted">
                   {t('workers.theOwnerHasAllPermissionsThey')}
                 </p>
               </div>
             ) : (
               <div className="card p-5 space-y-4">
-                <div>
-                  <h2 className="text-base font-semibold text-ink">{selected.full_name || '—'}</h2>
-                  <p className="text-xs text-ink-muted">{t('workers.staffPermissions')}</p>
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-ink">{selected.full_name || '—'}</h2>
+                    <p className="text-xs text-ink-muted">{t('workers.staffPermissions')}</p>
+                  </div>
+                  <AccountBadges account={accounts.get(selected.id)} />
                 </div>
 
                 {accounts.get(selected.id)?.invite_pending && (
