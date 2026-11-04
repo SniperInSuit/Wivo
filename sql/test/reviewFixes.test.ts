@@ -65,15 +65,15 @@ describe('permissions count only in their own clinic', () => {
 })
 
 describe('deleting a worker who is in the audit log', () => {
-  it('works, and the history keeps the row without the person', async () => {
+  it('works, and the history keeps the row and who it was (sql/115)', async () => {
     const w = await createUser(db, 'Leaving')
     await db.query(`update public.profiles set clinic_id = $1, role = 'worker' where id = $2`, [A.clinicId, w])
     await db.query(`insert into public.worker_permissions (profile_id, clinic_id, permission) values ($1, $2, 'jobs.write'), ($1, $2, 'jobs.read')`, [w, A.clinicId])
     const job = await makeRow(db, 'jobs', A)
     await rowsAs(db, { id: w }, `update public.jobs set status = 'print' where id = $1 returning 1`, [job.id])
     expect(await errorAs(db, { id: A.ownerId }, `select public.admin_delete_worker($1)`, [w])).toBeNull()
-    const { rows } = await db.query(`select user_id from public.audit_log where object = $1 and action = 'stage_move'`, ['job:' + job.id])
-    expect(rows).toEqual([{ user_id: null }])
+    const { rows } = await db.query(`select user_id, actor_name from public.audit_log where object = $1 and action = 'stage_move'`, ['job:' + job.id])
+    expect(rows).toEqual([{ user_id: w, actor_name: 'Leaving' }])
   })
 
   it('anything else in an audit row still cannot change', async () => {

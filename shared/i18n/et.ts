@@ -3151,6 +3151,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'audit.asOnJob': "nagu tööl",
   'audit.nobody': "keegi",
   'audit.formerMember': "endine liige",
+  'audit.formerMemberWho': "Endine liige",
   'audit.formerClient': "kustutatud klient",
   'audit.yes': "jah",
   'audit.no': "ei",

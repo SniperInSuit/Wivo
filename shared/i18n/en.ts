@@ -3165,6 +3165,7 @@ export const en = {
   'audit.asOnJob': "as on the job",
   'audit.nobody': "nobody",
   'audit.formerMember': "former member",
+  'audit.formerMemberWho': "Former member",
   'audit.formerClient': "deleted client",
   'audit.yes': "yes",
   'audit.no': "no",

@@ -61,12 +61,18 @@ describe('107 puts back exactly the foreign keys the migrations define', () => {
 })
 
 describe('on a complete database (production, a fresh one) it changes nothing', () => {
-  it('no duplicate, nothing added, running it again neither', async () => {
+  it('no duplicate, nothing added, running it again neither — except the key sql/115 removed on purpose', async () => {
     const d = await freshDb()
     const before = await foreignKeys(d)
     await run107(d)
     await run107(d)
-    expect(await foreignKeys(d)).toEqual(before)
+    // 107's list is fixed: it puts back audit_log.user_id, which sql/115 dropped so that deleting an account
+    // keeps who made each change. Hence "do not run 107 again" (docs/AUDIT.md §2.7), and schema_check.sql
+    // reports the key as "must be absent".
+    const after = await foreignKeys(d)
+    const added = after.filter(k => !before.some(b => JSON.stringify(b) === JSON.stringify(k)))
+    expect(added.map(k => `${k.tbl}.${k.col}`)).toEqual(['audit_log.user_id'])
+    expect(after.filter(k => !added.includes(k))).toEqual(before)
     const { rows } = await d.query<{ n: number }>(`select count(*)::int as n from pg_constraint c
       join pg_namespace n on n.oid = (select relnamespace from pg_class where oid = c.conrelid)
       where c.contype = 'f' and n.nspname = 'public'`)

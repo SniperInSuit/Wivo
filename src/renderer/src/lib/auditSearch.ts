@@ -4,9 +4,9 @@
  * screen shows — nothing the audit log does not already show.
  *
  * Edits (sql/114, docs/AUDIT.md) are read here into a line: "Teeth 11,21 →
- * 11,21,22 · Material Zirkoon → E.max · Description changed". Members and
- * clients are named from the clinic's own lists (`Names`); a patient is only
- * ever their id, as the log holds them.
+ * 11,21,22 · Material Zirkoon → E.max · Description changed". People are
+ * named as the entry stored them when it was written (sql/115), else from the
+ * clinic's own lists (`Names`); a patient is only ever their id.
  */
 import { format } from 'date-fns'
 import type { CsvColumn } from '@shared/export/csv'
@@ -21,6 +21,8 @@ export interface AuditEntry {
   object: string
   job_code: string | null
   detail: Record<string, unknown>
+  /** Who made it, kept after their account is gone (sql/115); absent before it. */
+  user_id?: string | null
 }
 
 /** Names for the ids an entry holds: the clinic's members and clients. Anyone not in it has left. */
@@ -137,6 +139,13 @@ const FILE_TYPE_LABELS: Record<string, MessageKey> = {
 
 const label = (labels: Record<string, MessageKey>, v: string): string => (labels[v] ? t(labels[v]) : v)
 
+/** The names an entry stored when it was written (sql/115) win over today's lists. */
+function namesFor(e: AuditEntry, names: Names): Names {
+  const stored = e.detail?.names
+  if (!stored || typeof stored !== 'object') return names
+  return new Map([...names, ...Object.entries(stored as Record<string, string>)])
+}
+
 /** A patient as the log names them: by id, never by name. */
 export const patientShort = (id: string): string => t('audit.patientShort', { id: id.slice(0, 8) })
 
@@ -216,14 +225,16 @@ export function describeEntry(e: AuditEntry, names: Names = NO_NAMES): string {
   // An account deleted for good (sql/110): whose.
   if (e.action === 'account_deleted') return String(d.target_name ?? '')
   // sql/114: edits, permissions, a deleted file.
-  if (e.action === 'edit') return editText(d, names)
+  if (e.action === 'edit') return editText(d, namesFor(e, names))
   if (e.action === 'permission') return permissionText(d)
   if (e.action === 'file_deleted') return t('audit.fileDeletedDetail', { type: label(FILE_TYPE_LABELS, String(d.type ?? '')), version: Number(d.version ?? 0) })
   return ''
 }
 
 export const entryWhen = (e: AuditEntry): string => format(new Date(e.at), 'd MMM yyyy HH:mm:ss', { locale: dateLocale })
-export const entryWho = (e: AuditEntry): string => e.user_name || t('audit.system')
+/** Who made it: their name as it was; someone whose name is gone, a former member; nobody signed in, the system. */
+export const entryWho = (e: AuditEntry): string =>
+  e.user_name || (e.user_id ? t('audit.formerMemberWho') : t('audit.system'))
 
 /** The patient an entry is about, if any: their id. */
 export const entryPatient = (e: AuditEntry): string | null => (e.object.startsWith('patient:') ? e.object.slice(8) : null)
@@ -234,7 +245,7 @@ export function entryWhat(e: AuditEntry, names: Names = NO_NAMES): string {
   if (e.object.startsWith('csv:')) return `CSV: ${exportKindLabel(e.object.slice(4))}`
   const patient = entryPatient(e)
   if (patient) return patientShort(patient)
-  if (e.object.startsWith('user:')) return names.get(e.object.slice(5)) ?? t('audit.formerMember')
+  if (e.object.startsWith('user:')) return namesFor(e, names).get(e.object.slice(5)) ?? t('audit.formerMember')
   return e.object
 }
 

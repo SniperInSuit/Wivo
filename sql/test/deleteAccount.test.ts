@@ -74,7 +74,8 @@ describe('a permanent delete', () => {
     expect(await state(id)).toEqual({ account: 0, profile: 0, rates: 0, audit: 1 })
     const [entry] = (await db.query<{ org_id: string; user_id: string; detail: { target_name: string } }>(
       `select org_id, user_id, detail from public.audit_log where object = $1 and action = 'account_deleted'`, [`user:${id}`])).rows
-    expect(entry).toEqual({ org_id: A.clinicId, user_id: A.ownerId, detail: { target_name: 'Kevin Test' } })
+    // sql/115: the name is also kept with the entry's other names.
+    expect(entry).toEqual({ org_id: A.clinicId, user_id: A.ownerId, detail: { target_name: 'Kevin Test', names: { [id]: 'Kevin Test' } } })
   })
 
   it('frees the address: the same invite makes a new account in the clinic', async () => {

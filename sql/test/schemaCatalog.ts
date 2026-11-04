@@ -123,10 +123,23 @@ export interface CheckOptions {
   /** Which migrations the expected rows come from, and where to run it. */
   built?: string
   runOn?: string
+  /**
+   * What a migration removed on purpose: reported as "must be absent", with
+   * the reason, when a database still has it (sql/115: audit_log_user_id_fkey).
+   */
+  absent?: { kind: string; key: string; why: string }[]
 }
 
-export function renderCheck(all: CatalogRow[], { kinds, built = 'sql/000 … the newest migration', runOn = 'a project that has every migration applied\n-- (the test copy)' }: CheckOptions = {}): string {
+export function renderCheck(all: CatalogRow[], { kinds, built = 'sql/000 … the newest migration', runOn = 'a project that has every migration applied\n-- (the test copy)', absent: allAbsent = [] }: CheckOptions = {}): string {
   const expected = kinds ? all.filter(r => kinds.includes(r.kind)) : all
+  const absent = kinds ? allAbsent.filter(a => kinds.includes(a.kind)) : allAbsent
+  const absentNote = absent.length
+    ? `--   must be absent   a migration removed it on purpose; this database still has it:\n${
+        absent.map(a => `--                    ${a.kind} ${a.key}: ${a.why}`).join('\n')}\n`
+    : ''
+  const absentCase = absent.length
+    ? ` when expected is null and kind || ' ' || key in (${absent.map(a => quote(`${a.kind} ${a.key}`)).join(', ')}) then 'must be absent'`
+    : ''
   const only = kinds ? ` where kind in (${kinds.map(quote).join(', ')})` : ''
   const title = kinds ? `${kinds.join(', ')} only` : 'does this database match the migrations?'
   const values = expected.map(r => `    (${quote(r.kind)}, ${quote(r.key)}, ${quote(r.def)})`).join(',\n')
@@ -146,7 +159,7 @@ export function renderCheck(all: CatalogRow[], { kinds, built = 'sql/000 … the
 --             Postgres 17 and 18 can print the same thing slightly differently;
 --             read the two definitions before acting on a "differs".
 --   extra     this database has it; the migrations do not define it
--- No rows: this database matches the migrations in all of it.
+${absentNote}-- No rows: this database matches the migrations in all of it.
 --
 -- Covered: ${kinds ? kinds.join(', ') : `triggers on our functions (public and auth.users), indexes,
 -- primary-key, unique, check, foreign-key and exclusion constraints, NOT NULL
@@ -168,7 +181,7 @@ norm as (
     from expected e full join actual a on a.kind = e.kind and a.key = e.key
 )
 select kind, key,
-       case when actual is null then 'missing' when expected is null then 'extra' else 'differs' end as status,
+       case when actual is null then 'missing'${absentCase} when expected is null then 'extra' else 'differs' end as status,
        expected, actual
   from norm
  where actual is null or expected is null

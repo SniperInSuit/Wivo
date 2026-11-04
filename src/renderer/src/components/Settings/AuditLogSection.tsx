@@ -171,7 +171,7 @@ export function AuditLogSection({ onOpenPatient }: { onOpenPatient?: (patientId:
           <span className="text-ink-muted">{t('audit.who')}</span>
           <select value={filters.userId} onChange={e => set({ userId: e.target.value })} className="input w-44 text-xs py-1">
             <option value="">{t('audit.everyone')}</option>
-            {people.map(p => <option key={p.user_id} value={p.user_id}>{p.name || '—'}</option>)}
+            {people.map(p => <option key={p.user_id} value={p.user_id}>{p.name || t('audit.formerMemberWho')}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-0.5">

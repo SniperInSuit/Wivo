@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { toCsv } from '@shared/export/csv'
 import {
   AUDIT_ACTIONS, NO_FILTERS, actionLabel, auditCsvColumns, chartSummary, cursorAfter, describeEntry, entryPatient, entryWhat,
-  filterArgs, filtersText, groupRows, type AuditEntry,
+  entryWho, filterArgs, filtersText, groupRows, type AuditEntry,
 } from './auditSearch'
 import { t } from '@/lib/i18n'
 
@@ -188,5 +188,29 @@ describe('the tooth chart: one entry per click, one row on screen', () => {
   it('a patient\'s other edits are not chart clicks', () => {
     const fields = entry({ id: 2, action: 'edit', object: P, job_code: null, detail: { changes: { nimi: 'changed' } } })
     expect(groupRows([click(3, 16), fields, click(1, 21)]).map(r => r.kind)).toEqual(['entry', 'entry', 'entry'])
+  })
+})
+
+describe('who made it, after their account is gone (sql/115)', () => {
+  const LIIS = '44444444-4444-4444-8444-444444444444'
+
+  it('the name the entry kept; an id with no name left, a former member; nobody signed in, the system', () => {
+    expect(entryWho(entry({ user_name: 'Liis Lahkuja', user_id: LIIS }))).toBe('Liis Lahkuja')
+    expect(entryWho(entry({ user_name: null, user_id: LIIS }))).toBe(t('audit.formerMemberWho'))
+    expect(entryWho(entry({ user_name: null, user_id: null }))).toBe(t('audit.system'))
+    expect(entryWho(entry({ user_name: null }))).toBe(t('audit.system'))
+  })
+
+  it('the people an entry names: as stored then, even when today\'s list has them otherwise or not at all', () => {
+    const e = entry({ action: 'edit', detail: { changes: { assigned_to: { old: null, new: LIIS } }, names: { [LIIS]: 'Liis Lahkuja' } } })
+    expect(describeEntry(e)).toBe(`${t('auditField.technician')} ${t('audit.nobody')} → Liis Lahkuja`)
+    expect(describeEntry(e, new Map([[LIIS, 'Liis Kask']]))).toContain('Liis Lahkuja')
+    const p = entry({ action: 'permission', object: `user:${LIIS}`, job_code: null, detail: { granted: ['jobs.read'], names: { [LIIS]: 'Liis Lahkuja' } } })
+    expect(entryWhat(p)).toBe('Liis Lahkuja')
+  })
+
+  it('the stored names never show as a field of their own', () => {
+    const e = entry({ action: 'edit', detail: { changes: { varv: { old: 'A1', new: 'A2' } }, names: { [LIIS]: 'Liis' } } })
+    expect(describeEntry(e)).toBe(`${t('auditField.shade')} A1 → A2`)
   })
 })

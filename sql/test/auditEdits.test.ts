@@ -94,13 +94,13 @@ describe('the log is append-only for everyone', () => {
     expect((await db.query(`select 1 from public.audit_log where id = $1 and object like 'job:%'`, [entry])).rows).toHaveLength(1)
   })
 
-  it('only the database itself: a deleted account keeps its entries without a name; a deleted clinic takes its own', async () => {
+  it('only the database itself: a deleted account leaves its entries as they were (sql/115); a deleted clinic takes its own', async () => {
     const C = await createTenant(db, 'Tartu')
     const [p] = await rowsAs<{ id: string }>(db, { id: C.ownerId },
       `insert into public.patients (clinic_id, nimi) values ($1, 'X') returning id`, [C.clinicId])
     await db.query(`delete from auth.users where id = $1`, [C.ownerId])
     const left = await db.query<{ user_id: string | null }>(`select user_id from public.audit_log where object = $1`, [`patient:${p.id}`])
-    expect(left.rows).toEqual([{ user_id: null }])
+    expect(left.rows).toEqual([{ user_id: C.ownerId }])
 
     const { rows: [d] } = await db.query<{ id: string }>(`insert into public.clinics (name) values ('Viljandi') returning id`)
     await db.query(`select public.audit($1, 'view', 'job:x')`, [d.id])
@@ -307,14 +307,14 @@ describe('permissions', () => {
 
   it('one switch: who granted which permission to whom', async () => {
     expect(await upsert([['patients.read', true]])).toEqual([{ org_id: A.clinicId, user_id: A.ownerId, action: 'permission',
-      object: `user:${A.workerId}`, detail: { granted: ['patients.read'] } }])
+      object: `user:${A.workerId}`, detail: { granted: ['patients.read'], names: { [A.workerId]: 'Tallinn worker' } } }])
     expect(await upsert([['patients.read', false]])).toMatchObject([{ detail: { removed: ['patients.read'] } }])
   })
 
   it('the preset, in one save: one entry; nothing changed, none', async () => {
     const e = await upsert([['patients.read', true], ['jobs.write', true], ['finance.read', false]])
     expect(e).toEqual([{ org_id: A.clinicId, user_id: A.ownerId, action: 'permission', object: `user:${A.workerId}`,
-      detail: { granted: ['patients.read'] } }])
+      detail: { granted: ['patients.read'], names: { [A.workerId]: 'Tallinn worker' } } }])
     expect(await upsert([['patients.read', true], ['jobs.write', true]])).toEqual([])
   })
 
@@ -327,7 +327,7 @@ describe('permissions', () => {
   it('a member\'s role: old → new', async () => {
     const e = await saved(A.ownerId, `update public.profiles set org_role = 'admin' where id = $1`, [A.workerId])
     expect(e).toEqual([{ org_id: A.clinicId, user_id: A.ownerId, action: 'permission', object: `user:${A.workerId}`,
-      detail: { role: { old: 'technician', new: 'admin' } } }])
+      detail: { role: { old: 'technician', new: 'admin' }, names: { [A.workerId]: 'Tallinn worker' } } }])
     await saved(A.ownerId, `update public.profiles set org_role = 'technician' where id = $1`, [A.workerId])
   })
 })

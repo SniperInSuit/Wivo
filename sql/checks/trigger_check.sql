@@ -18,13 +18,14 @@
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: trigger.
--- Expected rows: 35.
+-- Expected rows: 36.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
     ('trigger', 'auth.users.on_auth_email_changed', 'CREATE TRIGGER on_auth_email_changed AFTER UPDATE OF email ON auth.users FOR EACH ROW EXECUTE FUNCTION on_auth_email_changed()'),
     ('trigger', 'auth.users.on_auth_user_created', 'CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()'),
     ('trigger', 'public.audit_log.audit_log_append_only', 'CREATE TRIGGER audit_log_append_only BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_append_only()'),
+    ('trigger', 'public.audit_log.audit_log_names', 'CREATE TRIGGER audit_log_names BEFORE INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_names()'),
     ('trigger', 'public.audit_log.audit_log_no_truncate', 'CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_no_truncate()'),
     ('trigger', 'public.channel_members.guard_channel_member_change', 'CREATE TRIGGER guard_channel_member_change BEFORE UPDATE ON public.channel_members FOR EACH ROW EXECUTE FUNCTION guard_channel_member_change()'),
     ('trigger', 'public.clinic_settings.clinic_settings_touch', 'CREATE TRIGGER clinic_settings_touch BEFORE UPDATE ON public.clinic_settings FOR EACH ROW EXECUTE FUNCTION touch_clinic_settings()'),

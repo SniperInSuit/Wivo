@@ -24,6 +24,11 @@ const PRODUCTION_FILE = join(__dirname, '..', 'checks', 'production_check.sql')
 const ORPHANS_FILE = join(__dirname, '..', 'checks', 'orphan_users.sql')
 const JOBS_FILE = join(__dirname, '..', 'checks', 'scheduled_jobs.sql')
 const ACCOUNT_FILE = join(__dirname, '..', 'checks', 'sign_in_account.sql')
+/** Removed on purpose; schema_check.sql says so by name when a database still has one. */
+const MUST_BE_ABSENT = [
+  { kind: 'constraint', key: 'public.audit_log.audit_log_user_id_fkey',
+    why: 'sql/115 dropped it, so deleting an account no longer empties who made each change (do not run sql/107 again)' },
+]
 /** What production has had applied: everything up to 091, then 098 (MFA). */
 const PRODUCTION_MIGRATIONS = migrationFiles().filter(f => f < '092' || f.startsWith('098_'))
 let fresh: PGlite
@@ -35,7 +40,7 @@ let productionCheck: string
 beforeAll(async () => {
   fresh = await freshDb()
   const { rows } = await fresh.query<CatalogRow>(`${CATALOG_SQL} order by 1, 2`)
-  check = renderCheck(rows)
+  check = renderCheck(rows, { absent: MUST_BE_ABSENT })
   triggerCheck = renderCheck(rows, { kinds: ['trigger'] })
   production = await emptyDb()
   await applyMigrations(production, PRODUCTION_MIGRATIONS)
@@ -129,6 +134,15 @@ describe('the schema check', () => {
     // The trigger check: the trigger alone.
     expect((await differences(d, TRIGGER_FILE)).map(r => `${r.status} ${r.kind} ${r.key}`))
       .toEqual(['missing trigger public.jobs.soft_delete_job'])
+  }, 120_000)
+
+  it('names what a migration removed on purpose: audit_log_user_id_fkey must be absent (sql/115)', async () => {
+    expect(check).toContain('public.audit_log.audit_log_user_id_fkey')
+    const d = await freshDb()
+    await d.exec(`alter table public.audit_log add constraint audit_log_user_id_fkey
+                    foreign key (user_id) references auth.users(id) on delete set null not valid`)
+    expect((await differences(d)).map(r => `${r.status} ${r.kind} ${r.key}`))
+      .toEqual(['must be absent constraint public.audit_log.audit_log_user_id_fkey'])
   }, 120_000)
 
   it('a function pasted with Windows line endings is the same function', async () => {

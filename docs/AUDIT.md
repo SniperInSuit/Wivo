@@ -1,6 +1,6 @@
 # Audit log: recording edits to jobs, work items, teeth, patients, permissions and files
 
-Status: **built on `testing`** (`sql/114_audit_edits.sql`). It is not applied anywhere yet; Kevin applies it to the test copy first (§6).
+Status: **built on `testing`** (`sql/114_audit_edits.sql`, `sql/115_audit_actor_names.sql`). They are not applied anywhere yet; Kevin applies them to the test copy first, in that order (§6).
 
 Found on the test copy: adding teeth to a job left no entry. Only file views and exports showed up.
 
@@ -19,6 +19,9 @@ The cause: **the audit log never recorded an edit.** It recorded what happens ar
 5. **In this step:** permission changes (who granted or removed which permission for whom) and file deletion, because both matter for security and for medical records.
    - **Later:** invoices, payments, payroll and price lists.
 6. **The audit log is append-only for everyone, owners included,** with a test.
+7. **Who made each change survives their account** (sql/115, §2.7):
+   - the author's id is kept with no foreign key, together with their name as it was;
+   - existing rows are given their author's name by a one-time fill inside sql/115, which is option (a).
 
 ---
 
@@ -162,7 +165,8 @@ Creating a patient records only that it was created. Deleting a patient records 
   - Entries are written only by `audit()`, inside the database's own functions.
 - **In the SQL Editor:**
   - An update, delete or truncate is refused too ("audit_log is append-only").
-  - Only the database's own cascades get through: deleting an account empties its entries' `user_id`, and deleting a clinic removes that clinic's entries.
+  - Since sql/115, no update gets through at all, not even from a deleted account (§2.7).
+  - The only removal left is a deleted clinic taking its own entries with it.
 - **Tests:** `sql/test/auditEdits.test.ts`, "the log is append-only for everyone".
 
 ### 2.6 Reading them
@@ -171,8 +175,9 @@ On Settings → Audit log, the new actions are labelled Created, Edited, Permiss
 
 - **The detail line** is as in §2.2, in English and Estonian. Russian falls back to English.
 - **Names:**
-  - technicians, designers and clients are named from the clinic's own lists;
-  - someone who has left shows as "former member", a deleted client as "deleted client";
+  - people are named as the entry stored them when it was written (§2.7);
+  - otherwise, and always for clients, names come from the clinic's own lists;
+  - a person whose name is nowhere shows as "former member", a deleted client as "deleted client";
   - a member whose permissions changed is shown by name.
 - **Patients** are shown as "Patient" and the first eight characters of the id, with an **Open** button that goes to the card.
 - **Tooth chart clicks:**
@@ -180,6 +185,35 @@ On Settings → Audit log, the new actions are labelled Created, Edited, Permiss
   - the row expands to show each click;
   - only the screen groups them: every entry stays as it was stored, and the CSV has one line per entry.
 - **Older app builds** list the new entries with a plain label and no detail line until they update.
+
+### 2.7 Who made each change survives their account (sql/115)
+
+**Before sql/115:**
+- `audit_log.user_id` was a foreign key to the sign-in account, with `on delete set null`.
+- Deleting an account, through Team → "Delete account permanently" or the Supabase dashboard, emptied the author in every entry the person had made.
+- The screen then read those entries as "System".
+- The names on screen were looked up from today's profile, so a renamed member's past entries showed the new name.
+
+**Since sql/115:**
+- **The author's id stays.** The foreign key is gone, so nothing can empty `user_id`.
+- **Their name, as it was** (`actor_name`), is written with each row by a trigger. That covers every writer: a writer can't leave the name out or put in another.
+- **The other people an entry names are stored by name too**, in `detail.names`. That means a job's technician and designer (a work item's and a remake's too) and the member whose permissions or role changed.
+- **On the screen:**
+  - the "Who" column shows the stored name;
+  - an id with no name left reads "Former member";
+  - "System" is used only when nobody was signed in;
+  - the person filter keeps deleted members.
+- **The log takes no update at all.** The one exception before, a deleted account emptying its entries, is gone.
+
+**Entries written before sql/115:**
+- **Their names were filled once, by sql/115 itself.**
+  - That was the one sanctioned write to stored rows: the append-only trigger was off for that single statement.
+  - It filled only the empty `actor_name`, and a test checks that nothing else changed.
+- **The name came from each author's profile at the time of the fill, not at the time of the entry.** So a renamed member's older entries may show the later name.
+- **Their `detail.names` were not filled.** Those entries name other people from the clinic's current lists.
+- **Entries whose author had already been deleted before sql/115** had their id emptied then. They stay without a name, and the screen still reads them as "System".
+
+**Do not run sql/107 again.** It restores foreign keys from a fixed list, and a rerun would put `audit_log_user_id_fkey` back. `sql/checks/schema_check.sql` names that key as **must be absent** if a database has it.
 
 ---
 
@@ -194,6 +228,9 @@ On Settings → Audit log, the new actions are labelled Created, Edited, Permiss
   - technicians, other clinics and the public key get nothing;
   - tests check each of them.
 - **Partners get nothing from edits.** Only the job's own clinic can edit a job, and the entry goes to that clinic alone.
+- **Staff names outlive their accounts** (sql/115).
+  - A former employee's name stays in the clinic's log after their account is deleted. That is their personal data, kept for the medical-record trail. **The lawyer should confirm this**, together with the retention period (§4).
+  - A partner's staff, acting on a shared job, were already shown by name in the owning clinic's log. Their names are now stored there too.
 - **The Wivo admin console never sees them.**
   - The console doesn't exist yet (docs/GAP-ANALYSIS.md, Phase 3).
   - The rule to build it by: its functions do not read `audit_log`, not even counts.
@@ -263,7 +300,25 @@ select to_char(m, 'YYYY-MM') as month,
 - `Settings/AuditLogSection.tsx`: the names, the patient's Open button and the expanding rows;
 - i18n in English and Estonian.
 
+**`sql/115_audit_actor_names.sql`** (no new table):
+1. Drops `audit_log_user_id_fkey`.
+2. Adds `actor_name` and a before-insert trigger that writes it and `detail.names`.
+3. Makes append-only absolute.
+4. The one-time fill.
+5. `audit_search` returns the stored name and, as a new column, the author's id. `audit_entries` returns the stored name. `audit_people` lists deleted members too.
+6. Ends with `select public.lock_anon_functions();`.
+7. The schema check generator gained a "must be absent" list. `schema_check.sql` reports `audit_log_user_id_fkey` as **must be absent**, with the reason.
+
 **Tests:**
+- `sql/test/auditActorNames.test.ts` (12 tests for sql/115):
+  - a deleted account's entries keep the id and the name, and the screen shows the name;
+  - a rename keeps old names;
+  - deleted members stay in the person filter;
+  - `detail.names` carries the technician's and the permission target's names;
+  - no update gets through;
+  - the one-time fill changed nothing but `actor_name`;
+  - the foreign key is absent.
+- `sql/test/schemaCheck.test.ts`: the must-be-absent row.
 - `sql/test/auditEdits.test.ts` (33 tests);
 - `lib/auditSearch.test.ts`, extended;
 - `sql/test/auditSearch.test.ts`: it now rolls back its own test row instead of deleting it, since that delete is refused now.
@@ -272,8 +327,10 @@ select to_char(m, 'YYYY-MM') as month,
 
 ## 6. Kevin's steps on the test copy
 
-1. **In the SQL Editor:** run `sql/114_audit_edits.sql`. Then run `notify pgrst, 'reload schema';` as a separate query.
+1. **In the SQL Editor:** run `sql/114_audit_edits.sql`, then `sql/115_audit_actor_names.sql`. Then run `notify pgrst, 'reload schema';` as a separate query.
+   - sql/115 prints a notice of how many earlier entries got a name.
 2. **Read-only checks:** run `sql/checks/schema_check.sql` and `sql/checks/trigger_check.sql`. Each should return no rows.
+   - A row "must be absent constraint public.audit_log.audit_log_user_id_fkey" means sql/115's drop didn't take.
 3. **No Edge Function deploy is needed.**
 4. **Push `testing`** so the test site rebuilds with the new audit screen. On the desktop: `npm run dev:test`.
 5. **Try it**, then look in Settings → Audit log:
@@ -283,5 +340,6 @@ select to_char(m, 'YYYY-MM') as month,
    - click a few teeth on a patient's chart, then expand the grouped row;
    - turn a permission on and off for a member;
    - delete a file;
-   - delete a test patient.
+   - delete a test patient;
+   - have a test member make a change, delete their account in Team, and check that their entries still show their name.
 6. **Production:** with the next release, in the same order.

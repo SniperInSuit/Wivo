@@ -135,10 +135,11 @@ describe('paging', () => {
 })
 
 describe('nothing new shown', () => {
-  it('the same rows and columns as audit_entries', async () => {
+  it('the same rows and columns as audit_entries, and the author\'s id (sql/115; audit_people shows it already)', async () => {
     const entries = await rowsAs<Row>(db, { id: A.ownerId }, `select * from public.audit_entries(1000)`)
-    const found = await search({ limit: 1000 })
-    expect(found).toEqual(entries)
+    const found = await search({ limit: 1000 }) as (Row & { user_id?: string | null })[]
+    expect(found.map(({ user_id: _, ...r }) => r)).toEqual(entries)
+    expect(Object.keys(found[0]).sort()).toEqual([...Object.keys(entries[0]), 'user_id'].sort())
   })
 
   it('the people list holds only who appears in the log, by the name the log shows', async () => {

@@ -15,6 +15,8 @@
 --             Postgres 17 and 18 can print the same thing slightly differently;
 --             read the two definitions before acting on a "differs".
 --   extra     this database has it; the migrations do not define it
+--   must be absent   a migration removed it on purpose; this database still has it:
+--                    constraint public.audit_log.audit_log_user_id_fkey: sql/115 dropped it, so deleting an account no longer empties who made each change (do not run sql/107 again)
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: triggers on our functions (public and auth.users), indexes,
@@ -24,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 1781.
+-- Expected rows: 1785.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -34,7 +36,6 @@ with expected(kind, key, def) as (values
     ('constraint', 'public.audit_log.audit_log_action_valid', 'CHECK ((action = ANY (ARRAY[''view''::text, ''download''::text, ''upload''::text, ''share''::text, ''unshare''::text, ''stage_move''::text, ''partnership''::text, ''export''::text, ''question''::text, ''delete''::text, ''restore''::text, ''stock_override''::text, ''mfa_added''::text, ''mfa_removed''::text, ''mfa_reset''::text, ''account_deleted''::text, ''create''::text, ''edit''::text, ''permission''::text, ''file_deleted''::text])))'),
     ('constraint', 'public.audit_log.audit_log_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE CASCADE'),
     ('constraint', 'public.audit_log.audit_log_pkey', 'PRIMARY KEY (id)'),
-    ('constraint', 'public.audit_log.audit_log_user_id_fkey', 'FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL'),
     ('constraint', 'public.bug_report.bug_report_message_length', 'CHECK ((length(message) <= 5000))'),
     ('constraint', 'public.bug_report.bug_report_message_present', 'CHECK ((length(btrim(message)) > 0))'),
     ('constraint', 'public.bug_report.bug_report_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE SET NULL'),
@@ -475,7 +476,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.as_uuid(p text)', 'security invoker, immutable, search_path=public, body md5 d73dba2a08216208b44bee7dd3136d7d'),
     ('function', 'public.audit(p_org uuid, p_action text, p_object text, p_detail jsonb)', 'security definer, volatile, search_path=public, body md5 b91f1e9fd736a8bda041520252dd4e33'),
     ('function', 'public.audit_changes(p_kind text, p_old jsonb, p_new jsonb)', 'security invoker, immutable, search_path=public, body md5 cfaa59710879c8e37429e41f46f2d1ac'),
-    ('function', 'public.audit_entries(p_limit integer, p_action text, p_before timestamp with time zone)', 'security definer, stable, search_path=public, body md5 fe74c2e143c399faa66f224cbaf30568'),
+    ('function', 'public.audit_entries(p_limit integer, p_action text, p_before timestamp with time zone)', 'security definer, stable, search_path=public, body md5 4e585f2714581ddf3e63746e5472c581'),
     ('function', 'public.audit_export(p_kind text, p_rows integer, p_filters jsonb)', 'security definer, volatile, search_path=public, body md5 98f6236f24151662068153ce477689b6'),
     ('function', 'public.audit_field_change(p_rule text, p_old jsonb, p_new jsonb, p_has_old boolean, p_has_new boolean)', 'security invoker, immutable, search_path=public, body md5 e56043e87914c80da4f19fce7909e55b'),
     ('function', 'public.audit_field_rules()', 'security invoker, immutable, search_path=public, body md5 e50f1bfeeccddc278c6e1ec38f0618c7'),
@@ -483,16 +484,18 @@ with expected(kind, key, def) as (values
     ('function', 'public.audit_job_diff(p_old jsonb, p_new jsonb)', 'security invoker, immutable, search_path=public, body md5 996c56cea1c76f4add9aebd89b030b51'),
     ('function', 'public.audit_list_changes(p_kind text, p_old jsonb, p_new jsonb)', 'security invoker, immutable, search_path=public, body md5 51554f3980b99befd7afe51d1ab79d96'),
     ('function', 'public.audit_list_label(p_kind text, p_elem jsonb, p_ord integer)', 'security invoker, immutable, search_path=public, body md5 e937080bd879a4121dc031d917a734f2'),
-    ('function', 'public.audit_log_append_only()', 'security invoker, volatile, search_path=public, body md5 66398bfcdd0e2e7bff586057d5b6660e'),
+    ('function', 'public.audit_log_append_only()', 'security invoker, volatile, search_path=public, body md5 1d9c7c2721049d796a70d6494622f1ca'),
+    ('function', 'public.audit_log_names()', 'security definer, volatile, search_path=public, body md5 d6bcfa8abb426e5bc56519044077355b'),
     ('function', 'public.audit_log_no_truncate()', 'security invoker, volatile, search_path=public, body md5 844ba3d32a02b5d2a6218ac4041d8add'),
     ('function', 'public.audit_patient_change()', 'security definer, volatile, search_path=public, body md5 b43eadb4648bba74c7c3b09c997ed89d'),
     ('function', 'public.audit_patient_tooth()', 'security definer, volatile, search_path=public, body md5 4c86507d28694df810ac77e3ec4fdc8e'),
-    ('function', 'public.audit_people()', 'security definer, stable, search_path=public, body md5 3e8364bf8a1acabfbe4fe536014e4971'),
+    ('function', 'public.audit_people()', 'security definer, stable, search_path=public, body md5 b8cf06d0b5c36b82303299d0bf47cba7'),
     ('function', 'public.audit_permissions_deleted()', 'security definer, volatile, search_path=public, body md5 096555f8e70c113a8983fb9f79c3de18'),
     ('function', 'public.audit_permissions_inserted()', 'security definer, volatile, search_path=public, body md5 f5e52d78e3ca6b966d4befaa76f30904'),
     ('function', 'public.audit_permissions_updated()', 'security definer, volatile, search_path=public, body md5 7ee2dca7468804faf756fc09e30fb729'),
+    ('function', 'public.audit_person_name(p_user uuid)', 'security invoker, stable, search_path=public, body md5 9bd62c5174e1844912ca76b4351d41ed'),
     ('function', 'public.audit_role_change()', 'security definer, volatile, search_path=public, body md5 dc295386979f9a27a4504c1c1f7207de'),
-    ('function', 'public.audit_search(p_user uuid, p_action text, p_job_code text, p_from timestamp with time zone, p_to timestamp with time zone, p_before_at timestamp with time zone, p_before_id bigint, p_limit integer)', 'security definer, stable, search_path=public, body md5 d0feb7a172fbe1723179af41e389f7ac'),
+    ('function', 'public.audit_search(p_user uuid, p_action text, p_job_code text, p_from timestamp with time zone, p_to timestamp with time zone, p_before_at timestamp with time zone, p_before_id bigint, p_limit integer)', 'security definer, stable, search_path=public, body md5 f1a03e3b6b9642b0374308f41e67fff2'),
     ('function', 'public.audit_teeth(p jsonb)', 'security invoker, immutable, search_path=public, body md5 34f4570aa2c63522bfe040ffe210f2fc'),
     ('function', 'public.audit_value(p jsonb)', 'security invoker, immutable, search_path=public, body md5 bbef56452838d2874d133ab1d3191e7b'),
     ('function', 'public.authorize_mfa_removal(p_factor uuid, p_password text)', 'security definer, volatile, search_path=public, body md5 72a67295b232dcb89b2cbaf32cbf9fb7'),
@@ -703,6 +706,7 @@ with expected(kind, key, def) as (values
     ('grant', 'public.audit_log_id_seq to anon', 'SELECT'),
     ('grant', 'public.audit_log_id_seq to authenticated', 'SELECT'),
     ('grant', 'public.audit_log_id_seq to service_role', 'SELECT'),
+    ('grant', 'public.audit_log_names() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_log_no_truncate() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_patient_change() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_patient_tooth() to service_role', 'EXECUTE'),
@@ -711,6 +715,7 @@ with expected(kind, key, def) as (values
     ('grant', 'public.audit_permissions_deleted() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_permissions_inserted() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_permissions_updated() to service_role', 'EXECUTE'),
+    ('grant', 'public.audit_person_name(p_user uuid) to service_role', 'EXECUTE'),
     ('grant', 'public.audit_role_change() to service_role', 'EXECUTE'),
     ('grant', 'public.audit_search(p_user uuid, p_action text, p_job_code text, p_from timestamp with time zone, p_to timestamp with time zone, p_before_at timestamp with time zone, p_before_id bigint, p_limit integer) to authenticated', 'EXECUTE'),
     ('grant', 'public.audit_search(p_user uuid, p_action text, p_job_code text, p_from timestamp with time zone, p_to timestamp with time zone, p_before_at timestamp with time zone, p_before_id bigint, p_limit integer) to service_role', 'EXECUTE'),
@@ -1815,6 +1820,7 @@ with expected(kind, key, def) as (values
     ('trigger', 'auth.users.on_auth_email_changed', 'CREATE TRIGGER on_auth_email_changed AFTER UPDATE OF email ON auth.users FOR EACH ROW EXECUTE FUNCTION on_auth_email_changed()'),
     ('trigger', 'auth.users.on_auth_user_created', 'CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()'),
     ('trigger', 'public.audit_log.audit_log_append_only', 'CREATE TRIGGER audit_log_append_only BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_append_only()'),
+    ('trigger', 'public.audit_log.audit_log_names', 'CREATE TRIGGER audit_log_names BEFORE INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_names()'),
     ('trigger', 'public.audit_log.audit_log_no_truncate', 'CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_no_truncate()'),
     ('trigger', 'public.channel_members.guard_channel_member_change', 'CREATE TRIGGER guard_channel_member_change BEFORE UPDATE ON public.channel_members FOR EACH ROW EXECUTE FUNCTION guard_channel_member_change()'),
     ('trigger', 'public.clinic_settings.clinic_settings_touch', 'CREATE TRIGGER clinic_settings_touch BEFORE UPDATE ON public.clinic_settings FOR EACH ROW EXECUTE FUNCTION touch_clinic_settings()'),
@@ -2025,7 +2031,7 @@ norm as (
     from expected e full join actual a on a.kind = e.kind and a.key = e.key
 )
 select kind, key,
-       case when actual is null then 'missing' when expected is null then 'extra' else 'differs' end as status,
+       case when actual is null then 'missing' when expected is null and kind || ' ' || key in ('constraint public.audit_log.audit_log_user_id_fkey') then 'must be absent' when expected is null then 'extra' else 'differs' end as status,
        expected, actual
   from norm
  where actual is null or expected is null
