@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Users, UserPlus, Shield, Loader2, Trash2, Check, Lock, Copy } from 'lucide-react'
 import { supabase, displayIdentity } from '../../lib/supabase'
 import { AddMemberDialog } from './AddMemberDialog'
-import { teamAccounts, accountBadges, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
+import { teamAccounts, accountBadges, signInLine, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
+import { MIN_PASSWORD } from '../../lib/authConfirm'
 import { TECHNICIAN_PRESET } from '@shared/permissions'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
@@ -33,6 +34,12 @@ function AccountBadges({ account }: { account: TeamAccount | undefined }) {
       ))}
     </div>
   )
+}
+
+// Under the name in the detail header: the address, or "Username: tehnik@tal".
+function SignInName({ account }: { account: TeamAccount | undefined }) {
+  if (!account) return null
+  return <p className="text-xs text-ink-soft break-all">{signInLine(account, '')}</p>
 }
 
 // Permanent, so it says so and asks twice. The database is the real guard —
@@ -225,8 +232,8 @@ export function WorkersPage() {
    */
   async function setWorkerPassword(worker: WorkerWithPerms) {
     setRemoveError(null); setPwDone(null)
-    if (newPassword.trim().length < 6) {
-      setRemoveError(t('workers.passwordMustBeAtLeast6'))
+    if (newPassword.trim().length < MIN_PASSWORD) {
+      setRemoveError(t('workers.passwordMustBeAtLeast', { n: MIN_PASSWORD }))
       return
     }
     setPwSaving(true)
@@ -385,7 +392,7 @@ export function WorkersPage() {
                   <AccountBadges account={accounts.get(w.id)} />
                 </div>
                 <p className="text-[11px] text-ink-faint truncate">
-                  {accounts.get(w.id)?.login ?? displayIdentity(null, w.username)}
+                  {signInLine(accounts.get(w.id), displayIdentity(null, w.username))}
                 </p>
                 <p className="text-[11px] text-ink-faint flex items-center gap-1.5">
                   <Shield size={10} />
@@ -414,7 +421,10 @@ export function WorkersPage() {
             ) : selected.role === 'owner' ? (
               <div className="card p-5">
                 <div className="flex flex-wrap items-start gap-x-3 gap-y-1 mb-1">
-                  <h2 className="text-base font-semibold text-ink min-w-0">{selected.full_name}</h2>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-ink">{selected.full_name}</h2>
+                    <SignInName account={accounts.get(selected.id)} />
+                  </div>
                   <AccountBadges account={accounts.get(selected.id)} />
                 </div>
                 <p className="text-sm text-ink-muted">
@@ -426,6 +436,7 @@ export function WorkersPage() {
                 <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
                   <div className="min-w-0">
                     <h2 className="text-base font-semibold text-ink">{selected.full_name || '—'}</h2>
+                    <SignInName account={accounts.get(selected.id)} />
                     <p className="text-xs text-ink-muted">{t('workers.staffPermissions')}</p>
                   </div>
                   <AccountBadges account={accounts.get(selected.id)} />
@@ -519,13 +530,13 @@ export function WorkersPage() {
                           type="text"
                           value={newPassword}
                           onChange={e => setNewPassword(e.target.value)}
-                          placeholder={t('workers.atLeast6Characters')}
+                          placeholder={t('workers.atLeastNCharacters', { n: MIN_PASSWORD })}
                           className="input pl-8 py-1.5 text-sm"
                         />
                       </div>
                       <button
                         onClick={() => setWorkerPassword(selected)}
-                        disabled={pwSaving || newPassword.trim().length < 6}
+                        disabled={pwSaving || newPassword.trim().length < MIN_PASSWORD}
                         className="btn-ghost border border-ink-faint/25 disabled:opacity-50"
                       >
                         {pwSaving ? t('workers.saving') : t('workers.set')}

@@ -69,6 +69,8 @@ export type TeamRequest =
   | { action: 'add_email'; email: string; language: Lang }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** As the app's (lib/authConfirm.ts); the project's "Minimum password length" should match. */
+export const MIN_PASSWORD = 10
 /** Good enough to refuse junk; GoTrue has the last word. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -88,7 +90,7 @@ export function parseTeamRequest(body: unknown): TeamRequest | null {
   if (b.action === 'create_login') {
     const username = typeof b.username === 'string' ? normaliseUsername(b.username) : null
     const fullName = name(b.fullName)
-    const password = typeof b.password === 'string' && b.password.length >= 6 && b.password.length <= 200 ? b.password : null
+    const password = typeof b.password === 'string' && b.password.length >= MIN_PASSWORD && b.password.length <= 200 ? b.password : null
     return username && fullName !== null && password ? { action: 'create_login', username, fullName, password, language } : null
   }
   if (b.action === 'resend' && typeof b.userId === 'string' && UUID.test(b.userId)) {

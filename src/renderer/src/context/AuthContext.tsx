@@ -5,6 +5,7 @@ import {
   supabase, getSession, getProfile, onAuthStateChange, signOut as doSignOut, rememberClinicCode,
   setActiveClinicId, type Profile, type UserRole
 } from '../lib/supabase'
+import { isMfaRefusal } from '../lib/mfa'
 
 export interface Clinic {
   id: string
@@ -51,7 +52,7 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-async function fetchClinic(clinicId: string): Promise<Clinic | null> {
+export async function fetchClinic(clinicId: string): Promise<Clinic | null> {
   const { data, error } = await supabase
     .from('clinics')
     .select('*')
@@ -63,7 +64,9 @@ async function fetchClinic(clinicId: string): Promise<Clinic | null> {
     // downstream (settings sync, the Kliinik page) then behaved as if the
     // clinic did not exist. The profile's clinic_id is still the truth; this
     // only means the DETAILS could not be loaded.
-    console.error('[Wivo] kliiniku andmete laadimine ebaõnnestus:', error.message)
+    // Before the second factor the database refuses it (sql/098), and the
+    // sign-in that follows loads it again (onAuthStateChange): not an error.
+    if (!isMfaRefusal(error)) console.error('[Wivo] kliiniku andmete laadimine ebaõnnestus:', error.message)
     return null
   }
   return data as Clinic

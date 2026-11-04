@@ -106,6 +106,15 @@ export function isWrongCode(e: unknown): boolean {
 }
 
 /**
+ * The database's answer before the second factor (sql/098, hint
+ * `mfa_required`). Expected between the password and the code: what was
+ * refused is asked again once the code is in.
+ */
+export function isMfaRefusal(e: unknown): boolean {
+  return !!e && typeof e === 'object' && (e as { hint?: unknown }).hint === 'mfa_required'
+}
+
+/**
  * The server has ended this session: an owner's reset, the last authenticator
  * removed, "sign out on all other devices". The database stops answering such a
  * session at once (sql/098); this is how the app notices, from GoTrue's answer

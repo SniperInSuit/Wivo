@@ -122,3 +122,13 @@ export function accountBadges(account: TeamAccount | undefined): AccountBadge[] 
   }
   return badges
 }
+
+/**
+ * How the member signs in, under their name: the address, or the username
+ * said to be one (`tehnik@tal` alone reads like a broken address). Without
+ * account details, `fallback`.
+ */
+export function signInLine(account: TeamAccount | undefined, fallback: string): string {
+  if (!account) return fallback
+  return account.has_email ? account.login : t('team.usernameLogin', { login: account.login })
+}

@@ -5,7 +5,8 @@ const invoke = vi.fn()
 vi.mock('./supabase', () => ({
   supabase: { rpc: (...a: unknown[]) => rpc(...a), functions: { invoke: (...a: unknown[]) => invoke(...a) } },
 }))
-const { inviteMember, teamAccounts, accountBadges, teamErrorMessage, TeamAccountError, TEAM_CALL_TIMEOUT_MS } = await import('./teamAccount')
+const { inviteMember, teamAccounts, accountBadges, signInLine, teamErrorMessage, TeamAccountError, TEAM_CALL_TIMEOUT_MS } = await import('./teamAccount')
+const { t } = await import('@/lib/i18n')
 
 const invite = { email: 'mari@kliinik.ee', fullName: 'Mari', language: 'et' as const }
 
@@ -74,5 +75,23 @@ describe('the Team page\'s badges', () => {
     expect(labels(undefined)).toEqual([])
     const { has_authenticator: _, ...older } = account
     expect(labels(older)).toEqual(['team.verified true'])
+  })
+})
+
+describe('how a member signs in, under their name', () => {
+  const account = { id: 'u1', login: 'mari@kliinik.ee', has_email: true, invite_pending: false }
+
+  it('an e-mail account: the address', () => {
+    expect(signInLine(account, 'mari')).toBe('mari@kliinik.ee')
+  })
+
+  it('a username account: said to be a username', () => {
+    const line = signInLine({ ...account, login: 'tehnik@tal', has_email: false }, 'tehnik')
+    expect(line).toBe(t('team.usernameLogin', { login: 'tehnik@tal' }))
+    expect(line).toMatch(/^Kasutajanimi: tehnik@tal$/)
+  })
+
+  it('no account details: what the page had before', () => {
+    expect(signInLine(undefined, 'tehnik')).toBe('tehnik')
   })
 })

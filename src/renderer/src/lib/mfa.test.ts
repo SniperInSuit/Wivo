@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { nextMfaStep, defaultAuthApp, groupKey, isWrongCode, isSessionGone } from './mfa'
+import { nextMfaStep, defaultAuthApp, groupKey, isWrongCode, isSessionGone, isMfaRefusal } from './mfa'
+
+describe('the database asking for the second factor first (sql/098)', () => {
+  it('is told by its hint, not its words', () => {
+    expect(isMfaRefusal({ code: '42501', message: 'Sign in with your second factor first', hint: 'mfa_required' })).toBe(true)
+    expect(isMfaRefusal({ code: '42501', message: 'permission denied for table clinics' })).toBe(false)
+    expect(isMfaRefusal(null)).toBe(false)
+    expect(isMfaRefusal('mfa_required')).toBe(false)
+  })
+})
 
 describe('nextMfaStep', () => {
   it('signed in with a second factor: nothing to do', () => {

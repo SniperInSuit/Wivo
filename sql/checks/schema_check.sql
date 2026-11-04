@@ -465,7 +465,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.add_stock_item(p_category text, p_manufacturer text, p_system text, p_size text, p_product text, p_lot text, p_expiry date, p_qty integer, p_min_qty integer, p_owner_org uuid, p_owner_supplier text, p_consignment_due date)', 'security definer, volatile, search_path=public, body md5 85e4bef39004538f8398ebf2557f9b3d'),
     ('function', 'public.adjust_stock(p_item uuid, p_delta integer, p_reason text)', 'security definer, volatile, search_path=public, body md5 8676f6c4b0c89dc99a9cafbc13a8f4f0'),
     ('function', 'public.admin_delete_worker(p_profile uuid)', 'security definer, volatile, search_path=public, body md5 e4ab80920b58f286f0f41f50e39bb830'),
-    ('function', 'public.admin_set_worker_password(p_profile uuid, p_password text)', 'security definer, volatile, search_path=public, extensions, body md5 e9919b9fc5b294a7e77d51bfa21caf7f'),
+    ('function', 'public.admin_set_worker_password(p_profile uuid, p_password text)', 'security definer, volatile, search_path=public, extensions, body md5 f1c86d5da407b35eda9738165fe2de79'),
     ('function', 'public.anon_allowed_functions()', 'security invoker, immutable, search_path=public, body md5 ad9243a945010dd96c4e3d3d1925817e'),
     ('function', 'public.app_min_version_for_me()', 'security definer, stable, search_path=public, body md5 c1eacaab4271421e85b2d58f99c91081'),
     ('function', 'public.app_min_version_of(p_org uuid)', 'security definer, stable, search_path=public, body md5 da2de3b67f8c7fce157b807d79acd74f'),

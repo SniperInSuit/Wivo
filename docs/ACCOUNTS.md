@@ -29,7 +29,7 @@ Never production; Kevin applies every migration in the SQL Editor (CLAUDE.md).
 | The account is created in the **browser**, with public `auth.signUp` and the anon key | `Workers/WorkersPage.tsx` `handleInvite`, via `createSignupClient()` | Needs public sign-up to stay on. Anyone holding the public key can make an account. |
 | The owner check is a 10-minute invite token from `create_worker_invite()` | `sql/086_worker_invites.sql` | Good, and kept: the server-side path reuses it. |
 | **Usernames are project-wide, not per clinic** | `sql/029`: unique index `profiles_username_key` on `lower(username)`; `sql/086` `handle_new_user` checks the name against **every** profile; and `tehnik@example.com` is one row in `auth.users` | **Bug, confirmed.** Two clinics can **not** both have "tehnik". The second clinic gets "this username is already taken", which also tells it that the name exists in another clinic. |
-| Password reset for a username account: the owner sets one | `sql/030` `admin_set_worker_password` | Kept for stand-in accounts. |
+| Password reset for a username account: the owner sets one | `sql/030` `admin_set_worker_password` | Kept for stand-in accounts. From sql/113, at least 10 characters, as everywhere else: it writes the hash itself, so Supabase Auth's minimum does not reach it. |
 | Password reset by e-mail | not built (`LoginPage.tsx` has no "Forgot password") | Built in §2.3. |
 | Notification e-mails go to `auth.users.email`, which includes stand-ins | `sql/075` `pending_notification_emails`; `notify_email` defaults to true | **Bug, latent.** Once Resend is live, every stand-in account is mailed at an address that doesn't exist. The bounces hurt the sending domain's reputation. Fixed in §4.3. |
 | Public sign-up | `supabase/config.toml` `enable_signup = true` (local); on in both hosted projects | Switched off in §5. |
@@ -204,6 +204,7 @@ How to read it:
 5. **`team_accounts()`** gives the owner's Team page how each member signs in (`tehnik@tal`, an old `tehnik`, or the address) and whether an invite is still waiting. It answers only the owner, with the second factor, about their own clinic.
    - sql/111 makes it work on Supabase (the address is `varchar(255)` there).
    - sql/112 adds `has_authenticator`: yes/no, whether the member has a verified authenticator. Nothing else about the factors. The Team page shows it as a badge, next to "Verified" or "Invite not accepted yet" for an e-mail account.
+   - The Team page shows each member's sign-in under their name: the address, or "Username: tehnik@tal".
 
 There is no new table.
 
@@ -326,7 +327,7 @@ All of this is in the Supabase dashboard of the **test copy** project (`jhqyvanc
    - **Confirm email:** on, as now.
    - **Secure email change:** on.
    - **Email OTP Expiration:** `86400` (24 h). This is how long invite and recovery links last.
-   - **Minimum password length:** recommended `10` (the app's check moves with it).
+   - **Minimum password length:** `10`, the same as the app (`MIN_PASSWORD` in `lib/authConfirm.ts` and in the Edge Function `team-account`). Already-set shorter passwords keep signing in.
    - **"Allow new users to sign up":** stays on until §5.
 5. **Authentication → Emails → Templates.**
    - Paste the subject and body from these files:

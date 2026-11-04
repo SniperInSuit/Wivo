@@ -4,8 +4,9 @@
  * the e-mails, and that nothing personal reaches the logs.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { handleTeamRequest, parseTeamRequest, appOrigin, confirmLink, scrub, type TeamAccountDeps } from './teamAccount'
+import { handleTeamRequest, parseTeamRequest, appOrigin, confirmLink, scrub, MIN_PASSWORD, type TeamAccountDeps } from './teamAccount'
 import { mayMail } from './mailAllow'
+import { MIN_PASSWORD as APP_MIN_PASSWORD } from '../../../src/renderer/src/lib/authConfirm'
 
 const b64url = (o: object) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const jwt = (payload: object) => `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url(payload)}.c2lnbmF0dXJl`
@@ -253,6 +254,12 @@ describe('requests', () => {
     const { deps, calls } = setup()
     expect((await handleTeamRequest(AUTH, { action: 'drop' }, deps)).status).toBe(400)
     expect(calls.rpc).toEqual([])
+  })
+
+  it('a password: at least 10 characters, as the app asks', () => {
+    expect(MIN_PASSWORD).toBe(APP_MIN_PASSWORD)
+    expect(parseTeamRequest({ ...login, password: 'secret-12' })).toBeNull()
+    expect(parseTeamRequest({ ...login, password: 'secret-123' })).toMatchObject({ password: 'secret-123' })
   })
 
   it('an unknown language is English', () => {
