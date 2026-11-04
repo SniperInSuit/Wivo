@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 1785.
+-- Expected rows: 1802.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -595,6 +595,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.partner_visible_text(j jobs)', 'security invoker, stable, search_path=public, body md5 638cdde9f3d98bdcd6f5d940ad7fa061'),
     ('function', 'public.partner_work_items(p_items jsonb)', 'security invoker, immutable, search_path=public, body md5 f7346aed5d53cfb8919357ce53db36d6'),
     ('function', 'public.patient_export(p_patient uuid)', 'security definer, volatile, search_path=public, body md5 6379815bfd6cc5768198a9e8fc07712f'),
+    ('function', 'public.pay_settings()', 'security definer, stable, search_path=public, body md5 3706d6b417e276853b8c9e859f8d6337'),
     ('function', 'public.pending_bug_reports(p_limit integer)', 'security definer, stable, search_path=public, body md5 0ffbd82011d46a08cdbc7bc18773ef63'),
     ('function', 'public.pending_notification_emails(p_limit integer)', 'security definer, stable, search_path=public, body md5 90926302f175cd8bb7888014a16e6da0'),
     ('function', 'public.pending_pushes(p_limit integer)', 'security definer, stable, search_path=public, body md5 371b380882ed2b862eb72ee48205cb62'),
@@ -1023,6 +1024,8 @@ with expected(kind, key, def) as (values
     ('grant', 'public.patients to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.patients to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.patients to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.pay_settings() to authenticated', 'EXECUTE'),
+    ('grant', 'public.pay_settings() to service_role', 'EXECUTE'),
     ('grant', 'public.payment_plans to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.payment_plans to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.payment_plans to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
@@ -1046,9 +1049,23 @@ with expected(kind, key, def) as (values
     ('grant', 'public.preview_slot_open(p_path text) to service_role', 'EXECUTE'),
     ('grant', 'public.profile_in_my_clinic(p_profile uuid) to authenticated', 'EXECUTE'),
     ('grant', 'public.profile_in_my_clinic(p_profile uuid) to service_role', 'EXECUTE'),
-    ('grant', 'public.profiles to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
-    ('grant', 'public.profiles to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.profiles to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.profiles to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.profiles to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.profiles.clinic_id to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.created_at to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.full_name to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.id to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.language to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.notify_email to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.notify_push to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.org_role to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.patient_id to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.removed_from to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.role to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.ui_prefs to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.updated_at to authenticated', 'SELECT'),
+    ('grant', 'public.profiles.username to authenticated', 'SELECT'),
     ('grant', 'public.purge_visit_requests() to authenticated', 'EXECUTE'),
     ('grant', 'public.purge_visit_requests() to service_role', 'EXECUTE'),
     ('grant', 'public.push_subscription to anon', 'DELETE,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE'),

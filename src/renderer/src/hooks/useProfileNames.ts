@@ -20,10 +20,10 @@ export function useProfileNames(ids: string[]) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, username, role')
         .in('id', key)
       if (error) throw error
-      return new Map((data as Profile[]).map(p => [p.id, p]))
+      return new Map((data as unknown as Profile[]).map(p => [p.id, p]))
     }
   })
 }

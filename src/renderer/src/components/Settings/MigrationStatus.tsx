@@ -65,7 +65,8 @@ const PROBES: Probe[] = [
     mis: t('settings.manualCostOverride') },
   { table: 'profiles', column: 'ui_prefs',
     mis: t('settings.personalViewSettingsMyView') },
-  { table: 'profiles', column: 'tasu_arvestus',
+  // Since sql/117 nobody reads it from the table; pay_settings() answers for it.
+  { table: 'profiles', column: 'tasu_arvestus', rpc: { fn: 'pay_settings', args: {} },
     mis: t('settings.netGrossPayAndTaxProfile') },
   { table: 'patients', column: 'turundusnousolek',
     mis: t('settings.marketingConsentAndContactExport') },

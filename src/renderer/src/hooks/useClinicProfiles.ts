@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
+import { supabase, PROFILE_COLUMNS } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
+import { fetchPaySettings, withPaySettings } from '../lib/paySettings'
 import { useAuth } from '../context/AuthContext'
 
 /**
@@ -13,6 +14,9 @@ import { useAuth } from '../context/AuthContext'
  * assign work to.
  *
  * Patients-as-users are excluded too: they are people with a login, not staff.
+ *
+ * Pay and tax fields only where the database gives them (sql/117): one's own;
+ * everyone's for payroll (Manage payroll, owner, admin).
  */
 export function useClinicProfiles() {
   const { clinicId } = useAuth()
@@ -25,14 +29,17 @@ export function useClinicProfiles() {
     staleTime: 5 * 60_000,
     queryFn: async () => {
       if (!clinicId) return []
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .in('role', ['owner', 'worker'])
-        .order('full_name', { ascending: true })
+      const [{ data, error }, pay] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(PROFILE_COLUMNS)
+          .eq('clinic_id', clinicId)
+          .in('role', ['owner', 'worker'])
+          .order('full_name', { ascending: true }),
+        fetchPaySettings(clinicId),
+      ])
       if (error) throw error
-      return data as Profile[]
+      return withPaySettings(data as unknown as Profile[], pay)
     }
   })
 }

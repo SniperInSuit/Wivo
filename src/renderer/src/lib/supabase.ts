@@ -181,14 +181,23 @@ export function onAuthStateChange(
   return supabase.auth.onAuthStateChange(callback)
 }
 
+/**
+ * The columns of `profiles` anyone in the clinic may read (sql/117). The pay
+ * and tax fields are not among them: those come only from pay_settings()
+ * (lib/paySettings), one's own always, everyone's for payroll. `select *` is
+ * refused.
+ */
+export const PROFILE_COLUMNS =
+  'id, full_name, username, role, org_role, clinic_id, removed_from, patient_id, language, notify_email, notify_push, ui_prefs, created_at, updated_at' as const
+
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .single()
   if (error) return null
-  return data as Profile
+  return data as unknown as Profile
 }
 
 export async function updateProfile(
@@ -196,15 +205,13 @@ export async function updateProfile(
   updates: Partial<Pick<Profile,
     'full_name' | 'toosuhe' | 'kiirtoo_kordaja' |
     'tasu_arvestus' | 'kogumispension_protsent' | 'maksuvaba_tulu'>>
-) {
-  const { data, error } = await supabase
+): Promise<void> {
+  // Nothing read back: the pay fields are not readable from the table (sql/117).
+  const { error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', userId)
-    .select()
-    .single()
   if (error) throw error
-  return data as Profile
 }
 
 /** Cached clinic_id — set by AuthContext after login, read by create mutations */

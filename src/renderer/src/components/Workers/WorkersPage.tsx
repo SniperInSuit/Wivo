@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, UserPlus, Shield, Loader2, Trash2, Check, Lock, Copy } from 'lucide-react'
-import { supabase, displayIdentity } from '../../lib/supabase'
+import { supabase, displayIdentity, PROFILE_COLUMNS } from '../../lib/supabase'
 import { AddMemberDialog } from './AddMemberDialog'
 import { teamAccounts, accountBadges, signInLine, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
 import { MIN_PASSWORD } from '../../lib/authConfirm'
@@ -137,7 +137,7 @@ export function WorkersPage() {
       // Fetch all profiles in this clinic (excluding patients)
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_COLUMNS)
         .eq('clinic_id', clinicId)
         .in('role', ['owner', 'worker'])
         .order('created_at')
@@ -154,7 +154,7 @@ export function WorkersPage() {
         permMap.get(p.profile_id)!.set(p.permission, p.granted)
       })
 
-      setWorkers((profiles ?? []).map(p => ({
+      setWorkers(((profiles ?? []) as unknown as Profile[]).map(p => ({
         ...p,
         permissions: permMap.get(p.id) ?? new Map()
       })))
@@ -168,11 +168,11 @@ export function WorkersPage() {
       // stay listed here so the owner can put someone back after a mistake.
       const { data: orphans } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_COLUMNS)
         .is('clinic_id', null)
         .in('role', ['owner', 'worker'])
         .order('created_at')
-      setRemoved((orphans ?? []) as Profile[])
+      setRemoved((orphans ?? []) as unknown as Profile[])
     } finally {
       setLoading(false)
     }
