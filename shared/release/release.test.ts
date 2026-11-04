@@ -5,8 +5,8 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
-  encode, trustFrom, checkCertificate, checkSigned, compareVersions, isPackagePath, canonicalJson,
-  b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX,
+  encode, trustFrom, checkCertificate, checkSigned, checkPackage, compareVersions, isPackagePath, canonicalJson,
+  b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX, MAX_PACKAGE_BYTES,
   type Certificate, type Manifest, type RootKey, type Signer, type Revocation,
 } from './release'
 
@@ -185,5 +185,46 @@ describe('encoding', () => {
       expect((await checkSigned('manifest', t, [signingCert], trust, NOW)).ok, t).toBe(false)
     }
     expect(b64urlDecode('ab=c')).toBeNull()
+  })
+})
+
+describe('an update package', () => {
+  const b64 = (s: string) => btoa(s)
+  const SQL = 'create table x (id int);'
+  async function pkg(over: { files?: Record<string, string>; listed?: { path: string; content: string }[] } = {}) {
+    const listed = over.listed ?? [{ path: 'migrations/119_x.sql', content: SQL }]
+    const files = await Promise.all(listed.map(async f => ({
+      path: f.path, size: new TextEncoder().encode(f.content).length, sha256: await sha256Hex(new TextEncoder().encode(f.content)) })))
+    const token = await encode('manifest', manifest({ files }), signing.sign)
+    return { manifest: token, certificates: [signingCert], files: over.files ?? Object.fromEntries(listed.map(f => [f.path, b64(f.content)])) }
+  }
+
+  it('passes when every file is exactly as listed, and hands out the files', async () => {
+    const r = await checkPackage(await pkg(), await trustFrom(pinned, []), NOW)
+    expect(r.ok).toBe(true)
+    expect(r.ok && new TextDecoder().decode(r.files.get('migrations/119_x.sql'))).toBe(SQL)
+  })
+
+  it('a changed file, a missing one, or an extra one: refused', async () => {
+    const trust = await trustFrom(pinned, [])
+    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL + ' drop table jobs;') } }), trust, NOW))
+      .toEqual({ ok: false, reason: 'file_mismatch' })
+    expect(await checkPackage(await pkg({ files: {} }), trust, NOW)).toEqual({ ok: false, reason: 'file_missing' })
+    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL), 'migrations/120_extra.sql': b64('x') } }), trust, NOW))
+      .toEqual({ ok: false, reason: 'file_unlisted' })
+  })
+
+  it('a package that is not even shaped like one, or too large: refused before anything else', async () => {
+    const trust = await trustFrom(pinned, [])
+    for (const bad of [null, {}, { manifest: 1, certificates: [], files: {} }, 'x']) {
+      expect((await checkPackage(bad, trust, NOW)).ok).toBe(false)
+    }
+    expect(await checkPackage(await pkg(), trust, NOW, MAX_PACKAGE_BYTES + 1)).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('an unsigned or wrongly signed manifest: refused, whatever the files say', async () => {
+    const good = await pkg()
+    const forged = await encode('manifest', manifest({ key_id: 'stranger' }), stranger.sign)
+    expect((await checkPackage({ ...good, manifest: forged }, await trustFrom(pinned, []), NOW)).ok).toBe(false)
   })
 })

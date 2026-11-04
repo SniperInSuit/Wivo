@@ -326,3 +326,63 @@ export function isPackagePath(path: unknown): boolean {
   if (!/^(migrations|functions|checks)\/[A-Za-z0-9_\-./]+$/.test(path)) return false
   return path.split('/').every(seg => seg.length > 0 && seg !== '.' && seg !== '..' && !seg.startsWith('.'))
 }
+
+// ─── The update package ───────────────────────────────────────────────────────
+
+/**
+ * One JSON file: the signed manifest, the certificates that vouch for its
+ * signer, and every file the manifest lists, as base64. No archive to unpack,
+ * so there are no archive paths to escape through. Packages are cumulative:
+ * every migration is in every package, and `wivo-update` applies those its
+ * ledger doesn't have yet.
+ */
+export interface UpdatePackage {
+  manifest: string
+  certificates: string[]
+  files: Record<string, string>
+}
+
+/** The most a package may hold: far above today's few megabytes of SQL and function code. */
+export const MAX_PACKAGE_BYTES = 50 * 1024 * 1024
+
+export type CheckedPackage =
+  | { ok: true; manifest: Manifest; signedSha256: string; files: Map<string, Uint8Array> }
+  | { ok: false; reason: Refusal | 'too_large' | 'file_missing' | 'file_unlisted' | 'file_mismatch' }
+
+function base64Decode(s: string): Uint8Array | null {
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s) || s.length % 4 !== 0) return null
+  try {
+    const bin = atob(s)
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+    return out
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A package, checked end to end: its manifest signed by a certified update
+ * key (and not revoked), then every file exactly as listed (size and sha256),
+ * none missing and none extra. Only then are the files handed out.
+ */
+export async function checkPackage(pkg: unknown, trust: Trust, now: Date, totalBytes?: number): Promise<CheckedPackage> {
+  if (totalBytes !== undefined && totalBytes > MAX_PACKAGE_BYTES) return { ok: false, reason: 'too_large' }
+  const p = pkg as Partial<UpdatePackage> | null
+  if (!p || typeof p.manifest !== 'string' || !Array.isArray(p.certificates) || !p.files || typeof p.files !== 'object') {
+    return { ok: false, reason: 'malformed' }
+  }
+  const m = await checkSigned('manifest', p.manifest, p.certificates.filter((c): c is string => typeof c === 'string'), trust, now)
+  if (!m.ok) return m
+  const listed = new Set(m.payload.files.map(f => f.path))
+  if (Object.keys(p.files).some(path => !listed.has(path))) return { ok: false, reason: 'file_unlisted' }
+  const files = new Map<string, Uint8Array>()
+  for (const f of m.payload.files) {
+    const b64 = p.files[f.path]
+    if (typeof b64 !== 'string') return { ok: false, reason: 'file_missing' }
+    const bytes = base64Decode(b64)
+    if (!bytes || bytes.length !== f.size || (await sha256Hex(bytes)) !== f.sha256) return { ok: false, reason: 'file_mismatch' }
+    files.set(f.path, bytes)
+  }
+  return { ok: true, manifest: m.payload, signedSha256: m.signedSha256, files }
+}
