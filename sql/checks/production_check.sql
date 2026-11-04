@@ -1645,7 +1645,7 @@ select 'function', 'public.' || p.proname || '(' || pg_get_function_identity_arg
        case when p.prosecdef then 'security definer' else 'security invoker' end
          || ', ' || case p.provolatile when 'i' then 'immutable' when 's' then 'stable' else 'volatile' end
          || coalesce(', ' || array_to_string(p.proconfig, ', '), '')
-         || ', body md5 ' || md5(coalesce(p.prosrc, ''))
+         || ', body md5 ' || md5(replace(coalesce(p.prosrc, ''), chr(13) || chr(10), chr(10)))
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public' and p.prokind in ('f', 'p')
    and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
