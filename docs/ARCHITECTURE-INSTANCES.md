@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 November 2026 are in (§10). The update design was reworked for 100 clinics: pulled, no tokens to Wivo, automatic installs (§5). **Waiting for Kevin's OK** on §10's items 7 and 8 before building. Nothing is built.
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). **Waiting for Kevin's OK** on §10's items 11–14 before building. Nothing is built.
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -348,7 +348,7 @@ wivo-update-2.3.0.tar
   manifest.sig       Ed25519 signature over manifest.json (as `shared/license`)
 ```
 
-- **The signing key** is Wivo's release key, kept offline like the licence key (`scripts/make-license.mjs`). The public key is pinned in the app and in the clinic's project at setup (5b).
+- **The signing keys:** where they live, how a package is signed, rotation and what happens on a leak are in 5e. The root public keys are pinned in the app and in the clinic's project at setup.
 - **Where packages are published:** with the desktop app's releases (GitHub Releases), next to a signed index, `updates.json`. The index holds:
   - every published version with its package URL and `sha256`;
   - `auto_after`;
@@ -373,6 +373,7 @@ wivo-update-2.3.0.tar
    2. An approver presses **Install** and enters a fresh code.
    3. The app asks the clinic's own `wivo-update` (an Edge Function installed at setup) to install that version. The function downloads the package itself from the published address and checks everything (below). The app never carries the package.
 2. **Automatically,** once an approver has turned on Settings → Updates → **"Install updates automatically"**.
+   - **Built after Riga is running** (Kevin, 2026-11-05). Riga approves updates by hand at first. The setting is off by default.
    - Turning it on, or off, needs a fresh code, and is recorded in the audit log.
    - A scheduled job in the clinic's own project (pg_cron, at night) asks `wivo-update` to check the index.
      - It installs the newest version that is past its `auto_after` time, not withdrawn and not `manual_only`.
@@ -382,7 +383,10 @@ wivo-update-2.3.0.tar
    - Approvers get a notification afterwards: "Updated to 2.3.0", or what failed.
 
 **What `wivo-update` checks, every time, in either way:**
-1. **Wivo's signature,** against the key pinned in the function's own code: not a table, not a secret. Then each file's `sha256` against the signed manifest, and the index's signature.
+1. **Wivo's signature:**
+   - the two root keys are pinned in the function's own code, not in a table or a secret;
+   - the signing key must carry a root-signed certificate (5e) and must not be revoked;
+   - then each file's `sha256` is checked against the signed manifest, and the index's signature is checked.
 2. **Only a newer version:** above the highest version in the migration ledger (`wivo_schema_migration`, docs/MIGRATIONS.md), and updating from the version the clinic has.
 3. **Not withdrawn.** For an automatic install, also past `auto_after` and not `manual_only`.
 4. **Who:** an approver with a fresh code, or the project's own scheduled job with the setting on.
@@ -412,24 +416,44 @@ wivo-update-2.3.0.tar
 
 **A function can't redeploy functions.** Deploying needs the Supabase Management API and a credential for the clinic's account. These are the options, checked against Supabase's pages on 2026-11-04 (sources at the end of 5d):
 
-1. **A scoped personal access token, kept in the clinic's own project.** *(Recommended.)*
+1. **A scoped personal access token, kept in the clinic's own project.** *(Decided, Kevin, 2026-11-05.)*
    - **What Supabase offers since October 2026:**
      - a token limited to **selected projects** (one, here), with permissions chosen per capability, each read or read-write;
      - **"Edge Functions (Read-write)"** covers creating, updating, deploying and deleting functions;
-     - database and SQL, API key secrets and function secrets are separate permissions, so this token gets none of them;
+     - database and SQL, API keys, API key secrets and Edge Function Secrets are separate permissions;
      - an expiry of **up to one year**;
      - the scope can't be changed afterwards: a different scope means a new token;
      - **a token never has more access than the user who made it**, and stops working when that user loses access.
-   - **At setup:**
-     - the owner creates one token: their project only, **Edge Functions read-write only**, the longest expiry offered (up to a year);
-     - the wizard passes it straight into the project's Vault, where only `wivo-update` reads it;
-     - it is never sent to Wivo;
-     - the owner grants it once.
-   - **When it is used:** only for function bundles inside a signed package whose hashes match. A release without function changes doesn't touch it.
-   - **Renewal:** once a year, 30 days ahead, approvers are asked to make a new one. The app shows the exact choices and sends the new token from its memory straight to the Vault; it doesn't store it.
-     - The same happens if the person who made it leaves the clinic's Supabase organisation, since the token then stops working.
-     - Until it is renewed, migrations keep installing (they need no token). Only function changes wait, and the previous functions keep working (expand, then contract).
-   - **The honest limit:** a deployed function runs with the project's service key, so whoever can deploy functions can, in effect, reach the data. No credential can deploy functions without that.
+   - **Its scope:** the clinic's one project, and **only Edge Functions (Read-write)**. Nothing else: no Edge Function Secrets, no API keys, no database, no settings.
+   - **At setup, the app checks the scope before keeping it.** With the token, it tries:
+     - something it must be able to do: list the project's functions. This must work.
+     - things it must **not** be able to do, each of which must be refused:
+       - list the function secrets;
+       - list the API keys;
+       - read the database's metadata;
+       - read the project's settings.
+
+     Supabase's refusal names the permissions the token lacks (`missing_permissions`).
+     - **A token that can do any of the forbidden things is refused**, with "This token has more access than Wivo needs: make a new one with only Edge Functions".
+     - The same check runs at every renewal.
+   - **Where it is kept:**
+     - a Vault entry in the clinic's project;
+     - read only through `wivo_functions_token()`, a database function whose use is granted to the server role alone. Nothing the app's users or the public key can call reaches it.
+     - **Only `wivo-update` calls it.** A CI check fails if any other Edge Function's code names it.
+     - **The honest limit:** the database owner, and any code holding the project's service key, could read a Vault entry. That is the clinic itself and its own Wivo-signed functions. No user, partner or Wivo reaches it.
+   - **When it is used:** only to deploy the function bundles of a signed package whose hashes match. A release without function changes doesn't touch it.
+   - **Every use is in the audit log:**
+     - each deploy: function, version, result;
+     - each scope check;
+     - each renewal and expiry warning.
+   - **Renewal is the owner's own step in the app,** a couple of minutes once a year. It never involves Wivo.
+     1. 30 days before expiry, the owner gets a reminder in the bell and by e-mail. It is repeated weekly, and daily in the last week.
+     2. The app walks them through it: open Supabase → Account → Access Tokens → create one with exactly these choices (shown with screenshots) → paste it → fresh second-factor code.
+     3. The app checks the new token's scope (above), sends it from memory straight to the Vault, and asks the owner to delete the old one.
+     - **The expiry date:** the app reads it from the Management API if Supabase returns it. Otherwise it asks the owner which date they chose.
+     - **Renewing early:** the same steps are needed early if the person who made the token loses access to the clinic's Supabase organisation, since the token then stops working.
+   - **An expired or missing token never stops the app or database updates.** Migrations need no token and keep installing. Only function updates wait, and the previous functions keep working (expand, then contract). The owner sees "Function updates are waiting: renew the token".
+   - **The honest limit of deploy rights:** a deployed function runs with the project's service key, so whoever can deploy functions can, in effect, reach the data. No credential can deploy functions without that.
      - The token itself can't read data through the Management API: it has no database, secrets or keys permission.
      - In substance it is the same trust as the signed migrations, which already run with full rights. Only Wivo-signed bundles are ever deployed with it.
 2. **A Supabase OAuth app registered by Wivo.** *(Not recommended.)*
@@ -454,13 +478,13 @@ wivo-update-2.3.0.tar
 - A function's code reads its settings from the database (Vault), not from function secrets. A release then never needs a new function secret, which the stored token couldn't set.
 - **Most releases contain no function changes.** A CI check lists the changed functions in every package, and a release note says why each changed.
 
-**Recommendation: option 1, with option 4 as the fallback, plus few and stable functions.** Why:
+**Decided (Kevin, 2026-11-05): option 1, with option 4 as the fallback, plus few and stable functions.** Why:
 - It meets all three requirements: no per-clinic work for Wivo, no token ever to Wivo, and updates pulled and possibly fully automatic.
 - The stored token is the narrowest Supabase offers: one project, functions only, at most a year. It never leaves the clinic's project.
 - It adds no power that the signed migrations don't already have.
 - Option 4 alone would stop automatic installs at every function change, and option 2 puts Wivo in the token's path.
 
-**This changes condition 3 of 4 November** ("the owner's token is never stored"). Under this recommendation, the narrow functions-only token is stored, in the clinic's own Vault. Broad tokens are still never stored: the setup token (6b) is used once and deleted. **Decision 3 in §10.**
+**This changes condition 3 of 4 November** ("the owner's token is never stored"). Kevin approved it on 2026-11-05 for the narrow functions-only token only, kept in the clinic's own Vault. Broad tokens are still never stored: the setup token (6b) is used once and deleted.
 
 ### 5d. What can't be enforced technically, and must be in the contract
 
@@ -477,6 +501,124 @@ wivo-update-2.3.0.tar
 3. **The clinic controls its own database.** Licence and module limits are enforced in the app (signed licence), not inside the database, as `src/main/license.ts` already states.
 4. **Whoever is present at setup may see keys or passwords on screen** (§6): at Riga, Kevin. They are rotated before setup ends, and the setup record says so.
 5. **Supabase, Resend and the clinic's other processors** are the clinic's contracts, not Wivo's.
+
+### 5e. The signing keys
+
+**Whoever holds the update signing key can put code into every clinic's database.** It is now Wivo's most valuable secret. So is the key that signs desktop releases: the app runs with every user's session.
+
+**Today:**
+- The licence key is a plain file on Kevin's Mac: `license-private.pem` in the project folder. It is ignored by git and has never been committed.
+- Desktop releases are built and published by CI without any signature: `forceCodeSigning=false` in `build.yml`, and the app installs whatever the GitHub release holds.
+
+Both change.
+
+**Separate keys, each for one purpose.** All are Ed25519, the same format as `shared/license`:
+
+| Key | Signs | Where it lives | Used |
+|---|---|---|---|
+| **Root key** | Certificates for the keys below, revocations, and rotations. Nothing else. | A hardware key in a safe (*root A*), with a second root on another hardware key in another place (*root B*, for example a bank box). | A few times a year at most. |
+| **Update signing key** | Update packages and the update index (5a) | A hardware key with Kevin (the *signing key*). A second signing key on a separate hardware key, kept apart as the spare. | Every release with a package. |
+| **App release key** | Each desktop release: its version, file names and `sha512`. The app checks it before installing an update. | Its own slot on the same hardware keys as the update signing key. | Every desktop release. |
+| **Licence key** | Licences (`shared/license`) | Its own slot on the signing hardware key. It replaces `license-private.pem`, which is then deleted. Enforcement is off today (`LICENCE_PUBLIC_KEY` is empty), so nothing that matters breaks. | Per licence. |
+
+- **Hardware:** a security key that can make and keep Ed25519 keys **without ever revealing them**. The YubiKey 5 series PIV, firmware 5.7 or later, can; check that exact model before buying. That means four of them: root A, root B, the signing key, and the spare.
+  - The private keys are created on the device and can't be copied out.
+  - Every signature needs the PIN and a touch.
+- **Never** in the repository, in CI, in a password manager or as a file on any computer. If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
+- **What is pinned in the clinic** (in `wivo-update`'s code, and in the app): **the two root public keys only.**
+  - Signing keys are trusted through a root-signed certificate (key, purpose, valid from and to).
+  - The certificates the project has accepted are kept in an append-only table that only `wivo-update` writes.
+  - So a new signing key never needs a function update. **Key rotation can't be held up by an expired functions token.**
+
+**How a package is signed: CI builds, Kevin signs locally.**
+1. **CI builds the package and the desktop release** from the tagged commit, reproducibly: the same commit gives the same bytes. It uploads them **unsigned** to a draft GitHub release, with their hashes. CI holds no signing key and can't publish a signed release.
+2. **On Kevin's Mac, the signing tool** (`scripts/sign-release.mjs`):
+   1. downloads the draft;
+   2. **rebuilds it from the same commit and compares hashes**, so a compromised CI can't slip in something different;
+   3. shows what is about to be signed: version, migrations, changed functions, files with their hashes.
+3. **Kevin enters the PIN and touches the key.** The tool writes `manifest.sig`, the release signature and the updated signed index.
+4. **The tool publishes the release with Kevin's own GitHub sign-in,** which uses a hardware second factor. A few minutes per release.
+
+**Rotation.**
+- **Planned:** the signing key every two years, and whenever its hardware key is replaced.
+  1. A new signing key is made on the hardware key.
+  2. A root key signs its certificate.
+  3. The next package carries the certificate.
+  4. Each clinic accepts it, because it chains to a pinned root.
+  5. The old signing key's certificate expires, or is revoked if retired early.
+- **The spare signing key** has its own certificate, so a lost signing key doesn't stop releases.
+- **A root** is changed only if one is lost or exposed:
+  - the remaining root signs the change;
+  - it reaches each clinic as an update of `wivo-update` (with the functions token), and as an app update.
+
+  This is the one rotation that needs function updates. With two roots in two places, it should never be needed.
+
+**If a signing key leaks.**
+1. **Root A or B signs a revocation:** the key's id, the time from which it is revoked, and the hashes of every genuine package and release it signed before that.
+   - The revocation is published in the update index and at a second fixed address on Wivo's site.
+   - `wivo-update` and the app fetch both on every check, and a revocation found at either counts.
+2. **Every clinic's `wivo-update` and app** refuse anything signed by that key whose hash isn't on the genuine list.
+   - Automatic installs, once they exist, pause until a package signed by a newly certified key arrives.
+   - An approver who opens a refused package sees why.
+3. **Telling clinics, with no access to their projects:**
+   - **In the app:** a security notice from the signed index, shown to owners and approvers;
+   - **by e-mail** to each clinic owner's contact address from Wivo's customer list (business data, not project access);
+   - **a notice on Wivo's site.**
+4. **If a forged package was installed somewhere:** the clinic's audit log shows its hash, time and approver, and the notice lists the bad hashes. The clinic then:
+   - restores from Supabase's backups to before it;
+   - replaces its functions token, API keys and database password;
+   - follows the incident steps the lawyer sets (Q12).
+
+   The 3-day hold on automatic installs (5b) exists so that a bad release can be caught first.
+5. **A new signing key** is certified by a root and used for the next release.
+
+**If a root key leaks:**
+- the other root revokes it;
+- the replacement reaches clinics as above (an update of `wivo-update` and the app), and the e-mail and site notice explain it.
+
+Roots are used a few times a year, offline, in safes, to keep this from happening.
+
+**The GitHub account** that publishes releases is part of this path: hardware second factor, no personal access tokens left lying around, and branch protection on `main`. A stolen GitHub sign-in alone still can't produce a signed package, because the signatures need the hardware key.
+
+### 5f. A security review of the update path, before Riga's setup
+
+**Before Riga's setup,** on a **fresh project with made-up data only** (project C; never the test copy or production), a focused review of the update path. It is a release condition for the build that goes to Riga.
+
+**In scope:**
+1. **`wivo-update`:**
+   - who may call it: an approver with a fresh code; the first install with the setup secret; nothing else;
+   - the signature chain (root → certificate → package);
+   - the revocation check;
+   - only newer versions; one transaction; the audit log;
+   - two installs started at once (a lock);
+   - the setup secret refused after setup;
+   - error messages that reveal nothing.
+2. **The package:**
+   - canonical manifest bytes;
+   - every file's hash checked before use;
+   - archive paths that try to escape their folder, very large or deeply nested archives;
+   - a migration that tries to skip the ledger;
+   - a downgrade or a replayed old package;
+   - an index that lists something not signed.
+3. **The functions token:**
+   - the scope check refuses a broader token;
+   - the token never appears in logs, errors, crash reports or the app's storage;
+   - only `wivo-update` reads it;
+   - every use is logged;
+   - an expired token stops only function updates.
+4. **The desktop side:**
+   - only approvers see Install;
+   - the fresh-code check;
+   - the release signature checked before an app update installs;
+   - pinned roots that can't be swapped from settings.
+5. **The signing tool:** the rebuild-and-compare step, and what is shown before signing.
+
+**How:**
+1. A written threat model: what an attacker could hold (the GitHub account, CI, one clinic's project, a user's session, a stolen hardware key without its PIN) and what each must not be able to do.
+2. A line-by-line review of the update code.
+3. A scripted adversarial test run against project C, covering every item above, kept in the repository and run again before each release that changes this path.
+4. **An independent reviewer** is recommended for the code and the threat model: a security consultant for two to three days. The alternative is a separate review pass by Claude using the code-review tool, plus Kevin running the adversarial script.
+5. Findings fixed and re-tested before the release that goes to Riga.
 
 **Sources checked on 2026-11-04:**
 - [Scoped personal access tokens are now generally available](https://supabase.com/changelog/scoped-personal-access-tokens-ga)
@@ -527,6 +669,8 @@ Kevin sends this list at least two weeks ahead, and checks it on a call a few da
 
 ### 6b. On the day, with Riga's owner at the keyboard
 
+For Riga, **Kevin runs the setup on site with a setup tool** (in the desktop app, behind an option only he uses), on the owner's computer, with the owner creating every credential. The polished wizard that clinics run alone comes after Riga is running (6e).
+
 **The rules:**
 - Every credential is created by the owner, in the owner's accounts, on the owner's computer.
 - **Kevin is not added to their organisation.**
@@ -534,16 +678,16 @@ Kevin sends this list at least two weeks ahead, and checks it on a call a few da
 
 1. **The owner creates the project** in their organisation:
    - region `eu-north-1` (Stockholm, the nearest) or `eu-central-1`, as their lawyer prefers (Q8);
-   - the database password goes into their password manager. The wizard doesn't need it.
-2. **The owner installs Wivo** on their computer and chooses "Set up a new clinic database". The wizard asks for:
+   - the database password goes into their password manager. The setup tool doesn't need it.
+2. **Wivo is installed** on the owner's computer, and Kevin opens the setup tool. It asks for:
    - the project URL;
-   - **a setup token,** a personal access token the owner creates as the wizard shows it:
+   - **a setup token,** a personal access token the owner creates as the setup tool shows it:
      - this project only;
      - Edge Functions, Edge Function Secrets and Auth Config, each read-write;
      - the shortest expiry offered.
 
      Kept in memory only; deleted at the end (step 8).
-3. **The wizard installs, in this order:**
+3. **The setup tool installs, in this order:**
    1. **`wivo-update` first** (Edge Functions), with Wivo's public release key pinned in its code.
    2. **Function secrets:**
       - VAPID keys for push, generated on that computer;
@@ -563,14 +707,15 @@ Kevin sends this list at least two weeks ahead, and checks it on a call a few da
       - MFA on;
       - no public sign-up.
    6. **The read-only checks** (`schema_check.sql`, `trigger_check.sql`, orphan users, scheduled jobs). All must return no rows before setup continues.
-4. **First account:** the wizard has `wivo-update` create the owner's account and the clinic (code prefix, for example `RIG`). The owner signs in and adds their authenticator.
+4. **First account:** the setup tool has `wivo-update` create the owner's account and the clinic (code prefix, for example `RIG`). The owner signs in and adds their authenticator.
 5. **The functions token** (5c, option 1):
-   - the owner creates it as the wizard shows: this project only, Edge Functions read-write only, the longest expiry offered;
+   - the owner creates it: this project only, Edge Functions read-write only, the longest expiry offered;
+   - the setup tool checks its scope and refuses a token that can do more (5c);
    - the owner enters a fresh code;
-   - the wizard passes the token from memory to the project's Vault.
+   - the token goes from memory to the project's Vault, and the use is logged.
 
    Or the owner chooses "no stored token", and each update with function changes then asks for a short-lived one (option 4).
-6. **Updates:** the owner decides whether to turn on "Install updates automatically" (5b), with a fresh code, and whom to give "Install updates".
+6. **Updates:** Riga approves each update by hand at first. The owner decides whom, besides themselves, to give "Install updates".
 7. **Connecting the apps and checking, with the owner:**
    - staff computers and phones join with the clinic's connection code (6d);
    - a test e-mail through their Resend;
@@ -578,7 +723,7 @@ Kevin sends this list at least two weeks ahead, and checks it on a call a few da
    - an invite to one staff member;
    - Settings → Database shows the version.
 8. **Access ends,** before setup is finished:
-   1. **The setup token:** the wizard walks the owner through deleting it in Account → Access Tokens, then checks that it no longer works. The one-time setup secret is deleted with it.
+   1. **The setup token:** the setup tool walks the owner through deleting it in Account → Access Tokens, then checks that it no longer works. The one-time setup secret is deleted with it.
    2. If any key or password was on screen, the owner replaces it: the database password in the dashboard, a secret API key by deleting it and making a new one.
    3. The owner checks Organisation → Team (only their people) and Account → Access Tokens (only the functions token, if they kept one).
    4. **A setup record**, signed by both, states:
@@ -606,10 +751,10 @@ Today the desktop has one project URL built in, and the phone app is one build f
 - **Test mode** (`lib/testCopy.ts`) keeps refusing production by its project ref, and still accepts only the test copy.
 - **Licences** are unchanged (signed tokens), and checked in the app.
 
-### 6e. From the second clinic on: setup without Wivo
+### 6e. From the second clinic on: setup without Wivo (built after Riga is running)
 
 To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the only setup Wivo attends.
-- **The wizard above is the setup.** The clinic's owner runs it alone, with:
+- **Riga's setup tool becomes a wizard** that a clinic's owner runs alone, with:
   - the checklist (6a) as a page on Wivo's site;
   - a written guide with screenshots of every Supabase screen the wizard sends them to.
 - **Each step checks itself,** and the read-only checks must pass before it goes on. A failed step says exactly what to do. It never says to run SQL (CLAUDE.md).
@@ -641,7 +786,7 @@ To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the on
 - **Two fresh Supabase projects,** made for this in Wivo's own organisation (for example `wivo-bridge-a` and `wivo-bridge-b`):
   - made-up data only, generated by a seed script;
   - no copy of any real clinic;
-  - set up through the same setup wizard (§6), so the wizard is tested too.
+  - set up through the same setup tool (§6), so the tool is tested too.
 - **Locally and in CI:**
   - two PGlite databases with the bridge functions' logic as plain functions;
   - two local Supabase stacks for the end-to-end runs (`supabase start` with two port sets).
@@ -673,7 +818,8 @@ To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the on
       - deploys only bundles from a signed package;
       - when it is expired or missing, migrations still install and functions wait;
       - the short-lived fallback works;
-  - **setup:** the wizard on an empty project, then the checks find nothing.
+  - **setup:** the setup tool on an empty project, then the checks find nothing;
+  - **signing:** packages and releases signed by a certified key accepted; an uncertified, expired or revoked key refused; a revocation found at either address applied; the rebuild-and-compare step catching a changed artefact.
 
 ---
 
@@ -681,16 +827,21 @@ To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the on
 
 ### How the estimate works
 
-- **Claude writes the code, the tests and the docs,** in sessions Kevin starts. A slice (a migration, its functions and screens, its tests) is usually built within a few days of sessions, so building is rarely what everything waits on.
+- **Claude writes the code, the tests and the docs,** in sessions Kevin starts. A slice (a migration, its functions and screens, its tests) is usually built within a few days of sessions, and the next slice is built while Kevin tests the last. So building is rarely what everything waits on.
 - **The limit is Kevin's time:**
   - reading a plan and deciding;
   - applying migrations to the test projects;
   - testing by hand on a desktop and a phone, often playing both clinics;
+  - the hardware keys and the signing;
   - the releases.
 
-  The estimates assume about **1–2 hours of Kevin's testing on most working days**, as in the recent rounds, and that a round's findings are fixed the same day or the next.
-- **Outside both of us:** the 2.1 release, Riga's preparations (§6a), the visit date, and the lawyer's answers.
-- The earlier estimate (17–21 weeks) assumed one human developer writing everything. This replaces it.
+  **Assumed: 3–4 hours of Kevin's testing on most days in the coming weeks** (Kevin, 2026-11-05). A round's findings are fixed the same day or the next.
+- **Outside both of us:**
+  - the 2.1 release;
+  - the delivery of the hardware keys (order them on the OK);
+  - an independent reviewer's dates, if one is used (5f);
+  - Riga's preparations (§6a) and the visit date;
+  - the lawyer's answers.
 
 **Before phase 1: 2.1 on production.**
 - Riga needs a released desktop build.
@@ -700,23 +851,28 @@ That is Kevin's production session, and it isn't counted below.
 
 ### Phase 1: Riga on its own instance, before any partnership
 
-**What Riga gets:** its own Wivo on its own project, set up on site, with the update path working. That covers its own jobs, stock, statistics and team. There is no partnership yet.
+**What Riga gets:** its own Wivo on its own project, set up on site by Kevin. That covers its own jobs, stock, statistics and team. Updates are approved by hand, by the owner or a member with "Install updates". There is no partnership yet.
 
-**Not for Latvia yet:** Payroll follows Estonian tax rules (tax-free income, the pension pillar), and invoices follow Estonian layouts and labels. Riga starts without them. If Riga needs them, they need their own plan.
+**Not in it:**
+- **automatic installs and the self-service setup wizard:** built after Riga is running (Kevin, 2026-11-05);
+- **payroll and invoices for Latvia:** Estonian tax rules and invoice layouts today, so Riga starts without them.
 
 | Slice | Built in | Kevin's part |
 |---|---|---|
-| 1. The migration ledger, the package format, the signed index (`updates.json`, with `auto_after` and the withdrawn list), the signing tool, CI building and publishing the package. Starts from docs/MIGRATIONS.md's baseline. | 3 days | Read the package format and §5: one session. |
-| 2. `wivo-update`, in its three modes:<ul><li>approved by hand (an approver with a fresh code);</li><li>automatic (the project's own scheduled job, with the setting on);</li><li>first install (empty ledger, setup secret).</li></ul>Plus the "Install updates" permission, and function deploys with the stored token or the fallback (5c). | 4 days | On test project A:<ul><li>apply by hand, as the owner and as a member with the permission;</li><li>try an older, a tampered and a withdrawn package, and one without a fresh code;</li><li>turn on automatic installs and see one happen;</li><li>let the functions token expire.</li></ul>Two or three sessions. |
-| 3. The desktop's update screens: "Database update ready" for approvers, Install with a fresh code, Settings → Updates (automatic on or off, the functions token's state and its yearly renewal), the fallback's guided token | 3 days | Two rounds on project A. |
-| 4. The setup wizard (6b), from an empty project to passing checks, in the new order | 3–4 days | A full rehearsal on project B, as Riga's owner would do it, with a test Resend account and a test domain. Two or three rounds of 2–3 hours. |
-| 5. The connection code for desktop and phone (6d), and the version gate | 2 days | Desktop and phone against project B, and production still working as before. One or two sessions. |
-| 6. The setup guide for clinics without Wivo (6e): the checklist page and the guide with screenshots | 1–2 days | Read it, and follow it once on a third fresh project without help: one session of 2–3 hours. |
-| 7. A desktop release with all of the above, after 2.1 | – | A release session. |
+| 1. **The keys and signing** (5e):<ul><li>root and signing certificates;</li><li>the signing tool with rebuild-and-compare;</li><li>CI building unsigned drafts;</li><li>the signed index and the revocation addresses;</li><li>the licence key moved off the Mac.</li></ul> | 3–4 days | Order four hardware keys on the OK. When they arrive: create the keys and record the public keys (one session of about 2 hours), then sign a test release (one session). |
+| 2. **The migration ledger, the package and `wivo-update`** (5b):<ul><li>approval by hand, plus the first install;</li><li>the certificate chain and revocations;</li><li>the fresh code and the "Install updates" permission;</li><li>one transaction and the audit log.</li></ul> | 4 days | On test project A: install by hand as the owner and as a member with the permission; try an older, a tampered, a revoked-key and a no-fresh-code package; try an admin without the permission. Two sessions. |
+| 3. **The functions token** (5c):<ul><li>the scope check that refuses a broader token;</li><li>the Vault entry read only by `wivo-update`;</li><li>a log entry for every use;</li><li>the 30-day reminders and the owner's renewal steps;</li><li>the short-lived fallback.</li></ul> | 2–3 days | Make a correct token and a too-broad one; renew; let one expire and see that migrations still install. One or two sessions. |
+| 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views. One or two sessions. |
+| 5. **The setup tool,** operated by Kevin (6b) | 2–3 days | A full rehearsal on project B, as on the day in Riga. Two sessions of 2–3 hours. |
+| 6. **The connection code** for desktop and phone (6d), **and the version gate** | 2 days | Desktop and phone against project B, and production still working as before. One session. |
+| 7. **The security review of the update path** (5f) on project C with made-up data | Threat model and adversarial script: 2 days. Fixes: 2–3 days. An independent reviewer, if used: 2–3 days of theirs. | Run the adversarial script and read the findings. One or two sessions. |
+| 8. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
 
-**Calendar: about 5–7 weeks** from Kevin's OK to "ready to set up Riga". After that:
-- the visit, on a date agreed with Riga once §6a is ready;
-- the first update after the visit then reaches Riga by itself, or with one approval by Riga's owner (5b). Kevin isn't needed for it.
+- **Kevin's part:** about 12–15 sessions, roughly 30–40 hours, so 9–12 working days at 3–4 hours a day. Building runs alongside.
+- **Calendar: about 4–5 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week and the review's findings are small.
+- **After that:**
+  - the visit, on a date agreed with Riga once §6a is ready;
+  - the next update reaches Riga as a "Database update ready" that Riga's owner approves. Kevin isn't needed for it.
 
 ### Phase 2: the first partnership, as small as possible
 
@@ -736,7 +892,7 @@ That is Kevin's production session, and it isn't counted below.
 **Size:**
 - **Ten message types, version 1:**
   - `hello` and `pair.ended`;
-  - `share.created` (the job's partner-visible fields and its file list) and `share.ended`;
+  - `share.created` and `share.ended`;
   - `stage.move_requested`, `stage.moved` and `stage.move_rejected`;
   - `file.added`, `file.fetch` and `file.received`.
 - **In each project:**
@@ -752,66 +908,87 @@ That is Kevin's production session, and it isn't counted below.
 
 | Slice | Built in | Kevin's part |
 |---|---|---|
-| 1. The bridge core: pairing (token, code, safety code), keys, the signed transport, outbox, inbox, sender, receiver, `hello`, rate limits, audit | 4–5 days | Pair project A with B, playing both owners; try a wrong code; end the partnership. Two or three sessions. |
-| 2. Sharing: `share.created` and `share.ended`, the mirror behind the partner screens, stage requests and answers, notifications | 3–4 days | Send a job from A to B, move it on B, see it on A, unshare it. Two or three sessions. |
-| 3. Files both ways, copied and checked | 3 days | A real-size scan from A to B, and print files from B back to A. One or two sessions. |
-| 4. The leak test across projects, the delivery tests (duplicates, order, one side down) and version skew | 2–3 days, mostly automated | One full run of the real workflow on A and B: scan, technician work, print files, done. |
-| 5. Release; Riga updates; Tallinn and Riga pair on a call | – | A release session; Riga's owner approves the update. |
+| 1. **The bridge core:**<ul><li>pairing: token, code, safety code;</li><li>keys and the signed transport;</li><li>outbox, inbox, sender and receiver;</li><li>`hello`, rate limits and audit.</li></ul> | 4–5 days | Pair project A with B, playing both owners; try a wrong code; end the partnership. Two sessions. |
+| 2. **Sharing:**<ul><li>share and unshare;</li><li>the mirror behind the partner screens;</li><li>stage requests and answers;</li><li>notifications.</li></ul> | 3–4 days | Send a job from A to B, move it on B, see it on A, unshare it. Two sessions. |
+| 3. **Files both ways,** copied and checked | 3 days | A real-size scan from A to B, and print files from B back to A. One or two sessions. |
+| 4. **The safety tests:**<ul><li>the leak test across projects;</li><li>delivery tests: duplicates, order, one side down;</li><li>version skew.</li></ul> | 2–3 days, mostly automated | One full run of the real workflow on A and B: scan, technician work, print files, done. One session. |
+| 5. **Release and connection:** release; Riga updates; Tallinn and Riga pair on a call | – | A release session; Riga's owner approves the update. |
 
-**Calendar: about 5–7 weeks after phase 1 is released.** Building can start earlier; it is the testing that waits.
+- **Kevin's part:** about 8–10 sessions, roughly 20–25 hours.
+- **Calendar: about 3–4 weeks after phase 1 is released.** Building can start while Riga's setup is being arranged.
+- **The first real shared job also waits for the lawyer's answers** (Q3–Q6), so those questions should go out now.
 
-**The first real shared job also waits for the lawyer's answers** (Q3–Q6), so those questions should go out now.
-
-### Later phases
+### After Riga is running
 
 | Phase | What | Calendar |
 |---|---|---|
-| 3. Chat, and changes after sending | `comment.posted`, `question.resolved`, `job.updated` | 2–3 weeks |
-| 4. Stock across projects | §3 | 3–5 weeks |
-| 5. Hardening | <ul><li>Key rotation in the app.</li><li>The "Messages" admin view (1g).</li><li>Monitoring per partnership.</li><li>The pentest of the new endpoints (prompt 22).</li></ul> | 2–3 weeks, plus the pentest's own schedule |
-| Optional: our own production on the update path | The same packages for Tallinn's project, so the path is tested every release | 1–2 weeks |
+| Automatic installs | The project's scheduled check, the setting (off by default), the 3-day hold, `manual_only` and the withdrawn list in automatic mode (5b) | about 1 week |
+| Setup without Wivo | The setup tool turned into the clinic's own wizard, the checklist page and the guide with screenshots, followed once on a fresh project without help (6e) | 1–1.5 weeks |
+| Chat, and changes after sending | `comment.posted`, `question.resolved`, `job.updated` | 1.5–2 weeks |
+| Stock across projects | §3 | 2.5–3.5 weeks |
+| Hardening | <ul><li>Key rotation in the app.</li><li>The "Messages" admin view (1g).</li><li>Monitoring per partnership.</li><li>The pentest of the new endpoints (prompt 22).</li></ul> | 1.5–2 weeks, plus the pentest's own schedule |
+| Optional: our own production on the update path | The same packages for Tallinn's project, so the path is tested every release | about 1 week |
 
 ### In short
 
-- **Riga on its own instance:** about **5–7 weeks** after the OK, plus the 2.1 release and the visit date.
-- **The first shared job:** about **5–7 weeks** after that, so about **10–14 weeks** from the OK, if the lawyer's answers are in.
-- **Chat, changes after sending, and stock:** about **5–8 weeks** more.
+- **Riga on its own instance:** about **4–5 weeks** after the OK, plus the 2.1 release and the visit date.
+- **The first shared job:** about **3–4 weeks** after that, so about **7–9 weeks** from the OK, if the lawyer's answers are in.
+- **Automatic installs and setup without Wivo:** about 2–3 weeks once Riga is running.
+- **Chat, changes after sending, and stock:** about 4–5.5 weeks more.
 
 ---
 
 ## 10. Decisions
 
-**Decided (Kevin, 2026-11-04):**
+**Decided (Kevin, 2026-11-04 and 2026-11-05):**
 1. **The spec:** `wivo-2.0-spec.md` now says "one Supabase project per clinic, owned by the clinic; partnership through the direct bridge". The old line is struck through and dated, as are the context line and the open question about Riga.
 2. **A direct link,** no relay (§1a).
 3. **E-mail:** each clinic has its own Resend account and domain (6c), and the checklist of what Riga prepares is in §6a.
-4. **Timing:** re-planned (§9). Riga on its own instance first, then the smallest partnership.
-5. **Scale and updates:**
+4. **Scale and updates:**
    - 100 clinics with no per-clinic work for Wivo, and no clinic ever sends Wivo a token;
-   - updates are pulled by each clinic, and database changes need no token (5b);
-   - the setting "Install updates automatically" exists, and every signature check still runs.
-6. **Who approves an update:** the owner, or a member with the new permission "Install updates". Admins don't get it automatically. Approving always needs a fresh second-factor code, and the audit log records who approved which version (5b).
+   - updates are pulled by each clinic, and database changes need no token (5b).
+5. **Who approves an update:** the owner, or a member with the new permission "Install updates". Admins don't get it automatically. Approving always needs a fresh second-factor code, and the audit log records who approved which version (5b).
+6. **The functions-only token** (5c, option 1), on these terms:
+   - the clinic's one project, Edge Functions read-write only;
+   - kept in their Vault and read only by `wivo-update`;
+   - a scope check at setup and at every renewal that refuses a broader token;
+   - renewal is the owner's own step in the app, reminded 30 days ahead, and never involves Wivo;
+   - an expired token stops only function updates;
+   - every use is logged.
+
+   The short-lived token stays as the fallback.
+7. **Automatic installs:** off by default, with the 3-day hold.
+8. **Riga's start:**
+   - Kevin sets Riga up on site with a setup tool he operates;
+   - Riga approves updates by hand;
+   - **automatic installs and the self-service setup wizard are built after Riga is running.**
+9. **A security review of the update path** before Riga's setup, on a fresh project with made-up data (5f).
+10. **Timing:** re-planned for 3–4 hours of Kevin's testing on most days (§9).
 
 **For Kevin's OK:**
-7. **Edge Function deploys** (5c): the recommendation is a scoped, functions-only token that the owner creates once at setup and that stays in the clinic's own Vault, renewed yearly (option 1), with the short-lived guided token as the fallback (option 4).
-   - This changes condition 3 of the earlier decision ("the owner's token is never stored"), but only for that narrow token. Broad tokens are still never stored.
-   - The alternative is option 4 alone: then automatic installs stop at every release with function changes.
-8. **Automatic installs:**
-   - off by default, so the owner turns them on at setup or later;
-   - `auto_after`: proposed **3 days** after publishing, so Wivo's own production and the clinics that approve by hand go first.
+11. **The keys** (5e):
+    - a root on two hardware keys in two places;
+    - an update signing key and a spare;
+    - separate keys for app releases and for licences;
+    - CI builds, and Kevin signs locally after a rebuild-and-compare;
+    - rotation through root-signed certificates;
+    - revocations published at two addresses and checked on every update.
+12. **Signing desktop releases** with the app release key, checked by the app before it installs an update. It closes the second path into every clinic: today's releases are unsigned and published from CI (5e). Recommended before Riga.
+13. **The licence key:** replaced by a new one on the hardware key, and `license-private.pem` deleted from the Mac. Enforcement is off today, so nothing that matters breaks.
+14. **The security review's reviewer:** an independent security consultant for 2–3 days (recommended), or a separate Claude review pass plus the adversarial script (5f).
 
 **Still open:**
-9. **Our own production on the update path** (an optional phase in §9). Recommended once phase 1 is built, so the path is tested every release.
-10. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
-11. **Stock defaults:** the due date and the 30-day settling window (phase 4).
-12. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).
-13. **Payroll and invoices for Latvia:** not in Riga's start (phase 1). If Riga needs them, a plan of their own.
-14. **Licences** (6e): the one per-clinic step left for Wivo. Whether to automate it (payment, then a licence) is a separate plan.
-15. **Knowing which versions clinics run:** without access, Wivo doesn't know. Options:
-   - nothing at all;
-   - or an anonymous daily "version only" report that the clinic can turn off.
+15. **Our own production on the update path** (an optional phase in §9). Recommended once phase 1 is built, so the path is tested every release.
+16. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
+17. **Stock defaults:** the due date and the 30-day settling window.
+18. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).
+19. **Payroll and invoices for Latvia:** not in Riga's start. If Riga needs them, a plan of their own.
+20. **Licences** (6e): the one per-clinic step left for Wivo. Whether to automate it (payment, then a licence) is a separate plan.
+21. **Knowing which versions clinics run:** without access, Wivo doesn't know. Options:
+    - nothing at all;
+    - or an anonymous daily "version only" report that the clinic can turn off.
 
-   It would help decide when an old version may stop being supported (1e).
+    It would help decide when an old version may stop being supported (1e).
 
 ## Questions for the lawyer
 
