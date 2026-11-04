@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). **Waiting for Kevin's OK** on §10's items 11–14 before building. Nothing is built.
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). **Phase 1 is being built on `testing`** (§9).
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -521,23 +521,53 @@ Both change.
 | **App release key** | Each desktop release: its version, file names and `sha512`. The app checks it before installing an update. | Its own slot on the same hardware keys as the update signing key. | Every desktop release. |
 | **Licence key** | Licences (`shared/license`) | Its own slot on the signing hardware key. It replaces `license-private.pem`, which is then deleted. Enforcement is off today (`LICENCE_PUBLIC_KEY` is empty), so nothing that matters breaks. | Per licence. |
 
-- **Hardware:** a security key that can make and keep Ed25519 keys **without ever revealing them**. The YubiKey 5 series PIV, firmware 5.7 or later, can; check that exact model before buying. That means four of them: root A, root B, the signing key, and the spare.
-  - The private keys are created on the device and can't be copied out.
-  - Every signature needs the PIN and a touch.
+- **Hardware: four YubiKey 5 Series keys with firmware 5.7 or later** (decided, Kevin 2026-11-05):
+  - **The model:** the **YubiKey 5C NFC** for a USB-C Mac; the 5 NFC if the computer has USB-A.
+  - **Firmware 5.7 or later is required:** Ed25519 in the PIV applet arrived with 5.7. One Yubico page says the new key types came with 5.7.4, so prefer 5.7.4 or later.
+  - **Firmware can't be upgraded**, so buy new from Yubico's own store or an authorised reseller, and check with `ykman info` on arrival. Return any key older than 5.7.
+  - **Not the "Security Key" series:** it has FIDO only, no PIV.
+  - **Four of them:** root A, root B, the signing key, and the spare.
+  - **On each key, every signing key is created on the device (PIV) with:**
+    - **touch policy Always:** a touch for every signature;
+    - **PIN policy Always:** the PIN for every signature.
+
+    Both are fixed at creation and can't be changed later.
+  - **The private keys can't be copied out.**
+  - **Arrival test,** about 15 minutes: create a throwaway Ed25519 key in a spare slot, sign a known test value through Yubico's PKCS#11 module (`ykcs11`, mechanism `CKM_EDDSA`), check the signature in Node, then delete the throwaway key.
+    - Yubico documents `CKM_EDDSA` for firmware 5.7+, but not whether it signs the raw message, which is what we need. This test settles it before any real key is made.
+    - If it fails, the fallback is the offline laptop below.
+  - **GitHub:** the signing key and the spare also work as GitHub's hardware second factor (FIDO2, a separate applet on the same key; docs/GITHUB-CHECKLIST.md). The roots stay in their safes.
 - **Never** in the repository, in CI, in a password manager or as a file on any computer. If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
 - **What is pinned in the clinic** (in `wivo-update`'s code, and in the app): **the two root public keys only.**
   - Signing keys are trusted through a root-signed certificate (key, purpose, valid from and to).
   - The certificates the project has accepted are kept in an append-only table that only `wivo-update` writes.
   - So a new signing key never needs a function update. **Key rotation can't be held up by an expired functions token.**
 
-**How a package is signed: CI builds, Kevin signs locally.**
-1. **CI builds the package and the desktop release** from the tagged commit, reproducibly: the same commit gives the same bytes. It uploads them **unsigned** to a draft GitHub release, with their hashes. CI holds no signing key and can't publish a signed release.
-2. **On Kevin's Mac, the signing tool** (`scripts/sign-release.mjs`):
-   1. downloads the draft;
-   2. **rebuilds it from the same commit and compares hashes**, so a compromised CI can't slip in something different;
-   3. shows what is about to be signed: version, migrations, changed functions, files with their hashes.
-3. **Kevin enters the PIN and touches the key.** The tool writes `manifest.sig`, the release signature and the updated signed index.
-4. **The tool publishes the release with Kevin's own GitHub sign-in,** which uses a hardware second factor. A few minutes per release.
+**How a release is signed: built and signed on Kevin's Mac. CI is out of the trust path.**
+
+Checked on 2026-11-05: can CI's build and a build on Kevin's Mac be byte-identical, so Kevin could sign what CI built?
+- **The app's code is deterministic:** two builds on the Mac gave byte-identical output (`electron-vite build`, all 46 files), byte-identical packed code (`app.asar`) and a byte-identical `Wivo.exe`.
+- **The installer is not:** `Wivo Setup x.y.z.exe` differed between two builds on the same Mac, because NSIS stamps it. So CI's installer, built on Windows, can never match a Mac build byte for byte.
+- **The Windows installer builds on the Mac** in about two minutes. electron-builder brings its own Wine for setting the icon and version, so nothing is installed on the Mac.
+
+So the simplest safe way, instead of days on reproducibility, is **build where you sign**:
+1. **On Kevin's Mac, from a clean checkout of the release tag,** `scripts/release.mjs`:
+   1. runs the tests;
+   2. builds the update package (5a) and the Windows installer;
+   3. shows what is about to be signed: version, the commits since the last release, migrations, changed functions, files and their hashes.
+2. **Kevin enters the PIN and touches the key:**
+   - the update signing key signs the package manifest and the index;
+   - the app release key signs the release statement (version, file name, `sha512` of the installer).
+3. **The tool publishes** the installer, `latest.yml`, the package and the signatures to the GitHub release, with Kevin's own GitHub sign-in (hardware second factor).
+4. **CI keeps building and testing every push,** as a compile check, but **no longer publishes desktop releases.** The publishing steps leave `build.yml`.
+   - Optionally, CI also builds `app.asar` for each release tag and compares it with the one Kevin published, as an alarm, not a gate. The packed code proved byte-identical across builds.
+5. **The app checks before installing:** electron-updater's check before installing an update (`verifyUpdateCodeSignature`) is replaced by our own:
+   1. the downloaded installer's `sha512` must match the signed release statement;
+   2. that statement must be signed by an app release key certified by a pinned root;
+   3. the key must not be revoked.
+
+   Anything else is refused and reported.
+6. **The update package's archive is built to be deterministic** (sorted entries, fixed times), so CI can rebuild and compare it as a second alarm.
 
 **Rotation.**
 - **Planned:** the signing key every two years, and whenever its hardware key is replaced.
@@ -580,7 +610,7 @@ Roots are used a few times a year, offline, in safes, to keep this from happenin
 
 **The GitHub account** that publishes releases is part of this path: hardware second factor, no personal access tokens left lying around, and branch protection on `main`. A stolen GitHub sign-in alone still can't produce a signed package, because the signatures need the hardware key.
 
-### 5f. A security review of the update path, before Riga's setup
+### 5f. Security reviews: the update path before Riga's setup, then an independent review before the first real shared job
 
 **Before Riga's setup,** on a **fresh project with made-up data only** (project C; never the test copy or production), a focused review of the update path. It is a release condition for the build that goes to Riga.
 
@@ -617,8 +647,12 @@ Roots are used a few times a year, offline, in safes, to keep this from happenin
 1. A written threat model: what an attacker could hold (the GitHub account, CI, one clinic's project, a user's session, a stolen hardware key without its PIN) and what each must not be able to do.
 2. A line-by-line review of the update code.
 3. A scripted adversarial test run against project C, covering every item above, kept in the repository and run again before each release that changes this path.
-4. **An independent reviewer** is recommended for the code and the threat model: a security consultant for two to three days. The alternative is a separate review pass by Claude using the code-review tool, plus Kevin running the adversarial script.
-5. Findings fixed and re-tested before the release that goes to Riga.
+4. **Two reviews, in this order** (Kevin, 2026-11-05):
+   1. **Before Riga's setup:** a separate review pass by Claude, not anchored on the build: the code-review tool at its highest level over the update path, against the threat model. Kevin runs the adversarial script on project C.
+   2. **Before the first real shared job:** **one independent security consultant, 2–3 days, covering the update path and the bridge together.**
+      - That means the endpoints `bridge` and `bridge-pair`, the pairing, the signed transport, the outbox and inbox, the file copies, and the leak test across projects.
+      - It is booked early, because a consultant's dates are the slowest part.
+5. **Findings are fixed and re-tested:** the first review's before the release that goes to Riga, the consultant's before any real patient's job crosses.
 
 **Sources checked on 2026-11-04:**
 - [Scoped personal access tokens are now generally available](https://supabase.com/changelog/scoped-personal-access-tokens-ga)
@@ -859,13 +893,13 @@ That is Kevin's production session, and it isn't counted below.
 
 | Slice | Built in | Kevin's part |
 |---|---|---|
-| 1. **The keys and signing** (5e):<ul><li>root and signing certificates;</li><li>the signing tool with rebuild-and-compare;</li><li>CI building unsigned drafts;</li><li>the signed index and the revocation addresses;</li><li>the licence key moved off the Mac.</li></ul> | 3–4 days | Order four hardware keys on the OK. When they arrive: create the keys and record the public keys (one session of about 2 hours), then sign a test release (one session). |
+| 1. **The keys and signing** (5e):<ul><li>the release formats and their checks (certificates, manifest, index, revocation);</li><li>the local build-and-sign tool;</li><li>the hardware-key signer;</li><li>CI no longer publishing;</li><li>the licence key on the hardware key.</li></ul> | 3–4 days | Order four YubiKey 5C NFC (firmware 5.7+) on the OK. When they arrive: the 15-minute arrival test, creating the keys and recording the public keys (one session of about 2 hours), then a test release signed end to end (one session). Delete `license-private.pem` once the new licence key works. |
 | 2. **The migration ledger, the package and `wivo-update`** (5b):<ul><li>approval by hand, plus the first install;</li><li>the certificate chain and revocations;</li><li>the fresh code and the "Install updates" permission;</li><li>one transaction and the audit log.</li></ul> | 4 days | On test project A: install by hand as the owner and as a member with the permission; try an older, a tampered, a revoked-key and a no-fresh-code package; try an admin without the permission. Two sessions. |
 | 3. **The functions token** (5c):<ul><li>the scope check that refuses a broader token;</li><li>the Vault entry read only by `wivo-update`;</li><li>a log entry for every use;</li><li>the 30-day reminders and the owner's renewal steps;</li><li>the short-lived fallback.</li></ul> | 2–3 days | Make a correct token and a too-broad one; renew; let one expire and see that migrations still install. One or two sessions. |
 | 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views. One or two sessions. |
 | 5. **The setup tool,** operated by Kevin (6b) | 2–3 days | A full rehearsal on project B, as on the day in Riga. Two sessions of 2–3 hours. |
 | 6. **The connection code** for desktop and phone (6d), **and the version gate** | 2 days | Desktop and phone against project B, and production still working as before. One session. |
-| 7. **The security review of the update path** (5f) on project C with made-up data | Threat model and adversarial script: 2 days. Fixes: 2–3 days. An independent reviewer, if used: 2–3 days of theirs. | Run the adversarial script and read the findings. One or two sessions. |
+| 7. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
 | 8. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
 
 - **Kevin's part:** about 12–15 sessions, roughly 30–40 hours, so 9–12 working days at 3–4 hours a day. Building runs alongside.
@@ -913,9 +947,10 @@ That is Kevin's production session, and it isn't counted below.
 | 3. **Files both ways,** copied and checked | 3 days | A real-size scan from A to B, and print files from B back to A. One or two sessions. |
 | 4. **The safety tests:**<ul><li>the leak test across projects;</li><li>delivery tests: duplicates, order, one side down;</li><li>version skew.</li></ul> | 2–3 days, mostly automated | One full run of the real workflow on A and B: scan, technician work, print files, done. One session. |
 | 5. **Release and connection:** release; Riga updates; Tallinn and Riga pair on a call | – | A release session; Riga's owner approves the update. |
+| 6. **The independent review** (5f): one consultant, 2–3 days, over the update path and the bridge together; then fixes | Fixes: 2–3 days after the report | Book the consultant when phase 2 starts; read the report. The first real shared job waits for it. |
 
 - **Kevin's part:** about 8–10 sessions, roughly 20–25 hours.
-- **Calendar: about 3–4 weeks after phase 1 is released.** Building can start while Riga's setup is being arranged.
+- **Calendar: about 3–4 weeks after phase 1 is released, plus about a week for the independent review and its fixes,** if the consultant's dates fit. Building can start while Riga's setup is being arranged.
 - **The first real shared job also waits for the lawyer's answers** (Q3–Q6), so those questions should go out now.
 
 ### After Riga is running
@@ -932,7 +967,7 @@ That is Kevin's production session, and it isn't counted below.
 ### In short
 
 - **Riga on its own instance:** about **4–5 weeks** after the OK, plus the 2.1 release and the visit date.
-- **The first shared job:** about **3–4 weeks** after that, so about **7–9 weeks** from the OK, if the lawyer's answers are in.
+- **The first shared job:** about **4–5 weeks** after that, including the independent review, so about **8–10 weeks** from the OK, if the lawyer's answers are in and the consultant's dates fit.
 - **Automatic installs and setup without Wivo:** about 2–3 weeks once Riga is running.
 - **Chat, changes after sending, and stock:** about 4–5.5 weeks more.
 
@@ -965,17 +1000,20 @@ That is Kevin's production session, and it isn't counted below.
 9. **A security review of the update path** before Riga's setup, on a fresh project with made-up data (5f).
 10. **Timing:** re-planned for 3–4 hours of Kevin's testing on most days (§9).
 
-**For Kevin's OK:**
-11. **The keys** (5e):
-    - a root on two hardware keys in two places;
+**Decided (Kevin, 2026-11-05), continued:**
+11. **The keys** (5e): four YubiKey 5C NFC with firmware 5.7 or later. That means:
+    - a root on two keys in two places;
     - an update signing key and a spare;
-    - separate keys for app releases and for licences;
-    - CI builds, and Kevin signs locally after a rebuild-and-compare;
-    - rotation through root-signed certificates;
-    - revocations published at two addresses and checked on every update.
-12. **Signing desktop releases** with the app release key, checked by the app before it installs an update. It closes the second path into every clinic: today's releases are unsigned and published from CI (5e). Recommended before Riga.
-13. **The licence key:** replaced by a new one on the hardware key, and `license-private.pem` deleted from the Mac. Enforcement is off today, so nothing that matters breaks.
-14. **The security review's reviewer:** an independent security consultant for 2–3 days (recommended), or a separate Claude review pass plus the adversarial script (5f).
+    - separate app release and licence keys;
+    - rotation by certificate;
+    - revocations at two addresses.
+12. **Desktop releases signed with their own key and checked by the app before installing, before Riga.** Byte-identical CI and Mac installers proved impossible (5e), so releases are built and signed on Kevin's Mac. CI keeps building and testing, but no longer publishes.
+13. **The licence key:** a new one on the hardware key. `license-private.pem` is deleted once that works. Until then, Kevin moves it out of the project folder.
+14. **Reviews:**
+    - Claude's separate review pass and the adversarial script before Riga's setup;
+    - one independent consultant for 2–3 days, over the update path and the bridge, before the first real shared job (5f).
+
+**Now:** Kevin works through docs/GITHUB-CHECKLIST.md, because the unsigned release path exists today.
 
 **Still open:**
 15. **Our own production on the update path** (an optional phase in §9). Recommended once phase 1 is built, so the path is tested every release.
