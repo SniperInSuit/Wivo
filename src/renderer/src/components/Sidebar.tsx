@@ -53,7 +53,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const running = useRunningVersion()
   // Opens by itself once per person per version; the footer button reopens it.
   const whatsNew = useWhatsNew(running)
-  const newRequests = useNewRequestCount()
+  const newRequests = useNewRequestCount(sees('taotlused'))
   const stockAlerts = useStockAlerts()
   // Only an organisation that has a partnership has partner jobs to look at.
   const { data: partners = [] } = usePartnerOrgs()

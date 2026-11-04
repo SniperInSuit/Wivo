@@ -13,7 +13,8 @@ interface TopBarProps {
   onSearchChange: (v: string) => void
   /** A search result was chosen (or Enter found one): open it. */
   onOpenJob: (job: Job) => void
-  onNewJob: () => void
+  /** Absent without Edit jobs: no "New job" and no CSV import. */
+  onNewJob?: () => void
   /** A notification was clicked: open its job wherever it lives. */
   onOpenNotification?: (n: AppNotification) => void
   onNewVisit?: () => void
@@ -49,17 +50,19 @@ export function TopBar({ search, onSearchChange, onOpenJob, onNewJob, onNewVisit
 
       <div className="flex items-center gap-2 ml-auto">
         {onOpenNotification && <NotificationBell onOpen={onOpenNotification} />}
-        <ImportCSVButton onSuccess={onImportDone} />
+        {onNewJob && <ImportCSVButton onSuccess={onImportDone} />}
         {onNewVisit && (
           <button onClick={onNewVisit} className="btn-ghost text-nav hover:text-nav border border-nav/20">
             <CalendarPlus size={14} />
             {t('topBar.newVisit')}
           </button>
         )}
-        <button onClick={onNewJob} className="btn-primary">
-          <Plus size={14} />
-          {t('topBar.newJob')}
-        </button>
+        {onNewJob && (
+          <button onClick={onNewJob} className="btn-primary">
+            <Plus size={14} />
+            {t('topBar.newJob')}
+          </button>
+        )}
 
         {initials && (
           <div className="flex items-center gap-2 pl-2 ml-1 border-l border-nav/20">

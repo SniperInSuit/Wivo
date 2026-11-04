@@ -472,7 +472,11 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
   const isSheet = isBottom || isFullscreen
   const { settings } = useSettings()
   const wt = useWorkTypes()
-  const money = usePermissions().can('payments.read')
+  const perms = usePermissions()
+  const money = perms.can('payments.read')
+  // Without Edit jobs the job is read only: no edit, no remake, no copy (the
+  // database would refuse the save).
+  const canEdit = perms.can('jobs.write')
   // Full price vs the type's discount price. Per job, not a setting: the person
   // filling the form is the one who knows whether this case is discounted.
   const [useDiscount, setUseDiscount] = useState(false)
@@ -839,6 +843,9 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </span>
               </div>
             )}
+            {job && !editing && !canEdit && (
+              <p className="mt-1 text-[11px] text-ink-faint">{t('jobDetail.readOnly', { perm: t('usePermissions.editJobs') })}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {job && onDelete && (
@@ -870,7 +877,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 </button>
               )
             )}
-            {job && !editing && (
+            {job && !editing && canEdit && (
               <button type="button" onClick={() => {
                 if (activeRev) {
                   setQuickRevisionId(activeRev.id)
@@ -926,8 +933,8 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
                 highlightNoteId={highlightNoteId}
                 onOpenPatient={onOpenPatient}
                 onMarkPaid={() => setPaidDialog(true)}
-                onAddRevision={() => setQuickRevisionId('__new__')}
-                onDuplicate={() => {
+                onAddRevision={canEdit ? () => setQuickRevisionId('__new__') : undefined}
+                onDuplicate={!canEdit ? undefined : () => {
                   setForm(f => ({
                     ...f,
                     ...job,

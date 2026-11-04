@@ -19,6 +19,7 @@ import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { viewKind, viewerFor } from '../../lib/fileViewer'
 import { FileViewer, type ViewerFile } from './FileViewer'
 import { describeError } from '../Patients/errors'
+import { usePermissions } from '../../hooks/usePermissions'
 import { t, dateLocale } from '@/lib/i18n'
 import { confirmDialog } from '../../lib/confirm'
 
@@ -75,6 +76,9 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     },
   })
   const types = partner ? PARTNER_TYPES : ALL_TYPES
+  // Adding, replacing or deleting a file is editing the job: Edit jobs
+  // (may_upload_job_file, sql/072). A partner's uploads follow the share.
+  const canWrite = usePermissions().can('jobs.write') || partner
   const [type, setType] = useState<JobFileType | 'auto'>('auto')
   const [actionError, setActionError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -123,23 +127,27 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
 
   return (
     <section className="space-y-3"
-      onDragOver={e => e.preventDefault()}
-      onDrop={e => { e.preventDefault(); versionOf.current = null; void add(e.dataTransfer.files) }}>
+      onDragOver={e => { if (canWrite) e.preventDefault() }}
+      onDrop={e => { if (!canWrite) return; e.preventDefault(); versionOf.current = null; void add(e.dataTransfer.files) }}>
       <div className="flex items-center gap-2">
         <Paperclip size={13} className="text-ink-muted" aria-hidden="true" />
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">{t('files.files')}</h3>
-        <select value={type} onChange={e => setType(e.target.value as JobFileType | 'auto')}
-          aria-label={t('files.fileType')} className="input ml-auto w-36 text-xs py-1">
-          {!partner && <option value="auto">{t('files.typeAuto')}</option>}
-          {types.map(ty => <option key={ty} value={ty}>{fileTypeLabel(ty)}</option>)}
-        </select>
-        <button type="button" onClick={() => { versionOf.current = null; input.current?.click() }}
-          className="btn-ghost text-xs border border-ink-faint/30 flex items-center gap-1">
-          <Upload size={12} aria-hidden="true" /> {t('files.addFiles')}
-        </button>
-        <input ref={input} type="file" multiple hidden onChange={e => { void add(e.target.files); e.target.value = '' }} />
+        {canWrite && (
+          <>
+            <select value={type} onChange={e => setType(e.target.value as JobFileType | 'auto')}
+              aria-label={t('files.fileType')} className="input ml-auto w-36 text-xs py-1">
+              {!partner && <option value="auto">{t('files.typeAuto')}</option>}
+              {types.map(ty => <option key={ty} value={ty}>{fileTypeLabel(ty)}</option>)}
+            </select>
+            <button type="button" onClick={() => { versionOf.current = null; input.current?.click() }}
+              className="btn-ghost text-xs border border-ink-faint/30 flex items-center gap-1">
+              <Upload size={12} aria-hidden="true" /> {t('files.addFiles')}
+            </button>
+            <input ref={input} type="file" multiple hidden onChange={e => { void add(e.target.files); e.target.value = '' }} />
+          </>
+        )}
       </div>
-      <p className="text-[11px] text-ink-muted">{t('files.cleaningNote')}</p>
+      {canWrite && <p className="text-[11px] text-ink-muted">{t('files.cleaningNote')}</p>}
 
       {error && <p role="alert" className="text-sm text-rose-500">{describeError(error)}</p>}
       {actionError && <p role="alert" className="text-sm text-rose-500">{actionError}</p>}
@@ -177,7 +185,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
           <ul className="space-y-1">
             {active.map(f => (
               <FileRow key={f.id} f={f} preview={previews?.get(f.id)} history={older.filter(o => chainOf(o, files).includes(f.id))}
-                canDelete={!partner} canVersion={types.includes(f.type)}
+                canDelete={!partner && canWrite} canVersion={canWrite && types.includes(f.type)}
                 onDownload={download} onDelete={remove} onView={view}
                 onVersion={() => { versionOf.current = f.id; input.current?.click() }} />
             ))}

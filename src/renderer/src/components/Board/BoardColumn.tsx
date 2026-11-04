@@ -15,8 +15,8 @@ interface BoardColumnProps {
   stage: PipelineStage
   entries: BoardEntry[]
   onJobClick: (job: Job) => void
-  onDrop: (jobId: string, targetStage: StageKey) => void
-  onStageChange: (jobId: string, stage: StageKey) => void
+  /** Absent: read only — cards do not drag and nothing drops here. */
+  onStageChange?: (jobId: string, stage: StageKey) => void
   onRevisionStageChange?: (jobId: string, revId: string, stage: StageKey) => void
   onRevisionClick?: (job: Job, revId: string) => void
   wide?: boolean
@@ -30,7 +30,7 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({
-  stage, entries, onJobClick, onDrop, onStageChange,
+  stage, entries, onJobClick, onStageChange,
   onRevisionStageChange, onRevisionClick,
   wide, totalCount, weekLabel, isCurrentWeek, onPrevWeek, onNextWeek, onThisWeek,
 }: BoardColumnProps) {
@@ -57,7 +57,7 @@ export function BoardColumn({
     playSound('ui-pickup')
   }
   const handleDragEnd = () => setDraggingId(null)
-  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsDragOver(true) }
+  const handleDragOver  = (e: React.DragEvent) => { if (!onStageChange) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setIsDragOver(true) }
   const handleDragLeave = (e: React.DragEvent) => { if (!columnRef.current?.contains(e.relatedTarget as Node)) setIsDragOver(false) }
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -73,7 +73,7 @@ export function BoardColumn({
       onRevisionStageChange?.(id, revId, stage.key)
       return
     }
-    onDrop(id, stage.key)
+    onStageChange?.(id, stage.key)
   }
 
   const jobCount = entries.filter(e => e.type === 'job').length
@@ -143,7 +143,7 @@ export function BoardColumn({
               return (
                 <div
                   key={`rev-${entry.job.id}-${entry.rev.id}`}
-                  draggable
+                  draggable={!!onRevisionStageChange}
                   onDragStart={e => handleDragStart(e, entry.job.id, entry.rev.id)}
                   onDragEnd={handleDragEnd}
                 >
@@ -169,7 +169,7 @@ export function BoardColumn({
                   <div
                     key={entry.job.id}
                     className="col-span-2"
-                    draggable
+                    draggable={!!onStageChange}
                     onDragStart={e => handleDragStart(e, entry.job.id)}
                     onDragEnd={handleDragEnd}
                   >
@@ -183,14 +183,14 @@ export function BoardColumn({
             return (
               <div
                 key={entry.job.id}
-                draggable
+                draggable={!!onStageChange}
                 onDragStart={e => handleDragStart(e, entry.job.id)}
                 onDragEnd={handleDragEnd}
               >
                 <JobCard
                   job={entry.job}
                   onClick={onJobClick}
-                  onStageChange={(j, s) => onStageChange(j.id, s)}
+                  onStageChange={onStageChange ? (j, s) => onStageChange(j.id, s) : undefined}
                   isDragging={draggingId === entry.job.id}
                 />
               </div>

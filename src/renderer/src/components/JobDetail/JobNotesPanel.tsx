@@ -5,6 +5,7 @@ import type { Job, JobNote } from '../../types/job'
 import { useUpdateJob } from '../../hooks/useJobs'
 import { useSettings } from '../../stores/useSettings'
 import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { t } from '@/lib/i18n'
 
 interface JobNotesPanelProps {
@@ -31,6 +32,8 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
   }, [highlightNoteId])
 
   const updateJob = useUpdateJob()
+  // A note is part of the job: adding or deleting one is editing it.
+  const canEdit = usePermissions().can('jobs.write')
   const { settings } = useSettings()
   const { displayName } = useAuth()
   const [draft, setDraft] = useState('')
@@ -75,7 +78,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
       <div className="flex items-center gap-1.5 mb-2.5">
         <MessageSquare size={12} className="text-accent" />
         <h3 className="text-[11px] font-semibold text-accent uppercase tracking-wider">{t('jobDetail.notes')}</h3>
-        {!adding && (
+        {!adding && canEdit && (
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -116,7 +119,7 @@ export function JobNotesPanel({ job, highlightNoteId }: JobNotesPanelProps) {
                   {d && isValid(d) && ` · ${format(d, 'dd.MM.yy HH:mm')}`}
                 </p>
               </div>
-              {confirmId === n.id ? (
+              {!canEdit ? null : confirmId === n.id ? (
                 <span className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
                   <button
                     type="button"

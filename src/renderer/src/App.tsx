@@ -116,6 +116,9 @@ function AppContent() {
   // sql/102: deleting a job is its own permission; marking paid writes payments.
   const { can } = usePermissions()
   const canDelete = can('jobs.delete')
+  // Without Edit jobs, the jobs a member sees are read only: no new job, no
+  // stage moves, no bulk changes (the database would refuse each of them).
+  const canEditJobs = can('jobs.write')
   const canMarkPaid = can('payments.write')
   const markJobsPaid = useMarkJobsPaid()
 
@@ -338,7 +341,7 @@ function AppContent() {
           search={search}
           onSearchChange={setSearch}
           onOpenJob={openSearchResult}
-          onNewJob={openNew}
+          onNewJob={canEditJobs ? openNew : undefined}
           onOpenNotification={n => {
             // Our own job opens in the panel; a job shared WITH us is only
             // reachable through the partner view.
@@ -375,7 +378,7 @@ function AppContent() {
               // row you clicked is the one you wanted to look at.
               onJobClick={(job, revId) =>
                 revId ? openEditWithRevision(job, revId) : openEdit(job)}
-              onNewJob={openNew}
+              onNewJob={canEditJobs ? openNew : undefined}
               onNavigate={setView}
             />
           )}
@@ -384,8 +387,8 @@ function AppContent() {
               jobs={searchedJobs}
               loading={isLoading}
               onJobClick={openEdit}
-              onStageChange={handleStageChange}
-              onRevisionStageChange={handleRevisionStageChange}
+              onStageChange={canEditJobs ? handleStageChange : undefined}
+              onRevisionStageChange={canEditJobs ? handleRevisionStageChange : undefined}
               onRevisionClick={openEditWithRevision}
             />
           )}
@@ -394,10 +397,10 @@ function AppContent() {
               jobs={searchedJobs}
               onJobClick={openEdit}
               onJobEye={openBottom}
-              onBulkStatusChange={handleBulkStatusChange}
+              onBulkStatusChange={canEditJobs ? handleBulkStatusChange : undefined}
               onBulkMarkPaid={canMarkPaid ? handleBulkMarkPaid : undefined}
               onBulkDelete={canDelete ? handleBulkDelete : undefined}
-              onBulkAssign={handleBulkAssign}
+              onBulkAssign={canEditJobs ? handleBulkAssign : undefined}
               search={search}
               onSearchChange={setSearch}
             />
@@ -407,7 +410,7 @@ function AppContent() {
               jobs={searchedJobs}
               onJobClick={openBottom}
               onRevisionClick={openBottomRevision}
-              onNewJobOnDate={openNewOnDate}
+              onNewJobOnDate={canEditJobs ? openNewOnDate : undefined}
               onOpenPatient={openPatient}
               mode={calendarMode}
               scale={calendarScale}

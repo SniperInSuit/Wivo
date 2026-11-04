@@ -37,7 +37,7 @@ interface OverviewViewProps {
   searchActive?: boolean
   loading: boolean
   onJobClick: (job: Job, revisionId?: string) => void
-  onNewJob: () => void
+  onNewJob?: () => void
   onNavigate: (v: ViewMode) => void
 }
 

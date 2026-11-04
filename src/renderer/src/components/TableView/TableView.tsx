@@ -567,21 +567,25 @@ export function TableView({ jobs, onJobClick, onJobEye, onBulkStatusChange, onBu
           <span className="text-sm font-semibold text-accent whitespace-nowrap">
             {t('tableView.selected', { size: selected.size })}
           </span>
-          <span className="text-ink-faint/40">|</span>
-          <span className="text-xs text-ink-muted whitespace-nowrap">{t('tableView.changeStatus')}</span>
-          <div className="flex gap-1 flex-wrap">
-            {stages.map(s => (
-              <button
-                key={s.key}
-                disabled={bulkWorking}
-                onClick={() => handleBulkStatus(s.key as StageKey)}
-                style={stageChipStyle(s.hex)}
-                className="text-xs px-2.5 py-1 rounded-lg font-medium border border-transparent transition-all duration-100 disabled:opacity-50 hover:opacity-80"
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+          {onBulkStatusChange && (
+            <>
+              <span className="text-ink-faint/40">|</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">{t('tableView.changeStatus')}</span>
+              <div className="flex gap-1 flex-wrap">
+                {stages.map(s => (
+                  <button
+                    key={s.key}
+                    disabled={bulkWorking}
+                    onClick={() => handleBulkStatus(s.key as StageKey)}
+                    style={stageChipStyle(s.hex)}
+                    className="text-xs px-2.5 py-1 rounded-lg font-medium border border-transparent transition-all duration-100 disabled:opacity-50 hover:opacity-80"
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {/* Assigning who did the work, in bulk. Doing it one form at a time is
               what stops the pay data from ever getting filled in. */}
           {onBulkAssign && (

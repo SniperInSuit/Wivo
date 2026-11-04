@@ -960,6 +960,7 @@ export const en = {
   'jobDetail.savingFailed': "Saving failed",
   'jobDetail.newJob': "New job",
   'jobDetail.editJob': "Edit job",
+  'jobDetail.readOnly': "Read only: changing a job needs the permission \"{perm}\".",
   'jobDetail.job': "Job",
   'jobDetail.revision2': "revision",
   'jobDetail.toothTeeth': ({ n }: Params) => `${n} ${n === 1 ? 'tooth' : 'teeth'}`,

@@ -90,6 +90,8 @@ export function JobReadView({
   const isDone = job.status === doneStageKey
   const updateJob = useUpdateJob()
   const showCosts = can('payroll.manage')
+  // Changing anything here is editing the job.
+  const canEdit = can('jobs.write')
   const money = can('payments.read')
   // The whole case, remakes included. `jobTotalCosts` runs `jobCosts` inside
   // itself, so the original's four categories and the case total come from one
@@ -326,7 +328,7 @@ export function JobReadView({
 
                   A revision has its own completion date and is not this one, so
                   the field belongs to the job view only. */}
-              {!rev && <CompletionDate job={job} />}
+              {!rev && <CompletionDate job={job} editable={canEdit} />}
             </div>
           </Card>
 
@@ -494,7 +496,7 @@ export function JobReadView({
               <CostBreakdown
                 costs={costs}
                 total={total}
-                editable
+                editable={canEdit}
                 dense
                 collapsible
                 onOverride={(key, value) => {
@@ -694,7 +696,7 @@ function WorkItemsReadBlock({ items }: { items: WorkItem[] }) {
  * Empty is stated plainly rather than hidden. That is the case that misfiles
  * wages, so it should look unfinished.
  */
-function CompletionDate({ job }: { job: Job }) {
+function CompletionDate({ job, editable }: { job: Job; editable: boolean }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(job.valmis_kuupaev ?? '')
   const updateJob = useUpdateJob()
@@ -745,14 +747,16 @@ function CompletionDate({ job }: { job: Job }) {
             {t('jobDetail.missingPayWentByTheDate', { fallback })}
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="text-ink-faint hover:text-accent"
-          title={t('jobDetail.editCompletionDate')}
-        >
-          <Pencil size={10} />
-        </button>
+        {editable && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-ink-faint hover:text-accent"
+            title={t('jobDetail.editCompletionDate')}
+          >
+            <Pencil size={10} />
+          </button>
+        )}
       </p>
     </div>
   )

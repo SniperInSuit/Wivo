@@ -17,6 +17,7 @@ import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
 import { fileTypeLabel } from '../Files/JobFiles'
 import { describeError } from '../Patients/errors'
+import { usePermissions } from '../../hooks/usePermissions'
 import { t, dateLocale } from '@/lib/i18n'
 
 type Watched = { path: string; name: string; size: number; modifiedAt: number; key: string }
@@ -79,6 +80,7 @@ function UnsortedRow({ file, jobs, onDone, onError }: {
   const [query, setQuery] = useState('')
   const [jobId, setJobId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const canEdit = usePermissions().can('jobs.write')
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -140,10 +142,13 @@ function UnsortedRow({ file, jobs, onDone, onError }: {
             )}
           </div>
         )}
-        <button type="button" onClick={attach} disabled={!jobId || busy}
-          className="btn-primary text-xs flex items-center gap-1 disabled:opacity-50">
-          <Link2 size={12} aria-hidden="true" /> {t('unsorted.attach')}
-        </button>
+        {/* Attaching is adding a file to the job: Edit jobs (sql/072). */}
+        {canEdit && (
+          <button type="button" onClick={attach} disabled={!jobId || busy}
+            className="btn-primary text-xs flex items-center gap-1 disabled:opacity-50">
+            <Link2 size={12} aria-hidden="true" /> {t('unsorted.attach')}
+          </button>
+        )}
       </div>
     </li>
   )

@@ -17,7 +17,8 @@ interface BoardProps {
   jobs: Job[]
   loading: boolean
   onJobClick: (job: Job) => void
-  onStageChange: (jobId: string, stage: StageKey) => void
+  /** Absent: the jobs are read only here (no Edit jobs) — nothing drags, no stage arrows. */
+  onStageChange?: (jobId: string, stage: StageKey) => void
   onRevisionStageChange?: (jobId: string, revId: string, stage: StageKey) => void
   onRevisionClick?: (job: Job, revId: string) => void
 }
@@ -110,7 +111,6 @@ export function Board({
           stage={stage}
           entries={byStage[stage.key] ?? []}
           onJobClick={onJobClick}
-          onDrop={onStageChange}
           onStageChange={onStageChange}
           onRevisionStageChange={onRevisionStageChange}
           onRevisionClick={onRevisionClick}

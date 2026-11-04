@@ -20,6 +20,7 @@ import { JobThread } from '../components/Partners/JobThread'
 import { PartnerJobPanel } from '../components/Partners/PartnerJobsView'
 import { PhoneCamera } from './PhoneCamera'
 import type { Job } from '../types/job'
+import { usePermissions } from '../hooks/usePermissions'
 import { t, dateLocale } from '@/lib/i18n'
 
 export function MobileJob({ id, onClose }: { id: string; onClose: () => void }) {
@@ -45,6 +46,8 @@ function SharedJob({ job, onClose }: { job: PartnerJob; onClose: () => void }) {
 function OwnJob({ job }: { job: Job }) {
   const { stageMap } = usePipeline()
   const [shooting, setShooting] = useState(false)
+  // A photo onto the job is a file on it: Edit jobs, as on the desktop.
+  const canEdit = usePermissions().can('jobs.write')
   // Opening a job is a `view` in the audit log (sql/078), as on the desktop.
   useEffect(() => { void supabase.rpc('log_job_view', { p_job: job.id }).then(() => {}, () => {}) }, [job.id])
 
@@ -78,11 +81,14 @@ function OwnJob({ job }: { job: Job }) {
         {job.kirjeldus && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.kirjeldus}</span>} />}
       </section>
 
-      <button type="button"
-        onClick={async () => { if (await confirmSharedUpload(job.id, [{ name: 'photo.jpg', type: 'photo' }])) setShooting(true) }}
-        className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
-        <Camera size={18} aria-hidden="true" /> {t('mobile.photoOntoJob')}
-      </button>
+      {canEdit && (
+        <button type="button"
+          onClick={async () => { if (await confirmSharedUpload(job.id, [{ name: 'photo.jpg', type: 'photo' }])) setShooting(true) }}
+          className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
+          <Camera size={18} aria-hidden="true" /> {t('mobile.photoOntoJob')}
+        </button>
+      )}
+      {!canEdit && <p className="text-xs text-ink-muted">{t('jobDetail.readOnly', { perm: t('usePermissions.editJobs') })}</p>}
       {shooting && <PhoneCamera onFile={f => enqueueUpload(job.id, f, 'photo')} onClose={() => setShooting(false)} />}
 
       <JobFiles jobId={job.id} />

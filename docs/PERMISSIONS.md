@@ -22,6 +22,7 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 | `payroll.manage` | everyone's pay; the costs on a job; material costs | yes |
 | `stock.read` / `stock.write` | stock | yes |
 | `patients.*`, `visits.*` | patients and calendar | patients: writing |
+| `visits.write` | booking requests: reading, adding, changing, deleting; Requests in the menu | **yes, since 116**; owners and admins always |
 | `stats.read` | Statistics in the menu | app only |
 | `settings.read`, `pipeline.write` | (barely used) | – |
 
@@ -56,6 +57,20 @@ What each default role sees in the menu:
 | Member with nothing granted | Overview, Jobs, Table, Payroll (own jobs, read only) |
 
 Tests: `shared/permissions.test.ts` (the menu for each role) and `sql/test/technicianJobs.test.ts` (what the database returns and lets them edit).
+
+### Without `jobs.write`: read only
+
+Someone who sees a job but lacks `jobs.write` sees it read only, on the desktop and the phone. Nothing is offered that the database would refuse:
+- no "New job" and no CSV import;
+- no dragging on the board and no stage arrows;
+- no bulk stage or bulk assign in Table;
+- no "Add job" on a calendar day;
+- in the job: no Edit, no remake, no copy, no finished-date pencil and no cost overrides; notes can't be added or deleted;
+- files can't be added, replaced or deleted. That includes attachments in the job's chat, the phone's camera and Unsorted → Attach, because an upload needs `jobs.write` (sql/072).
+
+The job says why: "Read only: changing a job needs the permission Edit jobs". Comments in the job's chat stay open, because a comment isn't an edit.
+
+Tests: `src/renderer/src/components/readOnlyJobs.test.tsx`.
 
 ## What sql/102 changes
 

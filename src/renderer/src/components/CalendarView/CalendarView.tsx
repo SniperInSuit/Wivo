@@ -48,7 +48,8 @@ interface CalendarViewProps {
   jobs: Job[]
   onJobClick: (job: Job) => void
   onRevisionClick: (job: Job, revisionId: string) => void
-  onNewJobOnDate: (isoDatetime: string) => void
+  /** Absent without Edit jobs: no "Add job" on a day. */
+  onNewJobOnDate?: (isoDatetime: string) => void
   onOpenPatient?: (patientId: string) => void
   // Mode, scale and "jump to today" are driven from the TopBar (see
   // CalendarTopControls), so they are lifted rather than owned here.
@@ -625,15 +626,17 @@ export function CalendarView({
                                     >
                                       + {t('calendarView.addVisit')}
                                     </button>
-                                    <button
-                                      onClick={e => {
-                                        e.stopPropagation()
-                                        onNewJobOnDate(format(day, "yyyy-MM-dd'T'09:00"))
-                                      }}
-                                      className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
-                                    >
-                                      + {t('calendarView.addJob')}
-                                    </button>
+                                    {onNewJobOnDate && (
+                                      <button
+                                        onClick={e => {
+                                          e.stopPropagation()
+                                          onNewJobOnDate(format(day, "yyyy-MM-dd'T'09:00"))
+                                        }}
+                                        className="text-[10px] text-accent-dark font-semibold hover:underline text-left pl-1"
+                                      >
+                                        + {t('calendarView.addJob')}
+                                      </button>
+                                    )}
                                   </div>
                                 </>
                               )}
@@ -927,12 +930,14 @@ export function CalendarView({
               >
                 <Plus size={14} /> {t('calendarView.addVisit')}
               </button>
-              <button
-                onClick={() => onNewJobOnDate(format(selected, "yyyy-MM-dd'T'09:00"))}
-                className="w-full btn-ghost justify-center border border-ink-faint/25"
-              >
-                <Plus size={14} /> {t('calendarView.addJob')}
-              </button>
+              {onNewJobOnDate && (
+                <button
+                  onClick={() => onNewJobOnDate(format(selected, "yyyy-MM-dd'T'09:00"))}
+                  className="w-full btn-ghost justify-center border border-ink-faint/25"
+                >
+                  <Plus size={14} /> {t('calendarView.addJob')}
+                </button>
+              )}
             </section>
           </div>
         )}

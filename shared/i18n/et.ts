@@ -947,6 +947,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'jobDetail.savingFailed': "Salvestamine ebaõnnestus",
   'jobDetail.newJob': "Uus töö",
   'jobDetail.editJob': "Muuda tööd",
+  'jobDetail.readOnly': "Ainult vaatamiseks: töö muutmiseks on vaja õigust „{perm}“.",
   'jobDetail.job': "Töö",
   'jobDetail.revision2': "muudatus",
   'jobDetail.toothTeeth': "{n} hammast",

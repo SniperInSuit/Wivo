@@ -18,6 +18,7 @@ import { guessFileType } from '../../lib/fileClean'
 import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { playSound } from '../../lib/sound'
 import { useAuth } from '../../context/AuthContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { PhoneCamera } from '../../mobile/PhoneCamera'
 import { t, dateLocale } from '@/lib/i18n'
 import { useHoldRestart } from '../../lib/restartGuard'
@@ -35,6 +36,8 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
   // A file for the comment: uploaded the normal way first (same rules — a
   // partner adds design files only), then the comment points at it.
   const [attachment, setAttachment] = useState<{ name: string; id: string | null } | null>(null)
+  // An attachment is a file on the job: Edit jobs, as for any upload (a partner's follow the share).
+  const canAttach = usePermissions().can('jobs.write') || partner
   const { profile } = useAuth()
   const [shooting, setShooting] = useState(false)
 
@@ -146,12 +149,14 @@ export function JobThread({ jobId, readOnly = false, partner = false, camera = f
             placeholder={t('partners.writeAComment')}
             className="input w-full resize-y" />
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1 text-xs text-ink-soft cursor-pointer" title={t('partners.attachFile')}>
-              {attachment && !attachment.id ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Paperclip size={12} aria-hidden="true" />}
-              <span className="truncate max-w-[140px]">{attachment?.name ?? t('partners.attachFile')}</span>
-              <input type="file" hidden onChange={e => { void attach(e.target.files?.[0]); e.target.value = '' }} />
-            </label>
-            {camera && !partner && !attachment && (
+            {canAttach && (
+              <label className="flex items-center gap-1 text-xs text-ink-soft cursor-pointer" title={t('partners.attachFile')}>
+                {attachment && !attachment.id ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Paperclip size={12} aria-hidden="true" />}
+                <span className="truncate max-w-[140px]">{attachment?.name ?? t('partners.attachFile')}</span>
+                <input type="file" hidden onChange={e => { void attach(e.target.files?.[0]); e.target.value = '' }} />
+              </label>
+            )}
+            {camera && canAttach && !partner && !attachment && (
               <button type="button" title={t('mobile.takePhoto')} aria-label={t('mobile.takePhoto')} className="text-ink-soft"
                 onClick={async () => { if (await confirmSharedUpload(jobId, [{ name: 'photo.jpg', type: 'photo' }])) setShooting(true) }}>
                 <Camera size={14} aria-hidden="true" />

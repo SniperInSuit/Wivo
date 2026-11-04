@@ -66,12 +66,17 @@ const COLUMNS =
   + 'makse_staatus, makse_summa, makstud_at, valik, hinnang, '
   + 'soovitud_algus, soovitud_kestus'
 
-export function useVisitRequests() {
+/**
+ * `enabled: false` for someone who does not handle requests: the database
+ * gives them none (sql/116), so nothing is asked for and nobody listens.
+ */
+export function useVisitRequests({ enabled = true }: { enabled?: boolean } = {}) {
   const qc = useQueryClient()
   const channelId = useId()
   const { clinicId } = useAuth()
 
   useEffect(() => {
+    if (!enabled) return
     const channel = supabase
       .channel(`visit-requests-${channelId}`)
       .on('postgres_changes',
@@ -79,11 +84,11 @@ export function useVisitRequests() {
         () => { qc.invalidateQueries({ queryKey: KEY }) })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [qc, channelId])
+  }, [qc, channelId, enabled])
 
   return useQuery<VisitRequest[]>({
     queryKey: KEY,
-    enabled: !!clinicId,
+    enabled: enabled && !!clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('visit_requests')
@@ -100,9 +105,9 @@ export function useVisitRequests() {
   })
 }
 
-/** How many need looking at. Drives the sidebar counter. */
-export function useNewRequestCount(): number {
-  const { data = [] } = useVisitRequests()
+/** How many need looking at. Drives the sidebar counter; only for those who see Requests. */
+export function useNewRequestCount(enabled: boolean): number {
+  const { data = [] } = useVisitRequests({ enabled })
   return data.filter(r => r.staatus === 'uus').length
 }
 
