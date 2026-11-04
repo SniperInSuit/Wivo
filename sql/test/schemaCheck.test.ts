@@ -5,8 +5,9 @@
  *
  * production_check.sql is the same check for what production should have
  * (000–091 and 098: docs/MIGRATIONS.md), orphan_users.sql lists rows that
- * point at a deleted sign-in account, and scheduled_jobs.sql says which
- * project the scheduled jobs call, with whose key.
+ * point at a deleted sign-in account, scheduled_jobs.sql says which project
+ * the scheduled jobs call, with whose key, and sign_in_account.sql what one
+ * address's sign-in account is (its own tests: deleteAccount.test.ts).
  *
  * WRITE_SCHEMA_CHECK=1 regenerates them after a migration changes the schema.
  */
@@ -22,6 +23,7 @@ const TRIGGER_FILE = join(__dirname, '..', 'checks', 'trigger_check.sql')
 const PRODUCTION_FILE = join(__dirname, '..', 'checks', 'production_check.sql')
 const ORPHANS_FILE = join(__dirname, '..', 'checks', 'orphan_users.sql')
 const JOBS_FILE = join(__dirname, '..', 'checks', 'scheduled_jobs.sql')
+const ACCOUNT_FILE = join(__dirname, '..', 'checks', 'sign_in_account.sql')
 /** What production has had applied: everything up to 091, then 098 (MFA). */
 const PRODUCTION_MIGRATIONS = migrationFiles().filter(f => f < '092' || f.startsWith('098_'))
 let fresh: PGlite
@@ -69,7 +71,7 @@ describe('the schema check', () => {
     await fresh.exec('begin transaction read only')
     try {
       await expect(fresh.query(readFileSync(FILE, 'utf8'))).resolves.toBeTruthy()
-      for (const file of [TRIGGER_FILE, PRODUCTION_FILE, ORPHANS_FILE, JOBS_FILE]) {
+      for (const file of [TRIGGER_FILE, PRODUCTION_FILE, ORPHANS_FILE, JOBS_FILE, ACCOUNT_FILE]) {
         await expect(fresh.query(readFileSync(file, 'utf8')), file).resolves.toBeTruthy()
       }
     } finally {

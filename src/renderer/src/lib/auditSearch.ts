@@ -20,7 +20,7 @@ export interface AuditEntry {
 /** Every kind of entry the log holds (sql/097 audit_log_action_valid). */
 export const AUDIT_ACTIONS = [
   'view', 'download', 'upload', 'share', 'unshare', 'stage_move', 'partnership', 'export', 'question',
-  'delete', 'restore', 'stock_override', 'mfa_added', 'mfa_removed', 'mfa_reset',
+  'delete', 'restore', 'stock_override', 'mfa_added', 'mfa_removed', 'mfa_reset', 'account_deleted',
 ] as const
 
 export function actionLabel(a: string): string {
@@ -30,6 +30,7 @@ export function actionLabel(a: string): string {
     export: t('audit.export'), question: t('audit.question'),
     delete: t('audit.delete'), restore: t('audit.restore'), stock_override: t('audit.stockOverride'),
     mfa_added: t('audit.mfaAdded'), mfa_removed: t('audit.mfaRemoved'), mfa_reset: t('audit.mfaReset'),
+    account_deleted: t('audit.accountDeleted'),
   } as Record<string, string>)[a] ?? a
 }
 
@@ -73,6 +74,8 @@ export function describeEntry(e: AuditEntry): string {
   if (e.action === 'mfa_added') return String(d.name ?? '')
   if (e.action === 'mfa_removed') return t('audit.mfaRemovedDetail', { name: String(d.name ?? ''), how: d.how === 'password' ? t('audit.byPassword') : t('audit.byCode') })
   if (e.action === 'mfa_reset') return t('audit.mfaResetDetail', { who: String(d.target_name ?? ''), reason: String(d.reason ?? '') })
+  // An account deleted for good (sql/110): whose.
+  if (e.action === 'account_deleted') return String(d.target_name ?? '')
   return ''
 }
 

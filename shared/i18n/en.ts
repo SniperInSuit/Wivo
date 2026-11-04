@@ -3128,6 +3128,7 @@ export const en = {
   'audit.mfaAdded': "Authenticator added",
   'audit.mfaRemoved': "Authenticator removed",
   'audit.mfaReset': "Two-factor reset",
+  'audit.accountDeleted': "Account deleted",
   'audit.mfaRemovedDetail': "{name} ({how})",
   'audit.byCode': "confirmed with its code",
   'audit.byPassword': "confirmed with the password",

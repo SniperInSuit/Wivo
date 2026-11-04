@@ -3114,6 +3114,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'audit.mfaAdded': "Autentimisrakendus lisatud",
   'audit.mfaRemoved': "Autentimisrakendus eemaldatud",
   'audit.mfaReset': "Kaheastmeline lähtestatud",
+  'audit.accountDeleted': "Konto kustutatud",
   'audit.mfaRemovedDetail': "{name} ({how})",
   'audit.byCode': "kinnitatud selle koodiga",
   'audit.byPassword': "kinnitatud parooliga",
