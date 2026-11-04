@@ -6,7 +6,8 @@ import type { ViewMode } from '../types/view'
 import wivoLogo from '../assets/Wivo Logo.png'
 import { useSettings } from '../stores/useSettings'
 import { useAuth } from '../context/AuthContext'
-import { usePermissions, type PermissionKey } from '../hooks/usePermissions'
+import { usePermissions } from '../hooks/usePermissions'
+import type { MenuPlace } from '@shared/permissions'
 import { useRunningVersion } from '../providers/UpdateProvider'
 import { useNewRequestCount } from '../hooks/useVisitRequests'
 import { usePartnerOrgs } from '../hooks/usePartners'
@@ -23,22 +24,23 @@ interface SidebarProps {
 // `clinical: true` = only in WivoDental/WivoX. `lab: true` = only in
 // WivoLab/WivoX. Unmarked items (Ülevaade, Kalender, Arved, Töötasud,
 // Statistika) belong to both products: a practice invoices and pays staff
-// exactly like a laboratory does.
+// exactly like a laboratory does. Who sees each: menuAllows (shared/permissions),
+// the phone's rule too.
 const NAV: {
-  key: ViewMode; label: string; icon: typeof LayoutDashboard
-  perm?: PermissionKey; clinical?: boolean; lab?: boolean
+  key: MenuPlace & ViewMode; label: string; icon: typeof LayoutDashboard
+  clinical?: boolean; lab?: boolean
 }[] = [
   { key: 'overview', label: t('sidebar.overview'),   icon: LayoutDashboard },
-  { key: 'board',    label: t('sidebar.jobs'),       icon: Kanban,          perm: 'jobs.read', lab: true },
-  { key: 'calendar', label: t('sidebar.calendar'),   icon: CalendarDays,    perm: 'visits.read' },
-  { key: 'taotlused', label: t('sidebar.requests'), icon: Inbox,           perm: 'visits.write' },
-  { key: 'table',    label: t('sidebar.table'),      icon: Table2,          perm: 'jobs.read', lab: true },
-  { key: 'patients', label: t('sidebar.patients'), icon: Users,           perm: 'patients.read', clinical: true },
-  { key: 'kliendid', label: t('sidebar.clients'),   icon: Building2,       perm: 'jobs.read', lab: true },
-  { key: 'arved',    label: t('sidebar.invoices'),      icon: FileText,        perm: 'payments.read' },
+  { key: 'board',    label: t('sidebar.jobs'),       icon: Kanban,          lab: true },
+  { key: 'calendar', label: t('sidebar.calendar'),   icon: CalendarDays },
+  { key: 'taotlused', label: t('sidebar.requests'), icon: Inbox },
+  { key: 'table',    label: t('sidebar.table'),      icon: Table2,          lab: true },
+  { key: 'patients', label: t('sidebar.patients'), icon: Users,           clinical: true },
+  { key: 'kliendid', label: t('sidebar.clients'),   icon: Building2,       lab: true },
+  { key: 'arved',    label: t('sidebar.invoices'),      icon: FileText },
   { key: 'tootasud', label: t('sidebar.payroll'),   icon: Wallet },
-  { key: 'stats',    label: t('sidebar.statistics'), icon: BarChart2,       perm: 'stats.read' },
-  { key: 'stock',    label: t('sidebar.stock'),      icon: Package,         perm: 'stock.read' },
+  { key: 'stats',    label: t('sidebar.statistics'), icon: BarChart2 },
+  { key: 'stock',    label: t('sidebar.stock'),      icon: Package },
 ]
 
 // Seaded is its own view (since 1.1.6) but stays visually separated below a rule
@@ -47,7 +49,7 @@ const SETTINGS_ITEM = { key: 'settings', label: t('sidebar.settings'), icon: Set
 export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
   const { role } = useAuth()
-  const { can } = usePermissions()
+  const { sees } = usePermissions()
   const running = useRunningVersion()
   // Opens by itself once per person per version; the footer button reopens it.
   const whatsNew = useWhatsNew(running)
@@ -87,7 +89,7 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
         {NAV
           .filter(item => !item.clinical || settings.kliinilineRezhiim)
           .filter(item => !item.lab || settings.laboriRezhiim)
-          .filter(item => !item.perm || can(item.perm))
+          .filter(item => sees(item.key))
           .map(({ key, label, icon: Icon }) => (
           <button
             key={key}

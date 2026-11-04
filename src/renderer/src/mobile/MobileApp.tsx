@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Settings, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { usePermissions } from '../hooks/usePermissions'
 import { NotificationBell } from '../components/NotificationBell'
 import { isSecurityNotice } from '../hooks/useNotifications'
 import { parseRoute, routePath, type Route } from './route'
@@ -19,6 +20,8 @@ import { t } from '@/lib/i18n'
 
 export function MobileApp() {
   const { clinic } = useAuth()
+  // The desktop menu's rule (menuAllows): every member has their own jobs; jobs.read shows all.
+  const seesJobs = usePermissions().sees('board')
   const [route, setRoute] = useState<Route>(() => parseRoute(location.pathname))
   // Opens by itself once per person per version; Settings reopens it.
   const whatsNew = useWhatsNew(__APP_VERSION__)
@@ -64,8 +67,9 @@ export function MobileApp() {
       </header>
       <PushTurnOnNotice />
 
-      {route.name === 'home' && <MobileHome onOpen={id => go({ name: 'job', id })} />}
-      {route.name === 'job' && <MobileJob id={route.id} onClose={back} />}
+      {route.name !== 'settings' && !seesJobs && <p className="py-10 text-center text-sm text-ink-muted">{t('mobile.noJobs')}</p>}
+      {route.name === 'home' && seesJobs && <MobileHome onOpen={id => go({ name: 'job', id })} />}
+      {route.name === 'job' && seesJobs && <MobileJob id={route.id} onClose={back} />}
       {route.name === 'settings' && <MobileSettings onWhatsNew={whatsNew.open} />}
       {whatsNew.dialog}
     </div>

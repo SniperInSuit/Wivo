@@ -14,7 +14,7 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 
 | Permission | Opens | Enforced by the database |
 |---|---|---|
-| `jobs.read` | all of the clinic's jobs (without it: own jobs only); Jobs, Table and Clients in the menu | yes |
+| `jobs.read` | all of the clinic's jobs (without it: own jobs only); Clients in the menu. Jobs and Table show without it, with the person's own jobs | yes |
 | `jobs.write` | create and edit jobs (that it can see); add or change customers | yes |
 | `jobs.delete` **(new)** | delete a job, the list of deleted jobs, restore | yes; owners and admins always |
 | `payments.read` | invoices, invoice lines, payments, payment plans; every price and payment on screen | **yes, since 102**; owners and admins always |
@@ -26,6 +26,36 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 | `settings.read`, `pipeline.write` | (barely used) | – |
 
 Own jobs and own pay need no permission: the database returns a person's own jobs and their own rates, hours and payouts.
+
+## The menu
+
+One rule for the desktop menu and the phone: `menuAllows()` in `shared/permissions.ts`.
+
+- **Overview and Payroll:** everyone. They show the person's own numbers and own pay; Payroll shows everyone's with `payroll.manage`.
+- **Jobs and Table:** every member of the clinic. The database returns a member's own jobs with no permission:
+  - jobs where they are the technician or the designer;
+  - jobs where they designed one of the work items.
+
+  `jobs.read` widens this to every job, and `jobs.write` lets them edit the jobs they see. The phone's job lists follow the same rule.
+- **Clients:** `jobs.read`. A client's page counts all of the clinic's work with them, so with only one's own jobs it would show the wrong counts.
+- **The rest, each with its permission, as the database decides:**
+  - Calendar: `visits.read`;
+  - Requests: `visits.write`;
+  - Patients: `patients.read`;
+  - Invoices: `payments.read` (owners and admins always);
+  - Statistics: `stats.read`;
+  - Stock: `stock.read`.
+
+What each default role sees in the menu:
+
+| Role | Menu |
+|---|---|
+| Owner | everything |
+| Technician with the defaults (`jobs.write`, `stock.read`, `stock.write`) | Overview, Jobs, Table, Payroll, Stock (own jobs only) |
+| Organisation admin with the technician defaults | the technician's, plus Invoices |
+| Member with nothing granted | Overview, Jobs, Table, Payroll (own jobs, read only) |
+
+Tests: `shared/permissions.test.ts` (the menu for each role) and `sql/test/technicianJobs.test.ts` (what the database returns and lets them edit).
 
 ## What sql/102 changes
 

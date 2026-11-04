@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLicense } from './useLicense'
-import { decidePermission, type PermissionKey } from '@shared/permissions'
+import { decidePermission, menuAllows, type MenuPlace, type PermissionKey, type Who } from '@shared/permissions'
 import { t } from '@/lib/i18n'
 
 export type { PermissionKey }
@@ -60,12 +60,13 @@ export function usePermissions() {
     enabled: status === 'authenticated' && role === 'worker'
   })
 
-  function can(perm: PermissionKey): boolean {
-    return decidePermission(perm, {
-      role, isOrgAdmin, licenceCanWrite,
-      granted: p => rows.find(r => r.permission === p)?.granted ?? false,
-    })
+  const who: Who = {
+    role, isOrgAdmin, licenceCanWrite,
+    granted: p => rows.find(r => r.permission === p)?.granted ?? false,
   }
+  const can = (perm: PermissionKey): boolean => decidePermission(perm, who)
+  /** Whether a place shows in the menu: the same rule on the desktop and the phone. */
+  const sees = (place: MenuPlace): boolean => menuAllows(place, who)
 
-  return { can, role, isOwner: role === 'owner', licenceCanWrite }
+  return { can, sees, role, isOwner: role === 'owner', licenceCanWrite }
 }

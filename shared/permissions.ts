@@ -58,3 +58,42 @@ export function decidePermission(perm: PermissionKey, who: Who): boolean {
   if (who.isOrgAdmin && ADMIN_PERMISSIONS.includes(perm)) return true
   return who.granted(perm)
 }
+
+/**
+ * Whether someone has jobs to look at: every member of the clinic does. The
+ * database returns a member's own jobs — technician or designer on the job,
+ * or designer of one of its work items (job_is_mine, sql/064) — with no
+ * permission at all; jobs.read only widens that to every job of the clinic.
+ * jobs.write is what lets them edit the jobs they see.
+ */
+export function seesJobs(who: Pick<Who, 'role'>): boolean {
+  return who.role === 'owner' || who.role === 'worker'
+}
+
+/** The places in the menu, on the desktop (Sidebar) and the phone (its job lists). */
+export type MenuPlace =
+  | 'overview' | 'board' | 'table' | 'calendar' | 'taotlused' | 'patients' | 'kliendid' | 'arved' | 'tootasud' | 'stats' | 'stock'
+
+/**
+ * Who sees a place in the menu: what the database gives them there
+ * (docs/PERMISSIONS.md). One rule for the desktop and the phone.
+ */
+export function menuAllows(place: MenuPlace, who: Who): boolean {
+  const can = (perm: PermissionKey) => decidePermission(perm, who)
+  switch (place) {
+    // Everyone's own numbers and own pay.
+    case 'overview': case 'tootasud': return true
+    // Own jobs for every member; all of them with jobs.read.
+    case 'board': case 'table': return seesJobs(who)
+    // A client's page counts all of the clinic's work with them: with only one's
+    // own jobs it would show the wrong counts.
+    case 'kliendid': return can('jobs.read')
+    case 'calendar': return can('visits.read')
+    // Handling a booking request makes a visit.
+    case 'taotlused': return can('visits.write')
+    case 'patients': return can('patients.read')
+    case 'arved': return can('payments.read')
+    case 'stats': return can('stats.read')
+    case 'stock': return can('stock.read')
+  }
+}
