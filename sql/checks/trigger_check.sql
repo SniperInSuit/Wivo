@@ -18,13 +18,14 @@
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: trigger.
--- Expected rows: 27.
+-- Expected rows: 35.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
     ('trigger', 'auth.users.on_auth_email_changed', 'CREATE TRIGGER on_auth_email_changed AFTER UPDATE OF email ON auth.users FOR EACH ROW EXECUTE FUNCTION on_auth_email_changed()'),
     ('trigger', 'auth.users.on_auth_user_created', 'CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()'),
     ('trigger', 'public.audit_log.audit_log_append_only', 'CREATE TRIGGER audit_log_append_only BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_append_only()'),
+    ('trigger', 'public.audit_log.audit_log_no_truncate', 'CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_no_truncate()'),
     ('trigger', 'public.channel_members.guard_channel_member_change', 'CREATE TRIGGER guard_channel_member_change BEFORE UPDATE ON public.channel_members FOR EACH ROW EXECUTE FUNCTION guard_channel_member_change()'),
     ('trigger', 'public.clinic_settings.clinic_settings_touch', 'CREATE TRIGGER clinic_settings_touch BEFORE UPDATE ON public.clinic_settings FOR EACH ROW EXECUTE FUNCTION touch_clinic_settings()'),
     ('trigger', 'public.clinics.guard_code_prefix', 'CREATE TRIGGER guard_code_prefix BEFORE UPDATE OF code_prefix ON public.clinics FOR EACH ROW EXECUTE FUNCTION guard_code_prefix()'),
@@ -35,6 +36,7 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.job_file.refuse_file_on_deleted_job', 'CREATE TRIGGER refuse_file_on_deleted_job BEFORE INSERT ON public.job_file FOR EACH ROW EXECUTE FUNCTION refuse_file_on_deleted_job()'),
     ('trigger', 'public.job_share.job_share_notify', 'CREATE TRIGGER job_share_notify AFTER INSERT OR UPDATE OF revoked_at ON public.job_share FOR EACH ROW EXECUTE FUNCTION on_job_share_notify()'),
     ('trigger', 'public.job_share.refuse_share_of_deleted_job', 'CREATE TRIGGER refuse_share_of_deleted_job BEFORE INSERT OR UPDATE ON public.job_share FOR EACH ROW EXECUTE FUNCTION refuse_share_of_deleted_job()'),
+    ('trigger', 'public.jobs.audit_job_change', 'CREATE TRIGGER audit_job_change AFTER INSERT OR UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION audit_job_change()'),
     ('trigger', 'public.jobs.guard_partner_visible_job_text', 'CREATE TRIGGER guard_partner_visible_job_text BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_job_text()'),
     ('trigger', 'public.jobs.guard_stage_change', 'CREATE TRIGGER guard_stage_change BEFORE UPDATE OF status ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_stage_change()'),
     ('trigger', 'public.jobs.job_stage_notify', 'CREATE TRIGGER job_stage_notify AFTER UPDATE OF status ON public.jobs FOR EACH ROW EXECUTE FUNCTION on_job_stage_notify()'),
@@ -45,9 +47,15 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.messages.guard_partner_visible_message', 'CREATE TRIGGER guard_partner_visible_message BEFORE INSERT OR UPDATE OF body ON public.messages FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_message()'),
     ('trigger', 'public.messages.question_notify', 'CREATE TRIGGER question_notify AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION on_question_notify()'),
     ('trigger', 'public.messages.stamp_message_org', 'CREATE TRIGGER stamp_message_org BEFORE INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION stamp_message_org()'),
+    ('trigger', 'public.patient_teeth.audit_patient_tooth', 'CREATE TRIGGER audit_patient_tooth AFTER INSERT OR DELETE OR UPDATE ON public.patient_teeth FOR EACH ROW EXECUTE FUNCTION audit_patient_tooth()'),
+    ('trigger', 'public.patients.audit_patient_change', 'CREATE TRIGGER audit_patient_change AFTER INSERT OR DELETE OR UPDATE ON public.patients FOR EACH ROW EXECUTE FUNCTION audit_patient_change()'),
+    ('trigger', 'public.profiles.audit_role_change', 'CREATE TRIGGER audit_role_change AFTER UPDATE OF role, org_role ON public.profiles FOR EACH ROW EXECUTE FUNCTION audit_role_change()'),
     ('trigger', 'public.profiles.guard_profile_change', 'CREATE TRIGGER guard_profile_change BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_change()'),
     ('trigger', 'public.stock_item.guard_partner_visible_stock_text', 'CREATE TRIGGER guard_partner_visible_stock_text BEFORE INSERT OR UPDATE ON public.stock_item FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_stock_text()'),
     ('trigger', 'public.stock_movement.stock_movement_append_only', 'CREATE TRIGGER stock_movement_append_only BEFORE DELETE OR UPDATE ON public.stock_movement FOR EACH ROW EXECUTE FUNCTION stock_movement_append_only()'),
+    ('trigger', 'public.worker_permissions.audit_permissions_deleted', 'CREATE TRIGGER audit_permissions_deleted AFTER DELETE ON public.worker_permissions REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_deleted()'),
+    ('trigger', 'public.worker_permissions.audit_permissions_inserted', 'CREATE TRIGGER audit_permissions_inserted AFTER INSERT ON public.worker_permissions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_inserted()'),
+    ('trigger', 'public.worker_permissions.audit_permissions_updated', 'CREATE TRIGGER audit_permissions_updated AFTER UPDATE ON public.worker_permissions REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_updated()'),
     ('trigger', 'public.worker_permissions.replace_stale_grant', 'CREATE TRIGGER replace_stale_grant BEFORE INSERT ON public.worker_permissions FOR EACH ROW EXECUTE FUNCTION replace_stale_grant()')
 ),
 actual as (select * from (

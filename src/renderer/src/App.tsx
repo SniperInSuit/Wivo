@@ -432,7 +432,7 @@ function AppContent() {
           {view === 'tootasud' && <PayrollView jobs={jobs} onOpenJob={openEdit} />}
           {view === 'stats' && <Dashboard jobs={jobs} />}
           {view === 'taotlused' && <RequestsInbox />}
-          {view === 'settings' && <SettingsPage key={settingsAt.n} initialGroup={settingsAt.group} />}
+          {view === 'settings' && <SettingsPage key={settingsAt.n} initialGroup={settingsAt.group} onOpenPatient={openPatient} />}
           {view === 'workers' && <WorkersPage />}
           {view === 'partner' && <PartnerJobsView />}
           {view === 'unsorted' && <UnsortedView />}

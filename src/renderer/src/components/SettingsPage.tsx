@@ -1277,7 +1277,7 @@ function LanguageSection() {
 }
 
 /** `initialGroup`: where to open (a security notification opens Security). */
-export function SettingsPage({ initialGroup = 'profiil' }: { initialGroup?: GroupKey } = {}) {
+export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { initialGroup?: GroupKey; onOpenPatient?: (patientId: string) => void } = {}) {
   const {
     settings, setMaterialPrice, setMaterialCost, setDesignFee, setDefaultMachine, setTeema, setNumber, setFlag, setYldkulud, setKapslimasinad,
     setTekstiSuurus, setFixedCosts, setLisateenused, setPaneeliSuund, addOption, removeOption, renameOption, resetOptions,
@@ -1454,7 +1454,7 @@ export function SettingsPage({ initialGroup = 'profiil' }: { initialGroup?: Grou
         )}
 
         {activeGroup === 'partnerlused' && <PartnershipsSection />}
-        {activeGroup === 'auditilogi' && <AuditLogSection />}
+        {activeGroup === 'auditilogi' && <AuditLogSection onOpenPatient={onOpenPatient} />}
         {activeGroup === 'auditilogi' && <DeletedJobsSection />}
 
         {activeGroup === 'litsents' && <LicenseSection />}

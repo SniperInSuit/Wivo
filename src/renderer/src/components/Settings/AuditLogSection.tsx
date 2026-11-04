@@ -1,20 +1,20 @@
 /**
  * Seaded → Audit log, for organisation owners and admins (spec: audit_log —
- * view, download, share, stage move; append-only). Search by person, action,
+ * view, download, share, stage move; append-only; edits since sql/114). Search by person, action,
  * job code and dates, a page at a time, and export what was found as CSV.
  * Reads `audit_search` and `audit_people` (sql/105), which refuse anyone who
  * is not an admin and show only what `audit_entries` always did.
  */
 import { useEffect, useState } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { ScrollText, Download, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react'
+import { ScrollText, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { toCsv, csvFileName } from '@shared/export/csv'
 import { downloadCsv } from '../../lib/exports'
 import { recordExport } from '../../lib/exportAudit'
 import {
-  AUDIT_ACTIONS, AUDIT_CSV_COLUMNS, CSV_MAX_ROWS, NO_FILTERS, actionLabel, cursorAfter, describeEntry, entryWhat, entryWhen, entryWho, filterArgs,
-  type AuditEntry, type AuditFilters, type Cursor,
+  AUDIT_ACTIONS, CSV_MAX_ROWS, NO_FILTERS, actionLabel, auditCsvColumns, chartSummary, cursorAfter, describeEntry, entryPatient,
+  entryWhat, entryWhen, entryWho, filterArgs, groupRows, type AuditEntry, type AuditFilters, type Cursor, type Names,
 } from '../../lib/auditSearch'
 import { describeError } from '../Patients/errors'
 import { t } from '@/lib/i18n'
@@ -29,7 +29,66 @@ async function fetchPage(f: AuditFilters, before: Cursor | null, limit: number):
   return (data ?? []) as AuditEntry[]
 }
 
-export function AuditLogSection() {
+/** The clinic's members and clients, to name the ids an entry holds. Anyone missing has left. */
+async function fetchNames(): Promise<Names> {
+  const [members, clients] = await Promise.all([
+    supabase.from('profiles').select('id, full_name'),
+    supabase.from('customers').select('id, name'),
+  ])
+  const names = new Map<string, string>()
+  for (const m of (members.data ?? []) as { id: string; full_name: string | null }[]) names.set(m.id, m.full_name || '—')
+  for (const c of (clients.data ?? []) as { id: string; name: string }[]) names.set(c.id, c.name)
+  return names
+}
+
+type OpenPatient = ((patientId: string) => void) | undefined
+
+/** What the entry is about; a patient's with a way to their card. */
+function WhatCell({ e, names, onOpenPatient }: { e: AuditEntry; names: Names; onOpenPatient: OpenPatient }) {
+  const patient = entryPatient(e)
+  return (
+    <td className="pr-3 font-mono whitespace-nowrap">
+      {entryWhat(e, names)}
+      {patient && onOpenPatient && (
+        <button type="button" onClick={() => onOpenPatient(patient)} className="ml-2 font-sans text-accent hover:underline">
+          {t('audit.openPatient')}
+        </button>
+      )}
+    </td>
+  )
+}
+
+/** Clicks on one patient's chart in a row: one line, each click below it on request. */
+function ChartRows({ entries, names, onOpenPatient }: { entries: AuditEntry[]; names: Names; onOpenPatient: OpenPatient }) {
+  const [open, setOpen] = useState(false)
+  const first = entries[0]
+  return (
+    <>
+      <tr className="border-t border-ink-faint/15">
+        <td className="py-1.5 pr-3 whitespace-nowrap">{entryWhen(first)}</td>
+        <td className="pr-3">{entryWho(first)}</td>
+        <td className="pr-3">{actionLabel(first.action)}</td>
+        <WhatCell e={first} names={names} onOpenPatient={onOpenPatient} />
+        <td className="text-ink-muted">
+          <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+            title={open ? t('audit.hideChanges') : t('audit.showChanges')}
+            className="inline-flex items-center gap-1 hover:text-ink">
+            {chartSummary(entries)} {open ? <ChevronUp size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />}
+          </button>
+        </td>
+      </tr>
+      {open && entries.map(e => (
+        <tr key={e.id} className="text-ink-muted">
+          <td className="py-1 pr-3 pl-4 whitespace-nowrap">{entryWhen(e)}</td>
+          <td colSpan={3} />
+          <td>{describeEntry(e, names)}</td>
+        </tr>
+      ))}
+    </>
+  )
+}
+
+export function AuditLogSection({ onOpenPatient }: { onOpenPatient?: (patientId: string) => void } = {}) {
   const [filters, setFilters] = useState<AuditFilters>(NO_FILTERS)
   // The job code is typed: searched once typing stops.
   const [jobInput, setJobInput] = useState('')
@@ -50,6 +109,8 @@ export function AuditLogSection() {
       return (data ?? []) as { user_id: string; name: string }[]
     },
   })
+
+  const { data: names = new Map<string, string>() } = useQuery<Names>({ queryKey: ['audit_names'], queryFn: fetchNames })
 
   // One row more than a page, to know whether there is an older page.
   const { data = [], error, isLoading, isFetching } = useQuery<AuditEntry[]>({
@@ -81,7 +142,7 @@ export function AuditLogSection() {
         person: people.find(p => p.user_id === filters.userId)?.name ?? null,
         action: filters.action, jobCode: filters.jobCode.trim(), from: filters.from, to: filters.to,
       })
-      downloadCsv(csvFileName('audit-log', new Date()), toCsv(capped, AUDIT_CSV_COLUMNS))
+      downloadCsv(csvFileName('audit-log', new Date()), toCsv(capped, auditCsvColumns(names)))
       if (all.length >= CSV_MAX_ROWS) setExportNote(t('audit.exportCapped', { n: CSV_MAX_ROWS }))
     } catch (e) {
       setExportNote(describeError(e))
@@ -150,15 +211,17 @@ export function AuditLogSection() {
                 <tr><th className="py-1.5 pr-3">{t('audit.when')}</th><th className="pr-3">{t('audit.who')}</th><th className="pr-3">{t('audit.action')}</th><th className="pr-3">{t('audit.what')}</th><th /></tr>
               </thead>
               <tbody>
-                {rows.map(e => (
-                  <tr key={e.id} className="border-t border-ink-faint/15">
-                    <td className="py-1.5 pr-3 whitespace-nowrap">{entryWhen(e)}</td>
-                    <td className="pr-3">{entryWho(e)}</td>
-                    <td className="pr-3">{actionLabel(e.action)}</td>
-                    <td className="pr-3 font-mono">{entryWhat(e)}</td>
-                    <td className="text-ink-muted">{describeEntry(e)}</td>
-                  </tr>
-                ))}
+                {groupRows(rows).map(r => r.kind === 'chart'
+                  ? <ChartRows key={r.entries[0].id} entries={r.entries} names={names} onOpenPatient={onOpenPatient} />
+                  : (
+                    <tr key={r.entry.id} className="border-t border-ink-faint/15">
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{entryWhen(r.entry)}</td>
+                      <td className="pr-3">{entryWho(r.entry)}</td>
+                      <td className="pr-3">{actionLabel(r.entry.action)}</td>
+                      <WhatCell e={r.entry} names={names} onOpenPatient={onOpenPatient} />
+                      <td className="text-ink-muted">{describeEntry(r.entry, names)}</td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
             <div className="flex items-center gap-2 text-xs">

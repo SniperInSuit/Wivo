@@ -120,12 +120,17 @@ describe('paging', () => {
 
   it('rows written meanwhile do not shift the next page', async () => {
     const first = await search({ limit: 5 })
-    await log(A.clinicId, A.ownerId, 'view', 'job:new', '2026-12-31T00:00:00Z')
-    const next = await search({ limit: 5, beforeAt: first[4].at, beforeId: first[4].id })
-    expect(next.map(r => r.id)).not.toContain(first[4].id)
-    const all = await search({ limit: 1000 })
-    expect(next.map(r => r.id)).toEqual(all.slice(6, 11).map(r => r.id))
-    await db.query(`delete from public.audit_log where object = 'job:new'`)
+    // Rolled back after: the log is append-only, even here (sql/114).
+    await db.exec('begin')
+    try {
+      await log(A.clinicId, A.ownerId, 'view', 'job:new', '2026-12-31T00:00:00Z')
+      const next = await search({ limit: 5, beforeAt: first[4].at, beforeId: first[4].id })
+      expect(next.map(r => r.id)).not.toContain(first[4].id)
+      const all = await search({ limit: 1000 })
+      expect(next.map(r => r.id)).toEqual(all.slice(6, 11).map(r => r.id))
+    } finally {
+      await db.exec('rollback')
+    }
   })
 })
 
