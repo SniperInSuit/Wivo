@@ -13,6 +13,7 @@ import { MobileHome } from './MobileHome'
 import { MobileJob } from './MobileJob'
 import { MobileSettings } from './MobileSettings'
 import { PhoneVersionGuard } from './PhoneVersionGuard'
+import { PushTurnOnNotice } from './PushTurnOnNotice'
 import { useWhatsNew } from '../components/WhatsNew'
 import { t } from '@/lib/i18n'
 
@@ -61,6 +62,7 @@ export function MobileApp() {
           )}
         </div>
       </header>
+      <PushTurnOnNotice />
 
       {route.name === 'home' && <MobileHome onOpen={id => go({ name: 'job', id })} />}
       {route.name === 'job' && <MobileJob id={route.id} onClose={back} />}

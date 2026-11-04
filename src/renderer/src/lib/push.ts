@@ -10,7 +10,8 @@ import { supabase } from './supabase'
 
 export const VAPID_PUBLIC_KEY: string = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
 
-export type PushState = 'unsupported' | 'not-configured' | 'denied' | 'off' | 'on'
+/** 'lost': this person had it on here, but the browser no longer holds the subscription. */
+export type PushState = 'unsupported' | 'not-configured' | 'denied' | 'off' | 'on' | 'lost'
 
 export function pushSupported(): boolean {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -35,12 +36,36 @@ function keyBytes(b64url: string): Uint8Array<ArrayBuffer> {
 //
 // The browser's own subscription is not the whole truth: the server deletes a
 // person's subscriptions when an owner resets their second factor or they
-// remove their last authenticator (sql/097). The phone's switch then still
-// said "on" and pushes silently stopped. So after every sign-in (MfaGate) and
-// whenever the switch is shown, this browser's subscription is looked up on
-// the server: still there → on; gone, with permission still granted → the
-// same subscription is registered again (no tap needed, unlike a new one);
-// otherwise → off.
+// remove their last authenticator (sql/097), and signing out here deletes this
+// phone's. So after every sign-in (MfaGate) and whenever the switch is shown,
+// this browser's subscription is looked up on the server: still there → on;
+// gone, with permission still granted → the same subscription is registered
+// again (no tap needed, unlike a new one); otherwise → off.
+//
+// Signing out keeps the browser's subscription for exactly that: only an
+// explicit "off" drops it. The phone remembers whose it is, so it comes back
+// for the same person and is never handed to someone else who signs in here.
+// If the browser has lost it anyway, a new one may need a tap on an iPhone:
+// 'lost', and the phone app offers one (mobile/PushTurnOnNotice).
+
+const OWNER_KEY = 'wivo_push_user'
+
+/** Who this browser's subscription was last registered for. */
+function pushOwner(): string | null {
+  try { return localStorage.getItem(OWNER_KEY) } catch { return null }
+}
+
+function setPushOwner(user: string | null): void {
+  try {
+    if (user) localStorage.setItem(OWNER_KEY, user)
+    else localStorage.removeItem(OWNER_KEY)
+  } catch { /* private mode: a re-sign-in finds no owner and re-registers as before */ }
+}
+
+async function currentUser(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}
 
 /** One browser subscription, as much of it as this needs. */
 export interface LocalSubscription {
@@ -59,6 +84,10 @@ export interface PushEnv {
   onServer: (endpoint: string) => Promise<boolean | null>
   /** save_push_subscription for this subscription. */
   save: (json: PushSubscriptionJSON) => Promise<{ error: unknown }>
+  /** Who is signed in. */
+  user: () => Promise<string | null>
+  owner: () => string | null
+  setOwner: (user: string | null) => void
 }
 
 export async function syncPushWith(env: PushEnv): Promise<PushState> {
@@ -66,22 +95,36 @@ export async function syncPushWith(env: PushEnv): Promise<PushState> {
   if (!env.configured) return 'not-configured'
   const permission = env.permission()
   const sub = await env.subscription()
-  if (!sub) return permission === 'denied' ? 'denied' : 'off'
+  const me = await env.user()
+  if (!sub) {
+    // Theirs, on, and gone from the browser all the same.
+    if (permission === 'granted' && me && env.owner() === me) return 'lost'
+    return permission === 'denied' ? 'denied' : 'off'
+  }
   // Permission taken away in the browser's settings: nothing can be shown, so
   // the subscription is of no use. Dropped here; the server row goes when the
   // push service reports it gone.
   if (permission !== 'granted') {
     await sub.unsubscribe().catch(() => false)
+    env.setOwner(null)
     return permission === 'denied' ? 'denied' : 'off'
   }
   const registered = await env.onServer(sub.endpoint)
   if (registered === null) return 'on'  // could not ask: change nothing
-  if (registered) return 'on'
-  // Gone on the server. Registered again as it is. If the server refuses
-  // (another account's endpoint on a shared browser, sql/091), it is left
-  // alone and the switch reads off: switching on makes a fresh one.
+  if (registered) {
+    if (me) env.setOwner(me)
+    return 'on'
+  }
+  // Gone on the server. Registered again as it is, for the person who had it
+  // (or, from a build that did not record it, whoever is here). Someone
+  // else's is left alone and the switch reads off: switching on makes a
+  // fresh one. So is one the server refuses (another account's, sql/091).
+  const owner = env.owner()
+  if (owner && owner !== me) return 'off'
   const { error } = await env.save(sub.toJSON())
-  return error ? 'off' : 'on'
+  if (error) return 'off'
+  if (me) env.setOwner(me)
+  return 'on'
 }
 
 function browserPushEnv(): PushEnv {
@@ -102,6 +145,9 @@ function browserPushEnv(): PushEnv {
     save: async json => await supabase.rpc('save_push_subscription', {
       p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_user_agent: navigator.userAgent,
     }),
+    user: currentUser,
+    owner: pushOwner,
+    setOwner: setPushOwner,
   }
 }
 
@@ -130,9 +176,11 @@ export async function enablePush(): Promise<PushState> {
     p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_user_agent: navigator.userAgent,
   })
   if (error) { await sub.unsubscribe(); throw error }
+  setPushOwner(await currentUser())
   return 'on'
 }
 
+/** The switch turned off: this phone's subscription is dropped, and does not come back by itself. */
 export async function disablePush(): Promise<PushState> {
   const reg = await navigator.serviceWorker.getRegistration()
   const sub = await reg?.pushManager.getSubscription()
@@ -140,7 +188,13 @@ export async function disablePush(): Promise<PushState> {
     await supabase.from('push_subscription').delete().eq('endpoint', sub.endpoint)
     await sub.unsubscribe()
   }
+  setPushOwner(null)
   return 'off'
+}
+
+/** "Not now" to bringing back a lost one: no longer offered until switched on. */
+export function declinePush(): void {
+  setPushOwner(null)
 }
 
 /**
@@ -160,9 +214,16 @@ export async function forgetOtherPhones(): Promise<void> {
 
 /**
  * Before signing out on the phone: this phone stops getting the user's
- * pushes. Best effort — the sender also drops subscriptions the push service
- * reports gone.
+ * pushes (the server row goes). The browser keeps its subscription, so the
+ * same person's next sign-in registers it again without a tap (syncPushWith).
+ * Best effort — the sender also drops subscriptions the push service reports
+ * gone.
  */
 export async function forgetPushBeforeSignOut(): Promise<void> {
-  try { if (pushSupported()) await disablePush() } catch { /* signing out matters more */ }
+  try {
+    if (!pushSupported()) return
+    const reg = await navigator.serviceWorker.getRegistration()
+    const sub = await reg?.pushManager.getSubscription()
+    if (sub) await supabase.from('push_subscription').delete().eq('endpoint', sub.endpoint)
+  } catch { /* signing out matters more */ }
 }

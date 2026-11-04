@@ -17,6 +17,9 @@ export function MobileAuthGuard({ children }: { children: ReactNode }) {
   const { status, needsClinicSetup } = useAuth()
 
   useEffect(() => {
+    // The sign-in page: nobody is signed in, so no earlier sign-in's time may
+    // carry over to the next one (it would sign them out at once).
+    if (status === 'none') clearSignedIn()
     const { data } = supabase.auth.onAuthStateChange(event => {
       if (event === 'SIGNED_IN' && signedInAt() === null) markSignedIn()
       if (event === 'SIGNED_OUT') clearSignedIn()

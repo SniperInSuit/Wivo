@@ -86,7 +86,10 @@ function PushSection() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Checked against the server, not only the browser: see syncPushSubscription.
-  useEffect(() => { void syncPushSubscription().then(setState, () => setState('unsupported')) }, [])
+  // Lost from the browser reads as off here: the switch is the tap it needs.
+  useEffect(() => {
+    void syncPushSubscription().then(s => setState(s === 'lost' ? 'off' : s), () => setState('unsupported'))
+  }, [])
 
   async function toggle(on: boolean) {
     setBusy(true)
