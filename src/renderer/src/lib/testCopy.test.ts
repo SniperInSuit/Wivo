@@ -13,14 +13,14 @@ describe('supabaseTarget: test mode never reaches production', () => {
     expect(supabaseTarget('test', TEST_URL, 'k')).toEqual({ url: TEST_URL, key: 'k', problem: null })
   })
 
-  it('test mode pointed at production (or falling back to .env): refused, nowhere', () => {
+  it('test mode pointed at production: refused, nowhere', () => {
     const r = supabaseTarget('test', PROD_URL, 'k')
     expect(r.problem).toBe('production')
     expect(r.url).not.toContain(PRODUCTION_REF)
     expect(r.key).not.toBe('k')
   })
 
-  it('test mode with an empty .env.test: not connected', () => {
+  it('test mode with no URL or key in config/test-copy.env: not connected', () => {
     for (const [u, k] of [['', 'k'], [TEST_URL, ''], [undefined, undefined], ['  ', 'k']] as const) {
       const r = supabaseTarget('test', u, k)
       expect(r.problem).toBe('missing')

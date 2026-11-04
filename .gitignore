@@ -2,7 +2,8 @@ node_modules
 dist
 out
 .env
-# Test mode (npm run dev:test): the test copy's URL and anon key only. Never committed.
+# No longer read: test mode's URL and anon key are in config/test-copy.env
+# (tracked). Ignored so a leftover copy is never committed.
 .env.test
 *.local
 *.tsbuildinfo

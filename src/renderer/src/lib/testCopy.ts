@@ -1,14 +1,14 @@
 /**
  * Test mode: `npm run dev:test` runs the desktop app against the TEST COPY of
- * the database, with the URL and anon key from `.env.test` (Vite mode
- * `test`). Kevin pastes those two values in himself; that file never holds a
- * service_role key or an access token, and git ignores it.
+ * the database (Vite mode `test`), with the URL and anon key from
+ * config/test-copy.env. Both are public by design, so that file is in git; it
+ * never holds a service_role key, an access token or any other secret
+ * (config/testCopyEnv.ts, and its test).
  *
- * Fail closed. Vite loads `.env` first and `.env.test` over it, so a value
- * missing from `.env.test` would silently be production's. In test mode a
- * missing URL or key, or the production project's URL, is replaced by an
- * address where nothing listens: every request fails, nothing reaches
- * production, and the TEST COPY banner turns red and says why.
+ * Fail closed. Test mode loads no .env file, so production's `.env` cannot
+ * fill a gap. In test mode a missing URL or key, or the production project's
+ * URL, is replaced by an address where nothing listens: every request fails,
+ * nothing reaches production, and the TEST COPY banner turns red and says why.
  *
  * Only the test copy. The URL must be exactly the test copy's (TEST_REF); any
  * other address, not only production's, is refused the same way. Every
@@ -24,8 +24,9 @@
  *
  * `npm test` runs Vitest in mode `unit` (package.json), so it reads `.env`
  * only and none of this is on there. (Vitest's own default mode is also
- * called `test`; started bare, it would read .env.test and land here —
- * harmlessly: nowhere to connect to, and no test needs a connection.)
+ * called `test`; started bare, it would land here with `.env`'s production
+ * URL — harmlessly: refused, nowhere to connect to, and no test needs a
+ * connection.)
  */
 
 /** The production project (docs/night-run/RUN-3.md). Test mode refuses it. */

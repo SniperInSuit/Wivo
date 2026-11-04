@@ -3434,9 +3434,9 @@ export const en = {
   'stock.addGoods': "Add goods",
 
   // ── testCopy ──────────────────────────────────────────────────────────────
-  'testCopy.production': ".env.test points at PRODUCTION: refused, not connected",
-  'testCopy.missing': ".env.test has no URL or anon key: not connected",
-  'testCopy.notTestCopy': ".env.test points at a project that is not the test copy: refused, not connected",
+  'testCopy.production': "config/test-copy.env points at PRODUCTION: refused, not connected",
+  'testCopy.missing': "config/test-copy.env has no URL or anon key: not connected",
+  'testCopy.notTestCopy': "config/test-copy.env points at a project that is not the test copy: refused, not connected",
   'testCopy.label': "TEST COPY",
 
   // ── accounts (docs/ACCOUNTS.md) ───────────────────────────────────────────

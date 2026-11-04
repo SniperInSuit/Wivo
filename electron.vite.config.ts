@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { testCopyDefine } from './config/testCopyEnv'
 
 // Read the version straight off package.json rather than
 // process.env.npm_package_version, which is only set when the build runs
@@ -15,7 +16,11 @@ export default defineConfig({
   preload: {
     plugins: [externalizeDepsPlugin()]
   },
-  renderer: {
+  renderer: ({ mode }) => ({
+    // Test mode (`npm run dev:test`) takes the test copy's URL and anon key
+    // from config/test-copy.env and loads no .env file: production's .env,
+    // or a leftover .env.test, cannot fill a gap (config/testCopyEnv.ts).
+    envDir: mode === 'test' ? resolve('config') : undefined,
     // TWO entries. `updater.html` is the splash shown while the app is being
     // replaced on disk — see its own comment for why it is not a route in the
     // main bundle. After changing this, confirm `out/renderer/updater.html`
@@ -32,7 +37,8 @@ export default defineConfig({
     // Lets the renderer show the app version (sidebar footer) in both dev and
     // a packaged build — nothing else exposes it to the UI.
     define: {
-      __APP_VERSION__: JSON.stringify(pkg.version)
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      ...(mode === 'test' ? testCopyDefine() : {})
     },
     resolve: {
       alias: {
@@ -50,5 +56,5 @@ export default defineConfig({
     css: {
       postcss: resolve('postcss.config.cjs')
     }
-  }
+  })
 })

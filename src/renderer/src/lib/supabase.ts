@@ -6,7 +6,7 @@ import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 import { STANDIN_DOMAIN, loginAddresses, loginNameOf, normaliseClinicCode } from '@shared/auth/loginAddress'
 
 // Read from .env — never hardcode these values. In test mode (`npm run
-// dev:test`) from .env.test, and never production: lib/testCopy.
+// dev:test`) from config/test-copy.env, and never production: lib/testCopy.
 const target = supabaseTarget(
   import.meta.env.MODE,
   import.meta.env.VITE_SUPABASE_URL as string | undefined,
