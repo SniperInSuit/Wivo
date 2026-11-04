@@ -1,6 +1,8 @@
 import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, getActiveClinicId } from '../lib/supabase'
+import { fetchCustomers } from '../lib/customersRead'
+import { usePermissions } from './usePermissions'
 import type { Customer, CustomerInput } from '../types/customer'
 
 const QUERY_KEY = ['customers']
@@ -11,9 +13,14 @@ const QUERY_KEY = ['customers']
  * Archived ones are still fetched because history needs their names: a job or
  * an invoice from two years ago points at a customer who may no longer be
  * active, and a picker hiding them would render that history nameless.
+ *
+ * Whole rows only for View jobs or View payments (owners and admins always);
+ * everyone else gets id, name and archived — what a job shows (sql/118).
  */
 export function useCustomers() {
   const qc = useQueryClient()
+  const { can } = usePermissions()
+  const full = can('jobs.read') || can('payments.read')
   // Unique per mount: a realtime topic is global to the Supabase client, so two
   // components using this hook at once would otherwise collide on the topic and
   // the second `.on()` throws. Same reason as usePatients.
@@ -30,29 +37,20 @@ export function useCustomers() {
   }, [qc, channelId])
 
   return useQuery<Customer[]>({
-    queryKey: QUERY_KEY,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('name', { ascending: true })
-      if (error) throw error
-      return data as Customer[]
-    }
+    queryKey: [...QUERY_KEY, full ? 'full' : 'basic'],
+    queryFn: () => fetchCustomers(full),
   })
 }
 
 export function useCreateCustomer() {
   const qc = useQueryClient()
   return useMutation({
+    // Nothing read back: the details are not readable from the table (sql/118).
     mutationFn: async (input: CustomerInput) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('customers')
         .insert({ ...input, clinic_id: getActiveClinicId() })
-        .select()
-        .single()
       if (error) throw error
-      return data as Customer
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY })
   })
@@ -62,14 +60,11 @@ export function useUpdateCustomer() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<CustomerInput> }) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('customers')
         .update({ ...patch, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select()
-        .single()
       if (error) throw error
-      return data as Customer
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY })
   })

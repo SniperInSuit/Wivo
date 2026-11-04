@@ -110,9 +110,10 @@ describe('customers: everyone reads, jobs.write changes', () => {
     expect(await rowsAs(db, who(w), `delete from public.customers where id = $1 returning 1`, [c.id])).toEqual([])
   })
 
-  it('with jobs.write, and an admin without it: can', async () => {
+  // sql/118: changing a client is the Clients page's work, so it needs View jobs as well (sql/test/customersAccess.test.ts).
+  it('with jobs.write and jobs.read, and an admin without either: can', async () => {
     const c = await makeRow(db, 'customers', A)
-    for (const id of [await member(A, ['jobs.write']), await member(A, [], 'admin')]) {
+    for (const id of [await member(A, ['jobs.write', 'jobs.read']), await member(A, [], 'admin')]) {
       expect(await errorAs(db, who(id), `insert into public.customers (clinic_id, name) values ($1, 'Uus')`, [A.clinicId])).toBeNull()
       expect(await rowsAs(db, who(id), `update public.customers set name = 'Y' where id = $1 returning 1`, [c.id])).toHaveLength(1)
     }

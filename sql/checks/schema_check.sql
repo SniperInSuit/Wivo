@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 1802.
+-- Expected rows: 1809.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -516,6 +516,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.confirm_partnership(p_id uuid)', 'security definer, volatile, search_path=public, body md5 f0287d295c7142148a3d575f3fee6d83'),
     ('function', 'public.create_partnership_invite()', 'security definer, volatile, search_path=public, extensions, body md5 cc73bc00dac8f6029e833648989dc495'),
     ('function', 'public.create_worker_invite()', 'security definer, volatile, search_path=public, extensions, body md5 e75bf693b2dcd6b890f88df153e1ede6'),
+    ('function', 'public.customers_full()', 'security definer, stable, search_path=public, body md5 5f531f69cebbc4ef3a6fc41ce6bbf8f4'),
     ('function', 'public.delete_job_file(p_file uuid)', 'security definer, volatile, search_path=public, body md5 bb405e883e90b227b18279d2433009f5'),
     ('function', 'public.deleted_jobs()', 'security definer, stable, search_path=public, body md5 5cc3a29fc2b9437b66abf2f2b1f6678d'),
     ('function', 'public.ensure_mfa_policies()', 'security invoker, volatile, search_path=public, body md5 4251b5495308d400e88eb2833485f2df'),
@@ -595,7 +596,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.partner_visible_text(j jobs)', 'security invoker, stable, search_path=public, body md5 638cdde9f3d98bdcd6f5d940ad7fa061'),
     ('function', 'public.partner_work_items(p_items jsonb)', 'security invoker, immutable, search_path=public, body md5 f7346aed5d53cfb8919357ce53db36d6'),
     ('function', 'public.patient_export(p_patient uuid)', 'security definer, volatile, search_path=public, body md5 6379815bfd6cc5768198a9e8fc07712f'),
-    ('function', 'public.pay_settings()', 'security definer, stable, search_path=public, body md5 3706d6b417e276853b8c9e859f8d6337'),
+    ('function', 'public.pay_settings()', 'security definer, stable, search_path=public, body md5 86dc03ffe0eab6340107c8a485b73014'),
     ('function', 'public.pending_bug_reports(p_limit integer)', 'security definer, stable, search_path=public, body md5 0ffbd82011d46a08cdbc7bc18773ef63'),
     ('function', 'public.pending_notification_emails(p_limit integer)', 'security definer, stable, search_path=public, body md5 90926302f175cd8bb7888014a16e6da0'),
     ('function', 'public.pending_pushes(p_limit integer)', 'security definer, stable, search_path=public, body md5 371b380882ed2b862eb72ee48205cb62'),
@@ -783,9 +784,15 @@ with expected(kind, key, def) as (values
     ('grant', 'public.create_partnership_invite() to service_role', 'EXECUTE'),
     ('grant', 'public.create_worker_invite() to authenticated', 'EXECUTE'),
     ('grant', 'public.create_worker_invite() to service_role', 'EXECUTE'),
-    ('grant', 'public.customers to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
-    ('grant', 'public.customers to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.customers to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.customers to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.customers to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.customers.archived_at to authenticated', 'SELECT'),
+    ('grant', 'public.customers.clinic_id to authenticated', 'SELECT'),
+    ('grant', 'public.customers.id to authenticated', 'SELECT'),
+    ('grant', 'public.customers.name to authenticated', 'SELECT'),
+    ('grant', 'public.customers_full() to authenticated', 'EXECUTE'),
+    ('grant', 'public.customers_full() to service_role', 'EXECUTE'),
     ('grant', 'public.delete_job_file(p_file uuid) to authenticated', 'EXECUTE'),
     ('grant', 'public.delete_job_file(p_file uuid) to service_role', 'EXECUTE'),
     ('grant', 'public.deleted_jobs() to authenticated', 'EXECUTE'),
@@ -1631,10 +1638,10 @@ with expected(kind, key, def) as (values
    FROM profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = ''owner''::text))))) check ()'),
     ('policy', 'public.clinics.mfa_required', 'RESTRICTIVE ALL to authenticated using (( SELECT has_mfa() AS has_mfa)) check (( SELECT has_mfa() AS has_mfa))'),
-    ('policy', 'public.customers.customers_delete', 'PERMISSIVE DELETE to public using (((clinic_id = my_clinic_id()) AND has_perm_or_admin(''jobs.write''::text))) check ()'),
-    ('policy', 'public.customers.customers_insert', 'PERMISSIVE INSERT to public using () check (((clinic_id = my_clinic_id()) AND has_perm_or_admin(''jobs.write''::text)))'),
+    ('policy', 'public.customers.customers_delete', 'PERMISSIVE DELETE to public using (((clinic_id = my_clinic_id()) AND ((has_perm(''jobs.write''::text) AND has_perm(''jobs.read''::text)) OR is_org_admin()))) check ()'),
+    ('policy', 'public.customers.customers_insert', 'PERMISSIVE INSERT to public using () check (((clinic_id = my_clinic_id()) AND ((has_perm(''jobs.write''::text) AND has_perm(''jobs.read''::text)) OR is_org_admin())))'),
     ('policy', 'public.customers.customers_select', 'PERMISSIVE SELECT to public using ((clinic_id = my_clinic_id())) check ()'),
-    ('policy', 'public.customers.customers_update', 'PERMISSIVE UPDATE to public using (((clinic_id = my_clinic_id()) AND has_perm_or_admin(''jobs.write''::text))) check (((clinic_id = my_clinic_id()) AND has_perm_or_admin(''jobs.write''::text)))'),
+    ('policy', 'public.customers.customers_update', 'PERMISSIVE UPDATE to public using (((clinic_id = my_clinic_id()) AND ((has_perm(''jobs.write''::text) AND has_perm(''jobs.read''::text)) OR is_org_admin()))) check (((clinic_id = my_clinic_id()) AND ((has_perm(''jobs.write''::text) AND has_perm(''jobs.read''::text)) OR is_org_admin())))'),
     ('policy', 'public.customers.mfa_required', 'RESTRICTIVE ALL to authenticated using (( SELECT has_mfa() AS has_mfa)) check (( SELECT has_mfa() AS has_mfa))'),
     ('policy', 'public.file_download_grant.file_download_grant_select', 'PERMISSIVE SELECT to public using ((user_id = auth.uid())) check ()'),
     ('policy', 'public.file_download_grant.mfa_required', 'RESTRICTIVE ALL to authenticated using (( SELECT has_mfa() AS has_mfa)) check (( SELECT has_mfa() AS has_mfa))'),

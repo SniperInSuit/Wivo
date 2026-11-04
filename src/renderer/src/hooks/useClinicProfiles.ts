@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext'
  * Patients-as-users are excluded too: they are people with a login, not staff.
  *
  * Pay and tax fields only where the database gives them (sql/117): one's own;
- * everyone's for payroll (Manage payroll, owner, admin).
+ * everyone's for the owner and Manage payroll (admins only with it).
  */
 export function useClinicProfiles() {
   const { clinicId } = useAuth()

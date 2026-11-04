@@ -1,9 +1,9 @@
 /**
  * sql/117: a colleague's pay and tax settings (employment type, pay basis,
  * pension percentage, tax-free income, rush multiplier) only for payroll —
- * Manage payroll, the owner, an admin — former members included. Everyone
- * reads their own, and every member still sees a colleague's name, username
- * and role.
+ * the owner and Manage payroll, as for rates, hours and payouts; an admin
+ * needs Manage payroll too — former members included. Everyone reads their
+ * own, and every member still sees a colleague's name, username and role.
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
@@ -70,9 +70,16 @@ describe('payroll reads everyone\'s, former members included', () => {
     expect(await paySeen(await member(A, ['payroll.manage']))).toEqual(expect.arrayContaining(everyone()))
   })
 
-  it('the owner and an admin', async () => {
+  it('the owner', async () => {
     expect(await paySeen(A.ownerId)).toEqual(expect.arrayContaining(everyone()))
-    expect(await paySeen(await member(A, [], 'admin'))).toEqual(expect.arrayContaining(everyone()))
+  })
+
+  it('an admin: only with Manage payroll, as for rates, hours and payouts', async () => {
+    const admin = await member(A, [], 'admin')
+    expect(await paySeen(admin)).toEqual([admin])
+    expect(await paySeen(await member(A, ['payroll.manage'], 'admin'))).toEqual(expect.arrayContaining(everyone()))
+    // The same rule as the rest of pay data (can_manage_payroll, sql/085).
+    expect(await rowsAs(db, { id: admin }, `select 1 from public.worker_rates where profile_id <> $1`, [admin])).toEqual([])
   })
 
   it('never another clinic\'s', async () => {

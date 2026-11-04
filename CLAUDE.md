@@ -20,7 +20,7 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - Only a push to `main` runs GitHub Actions. Cloudflare Pages is set in its dashboard, not in this repo: `wivo-test` must have `testing` as its production branch, and `wivo` must not build preview deployments of other branches (a preview of `wivo` would run with production's settings).
 
 ## Rules
-- Migrations are numbered SQL files in sql/ (next one is 118_...). Only add new files. Never edit or delete existing ones. A migration that changes the schema also regenerates the read-only check (sql/checks/, `WRITE_SCHEMA_CHECK=1 npx vitest run --mode unit sql/test/schemaCheck.test.ts`); sql/test/schemaCheck.test.ts fails until it does.
+- Migrations are numbered SQL files in sql/ (next one is 119_...). Only add new files. Never edit or delete existing ones. A migration that changes the schema also regenerates the read-only check (sql/checks/, `WRITE_SCHEMA_CHECK=1 npx vitest run --mode unit sql/test/schemaCheck.test.ts`); sql/test/schemaCheck.test.ts fails until it does.
 - Every new table gets org_id and RLS in the same migration, plus an RLS leak test, and ends with `select public.ensure_mfa_policies();` (sql/098: nothing without the second factor; sql/test/requireMfa.test.ts fails for a table without it).
 - Every migration that adds a function ends with `select public.lock_anon_functions();` (sql/101: the anon key runs nothing but `require_mfa_for_api()`; a function that must run before sign-in goes into `anon_allowed_functions()` with the reason; sql/test/anonFunctions.test.ts fails otherwise).
 - The app uses only the anon key. The service-role key lives only in Edge Functions.

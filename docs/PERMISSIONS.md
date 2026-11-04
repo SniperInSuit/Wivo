@@ -14,12 +14,12 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 
 | Permission | Opens | Enforced by the database |
 |---|---|---|
-| `jobs.read` | all of the clinic's jobs (without it: own jobs only); Clients in the menu. Jobs and Table show without it, with the person's own jobs | yes |
-| `jobs.write` | create and edit jobs (that it can see); add or change customers | yes |
+| `jobs.read` | all of the clinic's jobs (without it: own jobs only); Clients in the menu and clients' full details (**since 118**). Jobs and Table show without it, with the person's own jobs | yes |
+| `jobs.write` | create and edit jobs (that it can see); add or change clients, together with `jobs.read` (since 118) | yes |
 | `jobs.delete` **(new)** | delete a job, the list of deleted jobs, restore | yes; owners and admins always |
-| `payments.read` | invoices, invoice lines, payments, payment plans; every price and payment on screen | **yes, since 102**; owners and admins always |
+| `payments.read` | invoices, invoice lines, payments, payment plans; clients' full details for invoicing (since 118); every price and payment on screen | **yes, since 102**; owners and admins always |
 | `payments.write` | make and change those; number an invoice; mark paid | **yes, since 102**; owners and admins always |
-| `payroll.manage` | everyone's pay; everyone's pay and tax settings; the costs on a job; material costs | yes; pay and tax settings **since 117**, also for owners and admins |
+| `payroll.manage` | everyone's pay: rates, hours, payouts and pay and tax settings; the costs on a job; material costs | yes; pay and tax settings **since 117**. Owners always; admins only with this permission (Kevin, 2026-11-04: one rule for all pay data) |
 | `stock.read` / `stock.write` | stock | yes |
 | `patients.*`, `visits.*` | patients and calendar | patients: writing |
 | `visits.write` | booking requests: reading, adding, changing, deleting; Requests in the menu | **yes, since 116**; owners and admins always |
@@ -78,7 +78,7 @@ Tests: `src/renderer/src/components/readOnlyJobs.test.tsx`.
    - `invoices`, `invoice_lines`, `payments` and `payment_plans`: reading needs `payments.read`, writing needs `payments.write`.
    - `invoice_counters` and `next_invoice_number()` need `payments.write`.
    - `recalc_invoice_totals()` is run only by the invoice-line trigger. Before this, it checked nothing.
-2. **Customers.** Adding, changing or removing one needs `jobs.write`. Every member still reads them, because a job shows its customer.
+2. **Customers.** Adding, changing or removing one needs `jobs.write`. Every member still reads them, because a job shows its customer. *Since sql/118: every member reads only a client's id and name; the rest, and changing clients, as in the sql/118 section.*
 3. **Clinic settings.**
    - Every member reads these columns:
      - `work_types`, `visit_types`, `materials`, `material_prices`, `machines`, `pipeline_stages`;
@@ -203,9 +203,9 @@ The five pay and tax fields on `profiles`:
   - A column added later stays hidden until it is granted.
 - **`pay_settings()`** returns the five fields:
   - one's own, always;
-  - with `payroll.manage`, as the owner or as an admin: everyone in the clinic, former members included.
+  - for the owner and `payroll.manage`: everyone in the clinic, former members included. An admin needs `payroll.manage` too.
 
-  This follows Payroll's rule for rates, hours and payouts, plus admins.
+  This is Payroll's rule for rates, hours and payouts (`can_manage_payroll()`): one rule for all pay data (Kevin, 2026-11-04).
 - **In the app,** `useClinicProfiles()` merges what `pay_settings()` returns into the profile list. So the desktop loads another person's pay settings only for someone who does payroll.
   - On a database without sql/117, it reads them from the table as before, so payroll keeps its numbers until the migration is applied.
 - **Writing is unchanged:** one's own row; the owner, anyone in the clinic.
@@ -225,9 +225,43 @@ Every member can read these, on purpose:
 - **Price lists in the clinic's settings** (`clinic_settings`: `work_types`, `materials`, `material_prices`, `pricing`). The job form needs them to price a job (sql/102).
 - **Partnerships** (`partnership`): who the clinic works with, the status, the data-processing agreement reference. A shared job shows its partner.
 
-## Plan, waiting for Kevin's OK: money on jobs and shares; clients
+## sql/118: a client's details only with View jobs or View payments
 
-### (a) Money on a job and on a share
+Before sql/118, every member read every client of the clinic whole. A job needs only to show its client's name.
+
+**Since sql/118:**
+- **Column grants,** as sql/102 and sql/117. A signed-in user reads `id`, `clinic_id`, `name` and `archived_at` of the clinic's clients. That is what the job form, the wizard, Table and Statistics show.
+  - `select *` is refused.
+  - A column added later stays hidden until it is granted.
+- **`customers_full()`** returns the clinic's clients whole, to `jobs.read` (the Clients page) or `payments.read` (invoices), and to owners and admins always. The whole client means:
+  - contact person, e-mail, CC addresses and phone;
+  - address, registry code and VAT number;
+  - notes, special prices and payment terms;
+  - billing mode.
+- **Changing clients** (add, change, archive, delete) needs `jobs.write` and `jobs.read`, which is the Clients page; admins can always. Before, `jobs.write` alone was enough through the API.
+- **In the app,** `useCustomers()` reads whole rows only for `jobs.read` or `payments.read`. Everyone else gets `id`, `name` and archived (`lib/customersRead.ts`).
+  - On a database without sql/118, it reads the table as before.
+  - Saving a client no longer reads the row back.
+- **Unaffected:**
+  - the invoice e-mails (Edge Function `send-invoices`) read the client's address with the service key;
+  - `price_overrides` is in no pricing code, so hiding it changes no price.
+
+Tests:
+- `sql/test/customersAccess.test.ts`;
+- `src/renderer/src/lib/customersRead.test.ts`, which includes a scan that fails if any code reads a client's details from the table;
+- `sql/test/moneyPermissions.test.ts`, updated for the write rule.
+
+## Releasing sql/117 and sql/118
+
+Builds before 2.1 read `profiles` and `customers` with `select *`, which these migrations refuse. On such a build, the person's profile doesn't load at sign-in.
+
+sql/102 already did the same to `clinic_settings`. So on production:
+- apply 102–118 together with publishing 2.1;
+- set the minimum version to 2.1 (docs/MIN-VERSION.md), so desktops update and the phone reloads.
+
+## Later release, not in 2.1: money on jobs and shares
+
+Kevin, 2026-11-04: not in 2.1; its own release later. Until then it is a known gap (below).
 
 **What:** a job's money fields are readable only with `payments.read` (owners and admins always) or `payroll.manage`. They are:
 - `hind` (price), `disain_hind` (design price), `makstud` (paid) and `makse_kuupaev` (payment date);
@@ -266,30 +300,18 @@ Every member can read these, on purpose:
 
 **Size:** the largest change in this list: one migration with a data move, the pricing trigger, the server-side pay, and every money screen. Its own release.
 
-### (b) Clients
+## Known gaps (for the pentest)
 
-**What:** without `jobs.read`, a member reads only what a job needs to show its client: `id` and `name`, for the clinic's clients.
+What the database still lets a member read beyond what the menu and permissions suggest, on purpose for now:
 
-With `jobs.read` (owners and admins always), the full row:
-- contact person, e-mail, CC addresses and phone;
-- address, registry code and VAT number;
-- notes, special prices (`price_overrides`) and payment terms;
-- billing mode and archived state.
+1. **Money on jobs and shares** (planned above, not in 2.1). Anyone who sees a job reads its money through the API, even without `payments.read`:
+   - price, design price, paid and payment date;
+   - extras with prices, extra costs and cost overrides;
+   - remake prices.
 
-**How (recommended): column grants plus a function,** as sql/102 and sql/117 did.
-- A signed-in user reads `id`, `clinic_id`, `name` and `archived_at` of `customers`.
-- `customers_full()`, owner-rights and `stable`, returns the full rows to `jobs.read`, owners and admins.
-- `select *` is refused, so the app names columns.
-
-**What it breaks, and what has to change with it:**
-1. **The Clients page** reads through `customers_full()`. The menu already shows Clients only with `jobs.read`.
-2. **The job form's client picker and the job's client line** use `id` and `name`. That's unchanged.
-3. **Invoices** need the billing details: address, registry code, VAT number, e-mail, payment terms. They read them through `customers_full()`, which needs `payments.read` added to its rule. Invoicing already requires that permission.
-4. **Adding and changing clients** happens only on the Clients page (`jobs.write`), which the menu already shows only with `jobs.read`. Changing a client's details needs the full row, so the database's write rule becomes `jobs.write` and `jobs.read`. Today a member with `jobs.write` alone could change clients through the API, though not through the app.
-5. **`price_overrides` is in no pricing code today,** so hiding it changes no price.
-6. **Older app builds** that read `customers` with `*` fail, so the minimum version goes up with this release too.
-
-**Size:** one small migration, the Clients page, and the invoice screens' customer reads.
+   Every member reads each share's partner price.
+2. **A colleague's `language`, notification switches and `ui_prefs`** (dashboard layout), on `profiles`. They aren't pay or tax fields, and one's own must stay readable before the second factor (sql/117).
+3. **The owner-rights functions** have not been checked one by one (next section).
 
 ## For the pentest (prompt 22): the owner-rights functions need their own pass
 
@@ -305,6 +327,8 @@ select p.proname, pg_get_function_identity_arguments(p.oid), pg_get_function_res
    and pg_get_function_result(p.oid) <> 'trigger'
  order by 1;
 ```
+
+**The pentest also tries each known gap above, as a member without the permission.**
 
 **The pentest checks each one against the permission it should need,** as a member without that permission, as another clinic and as a partner.
 

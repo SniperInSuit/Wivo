@@ -21,8 +21,10 @@
 --    and one's own settings. `select *` is refused, so the app names its
 --    columns. A column added later is hidden until it is granted.
 -- 2. pay_settings(): the pay and tax fields of the people the caller may
---    see — themselves always; with Manage payroll, as the owner or as an
---    admin, everyone in the clinic and its former members. `stable`.
+--    see — themselves always; everyone in the clinic and its former members
+--    for the owner and for Manage payroll (can_manage_payroll), exactly as
+--    rates, hours and payouts. An admin needs Manage payroll too: one rule
+--    for all pay data (Kevin, 2026-11-04). `stable`.
 --
 -- Writing is unchanged: the same policies decide who changes what (one's
 -- own row; the owner, anyone in the clinic).
@@ -53,7 +55,7 @@ as $$
     from public.profiles p
    where p.id = auth.uid()
       or (public.my_clinic_id() is not null
-          and (public.can_manage_payroll() or public.is_org_admin())
+          and public.can_manage_payroll()
           and (p.clinic_id = public.my_clinic_id()
                or (p.clinic_id is null and p.removed_from = public.my_clinic_id())))
 $$;

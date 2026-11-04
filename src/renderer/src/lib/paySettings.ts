@@ -2,7 +2,8 @@
  * Pay and tax settings (sql/117): employment type, pay basis, pension
  * percentage, tax-free income and rush multiplier. Not readable from
  * `profiles`; pay_settings() returns one's own, and everyone's (former
- * members included) for Manage payroll, the owner and admins.
+ * members included) for the owner and Manage payroll — admins included only
+ * with it, as for rates, hours and payouts.
  */
 import { supabase } from './supabase'
 import type { Profile } from './supabase'
