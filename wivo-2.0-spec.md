@@ -18,7 +18,8 @@ Wivo (Electron + React + TypeScript, Supabase/Postgres) haldab hambalabori ja kl
 - **Töövoog:** Tallinn skaneerib (intraoraalne skann, fotod, röntgen). Riia teeb tehnikutöö ja printfailid. Tallinn prindib ja märgib töö valmis. Riia võib võtta ka patsiente vastu (suunamine).
 - **Riial on oma organisatsioon:** oma kasutajad, tööd ja statistika. Tallinnaga seob neid partnerlus: jagatud tööd (täielik või osaline nähtavus) ja ühendatud ladu (Riia komisjonikaup Tallinna laos).
 - **Mida see asendab:** WhatsApp ja jagatud kaustad. Failid, staatused ja teavitused on ühes kohas.
-- **Hostitud mitme organisatsiooni instants.** Software-only kliendid jäävad oma Supabase'i ja partnerlust neil pole.
+- ~~**Hostitud mitme organisatsiooni instants.** Software-only kliendid jäävad oma Supabase'i ja partnerlust neil pole.~~ (asendatud 4.11.2026)
+- **Iga kliinik oma Supabase'i projektis,** kliiniku omanduses. Partnerlus kahe projekti vahel käib otsesilla kaudu (vt „Arhitektuur ja infra“).
 
 Kui faasid 0–4 on valmis, on see **Wivo 2.0**, turuvalmis versioon.
 
@@ -71,7 +72,9 @@ Kui faasid 0–4 on valmis, on see **Wivo 2.0**, turuvalmis versioon.
 
 ## Arhitektuur ja infra
 
-Kõik hostitud organisatsioonid on ühes Supabase'i projektis ja RLS hoiab need lahus.
+~~Kõik hostitud organisatsioonid on ühes Supabase'i projektis ja RLS hoiab need lahus.~~ (asendatud 4.11.2026)
+
+**Üks Supabase'i projekt kliiniku kohta, kliiniku omanduses; partnerlus käib otsesilla kaudu.** (Kevini otsus 4.11.2026. Kliinik loob projekti oma Supabase'i kontol ja haldab seda ise; Wivo ei näe ega puuduta pärast seadistamist selle sisu. Uued migratsioonid ja funktsioonid jõuavad kliinikusse Wivo uuendustega. Meie kliinik jääb oma praegusesse projekti. Plaan: docs/ARCHITECTURE-INSTANCES.md.)
 
 | Osa | Lahendus | Märkus |
 | --- | --- | --- |
@@ -457,7 +460,7 @@ Need vastab Kevin, mitte Claude Code. Kuni vastust pole, kasuta sulgudes olevat 
 - [ ] Mida peab statistika moodul Riia jaoks sisaldama?
 - [ ] Lao ja lisafailimahu hinnad. (Ladu 50 €, lisafailimaht 10 € 100 GB kohta.)
 
-* [ ] Kas Riia jääb ühisesse hostitud instantsi või soovib oma Supabase'i projekti? (Ühine instants, eraldatus RLS-iga.)
+* [x] Kas Riia jääb ühisesse hostitud instantsi või soovib oma Supabase'i projekti? ~~(Ühine instants, eraldatus RLS-iga.)~~ **Vastus 4.11.2026: oma Supabase'i projekt, kliiniku omanduses; partnerlus otsesilla kaudu.** Riia jurist nõuab eraldi andmebaasi.
 * [ ] Mis on õiguslik alus raviplaani andmete kasutamiseks arenduses ja kuidas see kliinikutega lepingusse läheb? (Kuni vastuseni andmeid arenduseks ei kasutata.)
 
 - [ ] Kas Wivo asendab kliinikus Dentase või täiendab seda? Kui asendab, tuleb enne ravikaardi ehitamist selgeks teha tervise infosüsteemi (TIS) andmete saatmise kohustus ja ravidokumentide säilitusajad. (Seni täiendab.)

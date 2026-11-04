@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan only, waiting for Kevin's OK.** Nothing is built.
+Status: **plan.** Kevin's decisions of 4 November 2026 are in (§10), and the timing was re-planned (§9). **Waiting for Kevin's OK** before building. Nothing is built.
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -21,7 +21,7 @@ The partnership with Riga works across the two projects:
 - **Their own statistics.**
 
 **What it changes:**
-1. **The spec's locked decision** ("all hosted organisations in one Supabase project, RLS keeps them apart") is replaced. `wivo-2.0-spec.md` needs Kevin's written change before building starts (decision 1 in §10).
+1. **The spec's locked decision** ("all hosted organisations in one Supabase project, RLS keeps them apart") is replaced. `wivo-2.0-spec.md` was changed on 4 November 2026: the old line is struck through, and the new one is "one Supabase project per clinic, owned by the clinic; partnership through the direct bridge".
 2. **No Wivo infrastructure in the data path.** The superseded plan put a Wivo hub between instances, and options A–C of its §3b gave Wivo standing access. Both are out:
    - partners talk to each other directly (§1);
    - updates arrive as signed packages that the clinic's owner applies (§5).
@@ -342,29 +342,54 @@ wivo-update-2.3.0.tar
 
 ### 5b. How a clinic's project applies it
 
-**The owner approves; the clinic's own credentials do the work; Wivo holds none.**
+**The owner approves; the clinic's own credentials do the work; Wivo holds none, and nothing is stored** (Kevin's two conditions, 2026-11-04).
 
 1. **The desktop app on the owner's computer** downloads the package with the app update, checks the signature and the hashes, and shows the owner what changes: version, migrations, functions and a short release note.
-2. **The owner approves,** signed in with the second factor.
-3. **Migrations:** the app sends the package to `wivo-update`, an Edge Function in the clinic's project, installed at setup. The function:
-   - accepts only a package signed with Wivo's key and a request from an owner with `aal2`;
-   - checks the migration ledger (`wivo_schema_migration`, docs/MIGRATIONS.md): in order, never twice, each file's hash matching the manifest;
-   - applies each migration in a transaction, through the project's own database connection (`SUPABASE_DB_URL`, which Supabase gives every Edge Function);
-   - runs the read-only checks and reports their rows;
-   - records the version, hashes and approver in the ledger and the audit log.
-4. **Edge Functions:**
-   - A function can't redeploy functions; that needs the Supabase Management API and a token for the clinic's account.
-   - **That token is the clinic's own.** The owner creates a personal access token in their Supabase account. The app keeps it in the operating system's keychain on that computer only (Electron `safeStorage`), and uses it only to deploy the package's function bundles.
-   - The owner can revoke it at any time. The next update with function changes then asks for a new one.
-   - Wivo never receives it.
-5. **The app runs the checks again.** It shows "Updated to 2.3.0" or exactly what failed, and stops there.
+2. **Migrations,** through `wivo-update`, an Edge Function in the clinic's project, installed at setup. It applies a package only when all of these hold:
+   1. **The owner, with a fresh second-factor code.** The app asks for a new authenticator code right before the call. Supabase then records a new `totp` time in the session's `amr`. The function accepts only:
+      - an owner of the clinic;
+      - with `aal2`;
+      - whose `totp` time is under 5 minutes old.
 
-**Another way, not recommended:** the desktop app does both migrations and functions through the Management API with the owner's token, with no `wivo-update` function. That is simpler (no new privileged endpoint in the project). But the token is a key to the owner's whole Supabase account, so it would be used for every update instead of only for function changes. Kevin's proposal, a function in their project, is the better fit for migrations.
+      A session that was merely signed in earlier is refused.
+   2. **Wivo's signature, against the pinned key.** Wivo's public release key is written into the function's own code at setup, not read from a table or a secret that could be swapped. The function checks the Ed25519 signature over the manifest, and each file's `sha256` against it.
+      - **Changing the pinned key** (if Wivo's release key is ever replaced) is itself a function update, made as in step 3 below and signed with the old key.
+   3. **Only a newer version.** The manifest's version must be above the highest version in the migration ledger (`wivo_schema_migration`, docs/MIGRATIONS.md), and its "updates from" version must not be above the clinic's current one.
+      - The same or an older package is refused, so nothing is applied twice or rolled back by replaying an old package.
+   4. **One transaction:**
+      - every migration in the package;
+      - the ledger rows (version, file, `sha256`, applied at, applied by);
+      - the audit entry.
+
+      It runs through the project's own database connection (`SUPABASE_DB_URL`, which Supabase gives every Edge Function). If anything fails, nothing has changed.
+      - So migrations must not contain statements that can't run in a transaction, for example `create index concurrently`. A CI check refuses them.
+   5. **The audit log,** in the same transaction:
+      - who approved;
+      - the version from and to;
+      - the package hash;
+      - the result.
+
+      A refused attempt is logged too: who, why, and the package hash.
+3. **Edge Functions** need the Supabase Management API; a function can't redeploy functions. **The owner's token is never stored:**
+   1. For an update that changes functions, the app asks the owner to create a personal access token in their Supabase account. The app shows the steps, opens Account → Access Tokens, and suggests the shortest expiry Supabase offers, if it offers one.
+   2. The owner pastes it. The app keeps it **in memory only:**
+      - not on disk, and not in the keychain;
+      - not in logs or crash reports, filtered as the error log already filters personal data.
+
+      It uses the token once, to deploy the package's function bundles, checking each bundle's hash against the signed manifest first.
+   3. The app walks the owner through deleting the token in the same screen. The owner presses "I've deleted it". The app then tries one harmless Management API call with it and expects it to be refused. Only then does it forget the token and show "Done".
+      - If the call still works, the app says so and waits.
+      - If the owner closes the app first, the token is gone from memory anyway. The next start reminds the owner to check Access Tokens.
+4. **Order:**
+   - migrations first, because migrations only add (expand, then contract: docs/MIGRATIONS.md), so the old functions keep working on the new schema;
+   - then functions;
+   - then the read-only checks (`schema_check.sql` and the others), whose rows the app shows.
+5. **The result:** "Updated to 2.3.0", or exactly what failed and what is unchanged.
 
 **A clinic that doesn't update:**
 - its own Wivo keeps working with the version it has;
-- the desktop app refuses to run against a database older than it supports, with "Ask your owner to approve the update" (§9, version gating);
-- the bridge pauses when the partners are too far apart (1e).
+- the desktop app refuses to run against a database older than it supports, with "Ask your owner to approve the update";
+- the bridge pauses when two partners are too far apart (1e).
 
 ### 5c. What Supabase lets the clinic scope or revoke
 
@@ -378,7 +403,8 @@ These are the controls as Supabase documents them. Check the current state when 
 - **Personal access tokens:**
   - a token acts with its user's full rights in all of that user's organisations;
   - the user who made it can revoke it in Account → Access Tokens;
-  - as far as known, a token can't be scoped to one project or to deploying functions only. Verify when building.
+  - as far as known, a token can't be scoped to one project or to deploying functions only. Verify when building, along with whether an expiry can be set.
+  - That is why it is made per update, kept in memory only, and deleted straight after (5b).
 - **OAuth integrations:**
   - a vendor's OAuth app can be granted chosen scopes for an organisation and revoked by the clinic;
   - but the tokens go to the vendor, which is standing access for Wivo. **Not used.**
@@ -406,14 +432,36 @@ These are the controls as Supabase documents them. Check the current state when 
 
 This builds on docs/MIGRATIONS.md (prompt 16): the baseline schema, one-click setup and the read-only checks.
 
-### 6a. Before the visit (Riga's side; Kevin sends a checklist)
+### 6a. What Riga must have ready before Kevin arrives
 
-1. **A Supabase account** for the clinic, owned by its owner's e-mail, with MFA. Then an organisation with the clinic's billing, on a paid plan: free projects pause, and the bridge needs the project always on.
-2. **A Resend account,** owned by the clinic (6c), and a sending domain such as `mail.<their-domain>.lv`. Their IT adds the DNS records. Resend's EU region.
-3. **Devices:**
-   - the owner's computer, where setup runs and later updates;
-   - staff computers and phones;
-   - an authenticator app on the owner's phone.
+Kevin sends this list at least two weeks ahead, and checks it on a call a few days before the visit.
+
+1. **Access to their domain's DNS:**
+   - a login to the domain registrar or DNS host, or a person who can add records on the day;
+   - for the domain they will send e-mail from, for example `<their-domain>.lv`;
+   - Resend asks for its sending records (SPF, DKIM, a return path), plus a DMARC record. DNS can take hours to take effect, so the records go in before the visit if possible.
+2. **A Supabase account with billing:**
+   - owned by the owner's own e-mail, with MFA on;
+   - an organisation in the clinic's name;
+   - a paid plan with a card added, because free projects pause and the bridge needs the project always on;
+   - the region decided (6b, Q8).
+
+   No project needs to exist yet; it is created on the day (6b).
+3. **A Resend account,** owned by the clinic:
+   - MFA on, and the EU region;
+   - the sending domain added and its DNS records in place (item 1);
+   - a plan that fits their volume of invites, password e-mails and notifications.
+4. **People and devices:**
+   - the owner's computer, with the right to install software (setup and every later update run from it);
+   - an authenticator app on the owner's phone;
+   - the staff list: names, e-mail addresses and roles;
+   - the phones staff will use;
+   - the scanner's export folder, if they use one.
+5. **Choices:**
+   - the clinic's three-letter code (for example `RIG`; it starts every job code);
+   - the default language (the spec: English first, then Russian and Estonian);
+   - the Supabase region.
+6. **Paperwork:** the licence and setup terms (including §5d), and the lawyer's answers that Riga needs for its own use (Q1, Q8, Q9, Q10).
 
 ### 6b. On the day, with Riga's owner at the keyboard
 
@@ -424,7 +472,7 @@ Every credential is created by the owner, in the owner's accounts, on the owner'
    - the database password goes into their password manager.
 2. **The owner installs Wivo** on their computer and chooses "Set up a new clinic database". The setup wizard asks for:
    - the project URL;
-   - a personal access token the owner creates for setup.
+   - a personal access token the owner creates for setup. It is handled as in 5b: kept in memory only, used for setup, and deleted before Kevin leaves (step 7).
 
    It then runs:
    1. **The baseline schema and every migration since,** through the Management API, recorded in the migration ledger.
@@ -453,7 +501,7 @@ Every credential is created by the owner, in the owner's accounts, on the owner'
    - Settings → Database shows the version.
 6. **Pairing with Tallinn,** owners on both sides (§1b): the safety code read aloud.
 7. **Access ends,** before Kevin leaves:
-   1. The owner revokes the setup token in their Supabase account, or keeps it in the app's keychain for future function updates (5b). That's their choice, and it stays on their computer either way.
+   1. **The setup token:** the wizard walks the owner through deleting it in Account → Access Tokens, then checks that it no longer works (5b). Nothing keeps it. Each later update with function changes asks for a new one.
    2. The owner deletes any secret API key that was on screen and makes a new one for the functions. The wizard does this and updates the function secrets.
    3. The owner resets the database password if it was on screen.
    4. The owner checks Organisation → Team (only their people) and Account → Access tokens.
@@ -528,46 +576,124 @@ Today the desktop has one project URL built in, and the phone app is one build f
 
 ---
 
-## 9. Phases, rough sizes, and the smallest start for Riga
+## 9. Timing, with Kevin's testing as the limit
 
-Sizes are rough weeks for one full-time developer-equivalent, at the current quality bar (tests, leak tests, a test round).
+### How the estimate works
 
-| Phase | What | Weeks |
+- **Claude writes the code, the tests and the docs,** in sessions Kevin starts. A slice (a migration, its functions and screens, its tests) is usually built within a few days of sessions, so building is rarely what everything waits on.
+- **The limit is Kevin's time:**
+  - reading a plan and deciding;
+  - applying migrations to the test projects;
+  - testing by hand on a desktop and a phone, often playing both clinics;
+  - the releases.
+
+  The estimates assume about **1–2 hours of Kevin's testing on most working days**, as in the recent rounds, and that a round's findings are fixed the same day or the next.
+- **Outside both of us:** the 2.1 release, Riga's preparations (§6a), the visit date, and the lawyer's answers.
+- The earlier estimate (17–21 weeks) assumed one human developer writing everything. This replaces it.
+
+**Before phase 1: 2.1 on production.**
+- Riga needs a released desktop build.
+- Tallinn's project needs sql/102–118, released together with 2.1 (docs/PERMISSIONS.md, "Releasing sql/117 and sql/118").
+
+That is Kevin's production session, and it isn't counted below.
+
+### Phase 1: Riga on its own instance, before any partnership
+
+**What Riga gets:** its own Wivo on its own project, set up on site, with the update path working. That covers its own jobs, stock, statistics and team. There is no partnership yet.
+
+**Not for Latvia yet:** Payroll follows Estonian tax rules (tax-free income, the pension pillar), and invoices follow Estonian layouts and labels. Riga starts without them. If Riga needs them, they need their own plan.
+
+| Slice | Built in | Kevin's part |
 |---|---|---|
-| **1. A clinic's own instance** | <ul><li>The baseline, migration ledger and runner (docs/MIGRATIONS.md).</li><li>The setup wizard (§6b).</li><li>Connection codes for desktop and phone (§6d).</li><li>Version gating in the app.</li><li>Signed update packages, `wivo-update`, and the owner's update flow (§5).</li><li>Per-clinic e-mail, push and secrets.</li></ul> | 7–9 |
-| **2. Jobs shared both ways, with files** | <ul><li>Pairing and keys (1b, 1c); outbox, inbox, sender and receiver (1f).</li><li>Envelope v1; share, update and unshare.</li><li>Stage moves as request and answer.</li><li>The mirror behind the partner screens.</li><li>Chat; notifications made by the receiver; files copied (2b).</li><li>Audit (§4); the admin view (1g).</li><li>The two-project test setup and all of §8 for jobs.</li></ul> | 10–12 |
-| **3. Stock across projects** | §3, with its tests. | 3–4 |
-| **4. Hardening** | <ul><li>Key rotation in the app; dead-letter handling.</li><li>Monitoring of the bridge per partnership.</li><li>The pentest of the new endpoints (prompt 22).</li><li>Documentation for clinics.</li></ul> | 2–3 |
+| 1. The migration ledger, the update package format, the signing tool, and CI building the package. Starts from docs/MIGRATIONS.md's baseline. | 2–3 days | Read the package format and §5: one session. |
+| 2. `wivo-update`, with its five conditions (5b) | 2 days | On test project A: apply a package, then try an older one, a tampered one, and one without a fresh code. One or two sessions. |
+| 3. The desktop's update flow: approval, the fresh code, the one-time token, guided deletion and the check that it's dead | 2–3 days | Two rounds on project A. |
+| 4. The setup wizard (6b), from an empty project to passing checks | 3–4 days | A full rehearsal on project B, as Riga's owner would do it, with a test Resend account and a test domain. Two or three rounds of 2–3 hours. |
+| 5. The connection code for desktop and phone (6d), and the version gate | 2 days | Desktop and phone against project B, and production still working as before. One or two sessions. |
+| 6. A desktop release with all of the above, after 2.1 | – | A release session. |
 
-**The smallest start for Riga: phases 1 and 2,** about **17–21 weeks** (4–5 months):
-- their own instance, set up on site;
-- jobs shared both ways, with files, chat and notifications;
-- audit on both sides.
+**Calendar: about 4–6 weeks** from Kevin's OK to "ready to set up Riga". After that:
+- the visit, on a date agreed with Riga once §6a is ready;
+- about a week later, Riga's owner applies a first update on a call with Kevin, to prove the update path.
 
-**Stock follows** (phase 3, about another month). Until then, lent stock is settled outside Wivo.
+### Phase 2: the first partnership, as small as possible
 
-What could shorten the start, at a cost:
-- **Riga on the desktop only at first:** the phone's connection code comes later. Saves about a week.
-- **Edge Function updates for Riga delivered by the owner's token from day one,** without the keychain convenience. Saves a few days.
-- **The bridge without the admin view at first** (1g): owners then see stuck messages only as a count. Saves about a week.
+**Scope** (Kevin, 2026-11-04):
+1. We send a job with its files to Riga.
+2. Riga works on it in its own Wivo. It moves the job through the stages assigned to it, and adds its files (print, design).
+3. Riga sends back the files and the status. We print and mark the job done.
+4. Notifications and audit on both sides.
+
+**Not in it:**
+- **Chat.**
+- **Changes to a job after it was sent:** a job that changes is unshared and sent again.
+- **Stock.**
+- **The admin "Messages" view:** owners see only a count of stuck messages.
+- **Key rotation in the app:** a partnership can be ended and paired again.
+
+**Size:**
+- **Ten message types, version 1:**
+  - `hello` and `pair.ended`;
+  - `share.created` (the job's partner-visible fields and its file list) and `share.ended`;
+  - `stage.move_requested`, `stage.moved` and `stage.move_rejected`;
+  - `file.added`, `file.fetch` and `file.received`.
+- **In each project:**
+  - the tables `bridge_peer`, `bridge_outbox`, `bridge_inbox` and `shared_job_mirror`;
+  - the Edge Functions `bridge` and `bridge-pair`, and a sender run by pg_cron;
+  - one or two migrations.
+- **In the app:**
+  - pairing screens;
+  - the partner screens reading the mirror;
+  - files on a shared job;
+  - notifications made by the receiver;
+  - the audit actions.
+
+| Slice | Built in | Kevin's part |
+|---|---|---|
+| 1. The bridge core: pairing (token, code, safety code), keys, the signed transport, outbox, inbox, sender, receiver, `hello`, rate limits, audit | 4–5 days | Pair project A with B, playing both owners; try a wrong code; end the partnership. Two or three sessions. |
+| 2. Sharing: `share.created` and `share.ended`, the mirror behind the partner screens, stage requests and answers, notifications | 3–4 days | Send a job from A to B, move it on B, see it on A, unshare it. Two or three sessions. |
+| 3. Files both ways, copied and checked | 3 days | A real-size scan from A to B, and print files from B back to A. One or two sessions. |
+| 4. The leak test across projects, the delivery tests (duplicates, order, one side down) and version skew | 2–3 days, mostly automated | One full run of the real workflow on A and B: scan, technician work, print files, done. |
+| 5. Release; Riga updates; Tallinn and Riga pair on a call | – | A release session; Riga's owner approves the update. |
+
+**Calendar: about 5–7 weeks after phase 1 is released.** Building can start earlier; it is the testing that waits.
+
+**The first real shared job also waits for the lawyer's answers** (Q3–Q6), so those questions should go out now.
+
+### Later phases
+
+| Phase | What | Calendar |
+|---|---|---|
+| 3. Chat, and changes after sending | `comment.posted`, `question.resolved`, `job.updated` | 2–3 weeks |
+| 4. Stock across projects | §3 | 3–5 weeks |
+| 5. Hardening | <ul><li>Key rotation in the app.</li><li>The "Messages" admin view (1g).</li><li>Monitoring per partnership.</li><li>The pentest of the new endpoints (prompt 22).</li></ul> | 2–3 weeks, plus the pentest's own schedule |
+| Optional: our own production on the update path | The same packages for Tallinn's project, so the path is tested every release | 1–2 weeks |
+
+### In short
+
+- **Riga on its own instance:** about **4–6 weeks** after the OK, plus the 2.1 release and the visit date.
+- **The first shared job:** about **5–7 weeks** after that, so about **10–13 weeks** from the OK, if the lawyer's answers are in.
+- **Chat, changes after sending, and stock:** about **5–8 weeks** more.
 
 ---
 
-## 10. Decisions for Kevin
+## 10. Decisions
 
-1. **The spec change:** replace the locked decision in `wivo-2.0-spec.md` ("one shared instance, RLS") with this one, in Estonian, before building starts.
-2. **Direct link** rather than a Wivo relay (§1a).
-3. **Wivo's approval of partnerships ends** (1b). If partnering is a paid module, it is in the licence instead.
-4. **Updates:**
-   - migrations through `wivo-update` in the clinic's project;
-   - Edge Functions through the owner's own token on the owner's computer (5b).
-5. **Each clinic has its own e-mail account and domain** (6c).
-6. **Our own clinic:** stays on its current project, and also receives the bridge with the normal releases. Should our production project also run updates through the signed package, so it is tested every release? Recommended: yes, once phase 1 is built.
-7. **Retention:** after unshare and unpair, how long each side keeps the other's data (2d), after the lawyer's answers.
-8. **Stock:** the default due date (3 months, as today) and the 30-day settling window after unpairing (2d).
+**Decided (Kevin, 2026-11-04):**
+1. **The spec:** `wivo-2.0-spec.md` now says "one Supabase project per clinic, owned by the clinic; partnership through the direct bridge". The old line is struck through and dated, as are the context line and the open question about Riga.
+2. **A direct link,** no relay (§1a).
+3. **Updates:**
+   - migrations through `wivo-update`: the owner with a fresh second-factor code, the pinned Wivo key, only a newer version, one transaction, the audit log;
+   - Edge Functions with a per-update token that is never stored (5b).
+4. **E-mail:** each clinic has its own Resend account and domain (6c), and the checklist of what Riga prepares is in §6a.
+5. **Timing:** re-planned (§9). Riga on its own instance first, then the smallest partnership.
+
+**Still open:**
+6. **Our own production on the update path** (an optional phase in §9).
+7. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
+8. **Stock defaults:** the due date and the 30-day settling window (phase 4).
 9. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).
-
----
+10. **Payroll and invoices for Latvia:** not in Riga's start (phase 1). If Riga needs them, a plan of their own.
 
 ## Questions for the lawyer
 
