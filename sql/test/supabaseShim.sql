@@ -36,17 +36,21 @@ set search_path = "$user", public, extensions;
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;
 
+-- The column types are GoTrue's: email and the other strings are varchar(255),
+-- phone is text. A function that hands auth.users.email back as `text`
+-- without a cast fails on Supabase ("structure of query does not match
+-- function result type") and must fail here too (sql/111).
 create table auth.users (
   instance_id          uuid,
   id                   uuid primary key default gen_random_uuid(),
-  aud                  text default 'authenticated',
-  role                 text default 'authenticated',
-  email                text unique,
-  encrypted_password   text,
+  aud                  character varying(255) default 'authenticated',
+  role                 character varying(255) default 'authenticated',
+  email                character varying(255) unique,
+  encrypted_password   character varying(255),
   email_confirmed_at   timestamptz,
   invited_at           timestamptz,
-  confirmation_token   text,
-  recovery_token       text,
+  confirmation_token   character varying(255),
+  recovery_token       character varying(255),
   last_sign_in_at      timestamptz,
   raw_app_meta_data    jsonb not null default '{}',
   raw_user_meta_data   jsonb not null default '{}',

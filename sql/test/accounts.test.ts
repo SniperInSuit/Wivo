@@ -139,6 +139,13 @@ describe('team_accounts(): how each member signs in', () => {
     expect(byId.has(B.workerId)).toBe(false)
   })
 
+  it('works with auth.users as Supabase has it: the address is varchar(255) (sql/111)', async () => {
+    const { rows: [{ t }] } = await db.query<{ t: string }>(
+      `select format_type(atttypid, atttypmod) as t from pg_attribute where attrelid = 'auth.users'::regclass and attname = 'email'`)
+    expect(t).toBe('character varying(255)')
+    expect(await errorAs(db, { id: A.ownerId }, `select * from public.team_accounts()`)).toBeNull()
+  })
+
   it('a worker, an owner without the second factor and an anonymous caller get nothing', async () => {
     expect(await errorAs(db, { id: A.workerId }, `select * from public.team_accounts()`)).toMatch(/owner/)
     expect(await errorAs(db, { id: A.ownerId, mfa: false }, `select * from public.team_accounts()`)).toMatch(/second factor/)

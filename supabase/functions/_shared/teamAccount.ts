@@ -104,11 +104,17 @@ export function parseTeamRequest(body: unknown): TeamRequest | null {
 const fail = (status: number, error: ErrorCode, userId?: string): Answer =>
   ({ status, body: userId ? { ok: false, error, userId } : { ok: false, error } })
 
-/** A refusal from the database, as the app should hear it. */
-function refusal(e: { message: string; code?: string; hint?: string }): Answer {
+/**
+ * A refusal from the database, as the app should hear it. Anything that is
+ * not a refusal (a function that fails, one that is missing) is a fault, not
+ * "not allowed": logged, and answered as `failed`.
+ */
+function refusal(e: { message: string; code?: string; hint?: string }, deps: TeamAccountDeps): Answer {
   if (e.code?.startsWith('PGRST3') || /JWT/i.test(e.message)) return fail(401, 'sign_in')
   if (e.hint === 'mfa_required') return fail(403, 'mfa_required')
-  return fail(403, 'not_allowed')
+  if (e.code === '42501') return fail(403, 'not_allowed')
+  deps.warn(`database: ${scrub(`${e.code ?? ''} ${e.message}`.trim())}`)
+  return fail(502, 'failed')
 }
 
 /** For logs: GoTrue's messages can quote the address. */
@@ -187,7 +193,7 @@ function mailCheck(to: string, deps: TeamAccountDeps): Answer | null {
 /** The owner's one-time token for their clinic, or the database's refusal. */
 async function ownerToken(deps: TeamAccountDeps): Promise<{ token: string } | Answer> {
   const { data, error } = await deps.asUser('create_worker_invite', {})
-  if (error) return refusal(error)
+  if (error) return refusal(error, deps)
   if (typeof data !== 'string' || data.length < 32) {
     deps.warn('create_worker_invite: unexpected answer')
     return fail(403, 'not_allowed')
@@ -215,9 +221,13 @@ async function invite(caller: string, req: Extract<TeamRequest, { action: 'invit
   if (!link.hashedToken || !link.userId) return fail(502, 'failed')
   // An address with an invite still open elsewhere is not made again: GoTrue
   // re-invites the existing account, which the token did not move. Mail only
-  // someone who is now in the caller's clinic.
+  // someone who is now in the caller's clinic. An open invite of this clinic
+  // is the same account again: it gets the e-mail again.
+  // If the database cannot say (it fails), the account is made but that is
+  // no reason to call the address taken: the answer says it failed.
   const joined = await member(link.userId, deps)
-  if (!joined || 'status' in joined) return fail(409, 'email_taken')
+  if (joined && 'status' in joined) return joined
+  if (!joined) return fail(409, 'email_taken')
   return mailInvite(req.email, clinic.name, req.language, link.hashedToken, link.userId, deps)
 }
 
@@ -262,7 +272,7 @@ interface TeamRow { id: string; login: string; has_email: boolean; invite_pendin
 /** A member of the caller's clinic, as the database tells the owner (sql/100 team_accounts). */
 async function member(userId: string, deps: TeamAccountDeps): Promise<TeamRow | Answer | null> {
   const { data, error } = await deps.asUser('team_accounts', {})
-  if (error) return refusal(error)
+  if (error) return refusal(error, deps)
   return ((data ?? []) as TeamRow[]).find(r => r.id === userId) ?? null
 }
 

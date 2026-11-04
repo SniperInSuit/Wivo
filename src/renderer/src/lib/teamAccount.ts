@@ -10,6 +10,8 @@ import type { MessageKey } from '@shared/i18n'
 export type TeamErrorCode =
   | 'sign_in' | 'bad_request' | 'mfa_required' | 'not_allowed' | 'not_allowed_here' | 'mail_not_set_up'
   | 'email_taken' | 'username_taken' | 'weak_password' | 'not_pending' | 'has_email' | 'mail_failed' | 'failed'
+  /** Ours, not the server's: no answer within TEAM_CALL_TIMEOUT_MS. */
+  | 'no_answer'
 
 export class TeamAccountError extends Error {
   constructor(readonly code: TeamErrorCode, readonly userId?: string) { super(code) }
@@ -29,6 +31,7 @@ const MESSAGE: Record<TeamErrorCode, MessageKey> = {
   has_email: 'team.errorHasEmail',
   mail_failed: 'team.errorMailFailed',
   failed: 'team.errorFailed',
+  no_answer: 'team.errorNoAnswer',
 }
 
 /** What to tell the person, for any error from these calls. */
@@ -39,9 +42,18 @@ export function teamErrorMessage(e: unknown): string {
 
 export type Language = Lang
 
+/**
+ * How long one call may take before the app stops waiting. A cold start of
+ * the Edge Function takes seconds; this is far beyond that and its e-mail,
+ * so only a call that will not answer is given up. The server may still
+ * finish it, which is what the message then says.
+ */
+export const TEAM_CALL_TIMEOUT_MS = 90_000
+
 async function call<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('team-account', { body })
+  const { data, error } = await supabase.functions.invoke('team-account', { body, timeout: TEAM_CALL_TIMEOUT_MS })
   if (error) {
+    if ((error as { context?: { name?: string } }).context?.name === 'AbortError') throw new TeamAccountError('no_answer')
     // A non-2xx answer: the function's own body says why.
     const context = (error as { context?: { json?: () => Promise<unknown> } }).context
     const answer = (await context?.json?.().catch(() => null)) as { error?: TeamErrorCode; userId?: string } | null
@@ -74,9 +86,13 @@ export function addOwnEmail(email: string): Promise<unknown> {
 
 export interface TeamAccount { id: string; login: string; has_email: boolean; invite_pending: boolean }
 
-/** The owner's view of how each member signs in (sql/100). An older database has no such function: empty. */
-export async function teamAccounts(): Promise<Map<string, TeamAccount>> {
+/**
+ * The owner's view of how each member signs in (sql/100, 111). An older
+ * database has no such function: empty. Any other failure: null, and the
+ * Team page says so rather than showing everyone as a username account.
+ */
+export async function teamAccounts(): Promise<Map<string, TeamAccount> | null> {
   const { data, error } = await supabase.rpc('team_accounts')
-  if (error) return new Map()
+  if (error) return error.code === 'PGRST202' ? new Map() : null
   return new Map(((data ?? []) as TeamAccount[]).map(r => [r.id, r]))
 }

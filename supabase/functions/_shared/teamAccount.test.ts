@@ -24,6 +24,8 @@ interface Opts {
   owner?: boolean
   env?: Record<string, string>
   team?: { id: string; login: string; has_email: boolean; invite_pending: boolean }[]
+  /** team_accounts fails, as sql/100's did on Supabase (sql/111). */
+  teamError?: { message: string; code?: string }
   linkError?: string
   createError?: string
   mailOk?: boolean
@@ -43,6 +45,7 @@ function setup(o: Opts = {}) {
           : { data: TOKEN, error: null }
       }
       if (fn === 'team_accounts') {
+        if (o.teamError) return { data: null, error: o.teamError }
         return o.owner === false
           ? { data: null, error: { message: 'Only the clinic\'s owner can see this', code: '42501' } }
           : { data: o.team ?? [{ id: NEW, login: 'mari@kliinik.ee', has_email: true, invite_pending: true }], error: null }
@@ -114,6 +117,20 @@ describe('invite: a real e-mail', () => {
     const { deps, calls } = setup({ linkError: 'A user with this email address has already been registered' })
     expect(await handleTeamRequest(AUTH, invite, deps)).toEqual({ status: 409, body: { ok: false, error: 'email_taken' } })
     expect(calls.mails).toEqual([])
+  })
+
+  it('the same address again while its invite waits in this clinic: the e-mail again, once', async () => {
+    const { deps, calls } = setup({ team: [{ id: NEW, login: 'mari@kliinik.ee', has_email: true, invite_pending: true }] })
+    expect(await handleTeamRequest(AUTH, invite, deps)).toEqual({ status: 200, body: { ok: true, userId: NEW } })
+    expect(calls.mails).toHaveLength(1)
+  })
+
+  it('when the database cannot say whether the new account is in the clinic: failed, not "taken", no e-mail, and the log says why', async () => {
+    const { deps, calls, warn } = setup({ teamError: { message: 'structure of query does not match function result type', code: '42804' } })
+    expect(await handleTeamRequest(AUTH, invite, deps)).toEqual({ status: 502, body: { ok: false, error: 'failed' } })
+    expect(calls.mails).toEqual([])
+    expect(warn).toHaveBeenCalledWith('database: 42804 structure of query does not match function result type')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('kliinik.ee')
   })
 
   it('an address whose open invite is another clinic\'s: not mailed', async () => {
@@ -189,7 +206,9 @@ describe('resend', () => {
     expect((await handleTeamRequest(AUTH, { action: 'resend', userId: NEW }, accepted.deps)).body).toEqual({ ok: false, error: 'not_pending' })
     const notOwner = setup({ owner: false })
     expect((await handleTeamRequest(AUTH, { action: 'resend', userId: NEW }, notOwner.deps)).body).toEqual({ ok: false, error: 'not_allowed' })
-    for (const s of [other, accepted, notOwner]) expect(s.calls.mails).toEqual([])
+    const broken = setup({ teamError: { message: 'structure of query does not match function result type', code: '42804' } })
+    expect((await handleTeamRequest(AUTH, { action: 'resend', userId: NEW }, broken.deps)).body).toEqual({ ok: false, error: 'failed' })
+    for (const s of [other, accepted, notOwner, broken]) expect(s.calls.mails).toEqual([])
   })
 })
 

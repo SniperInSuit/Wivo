@@ -630,7 +630,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.stock_qty(p_item uuid)', 'security definer, stable, search_path=public, body md5 92310c59c7505ca89b5636cf74ce2235'),
     ('function', 'public.submit_bug_report(p_message text, p_screen text, p_app_version text, p_recent_errors jsonb, p_with_screenshot boolean)', 'security definer, volatile, search_path=public, body md5 a884c364d0a8ef38311b02be2cb9d2fd'),
     ('function', 'public.take_stock(i stock_item, p_qty integer, p_kind text, p_job uuid, p_reason text, p_reason_code text, p_override boolean)', 'security definer, volatile, search_path=public, body md5 e1806d6a2f0a01d87676b5edfd01ac83'),
-    ('function', 'public.team_accounts()', 'security definer, stable, search_path=public, body md5 bc77c8b6eda834c8712ad8e907a7fbbc'),
+    ('function', 'public.team_accounts()', 'security definer, stable, search_path=public, body md5 0c309906a8853c3bf927e8350a1195cc'),
     ('function', 'public.technician_permissions()', 'security invoker, immutable, search_path=public, body md5 914018a2b2d08397dfb668a8c0df2206'),
     ('function', 'public.touch_clinic_settings()', 'security invoker, volatile, search_path=public, body md5 9b1889f56258bf9d6554213c05019c76'),
     ('function', 'public.unshare_job(p_job uuid, p_partner_org uuid)', 'security definer, volatile, search_path=public, body md5 65fe1cf58c6226e50795d8234be965b3'),

@@ -92,6 +92,8 @@ export function WorkersPage() {
   const [showInvite, setShowInvite] = useState(false)
   // How each member signs in, and whether an invite still waits (sql/100).
   const [accounts, setAccounts] = useState<Map<string, TeamAccount>>(new Map())
+  // team_accounts failed: nobody's sign-in is known, so the page says so.
+  const [accountsFailed, setAccountsFailed] = useState(false)
   const [resend, setResend] = useState<{ id: string; state: 'busy' | 'sent' | string } | null>(null)
   const [presetConfirm, setPresetConfirm] = useState<string | null>(null)
   const [removed, setRemoved] = useState<Profile[]>([])
@@ -131,7 +133,9 @@ export function WorkersPage() {
         ...p,
         permissions: permMap.get(p.id) ?? new Map()
       })))
-      setAccounts(await teamAccounts())
+      const known = await teamAccounts()
+      setAccounts(known ?? new Map())
+      setAccountsFailed(known === null)
 
       // People removed from the clinic. The account itself cannot be deleted
       // from here — that needs the service_role key, which has no business
@@ -339,6 +343,11 @@ export function WorkersPage() {
         <div className="flex gap-5">
           {/* Worker list */}
           <div className="w-64 flex-shrink-0 space-y-2">
+            {accountsFailed && (
+              <p role="status" className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {t('team.accountsUnavailable')}
+              </p>
+            )}
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 size={20} className="text-accent animate-spin" />
@@ -499,9 +508,14 @@ export function WorkersPage() {
                       </button>
                     </div>
                   )}
-                  <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
-                    {t('workers.aUsernameAccountHasNoMailbox')}
-                  </p>
+                  {/* Only when it is known how they sign in: an e-mail account can reset its own. */}
+                  {accounts.get(selected.id) && (
+                    <p className="text-[10px] text-ink-faint mt-1.5 leading-relaxed">
+                      {accounts.get(selected.id)!.has_email
+                        ? t('team.emailAccountPassword', { email: accounts.get(selected.id)!.login })
+                        : t('workers.aUsernameAccountHasNoMailbox')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Two-factor reset: the owner only (the database refuses anyone else). */}
