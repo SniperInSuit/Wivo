@@ -28,6 +28,10 @@ const text = (n: AppNotification, stageLabel: (key: string) => string): string =
   if (n.kind === 'job_shared') return t('notifications.jobShared', { code, from: String(n.detail.from_org ?? '') })
   if (n.kind === 'stage_handover') return t('notifications.handedOver', { code })
   if (n.kind === 'files_added') return t('notifications.filesAdded', { code })
+  // This clinic's Wivo updates (sql/119), for approvers.
+  if (n.kind === 'update_installed') return t('notifications.updateInstalled', { version: String(n.detail.to ?? '') })
+  if (n.kind === 'update_failed') return t('notifications.updateFailed', { version: String(n.detail.to ?? '') })
+  if (n.kind === 'update_stale') return t('notifications.updateStale')
   return t('notifications.question', { code })
 }
 

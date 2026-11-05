@@ -30,6 +30,14 @@ describe('decidePermission (mirrors sql/102)', () => {
     expect(decidePermission('payments.read', { ...worker(), role: 'patient' })).toBe(false)
   })
 
+  it('Install updates (sql/119): the owner and a member granted it; not an admin without it; an expired licence doesn\'t stop a fix', () => {
+    expect(ADMIN_PERMISSIONS).not.toContain('updates.install')
+    expect(decidePermission('updates.install', worker([], { isOrgAdmin: true }))).toBe(false)
+    expect(decidePermission('updates.install', worker(['updates.install']))).toBe(true)
+    expect(decidePermission('updates.install', { ...worker(), role: 'owner', licenceCanWrite: false })).toBe(true)
+    expect(TECHNICIAN_PRESET).not.toContain('updates.install')
+  })
+
   it('an expired licence takes every write and deleting, from everyone; reading stays', () => {
     const owner: Who = { ...worker(), role: 'owner', licenceCanWrite: false }
     for (const p of ['jobs.write', 'jobs.delete', 'payments.write', 'payroll.manage'] as const) expect(decidePermission(p, owner), p).toBe(false)

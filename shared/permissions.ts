@@ -13,6 +13,8 @@ export const PERMISSION_KEYS = [
   'pipeline.write',
   'payroll.manage',
   'stock.read', 'stock.write',
+  // sql/119: approves this clinic's Wivo updates. An admin doesn't get it without a grant.
+  'updates.install',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]

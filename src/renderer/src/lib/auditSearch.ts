@@ -33,7 +33,7 @@ const NO_NAMES: Names = new Map()
 export const AUDIT_ACTIONS = [
   'create', 'edit', 'view', 'download', 'upload', 'file_deleted', 'share', 'unshare', 'stage_move', 'partnership',
   'export', 'question', 'delete', 'restore', 'permission', 'stock_override', 'mfa_added', 'mfa_removed', 'mfa_reset',
-  'account_deleted',
+  'account_deleted', 'update',
 ] as const
 
 export function actionLabel(a: string): string {
@@ -45,6 +45,7 @@ export function actionLabel(a: string): string {
     mfa_added: t('audit.mfaAdded'), mfa_removed: t('audit.mfaRemoved'), mfa_reset: t('audit.mfaReset'),
     account_deleted: t('audit.accountDeleted'),
     create: t('audit.create'), edit: t('audit.edit'), permission: t('audit.permission'), file_deleted: t('audit.fileDeleted'),
+    update: t('audit.update'),
   } as Record<string, string>)[a] ?? a
 }
 
@@ -125,6 +126,7 @@ const PERMISSION_LABELS: Record<string, MessageKey> = {
   'payments.write': 'usePermissions.managePayments', 'settings.read': 'usePermissions.viewSettings',
   'pipeline.write': 'usePermissions.editStages', 'payroll.manage': 'usePermissions.managePayroll',
   'stock.read': 'usePermissions.viewStock', 'stock.write': 'usePermissions.manageStock',
+  'updates.install': 'usePermissions.installUpdates',
 }
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -207,6 +209,24 @@ function permissionText(d: Record<string, unknown>): string {
   ].filter(Boolean).join(' · ')
 }
 
+/** An update of this clinic's Wivo (sql/119): an install, the list's freshness, or a key. */
+function updateText(d: Record<string, unknown>): string {
+  const how = ({ manual: t('audit.updateByHand'), automatic: t('audit.updateAutomatic'), setup: t('audit.updateAtSetup') } as Record<string, string>)[String(d.mode ?? '')] ?? ''
+  const reason = String(d.reason ?? '')
+  switch (d.kind) {
+    case 'installed': return [`${d.from ?? '—'} → ${d.to ?? ''}`, how].filter(Boolean).join(' · ')
+    case 'failed': return t('audit.updateFailed', { reason })
+    case 'refused': return t('audit.updateRefused', { reason })
+    case 'stale': return d.expired
+      ? t('audit.updateStale', { date: format(new Date(String(d.expired)), 'd MMM yyyy HH:mm', { locale: dateLocale }) })
+      : t('audit.updateStaleNever')
+    case 'fresh': return t('audit.updateFresh')
+    case 'key_accepted': return t('audit.updateKeyAccepted', { key: String(d.key_id ?? '') })
+    case 'key_revoked': return t('audit.updateKeyRevoked', { key: String(d.key_id ?? '') })
+    default: return ''
+  }
+}
+
 /** The detail column. */
 export function describeEntry(e: AuditEntry, names: Names = NO_NAMES): string {
   const d = e.detail ?? {}
@@ -228,6 +248,7 @@ export function describeEntry(e: AuditEntry, names: Names = NO_NAMES): string {
   if (e.action === 'edit') return editText(d, namesFor(e, names))
   if (e.action === 'permission') return permissionText(d)
   if (e.action === 'file_deleted') return t('audit.fileDeletedDetail', { type: label(FILE_TYPE_LABELS, String(d.type ?? '')), version: Number(d.version ?? 0) })
+  if (e.action === 'update') return updateText(d)
   return ''
 }
 
@@ -246,6 +267,9 @@ export function entryWhat(e: AuditEntry, names: Names = NO_NAMES): string {
   const patient = entryPatient(e)
   if (patient) return patientShort(patient)
   if (e.object.startsWith('user:')) return namesFor(e, names).get(e.object.slice(5)) ?? t('audit.formerMember')
+  if (e.object === 'update:list') return t('audit.updateListObject')
+  if (e.object === 'update:key') return t('audit.updateKeyObject')
+  if (e.object.startsWith('update:')) return t('audit.updateObject', { version: e.object.slice(7) })
   return e.object
 }
 

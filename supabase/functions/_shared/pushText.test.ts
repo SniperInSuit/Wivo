@@ -29,10 +29,13 @@ describe('the words on a push', () => {
   it('a security notice and an unknown kind have their own words', () => {
     expect(pushText(['mfa_reset'], 1, 'en')).toEqual({ title: 'Your sign-in was changed', body: 'Open Wivo to see what changed' })
     expect(pushText(['something_new'], 1, 'et')).toEqual({ title: 'Uus teavitus', body: 'Ava Wivo, et seda näha' })
+    // sql/119: about updates, never which version or what failed.
+    expect(pushText(['update_stale'], 1, 'en')).toEqual({ title: 'A notice about updates', body: 'Open Wivo to see it' })
   })
 
   it('never the app\'s name in a title, never more than a short line', () => {
-    const kinds = ['assigned', 'stage_reached', 'stage_handover', 'job_shared', 'question', 'files_added', 'mfa_removed', 'mfa_reset', 'x']
+    const kinds = ['assigned', 'stage_reached', 'stage_handover', 'job_shared', 'question', 'files_added', 'mfa_removed', 'mfa_reset',
+      'update_installed', 'update_failed', 'update_stale', 'x']
     for (const lang of ['en', 'et', 'ru'] as const) {
       for (const k of kinds) {
         const { title, body } = pushText([k], 1, lang)

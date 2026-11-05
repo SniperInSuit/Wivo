@@ -42,11 +42,12 @@ export interface SenderResult {
 
 type Lang = 'en' | 'et' | 'ru'
 type Kind = 'job_shared' | 'stage_handover' | 'question' | 'files_added' | 'stage_reached' | 'assigned' | 'mfa_removed' | 'mfa_reset'
+  | 'update_installed' | 'update_failed' | 'update_stale'
 
 const SUBJECT: Record<Lang, Record<Kind, string>> = {
-  en: { job_shared: 'Job {code} was shared with you', stage_handover: 'Job {code} was handed over to you', question: 'New question on job {code}', files_added: 'New files on job {code}', stage_reached: 'Job {code} moved to a new stage', assigned: 'You were put on job {code}', mfa_removed: 'An authenticator was removed from your Wivo account', mfa_reset: 'Your Wivo two-factor sign-in was reset' },
-  et: { job_shared: 'Töö {code} jagati teiega', stage_handover: 'Töö {code} anti teile üle', question: 'Uus küsimus tööl {code}', files_added: 'Tööle {code} lisati faile', stage_reached: 'Töö {code} liikus uude etappi', assigned: 'Sind määrati tööle {code}', mfa_removed: 'Sinu Wivo kontolt eemaldati autentimisrakendus', mfa_reset: 'Sinu Wivo kaheastmeline sisselogimine lähtestati' },
-  ru: { job_shared: 'Работа {code} передана вам', stage_handover: 'Этап работы {code} передан вам', question: 'Новый вопрос по работе {code}', files_added: 'Новые файлы в работе {code}', stage_reached: 'Работа {code} перешла на новый этап', assigned: 'Вас назначили на работу {code}', mfa_removed: 'Из вашей учётной записи Wivo удалён аутентификатор', mfa_reset: 'Двухфакторный вход в Wivo для вас сброшен' },
+  en: { job_shared: 'Job {code} was shared with you', stage_handover: 'Job {code} was handed over to you', question: 'New question on job {code}', files_added: 'New files on job {code}', stage_reached: 'Job {code} moved to a new stage', assigned: 'You were put on job {code}', mfa_removed: 'An authenticator was removed from your Wivo account', mfa_reset: 'Your Wivo two-factor sign-in was reset', update_installed: 'Wivo was updated', update_failed: 'A Wivo update failed; nothing was changed', update_stale: 'Wivo can\'t confirm that your clinic has the latest updates' },
+  et: { job_shared: 'Töö {code} jagati teiega', stage_handover: 'Töö {code} anti teile üle', question: 'Uus küsimus tööl {code}', files_added: 'Tööle {code} lisati faile', stage_reached: 'Töö {code} liikus uude etappi', assigned: 'Sind määrati tööle {code}', mfa_removed: 'Sinu Wivo kontolt eemaldati autentimisrakendus', mfa_reset: 'Sinu Wivo kaheastmeline sisselogimine lähtestati', update_installed: 'Wivo uuendati', update_failed: 'Wivo uuendus ebaõnnestus, midagi ei muutunud', update_stale: 'Wivo ei saa kinnitada, et sinu kliinikul on viimased uuendused' },
+  ru: { job_shared: 'Работа {code} передана вам', stage_handover: 'Этап работы {code} передан вам', question: 'Новый вопрос по работе {code}', files_added: 'Новые файлы в работе {code}', stage_reached: 'Работа {code} перешла на новый этап', assigned: 'Вас назначили на работу {code}', mfa_removed: 'Из вашей учётной записи Wivo удалён аутентификатор', mfa_reset: 'Двухфакторный вход в Wivo для вас сброшен', update_installed: 'Wivo обновлён', update_failed: 'Обновление Wivo не удалось, ничего не изменено', update_stale: 'Wivo не может подтвердить, что у вашей клиники последние обновления' },
 }
 const OPEN: Record<Lang, string> = { en: 'Open in Wivo', et: 'Ava Wivos', ru: 'Открыть в Wivo' }
 
@@ -80,7 +81,7 @@ async function sendEmails(deps: SenderDeps, dry: boolean, key: string | undefine
     // A kind this build does not know yet is still worth an e-mail: never let it
     // stop the loop (and with it every other e-mail).
     const subject = (SUBJECT[lang][n.kind] ?? SUBJECT[lang].files_added).replace('{code}', code)
-    const url = n.job_id ? link.replace('{id}', n.job_id) : appPage(link, n.kind.startsWith('mfa_') ? '/settings' : '/')
+    const url = n.job_id ? link.replace('{id}', n.job_id) : appPage(link, n.kind.startsWith('mfa_') || n.kind.startsWith('update_') ? '/settings' : '/')
     const text = url ? `${subject}\n\n${OPEN[lang]}: ${url}\n` : `${subject}\n`
     if (dry || !mayMail(n.email, deps.env('EMAIL_ALLOW_ONLY'))) { sent.push(n.id); continue }
     const res = await deps.fetch('https://api.resend.com/emails', {

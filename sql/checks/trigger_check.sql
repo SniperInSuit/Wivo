@@ -18,7 +18,7 @@
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: trigger.
--- Expected rows: 36.
+-- Expected rows: 47.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -54,6 +54,17 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.profiles.guard_profile_change', 'CREATE TRIGGER guard_profile_change BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_change()'),
     ('trigger', 'public.stock_item.guard_partner_visible_stock_text', 'CREATE TRIGGER guard_partner_visible_stock_text BEFORE INSERT OR UPDATE ON public.stock_item FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_stock_text()'),
     ('trigger', 'public.stock_movement.stock_movement_append_only', 'CREATE TRIGGER stock_movement_append_only BEFORE DELETE OR UPDATE ON public.stock_movement FOR EACH ROW EXECUTE FUNCTION stock_movement_append_only()'),
+    ('trigger', 'public.wivo_instance.wivo_instance_guard', 'CREATE TRIGGER wivo_instance_guard BEFORE DELETE OR UPDATE ON public.wivo_instance FOR EACH ROW EXECUTE FUNCTION wivo_instance_guard()'),
+    ('trigger', 'public.wivo_instance.wivo_instance_no_truncate', 'CREATE TRIGGER wivo_instance_no_truncate BEFORE TRUNCATE ON public.wivo_instance FOR EACH STATEMENT EXECUTE FUNCTION wivo_no_truncate()'),
+    ('trigger', 'public.wivo_schema_migration.wivo_schema_migration_append_only', 'CREATE TRIGGER wivo_schema_migration_append_only BEFORE DELETE OR UPDATE ON public.wivo_schema_migration FOR EACH ROW EXECUTE FUNCTION wivo_append_only()'),
+    ('trigger', 'public.wivo_schema_migration.wivo_schema_migration_no_truncate', 'CREATE TRIGGER wivo_schema_migration_no_truncate BEFORE TRUNCATE ON public.wivo_schema_migration FOR EACH STATEMENT EXECUTE FUNCTION wivo_no_truncate()'),
+    ('trigger', 'public.wivo_trust.wivo_trust_append_only', 'CREATE TRIGGER wivo_trust_append_only BEFORE DELETE OR UPDATE ON public.wivo_trust FOR EACH ROW EXECUTE FUNCTION wivo_append_only()'),
+    ('trigger', 'public.wivo_trust.wivo_trust_no_truncate', 'CREATE TRIGGER wivo_trust_no_truncate BEFORE TRUNCATE ON public.wivo_trust FOR EACH STATEMENT EXECUTE FUNCTION wivo_no_truncate()'),
+    ('trigger', 'public.wivo_update_check.wivo_update_check_append_only', 'CREATE TRIGGER wivo_update_check_append_only BEFORE DELETE OR UPDATE ON public.wivo_update_check FOR EACH ROW EXECUTE FUNCTION wivo_append_only()'),
+    ('trigger', 'public.wivo_update_check.wivo_update_check_no_truncate', 'CREATE TRIGGER wivo_update_check_no_truncate BEFORE TRUNCATE ON public.wivo_update_check FOR EACH STATEMENT EXECUTE FUNCTION wivo_no_truncate()'),
+    ('trigger', 'public.wivo_update_check.wivo_update_check_order', 'CREATE TRIGGER wivo_update_check_order BEFORE INSERT ON public.wivo_update_check FOR EACH ROW EXECUTE FUNCTION wivo_update_check_order()'),
+    ('trigger', 'public.wivo_update_install.wivo_update_install_append_only', 'CREATE TRIGGER wivo_update_install_append_only BEFORE DELETE OR UPDATE ON public.wivo_update_install FOR EACH ROW EXECUTE FUNCTION wivo_append_only()'),
+    ('trigger', 'public.wivo_update_install.wivo_update_install_no_truncate', 'CREATE TRIGGER wivo_update_install_no_truncate BEFORE TRUNCATE ON public.wivo_update_install FOR EACH STATEMENT EXECUTE FUNCTION wivo_no_truncate()'),
     ('trigger', 'public.worker_permissions.audit_permissions_deleted', 'CREATE TRIGGER audit_permissions_deleted AFTER DELETE ON public.worker_permissions REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_deleted()'),
     ('trigger', 'public.worker_permissions.audit_permissions_inserted', 'CREATE TRIGGER audit_permissions_inserted AFTER INSERT ON public.worker_permissions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_inserted()'),
     ('trigger', 'public.worker_permissions.audit_permissions_updated', 'CREATE TRIGGER audit_permissions_updated AFTER UPDATE ON public.worker_permissions REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION audit_permissions_updated()'),

@@ -158,8 +158,23 @@ describe('permissions and a deleted file (sql/114)', () => {
     expect(describeEntry(e)).toBe(t('audit.fileDeletedDetail', { type: t('files.typeDesign'), version: 2 }))
   })
 
+  it('an update of the clinic\'s Wivo (sql/119): which version, how, and the list\'s freshness', () => {
+    const installed = entry({ action: 'update', object: 'update:2.4.0', job_code: null,
+      detail: { kind: 'installed', from: '2.3.0', to: '2.4.0', mode: 'manual', sha256: 'a'.repeat(64) } })
+    expect(entryWhat(installed)).toBe(t('audit.updateObject', { version: '2.4.0' }))
+    expect(describeEntry(installed)).toBe(`2.3.0 → 2.4.0 · ${t('audit.updateByHand')}`)
+    expect(describeEntry(entry({ action: 'update', object: 'update:2.5.0', detail: { kind: 'refused', reason: 'bad_signature' } })))
+      .toBe(t('audit.updateRefused', { reason: 'bad_signature' }))
+    const stale = entry({ action: 'update', object: 'update:list', job_code: null, detail: { kind: 'stale', expired: null } })
+    expect(entryWhat(stale)).toBe(t('audit.updateListObject'))
+    expect(describeEntry(stale)).toBe(t('audit.updateStaleNever'))
+    expect(describeEntry(entry({ action: 'update', object: 'update:key', job_code: null, detail: { kind: 'key_accepted', key_id: 'signing-2' } })))
+      .toBe(t('audit.updateKeyAccepted', { key: 'signing-2' }))
+    expect(actionLabel('update')).toBe(t('audit.update'))
+  })
+
   it('every new kind is in the filter, and the CSV never shows a raw id', () => {
-    for (const a of ['create', 'edit', 'permission', 'file_deleted']) expect(AUDIT_ACTIONS).toContain(a)
+    for (const a of ['create', 'edit', 'permission', 'file_deleted', 'update']) expect(AUDIT_ACTIONS).toContain(a)
     const csv = toCsv([entry({ action: 'permission', object: `user:${WORKER}`, job_code: null, detail: { granted: ['jobs.read'] } }),
                        entry({ action: 'create', object: `patient:${WORKER}`, job_code: null, detail: {} })], auditCsvColumns())
     expect(csv).not.toContain(WORKER)

@@ -59,13 +59,15 @@ describe('Security Advisor lints', () => {
 
   it('rls_enabled_no_policy (INFO): only the platform tables are locked shut on purpose', async () => {
     // Spec, "Platform (admin console only)": the clinics' app must not see
-    // these at all; only Edge Functions with the service key do.
+    // these at all; only Edge Functions with the service key do. sql/119's
+    // update tables: only `wivo-update`, over the database's own connection;
+    // approvers read them through update_status().
     expect(await names(`
       select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
        where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
          -- Since sql/098 every table has the restrictive "mfa_required"; locked
          -- shut means no policy that could let anyone in.
          and not exists (select 1 from pg_policy p where p.polrelid = c.oid and p.polpermissive)
-       order by 1`)).toEqual(['bug_report'])
+       order by 1`)).toEqual(['bug_report', 'wivo_instance', 'wivo_schema_migration', 'wivo_trust', 'wivo_update_check', 'wivo_update_install'])
   })
 })

@@ -271,6 +271,13 @@ function sample(type: string): unknown {
 /** Values a column's CHECK wants in a shape the generic sample cannot guess (a pattern, not a list). */
 const SAMPLE_OVERRIDE: Record<string, unknown> = {
   'app_min_version.min_version': '1.0.0',
+  // sql/119: values its format checks accept; a refused check needs no key or serial.
+  'wivo_schema_migration.file': 'migrations/999_sample.sql',
+  'wivo_schema_migration.sha256': 'a'.repeat(64),
+  'wivo_schema_migration.package_version': '1.0.0',
+  'wivo_schema_migration.package_sha256': 'b'.repeat(64),
+  'wivo_update_check.result': 'refused',
+  'wivo_update_install.to_version': '1.0.0',
 }
 
 /**

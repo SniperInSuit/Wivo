@@ -5,6 +5,7 @@ import { AddMemberDialog } from './AddMemberDialog'
 import { teamAccounts, accountBadges, signInLine, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
 import { MIN_PASSWORD } from '../../lib/authConfirm'
 import { TECHNICIAN_PRESET } from '@shared/permissions'
+import { useUpdateStatus } from '../../hooks/useUpdateStatus'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
 import { ResetMfaPanel } from './ResetMfaPanel'
@@ -109,6 +110,10 @@ function RemoveWorkerButton({ name, busy, onRemove }: {
 export function WorkersPage() {
   const { clinicId, role } = useAuth()
   const isOwner = role === 'owner'
+  // Install updates only in a clinic's own project (sql/119): the owner is
+  // always an approver there, so update_status() answers only then.
+  const isInstance = useUpdateStatus() !== null
+  const shownPermissions = ALL_PERMISSIONS.filter(p => p !== 'updates.install' || isInstance)
   const [workers, setWorkers] = useState<WorkerWithPerms[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -321,7 +326,7 @@ export function WorkersPage() {
     setSaving(true)
     setPresetConfirm(null)
     try {
-      const rows = ALL_PERMISSIONS.map(perm => ({
+      const rows = shownPermissions.map(perm => ({
         profile_id: profileId, clinic_id: clinicId, permission: perm, granted: TECHNICIAN_PRESET.includes(perm),
       }))
       const { error } = await supabase.from('worker_permissions').upsert(rows, { onConflict: 'profile_id,permission' })
@@ -475,7 +480,7 @@ export function WorkersPage() {
                 </div>
 
                 <div className="space-y-1">
-                  {ALL_PERMISSIONS.map(perm => {
+                  {shownPermissions.map(perm => {
                     const info = PERMISSION_LABELS[perm]
                     const granted = selected.permissions.get(perm) ?? false
                     return (

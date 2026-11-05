@@ -76,7 +76,8 @@ describe('on a complete database (production, a fresh one) it changes nothing', 
     const { rows } = await d.query<{ n: number }>(`select count(*)::int as n from pg_constraint c
       join pg_namespace n on n.oid = (select relnamespace from pg_class where oid = c.conrelid)
       where c.contype = 'f' and n.nspname = 'public'`)
-    expect(rows[0].n).toBe(117)
+    // Today's keys and the one 107 put back; later migrations add their own (sql/119: wivo_instance's clinic).
+    expect(rows[0].n).toBe(before.length + 1)
   }, 120_000)
 })
 

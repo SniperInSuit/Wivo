@@ -8,7 +8,7 @@ import { Settings, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { usePermissions } from '../hooks/usePermissions'
 import { NotificationBell } from '../components/NotificationBell'
-import { isSecurityNotice } from '../hooks/useNotifications'
+import { isSecurityNotice, isUpdateNotice } from '../hooks/useNotifications'
 import { parseRoute, routePath, type Route } from './route'
 import { MobileHome } from './MobileHome'
 import { MobileJob } from './MobileJob'
@@ -56,7 +56,7 @@ export function MobileApp() {
           </button>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell onOpen={n => { if (n.job_id) go({ name: 'job', id: n.job_id }); else if (isSecurityNotice(n)) go({ name: 'settings' }) }} />
+          <NotificationBell onOpen={n => { if (n.job_id) go({ name: 'job', id: n.job_id }); else if (isSecurityNotice(n) || isUpdateNotice(n)) go({ name: 'settings' }) }} />
           {route.name !== 'settings' && (
             <button type="button" onClick={() => go({ name: 'settings' })} aria-label={t('mobile.settings')}
               className="rounded-lg p-2 text-ink-soft">

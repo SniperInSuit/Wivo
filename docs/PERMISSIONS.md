@@ -25,6 +25,7 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 | `visits.write` | booking requests: reading, adding, changing, deleting; Requests in the menu | **yes, since 116**; owners and admins always |
 | `stats.read` | Statistics in the menu | app only |
 | `settings.read`, `pipeline.write` | (barely used) | – |
+| `updates.install` **(new, 119)** | approves this clinic's Wivo updates, each time with a fresh authenticator code; the update status, and the warning when the list of updates can't be refreshed (docs/ARCHITECTURE-INSTANCES.md 5b, 5g). Shown in Team only in a clinic's own project | **yes, since 119**; owners always; **admins only with this permission**; not taken away by an expired licence, so a security fix still installs |
 
 Own jobs and own pay need no permission: the database returns a person's own jobs and their own rates, hours and payouts.
 

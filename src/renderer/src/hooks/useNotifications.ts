@@ -14,6 +14,7 @@ export interface AppNotification {
   job_id: string | null
   job_code: string | null
   kind: 'job_shared' | 'stage_handover' | 'question' | 'files_added' | 'stage_reached' | 'assigned' | 'mfa_removed' | 'mfa_reset'
+    | 'update_installed' | 'update_failed' | 'update_stale'
   detail: Record<string, unknown>
   created_at: string
   read_at: string | null
@@ -22,6 +23,11 @@ export interface AppNotification {
 /** About the person's own sign-in (sql/097), not about a job. */
 export function isSecurityNotice(n: Pick<AppNotification, 'kind'>): boolean {
   return n.kind === 'mfa_removed' || n.kind === 'mfa_reset'
+}
+
+/** About this clinic's Wivo updates (sql/119), for approvers. Opens Settings. */
+export function isUpdateNotice(n: Pick<AppNotification, 'kind'>): boolean {
+  return n.kind.startsWith('update_')
 }
 
 export function useNotifications() {
