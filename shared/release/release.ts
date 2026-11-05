@@ -76,10 +76,17 @@ export interface ManifestFile {
   size: number
 }
 
+/**
+ * Which clinics a package or list is for. A `test` package (the two test
+ * projects, §8) never installs on a clinic that follows `stable`.
+ */
+export type Channel = 'stable' | 'test'
+
 /** An update package: what it contains, and from which version it updates. */
 export interface Manifest {
   v: 1
   key_id: string
+  channel: Channel
   version: string
   /** The oldest version this package updates from. */
   from_min: string
@@ -91,13 +98,28 @@ export interface Manifest {
   files: ManifestFile[]
 }
 
-/** The published list of packages, and what was withdrawn. */
+/**
+ * The published list of packages, what was withdrawn, and the latest desktop
+ * release, with the defences TUF names (docs/ARCHITECTURE-INSTANCES.md §5g):
+ *   - `expires`: a list past its expiry is refused, so an attacker who keeps
+ *     serving an old, validly signed list (a freeze attack) is noticed, and
+ *     the owner is warned; it is re-signed weekly and at every release.
+ *   - `serial`: grows with every list; a lower one is refused (rollback).
+ *   - `revocations`: every revocation so far, so withholding a newer one
+ *     doesn't work; a clinic also keeps every revocation it has seen.
+ */
 export interface Index {
   v: 1
   key_id: string
+  channel: Channel
+  serial: number
   generated_at: string
+  expires: string
   versions: { version: string; package: string; sha256: string; manual_only: boolean; auto_after: string }[]
   withdrawn: { version: string; reason: string }[]
+  revocations: string[]
+  /** The latest desktop release for this channel, so app updates share the list's freshness. */
+  app?: { version: string; file: string; sha512: string; size: number }
 }
 
 /** A desktop release: the installer the app may install (5e). */
@@ -196,6 +218,7 @@ export async function encode<K extends Kind>(kind: K, payload: Payloads[K], sign
 export type Refusal =
   | 'malformed' | 'wrong_kind' | 'bad_signature' | 'unknown_key' | 'unknown_root'
   | 'not_yet_valid' | 'expired' | 'wrong_purpose' | 'revoked' | 'bad_path' | 'bad_version'
+  | 'wrong_channel' | 'rollback' | 'serial_reuse'
 
 export type Checked<T> = { ok: true; payload: T; signedSha256: string } | { ok: false; reason: Refusal }
 
@@ -296,6 +319,7 @@ export async function checkSigned<K extends 'manifest' | 'index' | 'app'>(
   if (isRevoked(trust, keyId, signedSha256)) return { ok: false, reason: 'revoked' }
   if (kind === 'manifest') {
     const m = s.payload as Manifest
+    if (m.channel !== 'stable' && m.channel !== 'test') return { ok: false, reason: 'malformed' }
     if (!isVersion(m.version) || !isVersion(m.from_min)) return { ok: false, reason: 'bad_version' }
     if (!Array.isArray(m.files) || !m.files.every(f => isPackagePath(f.path) && /^[0-9a-f]{64}$/.test(f.sha256))) {
       return { ok: false, reason: 'bad_path' }
@@ -366,7 +390,9 @@ function base64Decode(s: string): Uint8Array | null {
  * key (and not revoked), then every file exactly as listed (size and sha256),
  * none missing and none extra. Only then are the files handed out.
  */
-export async function checkPackage(pkg: unknown, trust: Trust, now: Date, totalBytes?: number): Promise<CheckedPackage> {
+export async function checkPackage(
+  pkg: unknown, trust: Trust, now: Date, channel: Channel, totalBytes?: number,
+): Promise<CheckedPackage> {
   if (totalBytes !== undefined && totalBytes > MAX_PACKAGE_BYTES) return { ok: false, reason: 'too_large' }
   const p = pkg as Partial<UpdatePackage> | null
   if (!p || typeof p.manifest !== 'string' || !Array.isArray(p.certificates) || !p.files || typeof p.files !== 'object') {
@@ -374,6 +400,7 @@ export async function checkPackage(pkg: unknown, trust: Trust, now: Date, totalB
   }
   const m = await checkSigned('manifest', p.manifest, p.certificates.filter((c): c is string => typeof c === 'string'), trust, now)
   if (!m.ok) return m
+  if (m.payload.channel !== channel) return { ok: false, reason: 'wrong_channel' }
   const listed = new Set(m.payload.files.map(f => f.path))
   if (Object.keys(p.files).some(path => !listed.has(path))) return { ok: false, reason: 'file_unlisted' }
   const files = new Map<string, Uint8Array>()
@@ -385,4 +412,58 @@ export async function checkPackage(pkg: unknown, trust: Trust, now: Date, totalB
     files.set(f.path, bytes)
   }
   return { ok: true, manifest: m.payload, signedSha256: m.signedSha256, files }
+}
+
+// ─── The version list: freshness, rollback and channel ────────────────────────
+
+/** The most a version list may weigh. It is fetched often; anything bigger is refused unread. */
+export const MAX_INDEX_BYTES = 1024 * 1024
+
+/**
+ * What a clinic remembers about the lists it has accepted, per signing key:
+ * the highest serial and the hash of that list. A key's floor stops counting
+ * once the key is revoked, so a key that leaked can't push the floor out of
+ * reach of the next, honest key (TUF's fast-forward attack).
+ */
+export type SerialFloor = Record<string, { serial: number; sha256: string }>
+
+export type CheckedIndex =
+  | { ok: true; index: Index; signedSha256: string }
+  | { ok: false; reason: Refusal | 'too_large' }
+
+/**
+ * The version list, as a clinic must check it before trusting anything in
+ * it: signed by a certified update key, for this clinic's channel, not past
+ * its expiry (a frozen list is refused), and not older than one already seen
+ * (a rolled-back list is refused). `now` is the database's clock in
+ * `wivo-update`, not a desktop's.
+ */
+export async function checkIndex(
+  token: string, certificates: string[], trust: Trust, now: Date, channel: Channel, floor: SerialFloor,
+): Promise<CheckedIndex> {
+  if (token.length > MAX_INDEX_BYTES * 2) return { ok: false, reason: 'too_large' }
+  const r = await checkSigned('index', token, certificates, trust, now)
+  if (!r.ok) return r
+  const i = r.payload
+  if (i.channel !== channel) return { ok: false, reason: 'wrong_channel' }
+  if (!Number.isSafeInteger(i.serial) || i.serial < 1 || !Array.isArray(i.versions) || !Array.isArray(i.withdrawn)
+      || !Array.isArray(i.revocations) || Number.isNaN(Date.parse(i.expires))) {
+    return { ok: false, reason: 'malformed' }
+  }
+  if (!(now.getTime() < Date.parse(i.expires))) return { ok: false, reason: 'expired' }
+  const seen = floor[i.key_id]
+  if (seen && !trust.revocations.some(x => x.key_id === i.key_id)) {
+    if (i.serial < seen.serial) return { ok: false, reason: 'rollback' }
+    if (i.serial === seen.serial && r.signedSha256 !== seen.sha256) return { ok: false, reason: 'serial_reuse' }
+  }
+  return { ok: true, index: i, signedSha256: r.signedSha256 }
+}
+
+/**
+ * Whether to warn the owner: no list accepted at all, or the freshest one
+ * accepted has expired. Then nothing new can be confirmed, which is what a
+ * freeze attack, or a long outage, looks like from inside the clinic.
+ */
+export function isStale(freshestExpires: string | null, now: Date): boolean {
+  return freshestExpires === null || !(now.getTime() < Date.parse(freshestExpires))
 }

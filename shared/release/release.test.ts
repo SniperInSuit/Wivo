@@ -5,9 +5,9 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
-  encode, trustFrom, checkCertificate, checkSigned, checkPackage, compareVersions, isPackagePath, canonicalJson,
+  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, isStale, compareVersions, isPackagePath, canonicalJson,
   b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX, MAX_PACKAGE_BYTES,
-  type Certificate, type Manifest, type RootKey, type Signer, type Revocation,
+  type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
 
 interface TestKey { id: string; publicKey: string; sign: Signer }
@@ -33,7 +33,7 @@ const cert = (k: TestKey, root: TestKey, over: Partial<Certificate> = {}) => enc
 }, root.sign)
 
 const manifest = (over: Partial<Manifest> = {}): Manifest => ({
-  v: 1, key_id: 'signing-1', version: '2.3.0', from_min: '2.2.0', created_at: '2026-11-05T10:00:00Z',
+  v: 1, key_id: 'signing-1', channel: 'stable', version: '2.3.0', from_min: '2.2.0', created_at: '2026-11-05T10:00:00Z',
   manual_only: false, auto_after: '2026-11-08T10:00:00Z',
   files: [{ path: 'migrations/119_ledger.sql', sha256: 'a'.repeat(64), size: 10 }], ...over,
 })
@@ -200,31 +200,81 @@ describe('an update package', () => {
   }
 
   it('passes when every file is exactly as listed, and hands out the files', async () => {
-    const r = await checkPackage(await pkg(), await trustFrom(pinned, []), NOW)
+    const r = await checkPackage(await pkg(), await trustFrom(pinned, []), NOW, 'stable')
     expect(r.ok).toBe(true)
     expect(r.ok && new TextDecoder().decode(r.files.get('migrations/119_x.sql'))).toBe(SQL)
   })
 
   it('a changed file, a missing one, or an extra one: refused', async () => {
     const trust = await trustFrom(pinned, [])
-    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL + ' drop table jobs;') } }), trust, NOW))
+    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL + ' drop table jobs;') } }), trust, NOW, 'stable'))
       .toEqual({ ok: false, reason: 'file_mismatch' })
-    expect(await checkPackage(await pkg({ files: {} }), trust, NOW)).toEqual({ ok: false, reason: 'file_missing' })
-    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL), 'migrations/120_extra.sql': b64('x') } }), trust, NOW))
+    expect(await checkPackage(await pkg({ files: {} }), trust, NOW, 'stable')).toEqual({ ok: false, reason: 'file_missing' })
+    expect(await checkPackage(await pkg({ files: { 'migrations/119_x.sql': b64(SQL), 'migrations/120_extra.sql': b64('x') } }), trust, NOW, 'stable'))
       .toEqual({ ok: false, reason: 'file_unlisted' })
+    // A test package never installs on a clinic that follows stable.
+    expect(await checkPackage(await pkg(), trust, NOW, 'test')).toEqual({ ok: false, reason: 'wrong_channel' })
   })
 
   it('a package that is not even shaped like one, or too large: refused before anything else', async () => {
     const trust = await trustFrom(pinned, [])
     for (const bad of [null, {}, { manifest: 1, certificates: [], files: {} }, 'x']) {
-      expect((await checkPackage(bad, trust, NOW)).ok).toBe(false)
+      expect((await checkPackage(bad, trust, NOW, 'stable')).ok).toBe(false)
     }
-    expect(await checkPackage(await pkg(), trust, NOW, MAX_PACKAGE_BYTES + 1)).toEqual({ ok: false, reason: 'too_large' })
+    expect(await checkPackage(await pkg(), trust, NOW, 'stable', MAX_PACKAGE_BYTES + 1)).toEqual({ ok: false, reason: 'too_large' })
   })
 
   it('an unsigned or wrongly signed manifest: refused, whatever the files say', async () => {
     const good = await pkg()
     const forged = await encode('manifest', manifest({ key_id: 'stranger' }), stranger.sign)
-    expect((await checkPackage({ ...good, manifest: forged }, await trustFrom(pinned, []), NOW)).ok).toBe(false)
+    expect((await checkPackage({ ...good, manifest: forged }, await trustFrom(pinned, []), NOW, 'stable')).ok).toBe(false)
+  })
+})
+
+describe('the version list (TUF: freeze, rollback, fast-forward, channel)', () => {
+  const list = (over: Partial<Index> = {}): Index => ({
+    v: 1, key_id: 'signing-1', channel: 'stable', serial: 7, generated_at: '2026-11-05T10:00:00Z',
+    expires: '2026-11-19T10:00:00Z', versions: [], withdrawn: [], revocations: [], ...over,
+  })
+
+  it('a fresh list for this channel passes', async () => {
+    const token = await encode('index', list(), signing.sign)
+    expect(await checkIndex(token, [signingCert], await trustFrom(pinned, []), NOW, 'stable', {})).toMatchObject({ ok: true, index: { serial: 7 } })
+  })
+
+  it('freeze: a validly signed list past its expiry is refused, and the owner is warned', async () => {
+    const old = await encode('index', list({ expires: '2026-11-01T00:00:00Z' }), signing.sign)
+    expect(await checkIndex(old, [signingCert], await trustFrom(pinned, []), NOW, 'stable', {})).toEqual({ ok: false, reason: 'expired' })
+    expect(isStale('2026-11-01T00:00:00Z', NOW)).toBe(true)
+    expect(isStale(null, NOW)).toBe(true)
+    expect(isStale('2026-11-19T10:00:00Z', NOW)).toBe(false)
+  })
+
+  it('rollback: a lower serial than one already accepted is refused; the same serial with other content too', async () => {
+    const trust = await trustFrom(pinned, [])
+    const seen = await encode('index', list({ serial: 9 }), signing.sign)
+    const r = await checkIndex(seen, [signingCert], trust, NOW, 'stable', {})
+    const floor = { 'signing-1': { serial: 9, sha256: r.ok ? r.signedSha256 : '' } }
+    const older = await encode('index', list({ serial: 8 }), signing.sign)
+    expect(await checkIndex(older, [signingCert], trust, NOW, 'stable', floor)).toEqual({ ok: false, reason: 'rollback' })
+    const sameSerial = await encode('index', list({ serial: 9, withdrawn: [{ version: '2.3.0', reason: 'x' }] }), signing.sign)
+    expect(await checkIndex(sameSerial, [signingCert], trust, NOW, 'stable', floor)).toEqual({ ok: false, reason: 'serial_reuse' })
+    expect(await checkIndex(seen, [signingCert], trust, NOW, 'stable', floor)).toMatchObject({ ok: true })
+  })
+
+  it('fast-forward: once a key is revoked, its high serial no longer blocks the next honest key', async () => {
+    const next = await testKey('signing-2')
+    const nextCert = await cert(next, rootA)
+    const trust = await trustFrom(pinned, [await revoke(rootB, { key_id: 'signing-1' })])
+    const floor = { 'signing-1': { serial: 2 ** 40, sha256: 'x' } }
+    const honest = await encode('index', list({ key_id: 'signing-2', serial: 1 }), next.sign)
+    expect(await checkIndex(honest, [nextCert], trust, NOW, 'stable', floor)).toMatchObject({ ok: true })
+  })
+
+  it('a test list is refused by a stable clinic; a huge one unread', async () => {
+    const trust = await trustFrom(pinned, [])
+    const testList = await encode('index', list({ channel: 'test' }), signing.sign)
+    expect(await checkIndex(testList, [signingCert], trust, NOW, 'stable', {})).toEqual({ ok: false, reason: 'wrong_channel' })
+    expect(await checkIndex('x'.repeat(3 * 1024 * 1024), [signingCert], trust, NOW, 'stable', {})).toEqual({ ok: false, reason: 'too_large' })
   })
 })
