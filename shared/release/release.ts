@@ -502,3 +502,44 @@ export function checkListed(
   if (index.withdrawn.some(w => w.version === version)) return { ok: false, reason: 'withdrawn' }
   return { ok: true, entry }
 }
+
+// ─── Planning an install ──────────────────────────────────────────────────────
+
+/** A migration this database has applied (sql/119 wivo_schema_migration). */
+export interface LedgerRow { file: string; sha256: string }
+
+export type InstallPlan =
+  | { ok: true; migrations: ManifestFile[]; functions: ManifestFile[]; checks: ManifestFile[] }
+  | { ok: false; reason: 'not_newer' | 'too_old' | 'ledger_changed' | 'ledger_missing' | 'out_of_order' }
+
+/**
+ * What installing a checked package would do here. Packages are cumulative
+ * and list their migrations in the order they run, so:
+ *   - it must be newer than the installed version, and the installed
+ *     version no older than its `from_min` (a first install has none);
+ *   - every migration the ledger has must be in it with the same sha256: a
+ *     migration is never edited or dropped once applied;
+ *   - the ones still to run must all come after the last one applied: one
+ *     slipped in earlier means a package built from another history.
+ */
+export function planInstall(manifest: Manifest, installed: string | null, ledger: LedgerRow[]): InstallPlan {
+  if (installed !== null) {
+    if (compareVersions(manifest.version, installed) <= 0) return { ok: false, reason: 'not_newer' }
+    if (compareVersions(installed, manifest.from_min) < 0) return { ok: false, reason: 'too_old' }
+  }
+  const migrations = manifest.files.filter(f => f.path.startsWith('migrations/'))
+  const applied = new Map(ledger.map(r => [r.file, r.sha256]))
+  for (const [file, sha] of applied) {
+    const inPackage = migrations.find(f => f.path === file)
+    if (!inPackage) return { ok: false, reason: 'ledger_missing' }
+    if (inPackage.sha256 !== sha) return { ok: false, reason: 'ledger_changed' }
+  }
+  const lastApplied = migrations.reduce((last, f, i) => (applied.has(f.path) ? i : last), -1)
+  if (migrations.some((f, i) => i < lastApplied && !applied.has(f.path))) return { ok: false, reason: 'out_of_order' }
+  return {
+    ok: true,
+    migrations: migrations.filter(f => !applied.has(f.path)),
+    functions: manifest.files.filter(f => f.path.startsWith('functions/')),
+    checks: manifest.files.filter(f => f.path.startsWith('checks/')),
+  }
+}

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
-  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, compareVersions, isPackagePath, canonicalJson,
+  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
   b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX, MAX_PACKAGE_BYTES,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
@@ -312,5 +312,38 @@ describe('what the list names, and nothing else (TUF: endless data, mix-and-matc
     expect(checkListed(list(), '2.2.0', 'a'.repeat(64), 1234)).toEqual({ ok: false, reason: 'not_listed' })
     expect(checkListed(list({ withdrawn: [{ version: '2.3.0', reason: 'a bad migration' }] }), '2.3.0', 'a'.repeat(64), 1234))
       .toEqual({ ok: false, reason: 'withdrawn' })
+  })
+})
+
+describe('planning an install against what the database has', () => {
+  const f = (path: string, sha = 'a'.repeat(64)) => ({ path, sha256: sha, size: 1 })
+  const m = (files: ReturnType<typeof f>[], over: Partial<Manifest> = {}): Manifest => ({
+    v: 1, key_id: 'signing-1', channel: 'stable', version: '2.4.0', from_min: '2.2.0', created_at: '2026-11-05T10:00:00Z',
+    manual_only: false, auto_after: '2026-11-08T10:00:00Z', files, ...over,
+  })
+  const files = [f('migrations/001_base.sql'), f('migrations/002_ledger.sql'), f('migrations/003_more.sql'), f('functions/wivo-update.js'), f('checks/schema_check.sql')]
+  const ledger = (paths: string[]) => paths.map(file => ({ file, sha256: 'a'.repeat(64) }))
+
+  it('a first install: every migration, in the package\'s order; functions and checks apart', () => {
+    expect(planInstall(m(files), null, [])).toEqual({ ok: true, migrations: files.slice(0, 3), functions: [files[3]], checks: [files[4]] })
+  })
+
+  it('an update: only what the ledger lacks', () => {
+    const plan = planInstall(m(files), '2.3.0', ledger(['migrations/001_base.sql', 'migrations/002_ledger.sql']))
+    expect(plan).toMatchObject({ ok: true, migrations: [files[2]] })
+  })
+
+  it('only newer, and only from a version the package updates from', () => {
+    expect(planInstall(m(files), '2.4.0', [])).toEqual({ ok: false, reason: 'not_newer' })
+    expect(planInstall(m(files), '2.5.0', [])).toEqual({ ok: false, reason: 'not_newer' })
+    expect(planInstall(m(files), '2.1.9', [])).toEqual({ ok: false, reason: 'too_old' })
+  })
+
+  it('an applied migration edited, dropped, or a new one slipped in before it: refused', () => {
+    expect(planInstall(m([f('migrations/001_base.sql', 'b'.repeat(64)), ...files.slice(1)]), '2.3.0', ledger(['migrations/001_base.sql'])))
+      .toEqual({ ok: false, reason: 'ledger_changed' })
+    expect(planInstall(m(files.slice(1)), '2.3.0', ledger(['migrations/001_base.sql']))).toEqual({ ok: false, reason: 'ledger_missing' })
+    expect(planInstall(m(files), '2.3.0', ledger(['migrations/001_base.sql', 'migrations/003_more.sql'])))
+      .toEqual({ ok: false, reason: 'out_of_order' })
   })
 })
