@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). **Phase 1 is being built on `testing`** (§9).
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). **Phase 1 is being built on `testing`** (§9).
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -349,10 +349,16 @@ wivo-update-2.3.0.tar
 ```
 
 - **The signing keys:** where they live, how a package is signed, rotation and what happens on a leak are in 5e. The root public keys are pinned in the app and in the clinic's project at setup.
-- **Where packages are published:** with the desktop app's releases (GitHub Releases), next to a signed index, `updates.json`. The index holds:
-  - every published version with its package URL and `sha256`;
-  - `auto_after`;
-  - a **withdrawn** list: a version Wivo pulls back after publishing is never installed automatically, and an approver who opens it sees why.
+- **Where packages are published:** with the desktop app's releases (GitHub Releases), next to a signed list, `updates.json` (the *index*). The list is also published at a second address on Wivo's site (5g). It holds:
+  - every published version with its package's file name, `sha256` and exact size;
+  - `auto_after` and `manual_only`;
+  - a **withdrawn** list: a version Wivo pulls back after publishing is never installed, and an approver who opens it sees why;
+  - the latest desktop release, with its `sha512` and size;
+  - every revocation so far (5e);
+  - for TUF's attacks (5g):
+    - a `channel` (`stable` or `test`);
+    - a `serial` that grows with every list;
+    - an **expiry, 14 days after signing.** The list is re-signed weekly and at every release.
 - **The list is public and only grows.** A clinic, or its auditor, can see that it received the same package as everyone else, and read its SQL before approving. That makes a version made for one clinic visible.
 - **Wivo's only work per release is publishing.** It touches no clinic.
 
@@ -386,7 +392,9 @@ wivo-update-2.3.0.tar
 1. **Wivo's signature:**
    - the two root keys are pinned in the function's own code, not in a table or a secret;
    - the signing key must carry a root-signed certificate (5e) and must not be revoked;
-   - then each file's `sha256` is checked against the signed manifest, and the index's signature is checked.
+   - the list (5a) must be signed, unexpired, for this clinic's channel, and not older than one already accepted (5g);
+   - the package must be named in that list with exactly its `sha256` and size, and must not be withdrawn, before it is parsed;
+   - then each file's `sha256` is checked against the signed manifest.
 2. **Only a newer version:** above the highest version in the migration ledger (`wivo_schema_migration`, docs/MIGRATIONS.md), and updating from the version the clinic has.
 3. **Not withdrawn.** For an automatic install, also past `auto_after` and not `manual_only`.
 4. **Who:** an approver with a fresh code, or the project's own scheduled job with the setting on.
@@ -556,7 +564,7 @@ So the simplest safe way, instead of days on reproducibility, is **build where y
    2. builds the update package (5a) and the Windows installer;
    3. shows what is about to be signed: version, the commits since the last release, migrations, changed functions, files and their hashes.
 2. **Kevin enters the PIN and touches the key:**
-   - the update signing key signs the package manifest and the index;
+   - the update signing key signs the package manifest and the next list (5a, 5g);
    - the app release key signs the release statement (version, file name, `sha512` of the installer).
 3. **The tool publishes** the installer, `latest.yml`, the package and the signatures to the GitHub release, with Kevin's own GitHub sign-in (hardware second factor).
 4. **CI keeps building and testing every push,** as a compile check, but **no longer publishes desktop releases.** The publishing steps leave `build.yml`.
@@ -564,10 +572,12 @@ So the simplest safe way, instead of days on reproducibility, is **build where y
 5. **The app checks before installing:** electron-updater's check before installing an update (`verifyUpdateCodeSignature`) is replaced by our own:
    1. the downloaded installer's `sha512` must match the signed release statement;
    2. that statement must be signed by an app release key certified by a pinned root;
-   3. the key must not be revoked.
+   3. the key must not be revoked;
+   4. a fresh list must name that release as the latest desktop release for the app's channel (5g), so a frozen `latest.yml` can't hide a newer one.
 
    Anything else is refused and reported.
 6. **The update package's archive is built to be deterministic** (sorted entries, fixed times), so CI can rebuild and compare it as a second alarm.
+7. **Every week, between releases:** `scripts/release.mjs refresh` signs and publishes the next list, so it never expires (5g). About 2 minutes, with the PIN and a touch.
 
 **Rotation.**
 - **Planned:** the signing key every two years, and whenever its hardware key is replaced.
@@ -629,7 +639,8 @@ Roots are used a few times a year, offline, in safes, to keep this from happenin
    - archive paths that try to escape their folder, very large or deeply nested archives;
    - a migration that tries to skip the ledger;
    - a downgrade or a replayed old package;
-   - an index that lists something not signed.
+   - an index that lists something not signed;
+   - TUF's attacks (5g): an expired list (freeze), a rolled-back or re-used serial, a list or package for the test channel, a package the list doesn't name or has withdrawn, a response that never ends or trickles, and a revocation withheld from one of the two addresses.
 3. **The functions token:**
    - the scope check refuses a broader token;
    - the token never appears in logs, errors, crash reports or the app's storage;
@@ -663,6 +674,80 @@ Roots are used a few times a year, offline, in safes, to keep this from happenin
 - [GitHub integration](https://supabase.com/docs/guides/deployment/branching/github-integration)
 
 Check them again when building: Supabase changes these.
+
+### 5g. Compared with The Update Framework (TUF)
+
+TUF is the reference design for software updates that stay safe even when the server, the network or some keys are compromised. Sigstore and Uptane (updates for cars) are built on it. This section takes the attacks its specification lists, one by one (Kevin, 2026-11-05).
+
+**How TUF's roles map onto ours:**
+
+| TUF role | Here |
+|---|---|
+| root | The two root keys, pinned in `wivo-update` and in the app (5e) |
+| targets | The update signing key, which signs each package's manifest; the app release key, which signs each desktop release |
+| snapshot | The list, `updates.json`: every version with its hash and exact size, in one signed file |
+| timestamp | The list's `expires`. There is no separate online key; decision 24 is whether to add one. |
+| delegations | Certificates by purpose (`update`, `app`), with no deeper delegation |
+
+**Attack by attack.** "Gap" means the plan before this check had no defence.
+
+| Attack | What it is | Before | Now |
+|---|---|---|---|
+| **Arbitrary installation** | Installing something Wivo didn't sign | Covered: every package, list and release is signed and chains to a pinned root | Unchanged |
+| **Rollback** | Serving an old package, or an old list | Packages: covered by the ledger. **The list: a gap.** An old list could hide a withdrawal or a newer revocation. | The list has a `serial`. The clinic keeps the highest serial accepted from each key, and refuses a lower one, or the same serial with different content. |
+| **Freeze** | Keeping on serving an old, validly signed list, so clinics never see a security fix | **A gap:** the list had no expiry | The list expires 14 days after signing. An expired list is refused, installs wait, and owners and approvers are warned (below). |
+| **Endless data** | A response that never ends, filling memory or disk | Partly: a 50 MB cap on a package | The list states each package's exact size, so a download stops there. The list is capped at 1 MB and an installer at 500 MB. Revocations and certificates are capped too. |
+| **Slow retrieval** | Sending bytes so slowly that the check never ends | **A gap** | A time limit on every fetch: 30 seconds for the list, 2 minutes for a package. A check that never finishes leaves the list to expire, which raises the warning. |
+| **Extraneous dependencies** | Something installed that no signature covers | **A gap.** The Edge Functions import `supabase-js` and `denomailer` from esm.sh, jsr and deno.land, with jsr unpinned (`@2`) and no lockfile. Supabase fetches them while deploying, so the code that runs isn't fully covered by the package's signature. | A function in a package carries every dependency with it, so a deploy fetches nothing (below). |
+| **Mix-and-match** | Combining a validly signed package with a list it doesn't belong to | Partly: the package was signed, but not tied to the current list | Before parsing a package, `wivo-update` checks that the fresh list names it with exactly its sha256 and size, and hasn't withdrawn it (`checkListed`). The list is one file, so its parts can't be mixed. |
+| **Fast-forward** | A leaked key signs a list with a huge serial, so the honest lists after recovery look like rollbacks | **A gap:** there was no serial | The serial floor is kept per signing key, and stops counting once that key is revoked. |
+| **Wrong software or channel** | A test package installed in a production clinic, or one signed item passed off as another | Partly: each kind has its own prefix in what is signed (`WIVOMAN1`, `WIVOIDX1`, `WIVOAPP1`, …), and certificates name a purpose | A `channel` (`stable` or `test`) in the list and in every manifest. A clinic accepts only its own. |
+| **Withheld revocation** | Stripping a revocation from what a clinic fetches | Partly: two addresses | The list carries every revocation so far, and the clinic keeps every one it has ever seen. |
+| **A hostile or blocked host** | GitHub, or something between, serving stale data or nothing | Signatures cover tampering, but the list had one address | The list is also published at a second address on Wivo's site, like the revocations. The clinic takes the valid one with the higher serial. |
+| **Key compromise** | One stolen key | Hardware keys with PIN and touch; certificates; revocation (5e) | TUF can also require *k of n* keys to sign. Here, **one root alone can certify a signing key.** That is decision 23. |
+
+**What was built** (`shared/release`, tested):
+- the `channel`, `serial`, `expires`, `revocations` and per-package `size` fields;
+- `checkIndex`, which refuses a list that is expired, rolled back, re-used (the same serial with other content), for another channel, malformed or over 1 MB;
+- `checkListed`, which refuses a package the fresh list doesn't name with exactly its bytes, or has withdrawn;
+- `isStale`, the warning's condition.
+
+**The expiry and the warning** (decided, Kevin 2026-11-05):
+- **What expires:** the list, 14 days after it is signed.
+  - Packages, certificates and releases don't need their own short expiry: they install only when a fresh list names them, with their exact hash.
+- **Re-signing:** `scripts/release.mjs refresh` makes the next list (the next serial, a new expiry), Kevin enters the PIN and touches the key, and it is published to both addresses. Every release also makes a new list.
+  - Weekly, about 2 minutes. The tool says when the published list has fewer than 7 days left.
+  - Before a long absence, the tool can sign one list for up to 30 days, and refuses anything longer.
+  - **If Kevin can't re-sign in time,** every clinic is warned and installs wait. Nothing else stops.
+- **How soon a freeze shows:** a clinic always holds a list with 7–14 days left, so a freeze is seen within 7–14 days. A daily expiry would need decision 24.
+- **Who checks, and when:**
+  - A scheduled job in the clinic's own project (pg_cron, daily) asks `wivo-update` to **check only**: fetch the list, check it, record the result, install nothing. This is built in phase 1, so the warning doesn't depend on any desktop being open. Automatic installs (5b) later add an install step to the same job.
+  - Opening Settings → Updates also asks for a check.
+  - Each check is recorded: accepted (serial, expiry) or refused (why). A freeze shows as a series of "expired" refusals with the same old serial.
+  - The audit log gets only the changes: the list went stale, and the list is fresh again.
+- **Whose clock:** the database's (`now()`), not a desktop's. A desktop with its clock set back could accept an expired list for its own app updates, but the warning comes from the database's record, so it still shows.
+- **Who is warned, and how:** owners and approvers, in the desktop:
+  - a notification when the list first goes stale;
+  - a banner on Settings → Updates, and on start, for as long as it stays stale: *"Wivo can't confirm that this clinic has the latest updates. The last confirmed list expired on {date}. Updates wait until a current list arrives. If the internet connection works and this lasts more than a day, contact Wivo."*
+- **What a stale list stops:** installing, by hand or automatically, and desktop updates. Everything else in the clinic's Wivo keeps working.
+
+**Functions with their dependencies (extraneous dependencies):**
+- **The rule:** a function in a package imports only files inside the package. A test fails for any `https:`, `jsr:` or `npm:` import outside the vendored folder.
+- **The plan:** the dependencies are pinned to exact versions, locked by hash (`deno.lock`), and vendored into the repository (Deno's `vendor` folder), so the package carries them and they are reviewed like any other change.
+- **To verify in slice 3:** whether Supabase's deploy accepts the vendored folder. If not, each function is bundled into one file at release time instead.
+- **Today, on the current path:** the unpinned `jsr:@supabase/supabase-js@2` in two functions should be pinned to an exact version on the next functions change.
+
+**Outside TUF's scope, but on the same path:**
+- **Malware on Kevin's Mac** could have something else signed while Kevin touches the key for a release. TUF assumes the signing machine is trusted, and so does this plan. What limits it:
+  - one touch per signature;
+  - the tool shows what is signed;
+  - CI rebuilds the packed code and the package from the tag and compares them, as an alarm (5e, steps 4 and 6);
+  - and the list is public, so a package that doesn't match its tag is visible.
+- **The phone app** (`app.wivodent.com`) is a web page. A browser runs whatever Cloudflare serves, with no Wivo signature check. So whoever controls the Cloudflare account, or this repository's `main`, controls the phone app of every clinic, with each user's session. That bypasses everything in this section.
+  - Today's defence is that account's hardware second factor (docs/GITHUB-CHECKLIST.md, section 2).
+  - A real fix is a plan of its own: decision 25.
+
+**Source:** [The Update Framework specification](https://theupdateframework.github.io/specification/latest/), sections 1.5 (goals: the attacks) and 5 (the client's steps).
 
 ---
 
@@ -893,16 +978,16 @@ That is Kevin's production session, and it isn't counted below.
 
 | Slice | Built in | Kevin's part |
 |---|---|---|
-| 1. **The keys and signing** (5e):<ul><li>the release formats and their checks (certificates, manifest, index, revocation);</li><li>the local build-and-sign tool;</li><li>the hardware-key signer;</li><li>CI no longer publishing;</li><li>the licence key on the hardware key.</li></ul> | 3–4 days | Order four YubiKey 5C NFC (firmware 5.7+) on the OK. When they arrive: the 15-minute arrival test, creating the keys and recording the public keys (one session of about 2 hours), then a test release signed end to end (one session). Delete `license-private.pem` once the new licence key works. |
-| 2. **The migration ledger, the package and `wivo-update`** (5b):<ul><li>approval by hand, plus the first install;</li><li>the certificate chain and revocations;</li><li>the fresh code and the "Install updates" permission;</li><li>one transaction and the audit log.</li></ul> | 4 days | On test project A: install by hand as the owner and as a member with the permission; try an older, a tampered, a revoked-key and a no-fresh-code package; try an admin without the permission. Two sessions. |
+| 1. **The keys and signing** (5e):<ul><li>the release formats and their checks (certificates, manifest, index, revocation), with TUF's defences (5g): expiry, serial, channel;</li><li>the weekly `refresh` of the list;</li><li>the local build-and-sign tool;</li><li>the hardware-key signer;</li><li>CI no longer publishing;</li><li>the licence key on the hardware key.</li></ul> | 3–4 days | Order four YubiKey 5C NFC (firmware 5.7+) on the OK. When they arrive: the 15-minute arrival test, creating the keys and recording the public keys (one session of about 2 hours), then a test release signed end to end (one session). Delete `license-private.pem` once the new licence key works. |
+| 2. **The migration ledger, the package and `wivo-update`** (5b):<ul><li>approval by hand, plus the first install;</li><li>the certificate chain and revocations;</li><li>the fresh code and the "Install updates" permission;</li><li>one transaction and the audit log;</li><li>the daily check-only job and its record (5g).</li></ul> | 4–5 days | On test project A: install by hand as the owner and as a member with the permission; try an older, a tampered, a revoked-key and a no-fresh-code package; try an admin without the permission. Two sessions. |
 | 3. **The functions token** (5c):<ul><li>the scope check that refuses a broader token;</li><li>the Vault entry read only by `wivo-update`;</li><li>a log entry for every use;</li><li>the 30-day reminders and the owner's renewal steps;</li><li>the short-lived fallback.</li></ul> | 2–3 days | Make a correct token and a too-broad one; renew; let one expire and see that migrations still install. One or two sessions. |
-| 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views. One or two sessions. |
+| 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the warning when the list can't be refreshed (5g);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views; a test-channel list left to expire, to see the warning. One or two sessions. |
 | 5. **The setup tool,** operated by Kevin (6b) | 2–3 days | A full rehearsal on project B, as on the day in Riga. Two sessions of 2–3 hours. |
 | 6. **The connection code** for desktop and phone (6d), **and the version gate** | 2 days | Desktop and phone against project B, and production still working as before. One session. |
 | 7. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
 | 8. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
 
-- **Kevin's part:** about 12–15 sessions, roughly 30–40 hours, so 9–12 working days at 3–4 hours a day. Building runs alongside.
+- **Kevin's part:** about 12–15 sessions, roughly 30–40 hours, so 9–12 working days at 3–4 hours a day. Building runs alongside. **From the first signed list on:** about 2 minutes a week to re-sign it (5g).
 - **Calendar: about 4–5 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week and the review's findings are small.
 - **After that:**
   - the visit, on a date agreed with Riga once §6a is ready;
@@ -1013,6 +1098,12 @@ That is Kevin's production session, and it isn't counted below.
     - Claude's separate review pass and the adversarial script before Riga's setup;
     - one independent consultant for 2–3 days, over the update path and the bridge, before the first real shared job (5f).
 
+**Decided (Kevin, 2026-11-05), after comparing with TUF (5g):**
+
+22. **The signed list expires,** and the app warns owners and approvers when it can't get a fresh one. Installs wait while the list is stale; nothing else stops.
+    - The proposal, open to change: 14 days, re-signed weekly and at every release.
+    - The rest of 5g is built with it: the serial, the channel, the embedded revocations, exact sizes, time limits, the second address, and functions that carry their own dependencies.
+
 **Now:** Kevin works through docs/GITHUB-CHECKLIST.md, because the unsigned release path exists today.
 
 **Still open:**
@@ -1027,6 +1118,20 @@ That is Kevin's production session, and it isn't counted below.
     - or an anonymous daily "version only" report that the clinic can turn off.
 
     It would help decide when an old version may stop being supported (1e).
+23. **Root threshold (5g, key compromise).** Today one root alone can certify a signing key, so whoever has either root and its PIN can make a key every clinic trusts.
+    - **(a) Keep one of two** (recommended while Wivo is one person). A root without its PIN is useless: PIV locks after three wrong tries. Also, every certificate a clinic accepts is shown to its owners ("Wivo's update key changed on {date}") and kept in its append-only table.
+    - **(b) Two of three,** with a fifth YubiKey: two roots must sign each certificate and each revocation. Safer against one stolen root, but every certificate means bringing two roots together, and an emergency revocation needs two. This is worth it once a second person can hold one.
+24. **How fresh: 14 days, or a daily timestamp key (5g, freeze).**
+    - **(a) A 14-day list re-signed weekly** with the hardware key (recommended for Riga). Nothing new to run. A freeze is seen within 7–14 days.
+    - **(b) Add TUF's timestamp role:** a low-power online key, for example in a scheduled Cloudflare Worker, signs each day "the current list is serial N with hash H", valid for one day. A freeze is then seen within a day.
+      - If that key leaks, the thief can only keep an old list alive until its own 14-day expiry, and can install nothing.
+      - Its cost is a key on a server and a daily job. It is not a code-signing key, so the hardware-key rule doesn't apply to it.
+      - Worth adding after Riga if 14 days feels long.
+25. **The phone app's code path (5g).** A browser runs whatever Cloudflare serves, so the phone app bypasses the signed update path. Options for a plan of its own:
+    - a service worker that installs a new version only when a signed list names its files' hashes;
+    - or a packaged phone app.
+
+    Until then, its defence is the Cloudflare and GitHub accounts' hardware second factor.
 
 ## Questions for the lawyer
 

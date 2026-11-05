@@ -115,7 +115,8 @@ export interface Index {
   serial: number
   generated_at: string
   expires: string
-  versions: { version: string; package: string; sha256: string; manual_only: boolean; auto_after: string }[]
+  /** `package` is a file name next to the list; `size` is exact, so a download stops there (TUF: endless data). */
+  versions: { version: string; package: string; sha256: string; size: number; manual_only: boolean; auto_after: string }[]
   withdrawn: { version: string; reason: string }[]
   revocations: string[]
   /** The latest desktop release for this channel, so app updates share the list's freshness. */
@@ -218,7 +219,7 @@ export async function encode<K extends Kind>(kind: K, payload: Payloads[K], sign
 export type Refusal =
   | 'malformed' | 'wrong_kind' | 'bad_signature' | 'unknown_key' | 'unknown_root'
   | 'not_yet_valid' | 'expired' | 'wrong_purpose' | 'revoked' | 'bad_path' | 'bad_version'
-  | 'wrong_channel' | 'rollback' | 'serial_reuse'
+  | 'wrong_channel' | 'rollback' | 'serial_reuse' | 'not_listed' | 'withdrawn'
 
 export type Checked<T> = { ok: true; payload: T; signedSha256: string } | { ok: false; reason: Refusal }
 
@@ -418,6 +419,28 @@ export async function checkPackage(
 
 /** The most a version list may weigh. It is fetched often; anything bigger is refused unread. */
 export const MAX_INDEX_BYTES = 1024 * 1024
+/** The most a desktop installer may weigh: today's is about a tenth of this. */
+export const MAX_APP_BYTES = 500 * 1024 * 1024
+
+/** A file published next to the list: a plain name, never a path or an address. */
+export const isFileName = (v: unknown): v is string =>
+  typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9._ -]{0,119}$/.test(v) && !v.includes('..')
+
+const isSize = (v: unknown, max: number): v is number => Number.isSafeInteger(v) && (v as number) > 0 && (v as number) <= max
+const isTime = (v: unknown): v is string => typeof v === 'string' && !Number.isNaN(Date.parse(v))
+
+function wellFormedIndex(i: Index): boolean {
+  if (!Number.isSafeInteger(i.serial) || i.serial < 1 || !isTime(i.expires) || !isTime(i.generated_at)) return false
+  if (!Array.isArray(i.versions) || !Array.isArray(i.withdrawn) || !Array.isArray(i.revocations)) return false
+  if (!i.versions.every(e => e && isVersion(e.version) && isFileName(e.package) && /^[0-9a-f]{64}$/.test(e.sha256)
+      && isSize(e.size, MAX_PACKAGE_BYTES) && typeof e.manual_only === 'boolean' && isTime(e.auto_after))) return false
+  if (new Set(i.versions.map(e => e.version)).size !== i.versions.length) return false
+  if (!i.withdrawn.every(w => w && isVersion(w.version) && typeof w.reason === 'string' && w.reason.length <= 500)) return false
+  if (!i.revocations.every(t => typeof t === 'string')) return false
+  if (i.app !== undefined && !(i.app && isVersion(i.app.version) && isFileName(i.app.file)
+      && typeof i.app.sha512 === 'string' && isSize(i.app.size, MAX_APP_BYTES))) return false
+  return true
+}
 
 /**
  * What a clinic remembers about the lists it has accepted, per signing key:
@@ -446,10 +469,7 @@ export async function checkIndex(
   if (!r.ok) return r
   const i = r.payload
   if (i.channel !== channel) return { ok: false, reason: 'wrong_channel' }
-  if (!Number.isSafeInteger(i.serial) || i.serial < 1 || !Array.isArray(i.versions) || !Array.isArray(i.withdrawn)
-      || !Array.isArray(i.revocations) || Number.isNaN(Date.parse(i.expires))) {
-    return { ok: false, reason: 'malformed' }
-  }
+  if (!wellFormedIndex(i)) return { ok: false, reason: 'malformed' }
   if (!(now.getTime() < Date.parse(i.expires))) return { ok: false, reason: 'expired' }
   const seen = floor[i.key_id]
   if (seen && !trust.revocations.some(x => x.key_id === i.key_id)) {
@@ -466,4 +486,19 @@ export async function checkIndex(
  */
 export function isStale(freshestExpires: string | null, now: Date): boolean {
   return freshestExpires === null || !(now.getTime() < Date.parse(freshestExpires))
+}
+
+/**
+ * A downloaded package, against the fresh list it came through: listed with
+ * exactly these bytes, and not withdrawn. A validly signed package that the
+ * current list doesn't name (an old one, or one paired with another list:
+ * TUF's mix-and-match) is refused before it is even parsed.
+ */
+export function checkListed(
+  index: Index, version: string, packageSha256: string, size: number,
+): { ok: true; entry: Index['versions'][number] } | { ok: false; reason: 'not_listed' | 'withdrawn' } {
+  const entry = index.versions.find(e => e.version === version)
+  if (!entry || entry.sha256 !== packageSha256 || entry.size !== size) return { ok: false, reason: 'not_listed' }
+  if (index.withdrawn.some(w => w.version === version)) return { ok: false, reason: 'withdrawn' }
+  return { ok: true, entry }
 }

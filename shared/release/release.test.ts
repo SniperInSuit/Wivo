@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
-  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, isStale, compareVersions, isPackagePath, canonicalJson,
+  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, compareVersions, isPackagePath, canonicalJson,
   b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX, MAX_PACKAGE_BYTES,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
@@ -276,5 +276,41 @@ describe('the version list (TUF: freeze, rollback, fast-forward, channel)', () =
     const testList = await encode('index', list({ channel: 'test' }), signing.sign)
     expect(await checkIndex(testList, [signingCert], trust, NOW, 'stable', {})).toEqual({ ok: false, reason: 'wrong_channel' })
     expect(await checkIndex('x'.repeat(3 * 1024 * 1024), [signingCert], trust, NOW, 'stable', {})).toEqual({ ok: false, reason: 'too_large' })
+  })
+})
+
+describe('what the list names, and nothing else (TUF: endless data, mix-and-match)', () => {
+  const entry = { version: '2.3.0', package: 'wivo-update-2.3.0.json', sha256: 'a'.repeat(64), size: 1234, manual_only: false, auto_after: '2026-11-08T10:00:00Z' }
+  const list = (over: Partial<Index> = {}): Index => ({
+    v: 1, key_id: 'signing-1', channel: 'stable', serial: 7, generated_at: '2026-11-05T10:00:00Z',
+    expires: '2026-11-19T10:00:00Z', versions: [entry], withdrawn: [], revocations: [], ...over,
+  })
+
+  it('an entry without an exact size, with a path for a name, or listed twice makes the whole list malformed', async () => {
+    const trust = await trustFrom(pinned, [])
+    for (const bad of [
+      list({ versions: [{ ...entry, size: 0 }] }),
+      list({ versions: [{ ...entry, size: 51 * 1024 * 1024 }] }),
+      list({ versions: [{ ...entry, package: '../../etc/passwd' }] }),
+      list({ versions: [{ ...entry, package: 'https://elsewhere.example/x.json' }] }),
+      list({ versions: [{ ...entry, sha256: 'A'.repeat(64) }] }),
+      list({ versions: [entry, entry] }),
+      list({ withdrawn: [{ version: 'latest', reason: 'x' }] }),
+      list({ app: { version: '2.3.0', file: 'Wivo Setup 2.3.0.exe', sha512: 'x', size: 600 * 1024 * 1024 } }),
+    ]) {
+      expect(await checkIndex(await encode('index', bad, signing.sign), [signingCert], trust, NOW, 'stable', {}))
+        .toEqual({ ok: false, reason: 'malformed' })
+    }
+    expect(await checkIndex(await encode('index', list({ app: { version: '2.3.0', file: 'Wivo Setup 2.3.0.exe', sha512: 'x', size: 120 * 1024 * 1024 } }), signing.sign),
+      [signingCert], trust, NOW, 'stable', {})).toMatchObject({ ok: true })
+  })
+
+  it('a package must be in the fresh list with exactly its bytes, and not withdrawn', () => {
+    expect(checkListed(list(), '2.3.0', 'a'.repeat(64), 1234)).toMatchObject({ ok: true, entry: { package: 'wivo-update-2.3.0.json' } })
+    expect(checkListed(list(), '2.3.0', 'b'.repeat(64), 1234)).toEqual({ ok: false, reason: 'not_listed' })
+    expect(checkListed(list(), '2.3.0', 'a'.repeat(64), 1235)).toEqual({ ok: false, reason: 'not_listed' })
+    expect(checkListed(list(), '2.2.0', 'a'.repeat(64), 1234)).toEqual({ ok: false, reason: 'not_listed' })
+    expect(checkListed(list({ withdrawn: [{ version: '2.3.0', reason: 'a bad migration' }] }), '2.3.0', 'a'.repeat(64), 1234))
+      .toEqual({ ok: false, reason: 'withdrawn' })
   })
 })
