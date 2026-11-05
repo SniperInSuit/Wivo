@@ -24,6 +24,8 @@ Each step must be useful on its own, before the next one exists.
 | 3 | **Partner lab job created from the plan** | No lab order is typed twice; the lab gets the job when the patient says yes. |
 | 4 | **Supplier marketplace** | Missing items are ordered in one click, at calculated prices, from verified suppliers. |
 
+The catalog these steps count against (equipment, materials, shades, stock and lots) is planned in docs/STOCK.md.
+
 ## Locked rules
 
 These are not revisited per feature. A feature that needs one changed stops and asks.
@@ -43,6 +45,29 @@ These are not revisited per feature. A feature that needs one changed stops and 
 **No personal data crosses borders between clinics.** Partners see job information only, never who the patient is (lawyer's decision, 2 November 2026; enforced by sql/092). A lab job created from a plan carries the work, not the patient.
 
 These sit alongside the locked decisions in wivo-2.0-spec.md (Estonian), which still hold. In particular: Wivo does not recommend, rank or derive treatment from patient data.
+
+**Answered by the lawyer (2026-11-05;** all eight answers are in docs/ARCHITECTURE-INSTANCES.md, L1–L8):
+- **Hosting.** Patient data may be kept in a cloud server in the EU.
+- **Recording a consultation.** Informing the patient is enough, with no consent tick box. While recording is on, Wivo shows it clearly. It logs that the patient was informed.
+- **Signatures.** Confirming with a fresh authenticator code counts as a signature for agreements and treatment plans (step 2, "Decision"). No separate e-signature service.
+- **Agreements.** A new agreement always replaces the old one.
+- **Partner stock** is consignment held at the borrowing clinic. Taking an item needs no approval, the partner is notified, and whoever takes it is responsible for it from that moment.
+
+## Patient portal (a later release)
+
+**Decided (Kevin, 2026-11-05): patient-held connections.**
+- **Rejected: a central Wivo patient account.** Wivo would then know who is a patient where.
+- **Each clinic connects the patient itself.**
+  - It invites the patient with a QR code or a link, or the patient signs in to that clinic with Smart-ID, Mobile-ID or eParaksts.
+  - The clinic's own project matches the personal ID code to its patient record. **Only an exact match** connects.
+  - That login reads the patient's own records only.
+- **The list of clinics lives on the patient's device,** with an optional backup in the patient's own cloud. The patient app combines the clinics on the device only.
+- **Wivo runs no patient service** and never learns who is a patient where.
+- **Finding a clinic:** a public directory of Wivo clinics, with only the name and the connection address.
+- **Without an Estonian or Latvian eID:** an e-mail link and a passkey.
+- **Every patient sign-in and access** is in that clinic's audit log.
+
+The plan comes later, as a plan of its own, with a security review before it goes live.
 
 ## Ecosystem
 

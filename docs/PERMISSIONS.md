@@ -226,6 +226,19 @@ Every member can read these, on purpose:
 - **Price lists in the clinic's settings** (`clinic_settings`: `work_types`, `materials`, `material_prices`, `pricing`). The job form needs them to price a job (sql/102).
 - **Partnerships** (`partnership`): who the clinic works with, the status, the data-processing agreement reference. A shared job shows its partner.
 
+## The lawyer's answers that touch permissions (2026-11-05)
+
+All eight are in docs/ARCHITECTURE-INSTANCES.md ("The lawyer's answers", L1–L8). These three decide who may do what:
+
+1. **A former member's name stays in the audit log** (L3). sql/115 keeps it, and the readers stay the same: the clinic's owners and admins, with the second factor. Entries are kept at least 3 years, and only the owner may archive older ones (docs/AUDIT.md §4, not built).
+2. **A fresh authenticator code is a signature** (L5), for agreements and treatment plans. No separate e-signature service.
+   - Signing is an action that asks for a code at that moment, even within a session that already has the second factor. Approving an update (`updates.install`) already works this way.
+   - The signature records who, when (the database's clock) and the hash of exactly what was signed. Who may sign what is decided in the agreements plan (an owner, an external technician) and the patient portal plan (a doctor, a patient).
+3. **Taking a partner's consignment item needs no approval** (L6).
+   - In the borrowing clinic, `stock.write` is enough, as for its own stock. The partner is notified; it is never asked.
+   - **Whoever takes an item is responsible for it from that moment.** So taking records who took it and when, in the borrowing clinic's log, and the item can't be taken without a named person.
+   - docs/STOCK.md has the plan.
+
 ## sql/118: a client's details only with View jobs or View payments
 
 Before sql/118, every member read every client of the clinic whole. A job needs only to show its client's name.

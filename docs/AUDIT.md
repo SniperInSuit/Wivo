@@ -22,6 +22,11 @@ The cause: **the audit log never recorded an edit.** It recorded what happens ar
 7. **Who made each change survives their account** (sql/115, §2.7):
    - the author's id is kept with no foreign key, together with their name as it was;
    - existing rows are given their author's name by a one-time fill inside sql/115, which is option (a).
+8. **How long entries are kept** (the lawyer, 2026-11-05; docs/ARCHITECTURE-INSTANCES.md, answer L3):
+   - **at least 3 years,** the claim period;
+   - **Wivo never deletes them automatically;**
+   - **a clinic may archive** entries older than 3 years (§4; not built);
+   - **a deleted worker's name may stay in the log,** as sql/115 keeps it.
 
 ---
 
@@ -229,7 +234,7 @@ On Settings → Audit log, the new actions are labelled Created, Edited, Permiss
   - tests check each of them.
 - **Partners get nothing from edits.** Only the job's own clinic can edit a job, and the entry goes to that clinic alone.
 - **Staff names outlive their accounts** (sql/115).
-  - A former employee's name stays in the clinic's log after their account is deleted. That is their personal data, kept for the medical-record trail. **The lawyer should confirm this**, together with the retention period (§4).
+  - A former employee's name stays in the clinic's log after their account is deleted. That is their personal data, kept for the medical-record trail. **The lawyer confirmed it may stay** (2026-11-05), and gave the retention period (§4).
   - A partner's staff, acting on a shared job, were already shown by name in the owning clinic's log. Their names are now stored there too.
 - **The Wivo admin console never sees them.**
   - The console doesn't exist yet (docs/GAP-ANALYSIS.md, Phase 3).
@@ -262,7 +267,14 @@ An estimate, for a lab of about five people. These numbers are assumptions; the 
 - At this rate, one clinic reaches a million entries in about 40 years.
 - Revisit only if the whole `audit_log` passes about 5 million rows or a few GB.
 
-**How long to keep entries is a legal question, not a storage one.** Nothing removes entries except deleting the whole clinic. Any rule that removes old entries needs the lawyer's retention period first, and a change to the append-only rule.
+**How long entries are kept** (the lawyer, 2026-11-05): **at least 3 years,** the claim period.
+- **Wivo never deletes entries by itself.** Today nothing removes them except deleting the whole clinic.
+- **A clinic may archive entries older than 3 years.** That is the clinic's choice, and size never forces it (above). Archiving is **not built.** When it is, it is the one exception to append-only, and it works like this:
+  - only the owner, with a fresh authenticator code;
+  - the archive file is made first: the entries, their count and a hash. The clinic keeps the file;
+  - only then are exactly those entries removed, by one database function that refuses any entry less than 3 years old;
+  - the archiving leaves its own entry: who, the cut-off date, the count and the file's hash;
+  - a test fails if an entry less than 3 years old can be removed by anyone.
 
 Read-only, for the real numbers on the test copy:
 

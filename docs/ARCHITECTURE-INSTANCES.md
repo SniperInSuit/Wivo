@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). **Phase 1 is being built on `testing`** (§9).
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). The lawyer's answers of 5 November 2026 are in (L1–L8, before the questions), and phase 1 is re-planned for Riga's workers and pay (§9, slice 7, for Kevin's OK). **Phase 1 is being built on `testing`** (§9).
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -13,7 +13,7 @@ This replaces the assessment of 3 November 2026, which is kept unchanged at the 
 - **Wivo never sees or touches the contents after setup.**
 - **New migrations and functions reach each clinic with Wivo updates.**
 - **Our own clinic stays on its current project.**
-- **The first partner is a clinic in Riga** with its own Supabase account. Their lawyer requires the separate database, and that is not negotiable.
+- **The first partner is a clinic in Riga** with its own Supabase account. Their lawyer requires the separate database, and that is not negotiable. The lawyer approved separate databases per clinic and the key plan (2026-11-05, answer L1).
 
 The partnership with Riga works across the two projects:
 - **Shared jobs:** we scan; they do the technician work and the print files; we print and mark the job done.
@@ -196,6 +196,7 @@ The file-fetch URLs are Storage's own signed URLs (§2b).
   - job code, case type, role and assigned stages, stage;
   - received date and due date;
   - work type, work items, teeth, material, shade, stump shade and description;
+  - **planned (docs/STOCK.md §8):** the requested shade and the material shade used, and the lots used (product, lot code, expiry, serial). None of it is personal data. Phase 2's first message format should include them;
   - rush and model;
   - remakes;
   - the agreed partner price;
@@ -263,6 +264,17 @@ Where files are kept:
 ---
 
 ## 3. Stock across projects
+
+**The lawyer's answer (L6):**
+- partner stock is consignment held at the borrowing clinic;
+- taking an item needs no approval, and the partner is notified;
+- whoever takes an item is responsible for it from that moment.
+
+**Changed by docs/STOCK.md §8** (plan, 2026-11-05):
+- each item taken goes onto an open statement that both sides see; one returned unused within the agreed deadline drops off it;
+- at the agreed period, the lender's Wivo makes an invoice draft from the statement, and payments happen outside Wivo;
+- so step 5's buy-out becomes the statement's invoice;
+- the rest of this section stands.
 
 **The lender's project is the source of truth for its goods.**
 - The lender is the clinic that owns the goods. The borrower is the clinic whose shelf they are on.
@@ -509,6 +521,8 @@ wivo-update-2.3.0.tar
 3. **The clinic controls its own database.** Licence and module limits are enforced in the app (signed licence), not inside the database, as `src/main/license.ts` already states.
 4. **Whoever is present at setup may see keys or passwords on screen** (§6): at Riga, Kevin. They are rotated before setup ends, and the setup record says so.
 5. **Supabase, Resend and the clinic's other processors** are the clinic's contracts, not Wivo's.
+
+**The licence agreement** is a draft until the product is ready (the lawyer, L8). These clauses go into the final text.
 
 ### 5e. The signing keys
 
@@ -785,6 +799,8 @@ Kevin sends this list at least two weeks ahead, and checks it on a call a few da
    - the default language (the spec: English first, then Russian and Estonian);
    - the Supabase region.
 6. **Paperwork:** the licence and setup terms (including §5d), and the lawyer's answers that Riga needs for its own use (Q1, Q8, Q9, Q10).
+   - Answered so far: the separate database and the key plan (L1), EU hosting (L2).
+   - The licence agreement is a draft until the product is ready (L8). Riga's setup goes ahead on the draft's terms, with the §5d clauses in it.
 
 ### 6b. On the day, with Riga's owner at the keyboard
 
@@ -796,7 +812,7 @@ For Riga, **Kevin runs the setup on site with a setup tool** (in the desktop app
 - No token or key leaves their computer or their project.
 
 1. **The owner creates the project** in their organisation:
-   - region `eu-north-1` (Stockholm, the nearest) or `eu-central-1`, as their lawyer prefers (Q8);
+   - region `eu-north-1` (Stockholm, the nearest) or `eu-central-1` (Frankfurt), as their lawyer prefers. Both are in the EU, which the lawyer allows (L2);
    - the database password goes into their password manager. The setup tool doesn't need it.
 2. **Wivo is installed** on the owner's computer, and Kevin opens the setup tool. It asks for:
    - the project URL;
@@ -970,11 +986,11 @@ That is Kevin's production session, and it isn't counted below.
 
 ### Phase 1: Riga on its own instance, before any partnership
 
-**What Riga gets:** its own Wivo on its own project, set up on site by Kevin. That covers its own jobs, stock, statistics and team. Updates are approved by hand, by the owner or a member with "Install updates". There is no partnership yet.
+**What Riga gets:** its own Wivo on its own project, set up on site by Kevin. That covers its own jobs, stock, statistics and team, **and the workers' side with pay** (slice 7, re-planned 2026-11-05). Updates are approved by hand, by the owner or a member with "Install updates". There is no partnership yet.
 
 **Not in it:**
 - **automatic installs and the self-service setup wizard:** built after Riga is running (Kevin, 2026-11-05);
-- **payroll and invoices for Latvia:** Estonian tax rules and invoice layouts today, so Riga starts without them.
+- **Latvian taxes, payslips and invoices.** Riga starts with gross pay from the rules and a monthly export for its accountant. Latvian tax rules come later ("Riga's workers and pay", below).
 
 | Slice | Built in | Kevin's part |
 |---|---|---|
@@ -984,14 +1000,91 @@ That is Kevin's production session, and it isn't counted below.
 | 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the warning when the list can't be refreshed (5g);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views; a test-channel list left to expire, to see the warning. One or two sessions. |
 | 5. **The setup tool,** operated by Kevin (6b) | 2–3 days | A full rehearsal on project B, as on the day in Riga. Two sessions of 2–3 hours. |
 | 6. **The connection code** for desktop and phone (6d), **and the version gate** | 2 days | Desktop and phone against project B, and production still working as before. One session. |
-| 7. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
-| 8. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
+| 7. **Riga's workers and pay** (below, option a):<ul><li>the country switch, and gross pay only in a Latvian clinic;</li><li>the monthly export for the accountant;</li><li>payout lines in the clinic's language, and a payout saved in one step;</li><li>the setup tool sets the country.</li></ul> | 3–4 days | Project B as a Latvian clinic: two or three made-up technicians with rules, jobs taken to done, a payout, the export. Send the sample file to Riga's accountant. Two sessions. |
+| 8. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
+| 9. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
 
-- **Kevin's part:** about 12–15 sessions, roughly 30–40 hours, so 9–12 working days at 3–4 hours a day. Building runs alongside. **From the first signed list on:** about 2 minutes a week to re-sign it (5g).
-- **Calendar: about 4–5 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week and the review's findings are small.
+- **Kevin's part:** about 14–17 sessions, roughly 35–45 hours, so 10–13 working days at 3–4 hours a day. Building runs alongside. **From the first signed list on:** about 2 minutes a week to re-sign it (5g).
+- **Calendar: about 5–6 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week, Riga's accountant answers within the week, and the review's findings are small. Pay (slice 7) added about a week (2026-11-05).
 - **After that:**
   - the visit, on a date agreed with Riga once §6a is ready;
   - the next update reaches Riga as a "Database update ready" that Riga's owner approves. Kevin isn't needed for it.
+
+### Riga's workers and pay (slice 7)
+
+**Kevin, 2026-11-05:** Riga wants the workers' side in its start, including pay. Decision 19 is reopened.
+
+**What already works in any country** (lib/earnings.ts, sql/022 onward):
+- **the pay rules:**
+  - per hour, per tooth, per job, a percentage of the price, or a monthly salary;
+  - for the work, the design, remakes and models;
+  - with rush, priority and start and end dates;
+- hours, and payouts confirmed and then paid, each line frozen as it was paid;
+- the job's pay card, Payroll and pay in Statistics;
+- **who sees pay:** everyone their own, and everyone's with Manage payroll (sql/027, sql/117);
+- **the currency:** Latvia also uses the euro.
+
+**What is Estonian:**
+- **The tax step** (`payslipFromGross`):
+  - pension and unemployment insurance are withheld;
+  - a tax-free amount is taken off;
+  - then one flat income tax applies.
+
+  Latvia has a progressive income tax, the employee's share of social insurance, a non-taxable minimum, and a monthly employer report to the State Revenue Service (VID) through EDS, due by the 17th. Settings alone can't express that.
+- **The per-person tax fields:**
+  - the pension choice (2, 4 or 6%, Estonia's second pillar);
+  - tax-free income;
+  - net agreements, which are worked back from Estonian taxes.
+- **Estonian words saved into payouts:** each payout line's description ("Töötunnid", "Kuutasu", "Disain: …") is stored in Estonian, whatever the language. The payroll CSV headers are Estonian too.
+- **Invoices:**
+  - the document is always Estonian ("Käibemaks", "Reg nr", "KMKR"), without Latvia's required details;
+  - Latvia's e-invoices between businesses become mandatory on 1 January 2028 (voluntary since 2026).
+- **`clinics.country`** exists (sql/070, default `EE`), but nothing reads it yet.
+
+**Options:**
+- **(a) Recommended: gross pay from the rules, plus a monthly export for Riga's accountant. Latvian tax later.**
+  - **The country:** the setup tool sets Riga's project to Latvia (`clinics.country = 'LV'`).
+  - **What a Latvian clinic sees:**
+    - Payroll, the job's pay card and each worker's own view show **gross pay**, marked "before tax";
+    - the Estonian tax settings, the payslip estimate and net agreements are hidden;
+    - Statistics counts the cost to the clinic as gross plus one setting, "employer contributions, %". That is today's employer tax field, renamed: the owner enters the employer's share of social insurance. Contractors have none, as today.
+  - **The accountant's export,** once a month, through `auditedCsvExport`:
+    - **one row per person:** name, employee or contractor, gross pay split by kind (jobs, design, models, remakes, extras, hours, monthly salary), hours, and the number of jobs;
+    - **a second file with the lines behind it:** job code, work, teeth, the rule and the amount. Job codes only, never a patient's name;
+    - **column headers** in the language of the person exporting, not Estonian.
+
+    The accountant makes the payslips and the VID report from it, as they do today. **Before it is built,** a sample file with made-up names goes to Riga's accountant to confirm the columns.
+  - **Fixed along the way,** because Riga would see them:
+    - **New payout lines are described in the clinic's language.** Estonian lines made before sql/058 keep being read as they are.
+    - **A payout and its lines are saved in one step,** by one database function. Today a failure between the two saves leaves an empty payout behind.
+  - **Invoices:** Riga invoices from its accounting software at first. In a Latvian clinic, Invoices says that invoices for its country aren't available yet, rather than make an Estonian invoice.
+- **(b) Latvian payroll now:**
+  - **What it takes:**
+    - a tax step per country: the progressive income tax, social insurance and the non-taxable minimum, with rates as settings that change each year;
+    - a payslip document;
+    - the monthly VID report in EDS's format.
+
+    Each is checked by Riga's accountant.
+  - **The cost:** about 2 more weeks of building and 3–4 more test sessions. Every worker would see a wrong tax figure if one slipped through.
+  - **Riga's start moves by about 2–3 weeks.**
+- **(c) Pay outside Wivo at the start,** as planned before. Ruled out: Riga wants it.
+
+**Later, as plans of their own:**
+- **Latvian tax:** option (b), after Riga is running, if its accountant wants payslips from Wivo. It builds on (a)'s country switch.
+- **Latvian invoices:** with the e-invoice format that is mandatory from 2028.
+
+**Language:** Riga's workers use English at the start. The spec plans Russian within the first month (wivo-2.0-spec.md). Today the app offers only Eesti and English, and the Russian file is empty. That goes together with the tour's Russian (docs/TOUR.md, decision 2).
+
+**What it changes in time, with (a):**
+- **Building:** about 3–4 days, alongside slices 2–6:
+  - the country switch and the gross-only views: 1 day;
+  - the export: 1 day;
+  - the payout lines and the one-step payout, with a migration: 1 day;
+  - the setup tool's country, and the tests: ½–1 day.
+- **Kevin:** two sessions, plus Riga's accountant's answer about the sample file.
+- **Phase 1:** about **5–6 weeks** from the OK instead of 4–5.
+
+Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-report); [KPMG, Latvia's e-invoices postponed to 2028](https://kpmg.com/lv/en/insights/2025/06/e-invoices-for-businesses--not-so-soon-after-all.html).
 
 ### Phase 2: the first partnership, as small as possible
 
@@ -1051,8 +1144,8 @@ That is Kevin's production session, and it isn't counted below.
 
 ### In short
 
-- **Riga on its own instance:** about **4–5 weeks** after the OK, plus the 2.1 release and the visit date.
-- **The first shared job:** about **4–5 weeks** after that, including the independent review, so about **8–10 weeks** from the OK, if the lawyer's answers are in and the consultant's dates fit.
+- **Riga on its own instance, with workers and gross pay:** about **5–6 weeks** after the OK, plus the 2.1 release and the visit date.
+- **The first shared job:** about **4–5 weeks** after that, including the independent review, so about **9–11 weeks** from the OK, if the lawyer's answers are in and the consultant's dates fit.
 - **Automatic installs and setup without Wivo:** about 2–3 weeks once Riga is running.
 - **Chat, changes after sending, and stock:** about 4–5.5 weeks more.
 
@@ -1104,6 +1197,8 @@ That is Kevin's production session, and it isn't counted below.
     - The proposal, open to change: 14 days, re-signed weekly and at every release.
     - The rest of 5g is built with it: the serial, the channel, the embedded revocations, exact sizes, time limits, the second address, and functions that carry their own dependencies.
 
+**The lawyer's answers (2026-11-05):** L1–L8 under "Questions for the lawyer". They settle the separate database and the key plan (L1), EU hosting (L2), the audit log's retention (L3), recording a consultation (L4), the second factor as a signature (L5), consignment stock (L6), agreements replacing each other (L7) and the licence agreement's status (L8).
+
 **Now:** Kevin works through docs/GITHUB-CHECKLIST.md, because the unsigned release path exists today.
 
 **Still open:**
@@ -1111,7 +1206,7 @@ That is Kevin's production session, and it isn't counted below.
 16. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
 17. **Stock defaults:** the due date and the 30-day settling window.
 18. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).
-19. **Payroll and invoices for Latvia:** not in Riga's start. If Riga needs them, a plan of their own.
+19. **Pay and invoices for Latvia** (reopened 2026-11-05: Riga wants the workers' side, with pay, in its start). Recommended: (a) gross pay from the rules, plus a monthly export for Riga's accountant; Latvian tax rules later, as a plan of their own; Riga invoices outside Wivo at first (§9, "Riga's workers and pay").
 20. **Licences** (6e): the one per-clinic step left for Wivo. Whether to automate it (payment, then a licence) is a separate plan.
 21. **Knowing which versions clinics run:** without access, Wivo doesn't know. Options:
     - nothing at all;
@@ -1134,6 +1229,29 @@ That is Kevin's production session, and it isn't counted below.
     Until then, its defence is the Cloudflare and GitHub accounts' hardware second factor.
 
 ## Questions for the lawyer
+
+### The lawyer's answers (Kevin, 2026-11-05)
+
+| | Answer | Answers | Used in |
+|---|---|---|---|
+| L1 | **Separate databases per clinic, and the key plan, are approved.** | Q1, the separate database; Q9 in part, the keys (5e) | §0, 5e |
+| L2 | **Patient data may be kept in a cloud server in the EU.** Stockholm and Frankfurt both qualify. | Q8 in part | 6b |
+| L3 | **Audit entries are kept at least 3 years,** the claim period.<ul><li>Wivo never deletes them automatically.</li><li>A clinic may archive entries older than 3 years.</li><li>A deleted worker's name may stay in the log.</li></ul> | docs/AUDIT.md §3–4 | docs/AUDIT.md |
+| L4 | **Recording a consultation: informing the patient is enough.**<ul><li>No consent tick box.</li><li>Wivo shows clearly that recording is on, and logs that the patient was informed.</li></ul> | – | docs/VISION.md |
+| L5 | **Confirming with the second factor counts as a signature** for agreements and treatment plans. No separate e-signature service is needed. | – | docs/VISION.md, docs/PERMISSIONS.md, the agreements and patient portal plans |
+| L6 | **Partner stock is held at the borrowing clinic, as consignment.**<ul><li>Taking an item needs no approval.</li><li>The partner is notified.</li><li>Whoever takes an item is responsible for it from that moment.</li></ul> | Q13 in part | §3, docs/STOCK.md |
+| L7 | **A new agreement always replaces the old one.** | – | the agreements plan |
+| L8 | **The licence agreement is finalised when the product is ready.** The current text is a draft. | – | 5d, 6a |
+
+**Not covered by these answers, so still open:**
+- Q1, second half: is Wivo only a software vendor for Riga, or a processor because of setup and updates?
+- Q3–Q7 and Q10–Q12. The first real shared job still waits for Q3–Q6.
+- Q8: what Riga's contracts with Supabase and Resend must contain, and what ours must.
+- Q9: the contract terms for signed updates. They go into the licence agreement when it is finalised (L8).
+- Q13: tax, and medical-device traceability of a lent lot.
+- Q2 needs no answer: the relay was rejected (§10, decision 2).
+
+### The questions (sent before 2026-11-05)
 
 1. **The separate database:** does a clinic-owned Supabase project, with Wivo having no access after setup, meet Riga's requirement? Is Wivo then only a software vendor (no processing) for Riga, or a processor because of setup and updates?
 2. **A relay we rejected:** if Wivo ran a relay that saw only end-to-end encrypted content plus metadata (who, when, sizes), would Wivo be a processor? Would that be acceptable to Riga's lawyer?
