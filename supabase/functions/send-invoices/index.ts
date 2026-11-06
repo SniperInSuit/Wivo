@@ -1,5 +1,5 @@
 /**
- * Sends the invoices that are due. Called by pg_cron once a day.
+ * Sends the invoices that are due. Called by pg_cron every hour (sql/052).
  *
  * NOT PUBLIC: this one sends mail from the clinic's main address, so any
  * other caller would be handed a mail cannon. The only caller is pg_cron
@@ -211,8 +211,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
         })
         // Stamped IMMEDIATELY after the server accepts. A crash between the two
         // is the one case that could double-send, so the window is one await.
+        // A payment plan's instalment goes out while still a draft (the guard
+        // allows it); once e-mailed it is Sent, so the list says what happened.
         await db.from('invoices')
-          .update({ sent_at: new Date().toISOString(), send_error: null })
+          .update({
+            sent_at: new Date().toISOString(),
+            send_error: null,
+            ...(inv.status === 'mustand' ? { status: 'saadetud' } : {}),
+          })
           .eq('id', inv.id)
         used++
         results.push({

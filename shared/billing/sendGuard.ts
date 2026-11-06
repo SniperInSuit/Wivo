@@ -27,6 +27,8 @@ export type SendBlockCode =
   | 'liik-keelatud'   // this kind of mail is not permitted
   | 'juba-saadetud'   // sent_at is set
   | 'tuhistatud'      // cancelled invoice
+  | 'mustand'         // a draft: not released by the clinic
+  | 'makstud'         // marked Paid by hand
   | 'tasutud'         // nothing outstanding
   | 'tulevik'         // issue date has not arrived
   | 'aadress-puudub'
@@ -39,6 +41,8 @@ export const SEND_BLOCK_LABEL: Record<SendBlockCode, string> = {
   'liik-keelatud':   'Arvete saatmine ei ole lubatud',
   'juba-saadetud':   'See arve on juba välja saadetud',
   'tuhistatud':      'Arve on tühistatud',
+  'mustand':         'Arve on mustand: automaatselt läheb välja ainult saadetuks märgitud arve',
+  'makstud':         'Arve on märgitud makstuks',
   'tasutud':         'Arvel ei ole tasumata summat',
   'tulevik':         'Arve väljastuskuupäev ei ole veel käes',
   'aadress-puudub':  'Saajal ei ole e-posti aadressi',
@@ -81,6 +85,8 @@ export interface SendableInvoice {
   gross_total: number | string
   sent_at: string | null
   payments?: { amount: number | string }[]
+  /** Set on a payment plan's instalments (sql/049). */
+  payment_plan_id?: string | null
 }
 
 export type SendVerdict =
@@ -127,6 +133,17 @@ export function maySendInvoice(
 
   if (invoice.sent_at) return no('juba-saadetud')
   if (invoice.status === 'tuhistatud') return no('tuhistatud')
+
+  // Marked Paid by hand, with or without a payment entered: the clinic says
+  // nothing is owed, and a demand for payment is the wrong letter to send.
+  if (invoice.status === 'makstud') return no('makstud')
+
+  // Every invoice starts as a draft, and a draft is not finished: it goes out
+  // only once the clinic marks it Sent. Before this, an invoice went out
+  // within the hour of being created, still a draft. A payment plan's
+  // instalments are the exception: the clinic confirmed the plan, with its
+  // amounts and dates, as a whole, and each one waits for its date below.
+  if (invoice.status === 'mustand' && !invoice.payment_plan_id) return no('mustand')
 
   // Nothing owed is nothing to chase. A receipt is a different message with a
   // different permission, and this one is not it.
