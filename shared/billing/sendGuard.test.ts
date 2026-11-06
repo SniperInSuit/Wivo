@@ -23,8 +23,9 @@ const policy = (over: Partial<MailPolicy> = {}): MailPolicy => ({
   ...over,
 })
 
+// Marked Sent: the only kind a clinic has released (a draft never goes out).
 const invoice = (over: Partial<SendableInvoice> = {}): SendableInvoice => ({
-  status: 'mustand',
+  status: 'saadetud',
   issue_date: '2026-09-02',
   gross_total: 1220,
   sent_at: null,
@@ -72,6 +73,28 @@ describe('never twice', () => {
     // The single most important guard: cron fires more often than anyone
     // expects, and without this the patient gets a second copy every run.
     expect(run({ sent_at: '2026-09-02T06:00:00Z' })).toMatchObject({ code: 'juba-saadetud' })
+  })
+})
+
+describe('only what the clinic released', () => {
+  it('refuses a draft: every invoice starts as one, and it went out within the hour of being created', () => {
+    expect(run({ status: 'mustand' })).toMatchObject({ code: 'mustand' })
+    // Not even to the test address: a draft is not ready to be looked at as sent.
+    expect(run({ status: 'mustand' }, { testAadress: 'mina@example.ee' })).toMatchObject({ code: 'mustand' })
+  })
+
+  it('sends one marked Sent', () => {
+    expect(run({ status: 'saadetud' })).toMatchObject({ send: true })
+  })
+
+  it("sends a payment plan's instalment on its date, though still a draft: the plan was confirmed as a whole", () => {
+    expect(run({ status: 'mustand', payment_plan_id: 'plan-1' })).toMatchObject({ send: true })
+    expect(run({ status: 'mustand', payment_plan_id: 'plan-1', issue_date: '2026-10-02' })).toMatchObject({ code: 'tulevik' })
+    expect(run({ status: 'tuhistatud', payment_plan_id: 'plan-1' })).toMatchObject({ code: 'tuhistatud' })
+  })
+
+  it('refuses one marked Paid by hand, even with no payment entered', () => {
+    expect(run({ status: 'makstud', payments: [] })).toMatchObject({ code: 'makstud' })
   })
 })
 

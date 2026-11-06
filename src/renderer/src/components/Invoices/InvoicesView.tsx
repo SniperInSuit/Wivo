@@ -16,6 +16,7 @@ import {
   useInvoices, useUpdateInvoice, useDeleteInvoice, useAddPayment, useDeletePayment
 } from '../../hooks/useInvoices'
 import { usePermissions } from '../../hooks/usePermissions'
+import { useSettings } from '../../stores/useSettings'
 import { useAuth } from '../../context/AuthContext'
 import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
@@ -310,6 +311,10 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
   const [reference, setReference] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { settings } = useSettings()
+  // What the hourly sender would do with this one (shared/billing/sendGuard.ts).
+  const autoEmail = settings.epost.saatmineLubatud && settings.epost.lubaArved
+    && !invoice.sent_at && invoice.status !== 'tuhistatud' && invoice.status !== 'makstud'
 
   const due = outstanding(invoice)
   const paid = paidAmount(invoice)
@@ -411,6 +416,11 @@ function InvoiceDetail({ invoice, canWrite, onClose, onStatus, onDelete, onPrint
                 </button>
               ))}
             </div>
+            {autoEmail && (
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                {invoice.payment_plan_id ? t('invoices.autoEmailPlanInstalment') : t('invoices.autoEmailOnlySent')}
+              </p>
+            )}
           </section>
         )}
 
