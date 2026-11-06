@@ -555,8 +555,12 @@ Both change.
 
     Both are fixed at creation and can't be changed later.
   - **The private keys can't be copied out.**
-  - **Arrival test,** about 15 minutes: create a throwaway Ed25519 key in a spare slot, sign a known test value through Yubico's PKCS#11 module (`ykcs11`, mechanism `CKM_EDDSA`), check the signature in Node, then delete the throwaway key.
-    - Yubico documents `CKM_EDDSA` for firmware 5.7+, but not whether it signs the raw message, which is what we need. This test settles it before any real key is made.
+  - **Arrival test** (docs/YUBIKEYS.md; the keys arrived on 2026-11-06), about 5 minutes a key:
+    - a throwaway Ed25519 key, attested and checked up to Yubico's root;
+    - one signature with the PIN and a touch, checked with WebCrypto as the release code checks it;
+    - the throwaway key deleted, leaving PIV as it left the factory.
+
+    It talks to the key through Yubico's own `ykman script` instead of the PKCS#11 module. That library sends the raw message to the key, which is what we need, so the `CKM_EDDSA` question no longer arises. On key A it also measures the largest message the key signs. That probably means the release format must sign a short statement with the payload's hash (docs/YUBIKEYS.md §2).
     - If it fails, the fallback is the offline laptop below.
   - **GitHub:** the signing key and the spare also work as GitHub's hardware second factor (FIDO2, a separate applet on the same key; docs/GITHUB-CHECKLIST.md). The roots stay in their safes.
 - **Never** in the repository, in CI, in a password manager or as a file on any computer. If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
