@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
   encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
-  b64urlEncode, b64urlDecode, sha256Hex, signingInput, PREFIX, MAX_PACKAGE_BYTES,
+  b64urlEncode, b64urlDecode, sha256Hex, signedText, statement, PREFIX, MAX_PACKAGE_BYTES,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
 
@@ -59,7 +59,7 @@ describe('a package signed by a certified key', () => {
     const r = await checkSigned('manifest', token, [signingCert], await trustFrom(pinned, []), NOW)
     expect(r).toMatchObject({ ok: true, payload: { version: '2.3.0' } })
     const [, payloadB64] = token.split('.')
-    expect(r.ok && r.signedSha256).toBe(await sha256Hex(signingInput('manifest', payloadB64)))
+    expect(r.ok && r.signedSha256).toBe(await sha256Hex(signedText('manifest', payloadB64)))
   })
 
   it('one changed byte: refused', async () => {
@@ -110,11 +110,56 @@ describe('a package signed by a certified key', () => {
   })
 })
 
+describe('what the key signs: a short statement, whatever the size (docs/YUBIKEYS.md §2)', () => {
+  /** As key A measured: 3,000 bytes signed, 4,096 refused. */
+  const asYubiKey = (k: TestKey, seen: Uint8Array[]): Signer => async bytes => {
+    if (bytes.length > 3000) throw new Error('NotSupportedError: APDU length exceeds YubiKey capability')
+    seen.push(bytes)
+    return k.sign(bytes)
+  }
+
+  it('a version list far beyond what a YubiKey signs: the key sees only the kind and the hash', async () => {
+    const seen: Uint8Array[] = []
+    const versions = Array.from({ length: 500 }, (_, i) => ({
+      version: `2.${i}.0`, package: `wivo-update-2.${i}.0.json`, sha256: 'a'.repeat(64), size: 1234, manual_only: false, auto_after: '2026-11-08T10:00:00Z',
+    }))
+    const token = await encode('index', {
+      v: 1, key_id: 'signing-1', channel: 'stable', serial: 7, generated_at: '2026-11-05T10:00:00Z',
+      expires: '2026-11-19T10:00:00Z', versions, withdrawn: [], revocations: [],
+    }, asYubiKey(signing, seen))
+    expect(token.length).toBeGreaterThan(60_000)
+    const r = await checkIndex(token, [signingCert], await trustFrom(pinned, []), NOW, 'stable', {})
+    expect(r.ok).toBe(true)
+    expect(seen).toHaveLength(1)
+    expect(new TextDecoder().decode(seen[0])).toBe(`WIVOIDX1.sha256.${r.ok && r.signedSha256}`)
+  })
+
+  it('every kind fits: at most 81 bytes', () => {
+    for (const kind of Object.keys(PREFIX) as (keyof typeof PREFIX)[]) {
+      expect(statement(kind, 'f'.repeat(64)).length).toBeLessThanOrEqual(81)
+    }
+  })
+
+  it('a signature over the whole text instead of the statement: refused', async () => {
+    const [p, payloadB64] = (await encode('manifest', manifest(), signing.sign)).split('.')
+    const whole = await signing.sign(signedText('manifest', payloadB64))
+    expect(await checkSigned('manifest', `${p}.${payloadB64}.${b64urlEncode(whole)}`, [signingCert], await trustFrom(pinned, []), NOW))
+      .toEqual({ ok: false, reason: 'bad_signature' })
+  })
+
+  it("a statement signed for one kind is not another kind's", async () => {
+    const [, payloadB64] = (await encode('manifest', manifest(), signing.sign)).split('.')
+    const asIndex = await signing.sign(statement('index', await sha256Hex(signedText('manifest', payloadB64))))
+    expect(await checkSigned('manifest', `${PREFIX.manifest}.${payloadB64}.${b64urlEncode(asIndex)}`, [signingCert], await trustFrom(pinned, []), NOW))
+      .toEqual({ ok: false, reason: 'bad_signature' })
+  })
+})
+
 describe('revocations', () => {
   it('a revoked signing key: refused, except what it signed before (the genuine list)', async () => {
     const before = await encode('manifest', manifest({ version: '2.2.0', from_min: '2.1.0' }), signing.sign)
     const after = await encode('manifest', manifest(), signing.sign)
-    const beforeSha = await sha256Hex(signingInput('manifest', before.split('.')[1]))
+    const beforeSha = await sha256Hex(signedText('manifest', before.split('.')[1]))
     const trust = await trustFrom(pinned, [await revoke(rootB, { genuine: [beforeSha] })])
     expect(await checkSigned('manifest', before, [signingCert], trust, NOW)).toMatchObject({ ok: true })
     expect(await checkSigned('manifest', after, [signingCert], trust, NOW)).toEqual({ ok: false, reason: 'revoked' })

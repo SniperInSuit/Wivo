@@ -13,14 +13,22 @@
  *   `update` key, desktop releases by an `app` key. So a new signing key never
  *   needs the pinned roots to change.
  *
- * THE FORMAT (as `shared/license`)
+ * THE FORMAT (as `shared/license`, except for what the key signs)
  *   <PREFIX>.<payload>.<signature>
- *   payload   = base64url(JSON)
- *   signature = base64url(Ed25519 over the ASCII bytes of "<PREFIX>.<payload>")
- *   Each kind has its own PREFIX, so a signature on one kind can never be
- *   passed off as another: a certificate's signature is not a package's.
+ *   payload     = base64url(JSON)
+ *   signed text = the ASCII bytes of "<PREFIX>.<payload>"
+ *   signature   = base64url(Ed25519 over the ASCII bytes of "<PREFIX>.sha256.<hex>"),
+ *                 <hex> being the sha256 of the signed text
+ *   The key signs that short statement, at most 81 bytes whatever the payload's
+ *   size: a YubiKey takes at most 3,062 bytes in one command, so it signs no
+ *   message much over 3 KB (docs/YUBIKEYS.md §2), and a manifest is already
+ *   about 30 KB. The signature then rests on SHA-256 as well, as the files a
+ *   manifest lists already do.
+ *   Each kind has its own PREFIX, in the signed text and in the statement, so
+ *   a signature on one kind can never be passed off as another: a
+ *   certificate's signature is not a package's.
  *
- * Verification reads the exact bytes that were signed and only then parses
+ * Verification hashes the exact bytes that were signed and only then parses
  * them, so no JSON canonicalisation is needed to check anything. `encode()`
  * still writes sorted keys, so the same content always gives the same bytes.
  */
@@ -202,14 +210,21 @@ export function canonicalJson(value: unknown): string {
 
 // ─── Signing (the release tool) ───────────────────────────────────────────────
 
-/** Signs bytes and returns the 64-byte Ed25519 signature: a hardware key, or a test key in tests. */
+/**
+ * Signs bytes and returns the 64-byte Ed25519 signature: a hardware key, or a
+ * test key in tests. It is only ever handed a `statement`.
+ */
 export type Signer = (bytes: Uint8Array) => Promise<Uint8Array>
 
-export const signingInput = (kind: Kind, payloadB64: string): Uint8Array => enc.encode(`${PREFIX[kind]}.${payloadB64}`)
+/** What a signature covers. Revocations and the serial floor name it by its sha256 (`signedSha256`). */
+export const signedText = (kind: Kind, payloadB64: string): Uint8Array => enc.encode(`${PREFIX[kind]}.${payloadB64}`)
+
+/** What the key itself signs: the kind and the sha256 of the signed text, at most 81 bytes. */
+export const statement = (kind: Kind, signedSha256: string): Uint8Array => enc.encode(`${PREFIX[kind]}.sha256.${signedSha256}`)
 
 export async function encode<K extends Kind>(kind: K, payload: Payloads[K], sign: Signer): Promise<string> {
   const payloadB64 = b64urlEncode(enc.encode(canonicalJson(payload)))
-  const sig = await sign(signingInput(kind, payloadB64))
+  const sig = await sign(statement(kind, await sha256Hex(signedText(kind, payloadB64))))
   if (sig.length !== 64) throw new Error('An Ed25519 signature is 64 bytes')
   return `${PREFIX[kind]}.${payloadB64}.${b64urlEncode(sig)}`
 }
@@ -223,9 +238,9 @@ export type Refusal =
 
 export type Checked<T> = { ok: true; payload: T; signedSha256: string } | { ok: false; reason: Refusal }
 
-interface Split { payloadB64: string; payload: unknown; sig: Uint8Array; input: Uint8Array }
+interface Split { payload: unknown; sig: Uint8Array; signedSha256: string; statement: Uint8Array }
 
-function split(kind: Kind, token: string): Split | Refusal {
+async function split(kind: Kind, token: string): Promise<Split | Refusal> {
   const parts = token.split('.')
   if (parts.length !== 3) return 'malformed'
   if (parts[0] !== PREFIX[kind]) return 'wrong_kind'
@@ -235,7 +250,8 @@ function split(kind: Kind, token: string): Split | Refusal {
   let payload: unknown
   try { payload = JSON.parse(dec.decode(bytes)) } catch { return 'malformed' }
   if (!payload || typeof payload !== 'object' || (payload as { v?: unknown }).v !== 1) return 'malformed'
-  return { payloadB64: parts[1], payload, sig, input: signingInput(kind, parts[1]) }
+  const signedSha256 = await sha256Hex(signedText(kind, parts[1]))
+  return { payload, sig, signedSha256, statement: statement(kind, signedSha256) }
 }
 
 async function ed25519Verify(publicKeyB64: string, sig: Uint8Array, data: Uint8Array): Promise<boolean> {
@@ -263,12 +279,12 @@ export interface Trust {
 export async function trustFrom(pinned: RootKey[], revocationTokens: string[]): Promise<Trust> {
   const revocations: Revocation[] = []
   for (const token of revocationTokens) {
-    const s = split('revocation', token)
+    const s = await split('revocation', token)
     if (typeof s === 'string') continue
     const r = s.payload as Revocation
     const root = pinned.find(k => k.id === r.root_id)
     if (!root || r.key_id === root.id) continue
-    if (!Array.isArray(r.genuine) || !(await ed25519Verify(root.publicKey, s.sig, s.input))) continue
+    if (!Array.isArray(r.genuine) || !(await ed25519Verify(root.publicKey, s.sig, s.statement))) continue
     revocations.push(r)
   }
   const roots = pinned.filter(k => !revocations.some(r => r.key_id === k.id))
@@ -281,18 +297,18 @@ const isRevoked = (trust: Trust, keyId: string, signedSha: string): boolean =>
 
 /** A certificate, against the trusted roots, for `purpose`, at `now`. */
 export async function checkCertificate(token: string, trust: Trust, purpose: KeyPurpose, now: Date): Promise<Checked<Certificate>> {
-  const s = split('certificate', token)
+  const s = await split('certificate', token)
   if (typeof s === 'string') return { ok: false, reason: s }
   const c = s.payload as Certificate
   const root = trust.roots.find(k => k.id === c.root_id)
   if (!root) return { ok: false, reason: 'unknown_root' }
-  if (!(await ed25519Verify(root.publicKey, s.sig, s.input))) return { ok: false, reason: 'bad_signature' }
+  if (!(await ed25519Verify(root.publicKey, s.sig, s.statement))) return { ok: false, reason: 'bad_signature' }
   if (c.purpose !== purpose) return { ok: false, reason: 'wrong_purpose' }
   if (!(Date.parse(c.not_before) <= now.getTime())) return { ok: false, reason: 'not_yet_valid' }
   if (!(now.getTime() < Date.parse(c.not_after))) return { ok: false, reason: 'expired' }
   // A revocation covers what the key SIGNED (checkSigned), not the root's
   // certificate for it: its genuine earlier releases must still check out.
-  return { ok: true, payload: c, signedSha256: await sha256Hex(s.input) }
+  return { ok: true, payload: c, signedSha256: s.signedSha256 }
 }
 
 /**
@@ -304,7 +320,7 @@ export async function checkCertificate(token: string, trust: Trust, purpose: Key
 export async function checkSigned<K extends 'manifest' | 'index' | 'app'>(
   kind: K, token: string, certificates: string[], trust: Trust, now: Date,
 ): Promise<Checked<Payloads[K]>> {
-  const s = split(kind, token)
+  const s = await split(kind, token)
   if (typeof s === 'string') return { ok: false, reason: s }
   const keyId = (s.payload as { key_id?: unknown }).key_id
   if (typeof keyId !== 'string') return { ok: false, reason: 'malformed' }
@@ -315,8 +331,8 @@ export async function checkSigned<K extends 'manifest' | 'index' | 'app'>(
     if (c.ok && c.payload.key_id === keyId) { cert = c.payload; break }
   }
   if (!cert) return { ok: false, reason: 'unknown_key' }
-  if (!(await ed25519Verify(cert.public_key, s.sig, s.input))) return { ok: false, reason: 'bad_signature' }
-  const signedSha256 = await sha256Hex(s.input)
+  if (!(await ed25519Verify(cert.public_key, s.sig, s.statement))) return { ok: false, reason: 'bad_signature' }
+  const { signedSha256 } = s
   if (isRevoked(trust, keyId, signedSha256)) return { ok: false, reason: 'revoked' }
   if (kind === 'manifest') {
     const m = s.payload as Manifest

@@ -7,8 +7,10 @@
  *   Yubico Attestation Root 1 (pinned here by its SHA-256)
  *     → Yubico Attestation Intermediate A 1 or B 1
  *       → Yubico PIV Attestation A 1, B 1 or B2 1
- *         → the key's own factory certificate (slot f9)
- *           → the attestation of the key just made (signed by f9)
+ *         → the factory certificate in slot f9: one per production batch, not
+ *           per key (all four of Wivo's share one), with the firmware but no serial
+ *           → the attestation of the key just made (signed by f9), which
+ *             carries this key's serial
  *
  * WHAT THE KEY SAYS ABOUT ITSELF, inside the signed attestation, under
  * Yubico's OID 1.3.6.1.4.1.41482.3 (developers.yubico.com/PIV/Introduction/PIV_attestation.html):
@@ -112,7 +114,7 @@ export function checkChain({ attestationPem, f9Pem, intermediatesPem, rootPem, r
 
   if (root.fingerprint256 !== rootSha256) problems.push(`the root is not Yubico's: its SHA-256 is ${root.fingerprint256}`)
   if (root.subject !== root.issuer || !root.verify(root.publicKey)) problems.push('the root does not sign itself')
-  if (!att.checkIssued(f9) || !att.verify(f9.publicKey)) problems.push("the attestation is not signed by the key's own factory certificate (f9)")
+  if (!att.checkIssued(f9) || !att.verify(f9.publicKey)) problems.push("the attestation is not signed by the key's factory certificate (f9)")
 
   const path = [att, f9]
   let cur = f9

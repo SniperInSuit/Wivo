@@ -9,7 +9,8 @@
  * For the key with that letter it checks:
  *   - the serial is that letter's and the firmware is 5.7 or later;
  *   - the key is genuine: a key made on it is attested by its factory
- *     certificate, which chains to Yubico's root, pinned by its SHA-256;
+ *     certificate (one per production batch, so shared with other keys),
+ *     which chains to Yubico's root, pinned by its SHA-256;
  *   - inside that signed attestation: the serial, the firmware, the form
  *     factor, PIN and touch for every use, and the very key that was made;
  *   - an Ed25519 signature made with the PIN and a touch verifies, the way the
@@ -73,7 +74,7 @@ if (run.status !== 0 && !d.after) {
 }
 
 const results = []
-let chain, facts, largestSigned
+let chain, facts, largestSigned, sizeLine
 const check = (ok, text) => results.push({ ok: Boolean(ok), text })
 
 check(d.serial === serial, `Serial ${d.serial} is key ${letter}'s (${serial})`)
@@ -119,13 +120,15 @@ if (probe) {
   }
   const refused = (d.probe ?? []).find(p => p.refused)
   largestSigned = signed.at(-1) ?? 0
-  console.log(`\nLargest message signed and verified: ${largestSigned} bytes${refused ? `; ${refused.size} refused (${refused.refused})` : ''}.`)
+  sizeLine = `Largest message signed and verified: ${largestSigned} bytes${refused ? `; ${refused.size} refused (${refused.refused})` : ''}.`
 }
 
 check(d.after && d.after.differs.length === 0 && !d.delete_error, `Clean afterwards${d.after?.differs.length ? `: NOT (${d.after.differs.join('; ')})` : ': throwaway key deleted, PIV as it left the factory'}`)
 
 console.log(`\nKey ${letter} (${serial}):`)
 for (const r of results) console.log(`  ${r.ok ? 'ok  ' : 'FAIL'}  ${r.text}`)
+// Here, not above the checks, where the probe's own lines buried it (key A, 2026-11-06).
+if (sizeLine) console.log(`  size  ${sizeLine}`)
 const passed = results.every(r => r.ok)
 writeFileSync(join(dir, 'report.json'), JSON.stringify({ letter, serial, at: new Date().toISOString(), passed, results, chain, facts, largestSigned }, null, 2))
 console.log(`\n${passed ? 'PASSED' : 'FAILED'}. Kept in ${dir}`)

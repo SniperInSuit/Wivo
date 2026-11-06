@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). The lawyer's answers of 5 November 2026 are in (L1–L8, before the questions), and phase 1 is re-planned for Riga's workers and pay (§9, slice 7, for Kevin's OK). **Phase 1 is being built on `testing`** (§9).
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). The lawyer's answers of 5 November 2026 are in (L1–L8, before the questions), and phase 1 is re-planned for Riga's workers and pay (§9, slice 7, for Kevin's OK). **Phase 1 is being built on `testing`** (§9). The four YubiKeys passed their arrival test on 2026-11-06, and the release format now signs a short statement (5e; §10, 26–27).
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -357,7 +357,8 @@ wivo-update-2.3.0.tar
   migrations/*.sql   the migrations since the baseline (docs/MIGRATIONS.md), in order
   functions/*.zip    the Edge Function bundles; often none (5c)
   checks/*.sql       the read-only checks (schema_check.sql, …)
-  manifest.sig       Ed25519 signature over manifest.json (as `shared/license`)
+  manifest.sig       Ed25519 signature over a short statement with manifest.json's SHA-256
+                     (`shared/release`; a YubiKey signs at most about 3 KB, docs/YUBIKEYS.md §2)
 ```
 
 - **The signing keys:** where they live, how a package is signed, rotation and what happens on a leak are in 5e. The root public keys are pinned in the app and in the clinic's project at setup.
@@ -534,14 +535,14 @@ wivo-update-2.3.0.tar
 
 Both change.
 
-**Separate keys, each for one purpose.** All are Ed25519, the same format as `shared/license`:
+**Separate keys, each for one purpose.** All are Ed25519, with the same token format as `shared/license`. For everything except licences, the key signs a short statement with the SHA-256 of what it covers, because a YubiKey signs at most about 3 KB (docs/YUBIKEYS.md §2):
 
 | Key | Signs | Where it lives | Used |
 |---|---|---|---|
 | **Root key** | Certificates for the keys below, revocations, and rotations. Nothing else. | A hardware key in a safe (*root A*), with a second root on another hardware key in another place (*root B*, for example a bank box). | A few times a year at most. |
 | **Update signing key** | Update packages and the update index (5a) | A hardware key with Kevin (the *signing key*). A second signing key on a separate hardware key, kept apart as the spare. | Every release with a package. |
 | **App release key** | Each desktop release: its version, file names and `sha512`. The app checks it before installing an update. | Its own slot on the same hardware keys as the update signing key. | Every desktop release. |
-| **Licence key** | Licences (`shared/license`) | Its own slot on the signing hardware key. It replaces `license-private.pem`, which is then deleted. Enforcement is off today (`LICENCE_PUBLIC_KEY` is empty), so nothing that matters breaks. | Per licence. |
+| **Licence key** | Licences (`shared/license`) | Its own slot on the signing hardware key, with a spare on the spare key; the app trusts both (Kevin, 2026-11-06). It replaces `license-private.pem`, which is then deleted. Enforcement is off today (`LICENCE_PUBLIC_KEY` is empty), so nothing that matters breaks. | Per licence. |
 
 - **Hardware: four YubiKey 5 Series keys with firmware 5.7 or later** (decided, Kevin 2026-11-05):
   - **The model:** the **YubiKey 5C NFC** for a USB-C Mac; the 5 NFC if the computer has USB-A.
@@ -560,10 +561,10 @@ Both change.
     - one signature with the PIN and a touch, checked with WebCrypto as the release code checks it;
     - the throwaway key deleted, leaving PIV as it left the factory.
 
-    It talks to the key through Yubico's own `ykman script` instead of the PKCS#11 module. That library sends the raw message to the key, which is what we need, so the `CKM_EDDSA` question no longer arises. On key A it also measures the largest message the key signs. That probably means the release format must sign a short statement with the payload's hash (docs/YUBIKEYS.md §2).
-    - If it fails, the fallback is the offline laptop below.
-  - **GitHub:** the signing key and the spare also work as GitHub's hardware second factor (FIDO2, a separate applet on the same key; docs/GITHUB-CHECKLIST.md). The roots stay in their safes.
-- **Never** in the repository, in CI, in a password manager or as a file on any computer. If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
+    It talks to the key through Yubico's own `ykman script` instead of the PKCS#11 module. That library sends the raw message to the key, which is what we need, so the `CKM_EDDSA` question no longer arises. On key A it also measures the largest message the key signs.
+    - **All four passed (2026-11-06).** Key A signed 3,000 bytes and refused 4,096, so the release format now signs a short statement with the payload's hash (docs/YUBIKEYS.md §2, §4).
+  - **GitHub:** the signing key and the spare also work as GitHub's hardware second factor (FIDO2, a separate applet on the same key; docs/GITHUB-CHECKLIST.md). The roots stay in their safes. NFC is off on all four; GitHub on the phone uses an iPhone passkey.
+- **The private keys: never** in the repository, in CI, in a password manager or as a file on any computer. (The PINs that unlock them are kept as in docs/YUBIKEYS.md §3.) If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
 - **What is pinned in the clinic** (in `wivo-update`'s code, and in the app): **the two root public keys only.**
   - Signing keys are trusted through a root-signed certificate (key, purpose, valid from and to).
   - The certificates the project has accepted are kept in an append-only table that only `wivo-update` writes.
@@ -1200,6 +1201,14 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 22. **The signed list expires,** and the app warns owners and approvers when it can't get a fresh one. Installs wait while the list is stale; nothing else stops.
     - The proposal, open to change: 14 days, re-signed weekly and at every release.
     - The rest of 5g is built with it: the serial, the channel, the embedded revocations, exact sizes, time limits, the second address, and functions that carry their own dependencies.
+
+**Decided (Kevin, 2026-11-06), the YubiKeys (docs/YUBIKEYS.md):**
+
+26. **All four keys passed the arrival test.** The roles: A is root A, B is root B, C the signing key, D the spare.
+    - On all four: OTP, OATH, OpenPGP and YubiHSM Auth off, and NFC off. The roots keep only PIV; C and D also keep FIDO2 for GitHub. GitHub on the phone uses an iPhone passkey.
+    - The PINs and PUKs go in Apple Passwords. Each root's PIN is also on paper, kept with the other root.
+    - A spare licence key on D, which the app also trusts.
+27. **The release format signs a short statement** with the SHA-256 of what it covers: a YubiKey signs at most about 3 KB (docs/YUBIKEYS.md §2). Done in `shared/release`, before any real key signs anything.
 
 **The lawyer's answers (2026-11-05):** L1–L8 under "Questions for the lawyer". They settle the separate database and the key plan (L1), EU hosting (L2), the audit log's retention (L3), recording a consultation (L4), the second factor as a signature (L5), consignment stock (L6), agreements replacing each other (L7) and the licence agreement's status (L8).
 

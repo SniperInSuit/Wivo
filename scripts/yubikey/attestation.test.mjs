@@ -44,7 +44,7 @@ describe('the chain', () => {
   it("refuses an attestation that another key's f9 didn't sign", () => {
     const r = checkChain({ ...madeUp, f9Pem: fixture('other-f9.pem') })
     expect(r.ok).toBe(false)
-    expect(r.problems).toContain("the attestation is not signed by the key's own factory certificate (f9)")
+    expect(r.problems).toContain("the attestation is not signed by the key's factory certificate (f9)")
   })
 
   it("refuses a made-up chain presented with Yubico's real intermediates and root", () => {
@@ -73,6 +73,39 @@ describe("Yubico's certificates beside the script", () => {
     expect(piv.verify(mid.publicKey)).toBe(true)
     expect(mid.issuer).toBe(root.subject)
     expect(mid.verify(root.publicKey)).toBe(true)
+  })
+})
+
+describe("key A's real attestation (2026-11-06; public certificates only)", () => {
+  const real = {
+    attestationPem: fixture('real-A-attestation-9c.pem'),
+    f9Pem: fixture('real-f9.pem'),
+    intermediatesPem: yubico('yubico-intermediate.pem'),
+    rootPem: yubico('yubico-ca-1.pem'),
+  }
+
+  it("chains to Yubico's pinned root", () => {
+    const r = checkChain(real)
+    expect(r.problems).toEqual([])
+    expect(r.path).toEqual([
+      'CN=YubiKey PIV Attestation 9c',
+      'CN=Yubico PIV Attestation',
+      'CN=Yubico PIV Attestation B 1',
+      'CN=Yubico Attestation Intermediate B 1',
+      'CN=Yubico Attestation Root 1',
+    ])
+  })
+
+  it('states the serial, firmware, form factor and policies', () => {
+    expect(attestedFacts(real.attestationPem)).toMatchObject({
+      serial: 38272275, firmware: [5, 7, 4], formFactor: 'USB-C keychain', fips: false,
+      pinPolicy: 'always', touchPolicy: 'always', keyType: 'ed25519',
+    })
+  })
+
+  it("is refused under a made-up f9 or a made-up root", () => {
+    expect(checkChain({ ...real, f9Pem: madeUp.f9Pem }).ok).toBe(false)
+    expect(checkChain({ ...real, rootPem: madeUp.rootPem }).ok).toBe(false)
   })
 })
 
