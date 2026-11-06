@@ -24,7 +24,7 @@ Each step must be useful on its own, before the next one exists.
 | 3 | **Partner lab job created from the plan** | No lab order is typed twice; the lab gets the job when the patient says yes. |
 | 4 | **Supplier marketplace** | Missing items are ordered in one click, at calculated prices, from verified suppliers. |
 
-The catalog these steps count against (equipment, materials, shades, stock and lots) is planned in docs/STOCK.md.
+The catalog these steps count against (equipment, materials, shades, stock and lots) is planned in docs/STOCK.md: its slice 1 (equipment, materials, shades) right after phase 1, the rest after phase 2 (Kevin, 2026-11-06).
 
 ## Locked rules
 

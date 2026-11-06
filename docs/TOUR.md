@@ -105,7 +105,7 @@ The guide describes what the app does today; these are worth fixing, each separa
 
 **Money:**
 1. **The Paid status records no money.** Clicking **Paid** without **Add payment** leaves the invoice counted as unpaid (column, boxes, Unpaid filter). The guide says to always use Add payment. Both.
-2. **Automatic e-mail sends drafts.** With automatic sending on, every invoice dated today or earlier that isn't cancelled and isn't paid goes out within the hour, **Draft** or not. "Create invoice" gives no warning. Both.
+2. **Automatic e-mail sends drafts.** With automatic sending on, every invoice dated today or earlier that isn't cancelled and isn't paid goes out within the hour, **Draft** or not. "Create invoice" gives no warning. Both. **Fixed 2026-11-06** (main and `testing`): a draft is never e-mailed, nor one marked Paid; it goes out once marked Sent, and a payment plan's instalments on their dates. The sending changes once `send-invoices` is deployed.
 3. **Job payments and invoice payments don't settle each other:** "Mark as paid" on a job doesn't lower its invoice's Unpaid, and the reverse. Both.
 4. **A client invoice never lists the client's unbilled jobs:** "Unbilled work" always says "Select a patient…" in Client mode, so lines are typed by hand. Both.
 5. **An invoice can't be edited after it is created**, only deleted or cancelled. Both.

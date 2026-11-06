@@ -1096,6 +1096,8 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 
 ### Phase 2: the first partnership, as small as possible
 
+**Before it** (Kevin, 2026-11-06): docs/STOCK.md slice 1, equipment, materials and shades, about 4–5 days and two sessions. It settles the shade fields this phase's message format carries (§2a).
+
 **Scope** (Kevin, 2026-11-04):
 1. We send a job with its files to Riga.
 2. Riga works on it in its own Wivo. It moves the job through the stages assigned to it, and adds its files (print, design).

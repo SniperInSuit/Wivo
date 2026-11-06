@@ -1,6 +1,6 @@
 # Stock, materials, shades and lots
 
-Status: **plan, for Kevin's OK** (C1, 2026-11-05). Nothing is built.
+Status: **plan** (C1, 2026-11-05). **Kevin's decisions are in** (§12, 2026-11-06). Nothing is built. Slice 1 comes right after phase 1, the rest after phase 2 (§13).
 
 **What it is:**
 - **one catalog** of the clinic's equipment, materials and products;
@@ -143,9 +143,10 @@ Later, the treatment-plan calculator uses the same catalog (§9).
 
 **Warnings,** for low stock, expiry, use-by after opening, the partner's due date, and a delivery that is late:
 - **Today there are no stock notification settings** (§0), only the sidebar count and the sound, a month ahead.
-- **Proposed:**
+- **Decided (Kevin, 2026-11-06):**
   - a Stock section in the notification settings: how far ahead to warn (default one month, as today), and the bell, e-mail and push like other notifications;
   - who gets them: those with Manage stock.
+- **A short expiry at receipt** (§7): warned under 6 months by default, **changeable per material type** (Kevin, 2026-11-06), in Settings → Materials. A type left unset uses the default.
 
 ## 5. A new job uses stock
 
@@ -202,13 +203,19 @@ Later, the treatment-plan calculator uses the same catalog (§9).
 - **A person always checks the lines** before anything is expected.
 
 **2. Ticking off the boxes:**
-- **On the phone,** scan each box's code. Implant boxes carry a GS1 or HIBC code (the EU's device identifier), which gives the product, lot, expiry and serial.
+- **The phone's camera is the main way to receive stock** (Kevin, 2026-11-06): scan each box's GS1 code on the phone. Implant boxes carry a GS1 or HIBC code (the EU's device identifier), which gives the product, lot, expiry and serial.
+- **The camera reader must:**
+  - read GS1 DataMatrix, the square 2D code on implant boxes, as well as the linear GS1-128 and EAN codes;
+  - read the GS1 fields: (01) product (GTIN), (17) expiry, (10) lot and (21) serial; and HIBC;
+  - scan box after box without a tap in between, with a sound and a tick for each;
+  - work in a dim store room: the phone's torch, and focus close up;
+  - be tested on our real Prama boxes, on an iPhone and on an Android phone.
 - **Each scan ticks off its line,** and Wivo warns about:
   - a **wrong** item (not on the invoice);
   - a **missing** one (on the invoice, not scanned);
   - an **extra** one (more than invoiced);
-  - a **short expiry** (closer than a set time, default 6 months).
-- **On the desktop,** a USB barcode scanner does the same.
+  - a **short expiry** (closer than the time set for the material type, default 6 months; §4).
+- **On the desktop,** a USB barcode scanner does the same, as an extra.
 - **Without an invoice,** scanning alone works too: the boxes become the delivery, and the prices are added later or left out.
 - The phone app runs in the browser, and the iPhone's browser has no built-in barcode reader, so the reader is a small library shipped with the app.
 
@@ -247,7 +254,7 @@ Later, the treatment-plan calculator uses the same catalog (§9).
 - **the lender's Wivo makes an invoice draft** from the statement;
 - the lender checks it, and **Wivo sends it** from the lender's own e-mail;
 - **payments happen outside Wivo.**
-- **First, fix "automatic e-mail sends drafts"** (docs/TOUR.md §5, item 2). Otherwise the draft would go out before the lender checks it.
+- **"Automatic e-mail sends drafts" is fixed** (2026-11-06, docs/TOUR.md §5, item 2): a draft is never e-mailed, so the lender checks it first and marks it Sent.
 
 **What changes from today (sql/093):**
 - the partner is notified and sees the statement, not only totals;
@@ -332,15 +339,22 @@ The calculator only counts what the doctor chose against what the clinic holds. 
 - cost prices hidden from a member without the cost permission;
 - every export through `auditedCsvExport`.
 
-## 12. Decisions for Kevin
+## 12. Decisions (Kevin, 2026-11-06)
 
-1. **Old jobs:** not rewritten, with the screen splitting old text (recommended), or a one-time rewrite that leaves an audit entry per job.
-2. **Stock notifications:** there are no stock settings today (§4). Recommended: a Stock section in the notification settings, with how far ahead to warn (default a month) and the usual channels, for those with Manage stock.
-3. **Reading invoices:** e-invoice files, PDFs read on the computer, and the clinic's own AI key kept on the computer (recommended), plus a USB barcode scanner on the desktop. Reading photos on the computer without AI is less reliable and comes later.
+1. **Old jobs are not rewritten:** the screen splits their old text.
+2. **Stock notifications:** a Stock section in the notification settings, with how far ahead to warn (default a month) and the usual channels, for those with Manage stock.
+3. **Goods receipt:**
+   - **the phone's camera scanning GS1 codes is the main way to receive stock** (§7);
+   - invoices: e-invoice files, PDFs read on the computer, and the clinic's own AI key kept on the computer;
+   - a USB barcode scanner on the desktop, as an extra;
+   - reading photos on the computer without AI is less reliable and comes later.
 4. **"Filled the tank"** means topping the tank up to its fill line, and the fill volume is the clinic's own figure per machine and resin. Which stage means "printed" is chosen by the clinic.
-5. **The partner's invoice draft** waits for the fix of "automatic e-mail sends drafts" (recommended), or statement invoices are never sent automatically.
-6. **A short expiry at receipt:** warn under 6 months (proposed).
-7. **Where it goes in the order of work:** after phase 2 (recommended), except that **the shade fields are decided before phase 2's message format** (§8). Slice 1 below could also come right after phase 1, because it fixes the shades Kevin's technicians meet every day.
+5. **The partner's invoice draft** goes out only after the lender checks it. "Automatic e-mail sends drafts" was fixed first (2026-11-06): a draft is never e-mailed.
+6. **A short expiry at receipt:** 6 months by default, changeable per material type (§4).
+7. **The order of work:**
+   - **slice 1** (equipment, materials, shades) **right after phase 1;**
+   - **the rest after phase 2;**
+   - **the shade fields are settled before phase 2's message format** (§8), which slice 1 does.
 
 ## 13. Order of work and time
 
@@ -350,8 +364,10 @@ The calculator only counts what the doctor chose against what the clinic holds. 
 | 2. **The catalog, suppliers and lots:**<ul><li>serial, opened date, use-by, cost;</li><li>the lot that expires first;</li><li>stock notifications;</li><li>moving the stock (§10.4).</li></ul> | 3–4 days | Our stock moved over with the same totals; warnings at the set times. One or two sessions. |
 | 3. **Jobs and stock:**<ul><li>the machine's materials and stock on the job;</li><li>reserving, taking off, freeing;</li><li>implants and abutments from the catalog;</li><li>used and in use.</li></ul> | 4–5 days | Jobs from creation to done and cancelled, on the desktop and the phone; the lot's jobs and the job's lots. Two sessions. |
 | 4. **Resin by the fill:**<ul><li>"Filled the tank";</li><li>counts in fills and fractions;</li><li>learning the use, and the costs.</li></ul> | 3 days | A week of real printing with the button pressed at each fill. One session, plus the week. |
-| 5. **Goods receipt:**<ul><li>the invoice read on the computer or through the clinic's AI;</li><li>the phone's scanning and the USB scanner;</li><li>confirming.</li></ul> | 5–6 days | The Prama invoice and its boxes, end to end; a delivery without an invoice. Two sessions. |
+| 5. **Goods receipt:**<ul><li>the phone's camera scanning, the main way: GS1 DataMatrix and linear codes, box after box;</li><li>the invoice read on the computer or through the clinic's AI;</li><li>the USB scanner on the desktop;</li><li>confirming.</li></ul> | 6–7 days | The Prama boxes scanned on an iPhone and an Android phone, with and without the invoice; a dim store room. Two sessions. |
 | 6. **Partner stock on a statement,** between partners in one project. Across projects, it comes with "Stock across projects" (docs/ARCHITECTURE-INSTANCES.md §9). | 3–4 days | Take, return within and after the deadline, the statement on both sides, the invoice draft. One or two sessions. |
 
-- **Building:** about 22–27 days. **Kevin:** about 9–12 sessions.
-- **Calendar:** about 5–6 weeks at 3–4 hours of testing a day, competing with the instance phases for the same testing time.
+- **Building:** about 23–28 days. **Kevin:** about 9–12 sessions.
+- **When** (Kevin, 2026-11-06):
+  - **slice 1 right after phase 1:** about 4–5 days of building and two sessions, before phase 2 starts. It also settles the shade fields that phase 2's message format carries;
+  - **slices 2–6 after phase 2:** about 19–23 days of building, about 4–5 weeks at 3–4 hours of testing a day.
