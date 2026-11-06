@@ -32,13 +32,9 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { atLeast, attestedFacts, checkChain, checkSignature } from './attestation.mjs'
+import { KEYS, MIN_FIRMWARE, MIN_YKMAN } from './keys.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
-
-/** The four keys, by the letter on each (Kevin, 2026-11-06). */
-const KEYS = { A: 38272275, B: 38272285, C: 38272295, D: 38272284 }
-const MIN_FIRMWARE = [5, 7, 0]
-const MIN_YKMAN = [5, 4, 0] // Ed25519 in PIV
 
 const letter = (process.argv[2] ?? '').toUpperCase()
 const probe = process.argv.includes('--probe-size')

@@ -3,7 +3,7 @@
 Status (2026-11-06):
 - **All four keys passed the arrival test** (§1; results in §4): genuine, firmware 5.7.4, Ed25519 with the PIN and a touch, and left clean. Kevin ran it; Claude never runs anything against the keys.
 - **The release format now signs a short statement** with the hash (§2), in `shared/release`. No real key has signed anything yet.
-- **The real setup:** Kevin's decisions are in (§3). The setup script is next, for Kevin to run as he ran the test.
+- **The real setup:** Kevin's decisions are in (§3). **The setup script is ready for Kevin to run** (§3a), as he ran the test.
 
 docs/ARCHITECTURE-INSTANCES.md §5e says why the keys exist and what each one signs.
 
@@ -80,7 +80,7 @@ That is the fingerprint the script pins. **If it differs, stop and tell me.**
 ```sh
 npx vitest run --mode unit scripts/yubikey
 ```
-It should end with `Tests  17 passed (17)`. Three of them check key A's real attestation (§4).
+It should end with `Tests  36 passed (36)`: the arrival test's checks and the setup's (§3a). Some of them run on key A's real attestation (§4).
 
 **5. Key A.** Insert **only key A**, then run:
 ```sh
@@ -190,7 +190,7 @@ I record them in §4.
 
 ## 3. The real setup (Kevin's decisions, 2026-11-06)
 
-One session of about 2 hours. A script does each step, as the arrival test does, and Kevin types the PINs and touches the keys. Claude writes the script; Kevin runs it.
+One session of about an hour. `scripts/yubikey/setup-key.mjs` does steps 1–4 and 6, one key at a time (§3a): Kevin saves and types the PINs and touches the keys. Claude does step 5 afterwards, from what the script keeps.
 
 **1. Turn off what the keys won't use.**
 
@@ -209,23 +209,23 @@ One session of about 2 hours. A script does each step, as the arrival test does,
 | A and B (roots) | PIV only | nothing |
 | C and D (signing) | PIV, plus FIDO2 for GitHub's hardware second factor (docs/GITHUB-CHECKLIST.md) | nothing |
 
-On C and D, U2F stays on with FIDO2, as planned. It is the older protocol of the same FIDO part of the key, and Kevin's list didn't turn it off.
+On C and D, U2F stays on with FIDO2 (Kevin, 2026-11-06). It is the older protocol of the same FIDO part of the key.
 
 The commands, for the record (the setup script runs them and shows each one first):
 ```sh
 # A, root A (38272275); B (38272285) the same
-ykman --device 38272275 config usb --disable OTP --disable OATH --disable OPENPGP --disable HSMAUTH --disable FIDO2 --disable U2F --force
 ykman --device 38272275 config nfc --disable-all --force
+ykman --device 38272275 config usb --disable OTP --disable U2F --disable FIDO2 --disable OATH --disable OPENPGP --disable HSMAUTH --force
 # C, the signing key (38272295); D (38272284) the same
-ykman --device 38272295 config usb --disable OTP --disable OATH --disable OPENPGP --disable HSMAUTH --force
 ykman --device 38272295 config nfc --disable-all --force
+ykman --device 38272295 config usb --disable OTP --disable OATH --disable OPENPGP --disable HSMAUTH --force
 ```
 - A key can't turn off everything over USB, which is why the USB lines name what to turn off.
 - All of this can be turned back on with `ykman config`. It is not a fuse.
 
 **2. PIV access, on each key:**
-- **a new PIN** of 8 digits, and **a new PUK** of 8;
-- **a random AES-256 management key, protected by the PIN** (`ykman piv access change-management-key --algorithm AES256 --generate --protect`). So only the PIN is ever needed, and no management key is written down;
+- **a new PIN** of 8 digits, and **a new PUK** of 8, made at random by the script and shown once. Kevin saves them in Apple Passwords and types them back before anything on the key changes;
+- **a random AES-256 management key, kept on the key under the PIN** (what `ykman piv access change-management-key --algorithm AES256 --generate --protect` does). So only the PIN is ever needed, and the management key is never shown or written down;
 - 3 tries for the PIN and 3 for the PUK, as from the factory.
 
 **3. The keys, made on the hardware:**
@@ -235,14 +235,15 @@ ykman --device 38272295 config nfc --disable-all --force
   - the update signing key, in 9c;
   - the app release key, in 82;
   - the licence key, in 83;
-- **D, the spare:** a spare update signing key, a spare app release key and a spare licence key, in the same slots.
+- **D, the spare:** a spare update signing key, a spare app release key and a spare licence key, in the same slots;
+- **each key's name** is its purpose, its letter and the start of its public key's SHA-256, for example `update-C-87150f67`. A key made again gets a new name.
   - **The spare licence key** (Kevin: yes): the app trusts both C's and D's licence keys, so losing C doesn't mean issuing every licence again. `shared/license` then takes two public keys instead of one. That change comes with the setup, once the public keys exist.
 
 **4. Each key's attestation is checked,** with the same checks as the test, and kept with its public key. Each must name the same serial as the test, under the same factory certificate (§4).
 
 **5. The two root public keys are pinned** in `shared/release` and in `wivo-update`. They are committed for Kevin to push.
 
-**6. Root A signs the certificates** for the update and app keys on C and D (valid two years, 5e). Root B signs nothing yet; it is checked to sign and verify once.
+**6. Root A signs the certificates** for the update and app keys on C and D (valid two years, 5e). Root B signs nothing real yet: it signs one test statement, which is verified. C's and D's keys each sign one too.
 
 **7. A test release, signed end to end** on the test channel: a separate session (docs/ARCHITECTURE-INSTANCES.md §9, slice 1).
 
@@ -268,6 +269,145 @@ Three wrong PINs and then three wrong PUKs make a key useless. For a root, the o
 4. **The PINs and PUKs** as in step 9.
 5. **A spare licence key on D.**
 6. **The release format change** (§2): done, before any real key signs anything.
+7. **U2F stays on with FIDO2** on C and D.
+
+### 3a. Running the setup: the commands, one at a time
+
+**Before you start:**
+- Run it in Terminal, not in a shared or recorded screen. Each key's new PIN and PUK are shown once; the script then clears the screen and its scrollback.
+- Have Apple Passwords open, and paper and a pen for the two root PINs.
+- **The order is C, D, A, B.** A signs the certificates for C's and D's keys, so they must exist first.
+- **Time:** about 10 minutes each for C, D and A, and 5 for B. Touches: 3 on C, 3 on D, 4 on A and 1 on B.
+- **If anything stops,** run the same command again. What is done is checked and skipped. The table at the end says what each stop means.
+
+**1. Go to the project.**
+```sh
+cd ~/dev/Workly && git log --oneline -1
+```
+It should show the commit "YubiKey setup script: ...".
+
+**2. Run the checks' own tests.**
+```sh
+npx vitest run --mode unit scripts/yubikey
+```
+It should end with `Tests  36 passed (36)`.
+
+**3. Key C.** Insert **only key C**, then run:
+```sh
+node scripts/yubikey/setup-key.mjs C
+```
+What happens, in order:
+1. `Key C (38272295), the signing key. Insert only this key.` and `PIV is as it left the factory: setting it up.`
+2. **The new PIN and PUK, shown once:**
+   ```
+   Key C (38272295), the signing key: its new PIN and PUK.
+
+       PIN   ########
+       PUK   ########
+
+   1. Save both in Apple Passwords now, in a new entry named "Wivo YubiKey C 38272295":
+      the PIN as the password, and the PUK in the notes.
+   ```
+   Save them, then press Enter. The screen clears.
+3. `Type the new PIN, from Apple Passwords (nothing shows):`, then the same for the PUK. Paste or type them; nothing shows. It answers `Both match.`
+   - Until here nothing on the key has changed. If they don't match, it shows them again, up to three times.
+4. `Setting the new PUK and PIN...`, then `Making the Ed25519 key in slot 9c ...`, the same for 82 and 83, `Setting a random AES-256 management key ...` and `PIV is set up.`
+5. `Key C: a test signature with each key: 3 signature(s), the PIN once and a touch for each.`
+   - `PIN, from Apple Passwords (nothing shows):`: the new PIN;
+   - for each key, `Touch the key now: it is blinking.` Touch it within about 15 seconds. Then `Signed.`
+6. `Turning off what this key won't use.` It shows and runs the two `ykman ... config` commands from step 1 of §3. The key restarts after each; that is normal.
+7. `Reading the key again for the final check...`, then:
+```
+Key C (38272295), the signing key:
+  ok    Serial 38272295 is key C's (38272295)
+  ok    Firmware 5.7.4 is 5.7 or later
+  ok    The factory certificate (f9) is the batch's, as in the arrival test
+  ok    A new PIN, not the factory's; 3 of 3 tries left
+  ok    A new PUK, not the factory's; 3 of 3 tries left
+  ok    Management key: AES256, random, kept on the key under the PIN
+  ok    No keys in other slots
+  ok    Slot 9c, update-C-xxxxxxxx: Ed25519 made on the key, PIN and touch for every use
+  ok    Slot 9c: attested, up to Yubico's root
+  ok    Slot 82, app-C-xxxxxxxx: Ed25519 made on the key, PIN and touch for every use
+  ok    Slot 82: attested, up to Yubico's root
+  ok    Slot 83, licence-C-xxxxxxxx: Ed25519 made on the key, PIN and touch for every use
+  ok    Slot 83: attested, up to Yubico's root
+  ok    Test signature by update-C-xxxxxxxx: verifies, as the release code verifies
+  ok    Test signature by app-C-xxxxxxxx: verifies, as the release code verifies
+  ok    Test signature by licence-C-xxxxxxxx: verifies, as the release code verifies
+  ok    Over USB: U2F, FIDO2, PIV
+  ok    Over NFC: nothing
+
+PASSED. Kept in /Users/kevintreial/wivo-yubikey-setup/C-38272295
+Next: take out key C, insert only key D, and run: node scripts/yubikey/setup-key.mjs D
+```
+
+**4. Key D.** Take out C, insert only D:
+```sh
+node scripts/yubikey/setup-key.mjs D
+```
+The same as C, with `38272284`, the entry "Wivo YubiKey D 38272284", and names ending in `-D-...`.
+
+**5. Key A, root A.** Take out D, insert only A:
+```sh
+node scripts/yubikey/setup-key.mjs A
+```
+As for C, with these differences:
+- **The PIN on paper.** Next to the PIN and PUK it says:
+  ```
+  2. Write the PIN on paper too, marked "Wivo root A: PIN".
+     That paper is kept where root B is kept, never with this key.
+  ```
+- **One key,** in slot 9c.
+- **The signing:** `Root A certifies the update and app keys on C and D: 4 signature(s)`. Each shows what it certifies, for example `Certificate: update-C-xxxxxxxx may sign update packages and lists, 2026-11-06 to 2028-11-06`, with the short statement being signed. One touch each.
+- **The final check** ends with:
+```
+  ok    Slot 9c, root-A-xxxxxxxx: Ed25519 made on the key, PIN and touch for every use
+  ok    Slot 9c: attested, up to Yubico's root
+  ok    Certificate: update-C-xxxxxxxx may sign update packages and lists, ...: signed by root A, accepted by shared/release
+  ok    Certificate: app-C-xxxxxxxx may sign desktop releases, ...: signed by root A, accepted by shared/release
+  ok    Certificate: update-D-xxxxxxxx may sign update packages and lists, ...: signed by root A, accepted by shared/release
+  ok    Certificate: app-D-xxxxxxxx may sign desktop releases, ...: signed by root A, accepted by shared/release
+  ok    Over USB: PIV
+  ok    Over NFC: nothing
+
+PASSED. Kept in /Users/kevintreial/wivo-yubikey-setup/A-38272275
+```
+
+**6. Key B, root B.** Take out A, insert only B:
+```sh
+node scripts/yubikey/setup-key.mjs B
+```
+As for A, but its PIN on paper is kept where root A is kept, and it signs one test statement instead of certificates. It ends with `PASSED` and `All four are set up. Tell Claude "done".`
+
+**7. Put the keys away** (step 8 of §3), and the two papers crosswise (step 9).
+
+**8. Tell me "done".** I then read `~/wivo-yubikey-setup/*/public.json`, which holds public keys, attestations and certificates only, and:
+- pin the two root public keys in `shared/release` (and later in `wivo-update`);
+- add root A's four certificates;
+- make `shared/license` trust C's and D's licence keys;
+- commit that, for you to push.
+
+The test release, signed end to end, is a session of its own (step 7 of §3).
+
+**What it keeps,** in `~/wivo-yubikey-setup/<letter>-<serial>/`: the key's state as read, the public keys and attestations (`piv.json`), the signatures and certificates (`signed.json`), `public.json` and `report.json`. Never a PIN, a PUK or the management key.
+
+### If something isn't as above
+
+| What you see | What it means | What to do |
+|---|---|---|
+| `Set up C and D first` | A was started before C and D passed. | Run C and D first. |
+| `STOPPED: this key's serial is …` or `more than one YubiKey is inserted` | The wrong key, or two. Nothing was changed. | Insert only the right key. |
+| `That doesn't match what was shown`, three times | Nothing on the key changed. | Run again. It shows a new PIN and PUK: replace the Apple Passwords entry (and, for a root, the paper). |
+| `STOPPED: wrong PIN; 2 tries left` | Nothing was signed. | Copy the PIN from Apple Passwords and run again. A right PIN resets the count. |
+| `1 try left`, anywhere | One more wrong PIN blocks the key. | **Stop and tell me** before typing it again. |
+| `Refused (6985)` while signing | The touch came too late. What was signed is kept. | Run again. |
+| `The setup failed: …`, or `PIV is not as it left the factory, and no earlier run of this setup finished it` | The PIV setup stopped half-way. | `ykman --device <serial> piv reset` (answer `y`), then run again. It shows a new PIN and PUK: replace the Apple Passwords entry (and, for a root, the paper). |
+| `This key no longer holds the keys an earlier run made` | Its keys changed since the setup. Nothing was changed now. | **Tell me before anything else.** |
+| Any `FAIL` | Not as planned. | **Don't use the key.** Send me the output. |
+| `ykman could not change the configuration` | The key may have been restarting. | Run again. |
+
+If C or D is ever reset and set up again after A has certified it, run A again: it certifies the new keys.
 
 ## 4. Results
 

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
-  encode, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
+  encode, prepare, assemble, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
   b64urlEncode, b64urlDecode, sha256Hex, signedText, statement, PREFIX, MAX_PACKAGE_BYTES,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
@@ -132,6 +132,13 @@ describe('what the key signs: a short statement, whatever the size (docs/YUBIKEY
     expect(r.ok).toBe(true)
     expect(seen).toHaveLength(1)
     expect(new TextDecoder().decode(seen[0])).toBe(`WIVOIDX1.sha256.${r.ok && r.signedSha256}`)
+  })
+
+  it('in two steps, for a key in another process: the same token as in one', async () => {
+    const payload = manifest()
+    const p = await prepare('manifest', payload)
+    expect(assemble('manifest', p.payloadB64, await signing.sign(p.statement))).toBe(await encode('manifest', payload, signing.sign))
+    expect(() => assemble('manifest', p.payloadB64, new Uint8Array(63))).toThrow()
   })
 
   it('every kind fits: at most 81 bytes', () => {

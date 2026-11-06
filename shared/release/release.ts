@@ -223,8 +223,21 @@ export const signedText = (kind: Kind, payloadB64: string): Uint8Array => enc.en
 export const statement = (kind: Kind, signedSha256: string): Uint8Array => enc.encode(`${PREFIX[kind]}.sha256.${signedSha256}`)
 
 export async function encode<K extends Kind>(kind: K, payload: Payloads[K], sign: Signer): Promise<string> {
+  const p = await prepare(kind, payload)
+  return assemble(kind, p.payloadB64, await sign(p.statement))
+}
+
+/**
+ * `encode` in two steps, for a signer that can't be called back: a YubiKey
+ * driven by another process (scripts/yubikey/setup-key.mjs). First the
+ * statement to sign, then the token once it is signed.
+ */
+export async function prepare<K extends Kind>(kind: K, payload: Payloads[K]): Promise<{ payloadB64: string; statement: Uint8Array }> {
   const payloadB64 = b64urlEncode(enc.encode(canonicalJson(payload)))
-  const sig = await sign(statement(kind, await sha256Hex(signedText(kind, payloadB64))))
+  return { payloadB64, statement: statement(kind, await sha256Hex(signedText(kind, payloadB64))) }
+}
+
+export function assemble(kind: Kind, payloadB64: string, sig: Uint8Array): string {
   if (sig.length !== 64) throw new Error('An Ed25519 signature is 64 bytes')
   return `${PREFIX[kind]}.${payloadB64}.${b64urlEncode(sig)}`
 }

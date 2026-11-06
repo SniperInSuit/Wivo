@@ -1,6 +1,6 @@
 # Clinic instances: every clinic in its own Supabase project, owned by the clinic
 
-Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). The lawyer's answers of 5 November 2026 are in (L1–L8, before the questions), and phase 1 is re-planned for Riga's workers and pay (§9, slice 7, for Kevin's OK). **Phase 1 is being built on `testing`** (§9). The four YubiKeys passed their arrival test on 2026-11-06, and the release format now signs a short statement (5e; §10, 26–27).
+Status: **plan.** Kevin's decisions of 4 and 5 November 2026 are in (§10), with the signing keys (5e) and a security review before Riga's setup (5f) added, and the timing re-planned (§9). Approved (Kevin, 2026-11-05). Compared with The Update Framework, with the list's expiry and the owner's warning added (5g). The lawyer's answers of 5 November 2026 are in (L1–L8, before the questions), and phase 1 is re-planned for Riga's workers and pay (§9, slice 7: option (a), approved 2026-11-06). **Phase 1 is being built on `testing`** (§9). The four YubiKeys passed their arrival test on 2026-11-06, and the release format now signs a short statement (5e; §10, 26–27).
 
 This replaces the assessment of 3 November 2026, which is kept unchanged at the end ("Superseded").
 
@@ -563,6 +563,7 @@ Both change.
 
     It talks to the key through Yubico's own `ykman script` instead of the PKCS#11 module. That library sends the raw message to the key, which is what we need, so the `CKM_EDDSA` question no longer arises. On key A it also measures the largest message the key signs.
     - **All four passed (2026-11-06).** Key A signed 3,000 bytes and refused 4,096, so the release format now signs a short statement with the payload's hash (docs/YUBIKEYS.md §2, §4).
+    - **The setup script is ready** for Kevin to run, one key at a time (docs/YUBIKEYS.md §3a).
   - **GitHub:** the signing key and the spare also work as GitHub's hardware second factor (FIDO2, a separate applet on the same key; docs/GITHUB-CHECKLIST.md). The roots stay in their safes. NFC is off on all four; GitHub on the phone uses an iPhone passkey.
 - **The private keys: never** in the repository, in CI, in a password manager or as a file on any computer. (The PINs that unlock them are kept as in docs/YUBIKEYS.md §3.) If raw Ed25519 signing on the hardware key turns out to be impractical, the fallback is a dedicated offline laptop that never connects to a network, with the keys on its encrypted disk.
 - **What is pinned in the clinic** (in `wivo-update`'s code, and in the app): **the two root public keys only.**
@@ -1019,6 +1020,8 @@ That is Kevin's production session, and it isn't counted below.
 
 **Kevin, 2026-11-05:** Riga wants the workers' side in its start, including pay. Decision 19 is reopened.
 
+**Decided (Kevin, 2026-11-06): option (a).**
+
 **What already works in any country** (lib/earnings.ts, sql/022 onward):
 - **the pay rules:**
   - per hour, per tooth, per job, a percentage of the price, or a monthly salary;
@@ -1047,7 +1050,7 @@ That is Kevin's production session, and it isn't counted below.
 - **`clinics.country`** exists (sql/070, default `EE`), but nothing reads it yet.
 
 **Options:**
-- **(a) Recommended: gross pay from the rules, plus a monthly export for Riga's accountant. Latvian tax later.**
+- **(a) Decided (Kevin, 2026-11-06), as recommended: gross pay from the rules, plus a monthly export for Riga's accountant. Latvian tax later.**
   - **The country:** the setup tool sets Riga's project to Latvia (`clinics.country = 'LV'`).
   - **What a Latvian clinic sees:**
     - Payroll, the job's pay card and each worker's own view show **gross pay**, marked "before tax";
@@ -1202,6 +1205,10 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
     - The proposal, open to change: 14 days, re-signed weekly and at every release.
     - The rest of 5g is built with it: the serial, the channel, the embedded revocations, exact sizes, time limits, the second address, and functions that carry their own dependencies.
 
+**Decided (Kevin, 2026-11-06):**
+
+19. **Pay and invoices for Latvia: option (a).** Gross pay from the rules, plus a monthly export for Riga's accountant; Latvian tax rules later, as a plan of their own; Riga invoices outside Wivo at first (§9, "Riga's workers and pay", slice 7).
+
 **Decided (Kevin, 2026-11-06), the YubiKeys (docs/YUBIKEYS.md):**
 
 26. **All four keys passed the arrival test.** The roles: A is root A, B is root B, C the signing key, D the spare.
@@ -1219,7 +1226,6 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 16. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
 17. **Stock defaults:** the due date and the 30-day settling window.
 18. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).
-19. **Pay and invoices for Latvia** (reopened 2026-11-05: Riga wants the workers' side, with pay, in its start). Recommended: (a) gross pay from the rules, plus a monthly export for Riga's accountant; Latvian tax rules later, as a plan of their own; Riga invoices outside Wivo at first (§9, "Riga's workers and pay").
 20. **Licences** (6e): the one per-clinic step left for Wivo. Whether to automate it (payment, then a licence) is a separate plan.
 21. **Knowing which versions clinics run:** without access, Wivo doesn't know. Options:
     - nothing at all;
