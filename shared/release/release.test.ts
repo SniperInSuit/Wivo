@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import {
   encode, prepare, assemble, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
-  b64urlEncode, b64urlDecode, sha256Hex, signedText, statement, PREFIX, MAX_PACKAGE_BYTES,
+  b64urlEncode, b64urlDecode, sha256Hex, signedText, statement, PREFIX, MAX_PACKAGE_BYTES, MAX_INDEX_BYTES,
+  PINNED_ROOTS, UPDATE_SOURCES, listAddress, packageAddress, parsePublishedList, listedRevocations,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
 
@@ -364,6 +365,41 @@ describe('what the list names, and nothing else (TUF: endless data, mix-and-matc
     expect(checkListed(list(), '2.2.0', 'a'.repeat(64), 1234)).toEqual({ ok: false, reason: 'not_listed' })
     expect(checkListed(list({ withdrawn: [{ version: '2.3.0', reason: 'a bad migration' }] }), '2.3.0', 'a'.repeat(64), 1234))
       .toEqual({ ok: false, reason: 'withdrawn' })
+  })
+})
+
+describe('the published list, and where it lives', () => {
+  const file = (v: unknown) => new TextEncoder().encode(JSON.stringify(v))
+
+  it('nothing is pinned or published until the YubiKey setup and the release tool: so nothing is trusted', async () => {
+    expect(PINNED_ROOTS).toEqual([])
+    expect(UPDATE_SOURCES).toEqual([])
+    expect((await trustFrom(PINNED_ROOTS, [])).roots).toEqual([])
+  })
+
+  it('the list and its packages sit side by side, per channel', () => {
+    expect(listAddress('https://updates.example/wivo/', 'stable')).toBe('https://updates.example/wivo/stable/updates.json')
+    expect(packageAddress('https://updates.example/wivo', 'test', 'wivo-update-2.3.0.json')).toBe('https://updates.example/wivo/test/wivo-update-2.3.0.json')
+  })
+
+  it('reads the list file, and refuses anything else, unread when too large', () => {
+    expect(parsePublishedList(file({ index: 'WIVOIDX1.a.b', certificates: ['WIVOCERT1.c.d'] }))).toEqual({ index: 'WIVOIDX1.a.b', certificates: ['WIVOCERT1.c.d'] })
+    for (const bad of [null, [], { index: 1, certificates: [] }, { index: 'x' }, { index: 'x', certificates: [1] }, { index: 'x', certificates: Array(51).fill('c') }]) {
+      expect(parsePublishedList(file(bad)), JSON.stringify(bad)).toBeNull()
+    }
+    expect(parsePublishedList(new TextEncoder().encode('not json'))).toBeNull()
+    expect(parsePublishedList(new Uint8Array(MAX_INDEX_BYTES * 2 + 1))).toBeNull()
+  })
+
+  it("reads a list's revocations without trusting the list; each still has to check out on its own", async () => {
+    const r = await revoke(rootB, { key_id: 'signing-1' })
+    const token = await encode('index', {
+      v: 1, key_id: 'signing-1', channel: 'stable', serial: 1, generated_at: '2026-11-05T10:00:00Z',
+      expires: '2026-11-19T10:00:00Z', versions: [], withdrawn: [], revocations: [r, 'junk'],
+    }, stranger.sign)
+    expect(listedRevocations(token)).toEqual([r, 'junk'])
+    expect((await trustFrom(pinned, listedRevocations(token))).revocations.map(x => x.key_id)).toEqual(['signing-1'])
+    expect(listedRevocations('WIVOIDX1.@@@.x')).toEqual([])
   })
 })
 

@@ -6,7 +6,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-export const COPIES = [['shared/auth/loginAddress.ts', 'supabase/functions/_shared/generated/loginAddress.ts']]
+export const COPIES = [
+  ['shared/auth/loginAddress.ts', 'supabase/functions/_shared/generated/loginAddress.ts'],
+  ['shared/release/release.ts', 'supabase/functions/_shared/generated/release.ts'],
+]
 
 export const header = (source) => [
   `// GENERATED — DO NOT EDIT. A copy of ${source} for the Edge Functions`,

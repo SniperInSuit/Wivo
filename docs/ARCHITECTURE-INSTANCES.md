@@ -1010,6 +1010,16 @@ That is Kevin's production session, and it isn't counted below.
 | 8. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
 | 9. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
 
+**Built so far, on `testing`** (2026-11-09):
+- **Slice 1:**
+  - the release formats and their checks (`shared/release`), with the key signing a short statement that carries the hash (docs/YUBIKEYS.md §2);
+  - the YubiKey arrival test (all four passed) and the setup script (docs/YUBIKEYS.md).
+  - **Waiting:** Kevin runs the key setup; then the roots are pinned (`PINNED_ROOTS`, empty until then, so nothing is trusted). Then the release tool, CI no longer publishing, and the licence key.
+- **Slice 2:**
+  - the ledger and the records (sql/119), the install planner, and the fresh code (sql/120);
+  - **`wivo-update`:** a check of the list (by the scheduled job or an approver), and an install by hand (an approver with a code under 5 minutes old). It installs every migration and its ledger row in one transaction, refuses a migration that would end it, runs the read-only checks, and records every attempt. Tested against the real migrations, with made-up signed releases.
+  - **Waiting:** the published addresses (`UPDATE_SOURCES`, set by the release tool); Edge Functions in a package (slice 3); the first install and the daily check's schedule (the setup tool, slice 5); Kevin's test on project A.
+
 - **Kevin's part:** about 14–17 sessions, roughly 35–45 hours, so 10–13 working days at 3–4 hours a day. Building runs alongside. **From the first signed list on:** about 2 minutes a week to re-sign it (5g).
 - **Calendar: about 5–6 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week, Riga's accountant answers within the week, and the review's findings are small. Pay (slice 7) added about a week (2026-11-05).
 - **After that:**

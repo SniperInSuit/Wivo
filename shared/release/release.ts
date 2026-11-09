@@ -359,6 +359,64 @@ export async function checkSigned<K extends 'manifest' | 'index' | 'app'>(
   return { ok: true, payload: s.payload as Payloads[K], signedSha256 }
 }
 
+// ─── What is pinned, and where releases are published ─────────────────────────
+
+/**
+ * The two root keys (5e), pinned here, and so in the app and in `wivo-update`
+ * (its generated copy). Filled from the YubiKey setup (docs/YUBIKEYS.md §3,
+ * step 5). Empty until then: with no root, nothing is trusted.
+ */
+export const PINNED_ROOTS: RootKey[] = []
+
+/**
+ * Where the signed list and the packages are published (5a, 5g). Each
+ * address holds `<channel>/updates.json` and, next to it, the packages that
+ * list names. Set when the release tool first publishes (phase 1, slice 1).
+ * Empty until then: nothing can be fetched, so nothing installs.
+ */
+export const UPDATE_SOURCES: string[] = []
+
+/** The published list: the signed index, and the certificates that vouch for the key that signed it. */
+export interface PublishedList {
+  index: string
+  certificates: string[]
+}
+
+const base = (source: string): string => source.replace(/\/+$/, '')
+export const listAddress = (source: string, channel: Channel): string => `${base(source)}/${channel}/updates.json`
+/** `file` must be a plain name (`isFileName`): a checked index's entries are. */
+export const packageAddress = (source: string, channel: Channel, file: string): string => `${base(source)}/${channel}/${file}`
+
+/** The list file's shape, or null. What it says is checked by `checkIndex`, not here. */
+export function parsePublishedList(bytes: Uint8Array): PublishedList | null {
+  if (bytes.length > MAX_INDEX_BYTES * 2) return null
+  try {
+    const v = JSON.parse(dec.decode(bytes)) as Partial<PublishedList> | null
+    if (!v || typeof v.index !== 'string' || !Array.isArray(v.certificates) || v.certificates.length > 50) return null
+    if (!v.certificates.every(c => typeof c === 'string' && c.length <= 4096)) return null
+    return { index: v.index, certificates: v.certificates }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The revocations a list carries, read BEFORE the list is trusted: each one
+ * is checked against the pinned roots on its own (`trustFrom`), so the list
+ * that carries it vouches for nothing. A revocation of the very key that
+ * signed the list then takes effect on that same check.
+ */
+export function listedRevocations(indexToken: string): string[] {
+  const bytes = b64urlDecode(indexToken.split('.')[1] ?? '')
+  if (!bytes) return []
+  try {
+    const revocations = (JSON.parse(dec.decode(bytes)) as { revocations?: unknown }).revocations
+    return Array.isArray(revocations) ? revocations.filter((t): t is string => typeof t === 'string').slice(0, 100) : []
+  } catch {
+    return []
+  }
+}
+
 // ─── Versions and paths ───────────────────────────────────────────────────────
 
 export const isVersion = (v: unknown): v is string => typeof v === 'string' && /^\d{1,4}\.\d{1,4}\.\d{1,5}$/.test(v)

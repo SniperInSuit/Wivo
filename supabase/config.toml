@@ -439,3 +439,10 @@ verify_jwt = false
 # Checked as for account-security: _shared/teamAccount.ts.
 [functions.team-account]
 verify_jwt = false
+
+# wivo-update: each clinic's own updater (docs/ARCHITECTURE-INSTANCES.md 5b),
+# called by an approver's app with their token, or by the project's scheduled
+# check with its service key. Checked as for account-security, and the
+# database decides who approves: _shared/wivoUpdate.ts, sql/120.
+[functions.wivo-update]
+verify_jwt = false
