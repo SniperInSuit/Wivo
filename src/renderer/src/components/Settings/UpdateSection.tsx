@@ -32,7 +32,7 @@ export function UpdateSection() {
       case 'installing':
         return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: t('settings.installing') }
       case 'failed':
-        return { icon: <AlertTriangle size={12} className="text-amber-500" />, text: state.message }
+        return { icon: <AlertTriangle size={12} className="text-amber-500" />, text: state.code === 'unsigned' ? t('updateBanner.notSignedByWivo') : state.message }
       default:
         return { icon: <Check size={12} className="text-ink-faint" />, text: t('settings.upToDate') }
     }

@@ -37,6 +37,7 @@ import { autoUpdater } from 'electron-updater'
 import { appendFileSync, readFileSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import type { UpdateState, UpdaterSplashState } from '../types/update'
+import { releaseCheckDeps, verifyDownloadedApp } from './releaseCheck'
 
 /** How long the launch-time feed check may take before we give up and open. */
 const CHECK_MS = 6_000
@@ -226,6 +227,33 @@ function configure(): void {
   }
 }
 
+/**
+ * Wivo's signature on a downloaded installer (releaseCheck.ts), checked
+ * before it is staged and again before it installs. Refused: the app stays
+ * on the version it has, and the log says why. Before the root keys are
+ * pinned there is nothing to check against, and it installs as before.
+ */
+async function signedByWivo(file: string | undefined, version: string): Promise<boolean> {
+  if (!file) {
+    log('ERROR', `${version}: no downloaded file to check`)
+    return false
+  }
+  try {
+    const r = await verifyDownloadedApp(file, version, releaseCheckDeps(join(app.getPath('userData'), 'release-floor.json')))
+    if (r.ok) {
+      log('INFO', r.checked ? `${version}: Wivo's signature checks out` : `${version}: not checked, no root keys pinned yet`)
+      return true
+    }
+    log('ERROR', `${version}: refused, not Wivo's signed release (${r.reason})`)
+    return false
+  } catch (err) {
+    log('ERROR', `${version}: the signature check failed`, err)
+    return false
+  }
+}
+
+const UNSIGNED: UpdateState = { stage: 'failed', code: 'unsigned', message: 'Uuendus ei ole Wivo allkirjaga.' }
+
 const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
   Promise.race([
     p,
@@ -285,7 +313,15 @@ function runInstall(from: string, to: string): Promise<boolean> {
       log('INFO', 'real download at launch, deferring to next start')
       finish(false)
     }
-    const onDownloaded = (): void => {
+    const onDownloaded = async (info: { downloadedFile?: string }): Promise<void> => {
+      // Checked again here, not only when it was staged: the file sat on disk
+      // between two sessions.
+      if (!(await signedByWivo(info.downloadedFile, to))) {
+        clearMarker()
+        lastState = UNSIGNED
+        finish(false)
+        return
+      }
       // WIVO_UPDATER_DEV makes the updater run unpackaged so the whole flow can
       // be exercised — but quitAndInstall would then run a real NSIS installer
       // against a developer's machine. Stop one step short and say so.
@@ -309,6 +345,8 @@ function runInstall(from: string, to: string): Promise<boolean> {
       }, 300)
       finish(true)
     }
+    // Named, so finish() removes exactly what was registered.
+    const onDownloadedEvent = (info: { downloadedFile?: string }): void => void onDownloaded(info)
     const onError = (err: Error): void => {
       log('ERROR', 'updater error at launch', err)
       finish(false)
@@ -329,13 +367,13 @@ function runInstall(from: string, to: string): Promise<boolean> {
       // These were registered for this one attempt. Leaving them on would let
       // a launch that gave up keep reacting to the session's own downloads.
       autoUpdater.removeListener('download-progress', onProgress)
-      autoUpdater.removeListener('update-downloaded', onDownloaded)
+      autoUpdater.removeListener('update-downloaded', onDownloadedEvent)
       autoUpdater.removeListener('error', onError)
       resolve(v)
     }
 
     // Registered BEFORE any call — see fact 3.
-    autoUpdater.once('update-downloaded', onDownloaded)
+    autoUpdater.once('update-downloaded', onDownloadedEvent)
     autoUpdater.on('download-progress', onProgress)
     autoUpdater.once('error', onError)
 
@@ -378,13 +416,19 @@ export function wireUpdater(): void {
       percent: Math.round(p.percent),
     })
   )
-  autoUpdater.on('update-downloaded', info => {
+  autoUpdater.on('update-downloaded', info => void (async () => {
+    // Staged only once Wivo's signature checks out (releaseCheck.ts).
+    if (!(await signedByWivo(info.downloadedFile, info.version))) {
+      clearMarker()
+      pushState(UNSIGNED)
+      return
+    }
     log('INFO', `staged ${info.version}`)
     // attempts resets to 0: a NEWER update replacing an older staged one gets
     // its own three tries, and electron-updater has already wiped the old file.
     writeMarker({ version: info.version, stagedAt: new Date().toISOString(), attempts: 0 })
     pushState({ stage: 'ready', version: info.version })
-  })
+  })())
   autoUpdater.on('error', err => {
     log('ERROR', 'updater error', err)
     const nospace = (err as NodeJS.ErrnoException)?.code === 'ENOSPC'
@@ -405,6 +449,7 @@ export function registerUpdaterIpc(): void {
   // update.
   ipcMain.handle('wivo:update-state', () => lastState)
 
+  // 'ready' is reached only after Wivo's signature checked out when it was staged.
   ipcMain.handle('wivo:install-now', () => {
     if (!autoUpdater.isUpdaterActive() || lastState.stage !== 'ready') return
     installing = true

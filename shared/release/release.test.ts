@@ -8,6 +8,7 @@ import {
   encode, prepare, assemble, trustFrom, checkCertificate, checkSigned, checkPackage, checkIndex, checkListed, isStale, planInstall, compareVersions, isPackagePath, canonicalJson,
   b64urlEncode, b64urlDecode, sha256Hex, signedText, statement, PREFIX, MAX_PACKAGE_BYTES, MAX_INDEX_BYTES,
   PINNED_ROOTS, UPDATE_SOURCES, listAddress, packageAddress, parsePublishedList, listedRevocations,
+  limitedFetcher, checkAppUpdate, type IndexEntry, type AppRelease, type PublishedList,
   type Certificate, type Manifest, type Index, type RootKey, type Signer, type Revocation,
 } from './release'
 
@@ -433,5 +434,96 @@ describe('planning an install against what the database has', () => {
     expect(planInstall(m(files.slice(1)), '2.3.0', ledger(['migrations/001_base.sql']))).toEqual({ ok: false, reason: 'ledger_missing' })
     expect(planInstall(m(files), '2.3.0', ledger(['migrations/001_base.sql', 'migrations/003_more.sql'])))
       .toEqual({ ok: false, reason: 'out_of_order' })
+  })
+})
+
+describe('fetching a published file', () => {
+  const body = (bytes: number, headers: Record<string, string> = {}) => (async () =>
+    new Response(new Uint8Array(bytes), { status: 200, headers })) as unknown as typeof fetch
+
+  it('reads a file up to its limit, over HTTPS only', async () => {
+    expect((await limitedFetcher(body(10))('https://x.test/a', 10))?.length).toBe(10)
+    expect(await limitedFetcher(body(10))('http://x.test/a', 10)).toBeNull()
+  })
+
+  it('refuses more than the limit, by its header or by what arrives', async () => {
+    expect(await limitedFetcher(body(11))('https://x.test/a', 10)).toBeNull()
+    expect(await limitedFetcher(body(5, { 'content-length': '999' }))('https://x.test/a', 10)).toBeNull()
+  })
+
+  it('a failed request or a network error is null', async () => {
+    expect(await limitedFetcher((async () => new Response('', { status: 404 })) as unknown as typeof fetch)('https://x.test/a', 10)).toBeNull()
+    expect(await limitedFetcher((async () => { throw new Error('down') }) as unknown as typeof fetch)('https://x.test/a', 10)).toBeNull()
+  })
+})
+
+describe('what the approvers see before Install: the note, the migrations and functions', () => {
+  const entry: IndexEntry = { version: '2.3.0', package: 'wivo-update-2.3.0.json', sha256: 'a'.repeat(64), size: 10, manual_only: false, auto_after: '2026-11-08T10:00:00Z' }
+  const list = (e: Partial<IndexEntry>): Index => ({
+    v: 1, key_id: 'signing-1', channel: 'stable', serial: 1, generated_at: '2026-11-05T10:00:00Z',
+    expires: '2026-11-19T10:00:00Z', versions: [{ ...entry, ...e }], withdrawn: [], revocations: [],
+  })
+  const check = async (e: Partial<IndexEntry>) =>
+    (await checkIndex(await encode('index', list(e), signing.sign), [signingCert], await trustFrom(pinned, []), NOW, 'stable', {})).ok
+
+  it('signed with the list, and well-formed', async () => {
+    expect(await check({ note: 'Stock: shades per material.', migrations: ['migrations/122_x.sql'], functions: ['functions/wivo-update/index.ts'] })).toBe(true)
+  })
+
+  it('a note too long, or a path that isn\'t a package path, makes the list malformed', async () => {
+    expect(await check({ note: 'x'.repeat(2001) })).toBe(false)
+    expect(await check({ migrations: ['../etc/passwd'] })).toBe(false)
+    expect(await check({ functions: [7 as unknown as string] })).toBe(false)
+  })
+})
+
+describe('a desktop release, before it installs (5e)', () => {
+  const SHA512 = 'q'.repeat(86) + '=='
+  const release = (over: Partial<AppRelease> = {}): AppRelease => ({
+    v: 1, key_id: 'app-1', version: '2.3.0', file: 'Wivo Setup 2.3.0.exe', sha512: SHA512, size: 1000, created_at: '2026-11-05T09:00:00Z', ...over,
+  })
+  const published = async (over: { listApp?: Index['app'] | null; release?: Partial<AppRelease>; serial?: number } = {}) => ({
+    index: await encode('index', {
+      v: 1, key_id: 'signing-1', channel: 'stable', serial: over.serial ?? 5, generated_at: '2026-11-05T10:00:00Z',
+      expires: '2026-11-19T10:00:00Z', versions: [], withdrawn: [], revocations: [],
+      ...(over.listApp === null ? {} : { app: over.listApp ?? { version: '2.3.0', file: 'Wivo Setup 2.3.0.exe', sha512: SHA512, size: 1000 } }),
+    }, signing.sign),
+    certificates: [signingCert, appCert],
+    app: await encode('app', release(over.release), appKey.sign),
+  })
+  const check = async (list: PublishedList, over: Partial<{ version: string; sha512: string; size: number; floor: Record<string, { serial: number; sha256: string }> }> = {}) =>
+    checkAppUpdate({ list, version: '2.3.0', sha512: SHA512, size: 1000, pinned, now: NOW, channel: 'stable', floor: {}, ...over })
+
+  it('named by a fresh list and signed by a certified app key, with these exact bytes: it installs', async () => {
+    expect(await check(await published())).toMatchObject({ ok: true, key_id: 'signing-1', serial: 5 })
+  })
+
+  it('other bytes, another version, or another size than both say: refused', async () => {
+    const p = await published()
+    expect(await check(p, { sha512: 'r'.repeat(86) + '==' })).toEqual({ ok: false, reason: 'not_this_release' })
+    expect(await check(p, { version: '2.3.1' })).toEqual({ ok: false, reason: 'not_this_release' })
+    expect(await check(p, { size: 999 })).toEqual({ ok: false, reason: 'not_this_release' })
+  })
+
+  it('the release statement and the list disagree: refused', async () => {
+    expect(await check(await published({ release: { sha512: 'r'.repeat(86) + '==' } }))).toEqual({ ok: false, reason: 'not_this_release' })
+    expect(await check(await published({ release: { file: 'other.exe' } }))).toEqual({ ok: false, reason: 'not_this_release' })
+  })
+
+  it('a list that names no desktop release, or no release statement: refused', async () => {
+    expect(await check(await published({ listApp: null }))).toEqual({ ok: false, reason: 'no_app_release' })
+    const { app: _, ...noStatement } = await published()
+    expect(await check(noStatement)).toEqual({ ok: false, reason: 'no_app_release' })
+  })
+
+  it('a release statement signed by an update key, or a list older than one already seen: refused', async () => {
+    const p = await published()
+    const byUpdateKey = await encode('app', release({ key_id: 'signing-1' }), signing.sign)
+    expect((await check({ ...p, app: byUpdateKey })).ok).toBe(false)
+    expect(await check(p, { floor: { 'signing-1': { serial: 9, sha256: 'x' } } })).toEqual({ ok: false, reason: 'rollback' })
+  })
+
+  it('with no pinned roots, nothing is Wivo\'s', async () => {
+    expect((await checkAppUpdate({ list: await published(), version: '2.3.0', sha512: SHA512, size: 1000, pinned: [], now: NOW, channel: 'stable', floor: {} })).ok).toBe(false)
   })
 })

@@ -17,7 +17,7 @@ import { join } from 'node:path'
 import type { PGlite } from '@electric-sql/pglite'
 import { freshDb, createTenant, createUser, grant, type Tenant } from '../../../sql/test/harness'
 import * as release from './generated/release.ts'
-import { checkList, install, handleUpdateRequest, transactionSafe, limitedFetcher, type Db, type Updater } from './wivoUpdate.ts'
+import { checkList, install, handleUpdateRequest, transactionSafe, type Db, type Updater } from './wivoUpdate.ts'
 
 const SOURCE = 'https://updates.test/wivo'
 const enc = new TextEncoder()
@@ -296,25 +296,5 @@ describe('transactionSafe', () => {
     expect(transactionSafe('do $$ begin perform 1; end $$;')).toBe(true)
     expect(transactionSafe("create function f() returns void language plpgsql as $body$ begin commit; end $body$;")).toBe(true)
     expect(transactionSafe("-- commit later\nselect 'commit';")).toBe(true)
-  })
-})
-
-describe('fetching', () => {
-  const body = (bytes: number, headers: Record<string, string> = {}) => async () =>
-    new Response(new Uint8Array(bytes), { status: 200, headers })
-
-  it('reads a file up to its limit, over HTTPS only', async () => {
-    expect((await limitedFetcher(body(10) as never)('https://x.test/a', 10))?.length).toBe(10)
-    expect(await limitedFetcher(body(10) as never)('http://x.test/a', 10)).toBeNull()
-  })
-
-  it('refuses more than the limit, by its header or by what arrives', async () => {
-    expect(await limitedFetcher(body(11) as never)('https://x.test/a', 10)).toBeNull()
-    expect(await limitedFetcher(body(5, { 'content-length': '999' }) as never)('https://x.test/a', 10)).toBeNull()
-  })
-
-  it('a failed request or a network error is null', async () => {
-    expect(await limitedFetcher((async () => new Response('', { status: 404 })) as never)('https://x.test/a', 10)).toBeNull()
-    expect(await limitedFetcher((async () => { throw new Error('down') }) as never)('https://x.test/a', 10)).toBeNull()
   })
 })

@@ -66,7 +66,7 @@ export function UpdateBanner() {
             <>
               <p className="text-xs font-semibold text-ink">{t('updateBanner.updateFailed')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                {state.message} {t('updateBanner.wivoKeepsRunningVersion', { running })}
+                {state.code === 'unsigned' ? t('updateBanner.notSignedByWivo') : state.message} {t('updateBanner.wivoKeepsRunningVersion', { running })}
               </p>
             </>
           )}

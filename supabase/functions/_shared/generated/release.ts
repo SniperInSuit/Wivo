@@ -120,6 +120,24 @@ export interface Manifest {
  *   - `revocations`: every revocation so far, so withholding a newer one
  *     doesn't work; a clinic also keeps every revocation it has seen.
  */
+/**
+ * One version on the list. `note`, `migrations` and `functions` are what the
+ * approvers see before they press Install ("Database update 2.3.0"): the
+ * release note, and the migrations and functions it brings. Signed with the
+ * list, and checked again against the package's own manifest at install.
+ */
+export interface IndexEntry {
+  version: string
+  package: string
+  sha256: string
+  size: number
+  manual_only: boolean
+  auto_after: string
+  note?: string
+  migrations?: string[]
+  functions?: string[]
+}
+
 export interface Index {
   v: 1
   key_id: string
@@ -128,7 +146,7 @@ export interface Index {
   generated_at: string
   expires: string
   /** `package` is a file name next to the list; `size` is exact, so a download stops there (TUF: endless data). */
-  versions: { version: string; package: string; sha256: string; size: number; manual_only: boolean; auto_after: string }[]
+  versions: IndexEntry[]
   withdrawn: { version: string; reason: string }[]
   revocations: string[]
   /** The latest desktop release for this channel, so app updates share the list's freshness. */
@@ -380,10 +398,15 @@ export const PINNED_ROOTS: RootKey[] = []
  */
 export const UPDATE_SOURCES: string[] = []
 
-/** The published list: the signed index, and the certificates that vouch for the key that signed it. */
+/**
+ * The published list: the signed index, the certificates that vouch for the
+ * keys that signed it and the app release, and the desktop release statement
+ * (`app`, signed by an app key, 5e) for the release the index names.
+ */
 export interface PublishedList {
   index: string
   certificates: string[]
+  app?: string
 }
 
 const base = (source: string): string => source.replace(/\/+$/, '')
@@ -398,7 +421,8 @@ export function parsePublishedList(bytes: Uint8Array): PublishedList | null {
     const v = JSON.parse(dec.decode(bytes)) as Partial<PublishedList> | null
     if (!v || typeof v.index !== 'string' || !Array.isArray(v.certificates) || v.certificates.length > 50) return null
     if (!v.certificates.every(c => typeof c === 'string' && c.length <= 4096)) return null
-    return { index: v.index, certificates: v.certificates }
+    if (v.app !== undefined && (typeof v.app !== 'string' || v.app.length > 4096)) return null
+    return { index: v.index, certificates: v.certificates, ...(v.app !== undefined ? { app: v.app } : {}) }
   } catch {
     return null
   }
@@ -419,6 +443,80 @@ export function listedRevocations(indexToken: string): string[] {
   } catch {
     return []
   }
+}
+
+/** A published file, read to at most `maxBytes`: null when unreachable, missing or larger. */
+export type Fetcher = (url: string, maxBytes: number) => Promise<Uint8Array | null>
+
+/**
+ * A Fetcher over the platform's fetch (Deno, Node, Electron, the browser):
+ * HTTPS only, at most `maxBytes` read (TUF: endless data), 30 seconds, and
+ * any failure is null.
+ */
+export function limitedFetcher(fetchImpl: typeof fetch): Fetcher {
+  return async (url, maxBytes) => {
+    if (!url.startsWith('https://')) return null
+    try {
+      const res = await fetchImpl(url, { redirect: 'follow', signal: AbortSignal.timeout(30_000) })
+      if (!res.ok || !res.body) return null
+      const declared = Number(res.headers.get('content-length') ?? NaN)
+      if (Number.isFinite(declared) && declared > maxBytes) return null
+      const reader = res.body.getReader()
+      const parts: Uint8Array[] = []
+      let total = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        total += value.length
+        if (total > maxBytes) {
+          await reader.cancel()
+          return null
+        }
+        parts.push(value)
+      }
+      const out = new Uint8Array(total)
+      let at = 0
+      for (const p of parts) { out.set(p, at); at += p.length }
+      return out
+    } catch {
+      return null
+    }
+  }
+}
+
+// ─── A desktop release, before it installs (5e) ──────────────────────────────
+
+export type CheckedApp =
+  | { ok: true; key_id: string; serial: number; signedSha256: string }
+  | { ok: false; reason: Refusal | 'too_large' | 'no_app_release' | 'not_this_release' }
+
+/**
+ * Whether a downloaded desktop installer is Wivo's release, before it is
+ * allowed to install (5e):
+ *   1. a fresh list, signed by a certified update key, for this channel, not
+ *      older than one this desktop already accepted (`floor`), names it as
+ *      the latest desktop release, with exactly this sha512 and size;
+ *   2. a release statement signed by a certified app key, not revoked, says
+ *      the same version, file, sha512 and size.
+ * `sha512` is electron-updater's form: base64 of the raw digest.
+ */
+export async function checkAppUpdate(args: {
+  list: PublishedList; version: string; sha512: string; size: number
+  pinned: RootKey[]; now: Date; channel: Channel; floor: SerialFloor
+}): Promise<CheckedApp> {
+  const { list, version, sha512, size, pinned, now, channel, floor } = args
+  const trust = await trustFrom(pinned, listedRevocations(list.index))
+  const r = await checkIndex(list.index, list.certificates, trust, now, channel, floor)
+  if (!r.ok) return r
+  const named = r.index.app
+  if (!named) return { ok: false, reason: 'no_app_release' }
+  if (named.version !== version || named.sha512 !== sha512 || named.size !== size) return { ok: false, reason: 'not_this_release' }
+  if (!list.app) return { ok: false, reason: 'no_app_release' }
+  const a = await checkSigned('app', list.app, list.certificates, trust, now)
+  if (!a.ok) return a
+  const p = a.payload
+  if (p.version !== version || p.sha512 !== sha512 || p.size !== size || p.file !== named.file) return { ok: false, reason: 'not_this_release' }
+  return { ok: true, key_id: r.index.key_id, serial: r.index.serial, signedSha256: r.signedSha256 }
 }
 
 // ─── Versions and paths ───────────────────────────────────────────────────────
@@ -524,7 +622,10 @@ function wellFormedIndex(i: Index): boolean {
   if (!Number.isSafeInteger(i.serial) || i.serial < 1 || !isTime(i.expires) || !isTime(i.generated_at)) return false
   if (!Array.isArray(i.versions) || !Array.isArray(i.withdrawn) || !Array.isArray(i.revocations)) return false
   if (!i.versions.every(e => e && isVersion(e.version) && isFileName(e.package) && /^[0-9a-f]{64}$/.test(e.sha256)
-      && isSize(e.size, MAX_PACKAGE_BYTES) && typeof e.manual_only === 'boolean' && isTime(e.auto_after))) return false
+      && isSize(e.size, MAX_PACKAGE_BYTES) && typeof e.manual_only === 'boolean' && isTime(e.auto_after)
+      && (e.note === undefined || (typeof e.note === 'string' && e.note.length <= 2000))
+      && (e.migrations === undefined || (Array.isArray(e.migrations) && e.migrations.length <= 500 && e.migrations.every(isPackagePath)))
+      && (e.functions === undefined || (Array.isArray(e.functions) && e.functions.length <= 100 && e.functions.every(isPackagePath))))) return false
   if (new Set(i.versions.map(e => e.version)).size !== i.versions.length) return false
   if (!i.withdrawn.every(w => w && isVersion(w.version) && typeof w.reason === 'string' && w.reason.length <= 500)) return false
   if (!i.revocations.every(t => typeof t === 'string')) return false

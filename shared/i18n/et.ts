@@ -2703,6 +2703,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'settingsPage.employerContributionsHint': "Tööandja sotsiaalkindlustusmaksete osa protsentides. See lisandub brutopalgale, et näidata Töötasudes ja Statistikas tegelikku tööjõukulu. Kontrolli kehtivat määra ise: rakendus seda ette ei paku.",
   'dashboard.contributions': "maksed {employerTax} €",
   'invoices.notAvailableInCountry': "Selle kliiniku riigi arveid Wivos veel ei ole. Tee arved praegu oma raamatupidamistarkvaras.",
+  'updateBanner.notSignedByWivo': "See uuendus ei ole Wivo allkirjastatud väljalase, seega seda ei paigaldatud.",
   'payLine.work': "Töö",
   'payLine.rush': " · kiirtöö ×{x}",
   'payLine.design': "Disain: {items} · {patient}{rush}",

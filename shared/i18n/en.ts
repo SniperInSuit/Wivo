@@ -2716,6 +2716,7 @@ export const en = {
   'settingsPage.employerContributionsHint': "The employer's share of social insurance, in %. It is added to gross pay to show the real cost of labour in Payroll and Statistics. Check the current rate yourself: the app doesn't suggest one.",
   'dashboard.contributions': "contributions {employerTax} €",
   'invoices.notAvailableInCountry': "Invoices for this clinic's country aren't available in Wivo yet. Make invoices in your accounting software for now.",
+  'updateBanner.notSignedByWivo': "This update isn't Wivo's signed release, so it wasn't installed.",
   'payLine.work': "Work",
   'payLine.rush': " · rush ×{x}",
   'payLine.design': "Design: {items} · {patient}{rush}",

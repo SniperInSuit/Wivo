@@ -26,8 +26,12 @@ export type UpdateState =
   /** Downloaded and staged. Installs at the NEXT launch, not on quit. */
   | { stage: 'ready'; version: string }
   | { stage: 'installing'; version: string }
-  /** Never fatal to the app: the user keeps working on the version they have. */
-  | { stage: 'failed'; message: string }
+  /**
+   * Never fatal to the app: the user keeps working on the version they have.
+   * `code` names a failure the renderer says in the user's language; `message`
+   * is the main process's own text for the rest.
+   */
+  | { stage: 'failed'; message: string; code?: 'unsigned' }
 
 /** What the splash window needs. A subset, so it cannot grow a dependency. */
 export interface UpdaterSplashState {

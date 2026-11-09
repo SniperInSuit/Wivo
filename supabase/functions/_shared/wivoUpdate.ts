@@ -18,7 +18,10 @@
  * installs (after Riga is running).
  */
 import * as release from './generated/release.ts'
-import type { Channel, Index, RootKey, SerialFloor, Trust } from './generated/release.ts'
+import type { Channel, Fetcher, Index, RootKey, SerialFloor, Trust } from './generated/release.ts'
+
+export type { Fetcher }
+export { limitedFetcher } from './generated/release.ts'
 
 /** The project's own database connection (SUPABASE_DB_URL). */
 export interface Db {
@@ -28,9 +31,6 @@ export interface Db {
   /** Everything inside stands or falls together. */
   transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>
 }
-
-/** A published file, read to at most `maxBytes`: null when unreachable, missing or larger. */
-export type Fetcher = (url: string, maxBytes: number) => Promise<Uint8Array | null>
 
 export interface Updater {
   db: Db
@@ -262,43 +262,6 @@ async function recordInstall(db: Db, from: string | null, to: string, sha: strin
   result: 'installed' | 'refused' | 'failed', reason: string | null, checks: Record<string, number | string> | null): Promise<void> {
   await db.query(`select public.wivo_record_install($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
     [from, to, sha, who.mode, who.by, result, reason, checks ? JSON.stringify(checks) : null])
-}
-
-// ─── Fetching ─────────────────────────────────────────────────────────────────
-
-/**
- * A Fetcher over the platform's fetch: HTTPS only, at most `maxBytes` read
- * (TUF: endless data), 30 seconds, and any failure is null.
- */
-export function limitedFetcher(fetchImpl: typeof fetch): Fetcher {
-  return async (url, maxBytes) => {
-    if (!url.startsWith('https://')) return null
-    try {
-      const res = await fetchImpl(url, { redirect: 'follow', signal: AbortSignal.timeout(30_000) })
-      if (!res.ok || !res.body) return null
-      const declared = Number(res.headers.get('content-length') ?? NaN)
-      if (Number.isFinite(declared) && declared > maxBytes) return null
-      const reader = res.body.getReader()
-      const parts: Uint8Array[] = []
-      let total = 0
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        total += value.length
-        if (total > maxBytes) {
-          await reader.cancel()
-          return null
-        }
-        parts.push(value)
-      }
-      const out = new Uint8Array(total)
-      let at = 0
-      for (const p of parts) { out.set(p, at); at += p.length }
-      return out
-    } catch {
-      return null
-    }
-  }
 }
 
 // ─── The request ──────────────────────────────────────────────────────────────
