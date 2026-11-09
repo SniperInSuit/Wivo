@@ -1098,6 +1098,8 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 
 **Before it** (Kevin, 2026-11-06): docs/STOCK.md slice 1, equipment, materials and shades, about 4–5 days and two sessions. It settles the shade fields this phase's message format carries (§2a).
 
+**After it** (Kevin, 2026-11-06 and 2026-11-09): docs/STOCK.md slices 2–6, then docs/AGREEMENTS.md. The patient portal (docs/PATIENT-PORTAL.md) comes after the treatment calculator.
+
 **Scope** (Kevin, 2026-11-04):
 1. We send a job with its files to Riga.
 2. Riga works on it in its own Wivo. It moves the job through the stages assigned to it, and adds its files (print, design).
@@ -1270,6 +1272,7 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 - Q8: what Riga's contracts with Supabase and Resend must contain, and what ours must.
 - Q9: the contract terms for signed updates. They go into the licence agreement when it is finalised (L8).
 - Q13: tax, and medical-device traceability of a lent lot.
+- Q14–Q18, new (2026-11-09): the patient portal, below.
 - Q2 needs no answer: the relay was rejected (§10, decision 2).
 
 ### The questions (sent before 2026-11-05)
@@ -1289,6 +1292,16 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 11. **Support later:** if Riga asks Wivo to look at a problem in their database, what consent and logging are needed, and how long may the access last?
 12. **An incident:** if a bug sends something identifying to the other clinic, who notifies whom, and within what time (GDPR's 72 hours, and Latvian rules)?
 13. **Stock across the border:** consignment goods lent from Estonia to Latvia, then bought out. Is anything needed beyond the invoice, for example tax or medical-device traceability of the lot?
+
+### New questions (the patient portal plan, 2026-11-09)
+
+Not yet sent. From docs/PATIENT-PORTAL.md §10:
+
+14. **A patient's signature:** is a fresh e-mail link or passkey enough to confirm a treatment plan, or only eID?
+15. **The medical card:** must the portal show the whole record, or may it show a defined part, with the rest through an access request?
+16. **Children:** from what age does a minor see their own records, and how does a guardian get access?
+17. **Logging every read** a patient makes: are 3 years right, as for staff (L3)?
+18. **Recording the personal code** on each patient record, for matching sign-ins.
 
 ---
 

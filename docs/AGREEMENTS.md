@@ -1,6 +1,8 @@
 # Agreements: external technicians first, partner clinics later
 
-Status: **plan, for Kevin's OK** (C2, 2026-11-09). Nothing is built.
+Status: **plan, approved** (C2; Kevin's decisions of 2026-11-09 are in §11). Built after phase 2. Nothing is built yet.
+
+**Until then** (Kevin): the paper price list is entered as the technician's ordinary pay rules. When the agreement takes effect, those rules end the day before (§3).
 
 **What it is:**
 - **an agreement in Wivo** between the clinic and an external technician: the clinic's terms, the technician's price list, and how the prices reach pay;
@@ -39,7 +41,8 @@ The example: an external technician sent us a price list and terms on paper.
 - **the clinic's terms:** a text, started from the clinic's standard terms in Settings → Agreements and edited for this agreement;
 - **the price list,** one line per price:
   - **what:** a work type, or any work;
-  - **how:** per work type (a fixed price per job), per tooth, per unit, per hour, or a percentage of the job's price;
+  - **how:** per work type (a fixed price per job), per tooth for work on teeth, per piece for work without teeth, per hour, or a percentage of the job's price;
+  - **per piece** (Kevin, 2026-11-09): splints, models, guides, and dentures per arch. A work item without teeth is one piece; a denture counts one piece for each arch it covers, upper and lower;
   - **for:** the work, the design, a remake or a model, as pay rules are today;
   - **the amount,** and whether prices include VAT;
 - **how the prices reach pay:**
@@ -176,7 +179,9 @@ It comes with partner pricing, after phase 2, and is planned then.
 
 ## 9. Who may do what, and the log
 
-**A new permission, "Agreements"** (`agreements.manage`): prepare, send, sign for the clinic, end, and cancel a start after 10 minutes. The owner always may.
+**A new permission, "Agreements"** (`agreements.manage`): prepare, send, sign for the clinic, end, and cancel a start after 10 minutes.
+- **The owner always may.**
+- **Members may only if the owner gives it to them;** it is off by default, the same pattern as "Install updates" (Kevin, 2026-11-09).
 
 **Who reads an agreement:**
 - the technician, their own;
@@ -209,7 +214,9 @@ It comes with partner pricing, after phase 2, and is planned then.
 **Changed:**
 - **`worker_rates`:** the agreement version a rule came from. A trigger refuses editing those rules;
 - **a member's state** "agreement pending", which grants nothing but their agreement (§6);
-- **the pay engine** (`lib/earnings.ts`): a job started under an agreement is priced by that version's rules; the month is still the done date's;
+- **the pay engine** (`lib/earnings.ts`):
+  - a job started under an agreement is priced by that version's rules; the month is still the done date's;
+  - a new kind of rule, per piece (§1), next to per tooth;
 - **notification kinds and export kinds,** as in §9.
 
 **Database functions:**
@@ -231,18 +238,15 @@ It comes with partner pricing, after phase 2, and is planned then.
 - the statement holds no patient names, and its downloads leave audit entries;
 - leak tests: another technician, another clinic and a partner see none of it.
 
-## 11. Decisions for Kevin
+## 11. Decisions (Kevin, 2026-11-09)
 
-1. **Who signs for the clinic:** the owner only (recommended), or also members given "Agreements".
-2. **"Per unit":** a tooth position, as labs count crowns and bridges, priced like per tooth (recommended); or a count of pieces, for work without teeth such as a splint or a model.
-3. **A mistaken Start:** the technician undoes it within 10 minutes; later only the owner cancels it, with a reason (recommended).
-4. **A job nobody started:** it starts when the assigned person first moves it on (recommended), or it can't be moved on until Start is pressed.
-5. **A remake on the same job:** priced by the agreement at the job's start (recommended), or by the one in force when the remake begins.
-6. **The statement:** job codes only, no patient names (recommended); and the technician confirms or comments before the clinic finalizes it (recommended).
-7. **When to build it:**
-   - recommended: right after stock slice 1, so after phase 1 and before phase 2, if the external technician starts soon. That moves phase 2 by about 3 weeks;
-   - or after phase 2;
-   - **until then,** the paper price list can be entered as the technician's ordinary pay rules. That works today, priced by the completion date, without a signature.
+1. **Who signs for the clinic:** the owner, and members the owner gives the new "Agreements" permission. It is off by default, as "Install updates" is.
+2. **Prices per tooth and per piece:** per tooth for work on teeth; per piece for work without teeth (splints, models, guides, and dentures per arch).
+3. **A mistaken Start:** the technician undoes it within 10 minutes; later only the owner, or a member with "Agreements", cancels it, with a reason.
+4. **A job nobody started:** it starts when the assigned person first moves it on.
+5. **A remake on the same job:** priced by the agreement at the job's start.
+6. **The statement:** job codes only, no patient names; the technician confirms or comments before the clinic finalizes it.
+7. **When:** after phase 2. Until then, the paper price list is entered as ordinary pay rules.
 
 ## 12. Order of work and time
 
@@ -255,5 +259,5 @@ It comes with partner pricing, after phase 2, and is planned then.
 | 5. **The monthly statement:**<ul><li>the draft, the technician's confirmation or comments;</li><li>finalizing, PDF and CSV;</li><li>marking it paid.</li></ul> | 3 days | A month of test jobs to a statement, confirmed and finalized. One session. |
 | 6. **Partner clinics,** with partner pricing after phase 2. | planned then | |
 
-- **Building:** about 16–19 days. **Kevin:** about 7 sessions.
-- **Calendar:** about 3–4 weeks at 3–4 hours of testing a day.
+- **Building:** about 16–19 days, with per piece in slice 2. **Kevin:** about 7 sessions.
+- **Calendar:** about 3–4 weeks at 3–4 hours of testing a day, after phase 2.

@@ -1,6 +1,6 @@
 # Patient portal
 
-Status: **plan, for Kevin's OK** (C3, 2026-11-09). **A later release,** with a security review before it goes live (§9). Nothing is built.
+Status: **plan, approved** (C3; Kevin's decisions of 2026-11-09 are in §12). **A later release,** after the treatment calculator, with a security review before it goes live (§9). Nothing is built.
 
 **Kevin's decision (2026-11-05, docs/VISION.md): patient-held connections.** A central Wivo patient account was rejected, because Wivo would then know who is a patient where. This plan works out that decision.
 
@@ -192,6 +192,8 @@ Status: **plan, for Kevin's OK** (C3, 2026-11-09). **A later release,** with a s
 
 ## 10. Questions for the lawyer
 
+In the lawyer list as Q14–Q18 (docs/ARCHITECTURE-INSTANCES.md, "New questions"), not yet sent.
+
 1. **A patient's signature:** is a fresh e-mail link or passkey enough to confirm a treatment plan, or only eID?
 2. **The medical card:** must the portal show the whole record, or may it show a defined part, with the rest through an access request?
 3. **Children:** from what age does a minor see their own records, and how does a guardian get access?
@@ -216,16 +218,17 @@ Status: **plan, for Kevin's OK** (C3, 2026-11-09). **A later release,** with a s
 - **`payment-notify`,** for the provider's notifications;
 - the patient app, and the signed directory.
 
-## 12. Decisions for Kevin
+## 12. Decisions (Kevin, 2026-11-09)
 
-1. **eID providers to build and test with:** eeID for Estonian clinics, and SK Authentigate for Latvian ones (recommended). Any provider with the standard protocol works without code.
-2. **E-mail sign-in:** only after the clinic's invite, to the address on record (recommended).
-3. **The medical card in the portal:** shown, except the free-form internal notes (recommended), once the lawyer answers.
-4. **Files:** only those the clinic marks for the patient (recommended).
-5. **Payment providers first:** Montonio and MakeCommerce (recommended).
-6. **Children:** not in the first version (recommended).
-7. **The patient app's address:** separate from the clinic's app (recommended), with Latvian added for Riga's patients.
-8. **When:** after the treatment calculator (docs/VISION.md, step 1), which plan confirmation needs. The part without plans could come earlier, if wanted.
+All eight as recommended:
+1. **eID providers to build and test with:** eeID for Estonian clinics, and SK Authentigate for Latvian ones. Any provider with the standard protocol works without code.
+2. **E-mail sign-in:** only after the clinic's invite, to the address on record.
+3. **The medical card in the portal:** shown, except the free-form internal notes, **once the lawyer answers** (Q15).
+4. **Files:** only those the clinic marks for the patient.
+5. **Payment providers first:** Montonio and MakeCommerce.
+6. **Children:** not in the first version.
+7. **The patient app's address:** separate from the clinic's app, with Latvian added for Riga's patients.
+8. **When:** after the treatment calculator (docs/VISION.md, step 1), which plan confirmation needs.
 
 ## 13. Order of work and time
 
