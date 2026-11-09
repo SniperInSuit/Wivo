@@ -67,7 +67,7 @@ These sit alongside the locked decisions in wivo-2.0-spec.md (Estonian), which s
 - **Without an Estonian or Latvian eID:** an e-mail link and a passkey.
 - **Every patient sign-in and access** is in that clinic's audit log.
 
-The plan comes later, as a plan of its own, with a security review before it goes live.
+The plan: docs/PATIENT-PORTAL.md (C3, for Kevin's OK), with a security review before it goes live.
 
 ## Ecosystem
 
