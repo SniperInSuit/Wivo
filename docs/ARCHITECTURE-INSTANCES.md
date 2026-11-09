@@ -1019,6 +1019,13 @@ That is Kevin's production session, and it isn't counted below.
   - the ledger and the records (sql/119), the install planner, and the fresh code (sql/120);
   - **`wivo-update`:** a check of the list (by the scheduled job or an approver), and an install by hand (an approver with a code under 5 minutes old). It installs every migration and its ledger row in one transaction, refuses a migration that would end it, runs the read-only checks, and records every attempt. Tested against the real migrations, with made-up signed releases.
   - **Waiting:** the published addresses (`UPDATE_SOURCES`, set by the release tool); Edge Functions in a package (slice 3); the first install and the daily check's schedule (the setup tool, slice 5); Kevin's test on project A.
+- **Slice 7, Riga's workers and pay (option a):**
+  - **the country** (`clinics.country`): outside Estonia, Payroll, the job's pay card and each worker's own view show gross pay, "before tax"; the payslip estimate, net agreements and the employee's tax settings are hidden; the employer's share is "employer contributions" in Settings, Payroll and Statistics;
+  - **the accountant's export** in Payroll, from the month's confirmed payouts: one file per person (gross by kind, hours, jobs) and one of the lines (job code, work, teeth, how it was calculated, the amount). Never a patient's name; headers in the exporter's language; audited (sql/121). The sample for Riga's accountant is in `docs/riga/`, made by the same code;
+  - **payout lines in the clinic's language** (`clinics.default_language`). Estonian clinics read exactly as before;
+  - **a payout saved in one step** (sql/121 `create_payout`);
+  - **Invoices** outside Estonia say they aren't available yet, and make none.
+  - **Waiting:** the setup tool sets the country (slice 5); Riga's accountant's answer about the sample.
 
 - **Kevin's part:** about 14–17 sessions, roughly 35–45 hours, so 10–13 working days at 3–4 hours a day. Building runs alongside. **From the first signed list on:** about 2 minutes a week to re-sign it (5g).
 - **Calendar: about 5–6 weeks** from the OK to "ready to set up Riga", if the hardware keys arrive in the first week, Riga's accountant answers within the week, and the review's findings are small. Pay (slice 7) added about a week (2026-11-05).

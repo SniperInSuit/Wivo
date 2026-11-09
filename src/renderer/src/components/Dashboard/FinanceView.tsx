@@ -22,6 +22,8 @@ import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { calculateFinance, profitOf, type Coverage } from '../../lib/finance'
 import { workTypeImage } from '../../lib/workTypeImages'
 import { employerCost, employerTaxAmount } from '../../lib/earnings'
+import { useAuth } from '../../context/AuthContext'
+import { clinicCountry, hasEstonianTax } from '../../lib/country'
 import { StatTile } from '../ui/StatTile'
 import type { Period, DateRange } from './useDashboardStats'
 import { periodMetrics, rangeFor, elapsedEndOf, unitSplitLabel, teethSplitLabel, MONEY_HINT } from '../../lib/periodMetrics'
@@ -37,6 +39,8 @@ interface FinanceViewProps {
 export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
   const { doneStageKey } = usePipeline()
   const { settings } = useSettings()
+  // A net agreement is Estonian (lib/country): elsewhere everyone's pay is gross.
+  const estonianTax = hasEstonianTax(clinicCountry(useAuth().clinic))
   const wt = useWorkTypes()
   const { data: invoices = [], isError: invoicesMissing } = useInvoices()
   const { data: payments = [] } = usePayments()
@@ -96,7 +100,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
       // And without these three, a wage agreed NET is read as gross: employer
       // tax then lands on a wage too small, and the shortfall goes straight
       // into the profit figure. See sql/054.
-      tasu_arvestus: w.tasu_arvestus,
+      tasu_arvestus: estonianTax ? w.tasu_arvestus : 'bruto',
       kogumispension_protsent: w.kogumispension_protsent,
       maksuvaba_tulu: w.maksuvaba_tulu,
     })),
@@ -119,7 +123,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
     // Rent does not accrue for days that have not happened. Counts use the
     // whole period; overheads use only the elapsed part of it.
     overheadEnd: elapsedEndOf(range),
-  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, settings.yldkulud, settings.toopaevadNadalas, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent, doneStageKey, range])
+  }), [jobsInPeriod, jobs, invoices, payments, payouts, rates, hours, workers, wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob, settings.yldkulud, settings.toopaevadNadalas, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent, settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent, settings.kogumispensionProtsent, doneStageKey, range, estonianTax])
 
   // Margin against the FULL cost of employment, not gross pay: the taxes are
   // real money leaving the account.
@@ -278,7 +282,7 @@ export function FinanceView({ jobs, period, custom }: FinanceViewProps) {
             accent="#8B5CF6"
             sub={[
               t('dashboard.gross', { labourEmployeeGross: fin.labourEmployeeGross.toFixed(2) }),
-              employerTax > 0 ? t('dashboard.taxes', { employerTax: employerTax.toFixed(2) }) : null,
+              employerTax > 0 ? t(estonianTax ? 'dashboard.taxes' : 'dashboard.contributions', { employerTax: employerTax.toFixed(2) }) : null,
               fin.labourContractor > 0 ? t('dashboard.contractorInvoices', { labourContractor: fin.labourContractor.toFixed(2) }) : null,
             ].filter(Boolean).join(' · ') || (
               settings.tooandjaMaksudProtsent > 0 ? undefined : t('dashboard.employerTaxRateIs0')

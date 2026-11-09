@@ -45,6 +45,8 @@ import { debtors, EMPTY_DEBTORS, type DebtorStats } from '../../lib/debtors'
 import { funFacts, type FunFacts } from '../../lib/funFacts'
 import type { PermissionKey } from '../../hooks/usePermissions'
 import { t } from '@/lib/i18n'
+import { useAuth } from '../../context/AuthContext'
+import { clinicCountry, hasEstonianTax } from '../../lib/country'
 
 /**
  * Which expensive slice a panel needs. See `PanelMeta.needs`.
@@ -118,6 +120,8 @@ export function useStatsContext(
 ): PanelCtx {
   const { doneStageKey } = usePipeline()
   const { settings } = useSettings()
+  // A net agreement is Estonian (lib/country): elsewhere everyone's pay is gross.
+  const estonianTax = hasEstonianTax(clinicCountry(useAuth().clinic))
   const wt = useWorkTypes()
   const { can } = usePermissions()
   const { data: invoices = [], isError: invoicesMissing } = useInvoices()
@@ -178,7 +182,7 @@ export function useStatsContext(
       workers: workers.map(w => ({
         id: w.id, full_name: w.full_name, toosuhe: w.toosuhe,
         kiirtoo_kordaja: w.kiirtoo_kordaja,
-        tasu_arvestus: w.tasu_arvestus,
+        tasu_arvestus: estonianTax ? w.tasu_arvestus : 'bruto',
         kogumispension_protsent: w.kogumispension_protsent,
         maksuvaba_tulu: w.maksuvaba_tulu,
       })),
@@ -207,7 +211,7 @@ export function useStatsContext(
     wt.types, settings.materialCosts, settings.materialPrices, settings.fixedCostsPerJob,
     settings.yldkulud, settings.toopaevadNadalas, settings.tooandjaMaksudProtsent, settings.tulumaksProtsent,
     settings.maksuvabaTuluKuus, settings.tootajaTootuskindlustusProtsent,
-    settings.kogumispensionProtsent, doneStageKey, range,
+    settings.kogumispensionProtsent, doneStageKey, range, estonianTax,
   ])
 
   const profit = useMemo(

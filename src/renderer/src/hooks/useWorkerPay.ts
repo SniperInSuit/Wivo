@@ -223,26 +223,14 @@ export function useCreatePayout() {
       if (!clinicId) throw new Error(t('useWorkerPay.noClinic'))
       if (input.lines.length === 0) throw new Error(t('useWorkerPay.thereIsNothingToPayOut'))
 
-      const total = Math.round(input.lines.reduce((s, l) => s + l.amount, 0) * 100) / 100
-      const { data: userData } = await supabase.auth.getUser()
-
-      const { data: payout, error } = await supabase
-        .from('worker_payouts')
-        .insert({
-          clinic_id: clinicId,
-          profile_id: input.profile_id,
-          period_start: input.period_start,
-          period_end: input.period_end,
-          total,
-          note: input.note ?? null,
-          created_by: userData?.user?.id ?? null,
-        })
-        .select().single()
-      if (error) throw error
-
-      const { error: lineError } = await supabase.from('worker_payout_lines').insert(
-        input.lines.map(l => ({
-          payout_id: (payout as WorkerPayout).id,
+      // One call, so one transaction (sql/121): two saves left an empty payout
+      // behind whenever the second failed. The database sums the total.
+      const { data: id, error } = await supabase.rpc('create_payout', {
+        p_profile: input.profile_id,
+        p_period_start: input.period_start,
+        p_period_end: input.period_end,
+        p_note: input.note ?? null,
+        p_lines: input.lines.map(l => ({
           job_id: l.job_id,
           revision_id: l.revision_id,
           work_hours_id: l.work_hours_id,
@@ -254,10 +242,10 @@ export function useCreatePayout() {
           // The whole point of migration 058: the frozen line says what it was,
           // so the next reckoning knows it is already covered.
           line_key: l.key,
-        }))
-      )
-      if (lineError) throw lineError
-      return payout as WorkerPayout
+        })),
+      })
+      if (error) throw error
+      return { id: id as string } as Pick<WorkerPayout, 'id'>
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: PAYOUTS_KEY })
   })

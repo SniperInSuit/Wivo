@@ -24,7 +24,7 @@
 import type { Job, Revision, WorkItem } from '../types/job'
 import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth, jobDesigners } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
-import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import { t, translate, lang as uiLang, type Lang } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
 // to sit in this list, which is a category error — design is a kind of work, not
@@ -302,11 +302,17 @@ export function pickRateFor(
   })[0]
 }
 
-/** Distinct work types, in order, for a line's description. */
-// Left Estonian, like additiveLabel below: payout line descriptions are stored and parsed back (useWorkerPay).
-const itemsLabel = (items: PayItem[]): string => {
+/**
+ * Distinct work types, in order, for a line's description.
+ *
+ * Descriptions are stored in a payout, so they are written in the CLINIC's
+ * language (`lang`), not the viewer's. Only lines paid before sql/058 are
+ * read back from their description (useWorkerPay legacyLineKey), and those
+ * are Estonian and stay as they are.
+ */
+const itemsLabel = (items: PayItem[], lang: Lang): string => {
   const names = [...new Set(items.map(i => i.too?.trim()).filter(Boolean))]
-  return names.length > 0 ? names.join(' + ') : 'Töö'
+  return names.length > 0 ? names.join(' + ') : translate(lang, 'payLine.work')
 }
 
 export interface ProductionPay {
@@ -386,8 +392,8 @@ function payAdditive(
 }
 
 /** What an additive line is called. Falls back for rules written before labels. */
-const additiveLabel = (r: WorkerRate): string =>
-  r.label?.trim() || (r.applies_to === 'disain' ? 'Lisatasu disaini eest' : 'Lisatasu')
+const additiveLabel = (r: WorkerRate, lang: Lang): string =>
+  r.label?.trim() || translate(lang, r.applies_to === 'disain' ? 'payLine.designBonus' : 'payLine.bonus')
 
 /**
  * @param rush What a piece rate is multiplied by on a rush job. Applies to the
@@ -508,6 +514,12 @@ export interface EarningsContext {
    * noise in a month that is already closed.
    */
   today?: string
+  /**
+   * The language payout lines are described in: the clinic's
+   * (`clinics.default_language`), since the lines are stored. Estonian when
+   * absent, as before.
+   */
+  lang?: Lang
 }
 
 /**
@@ -521,8 +533,9 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
   const {
     profileId, rates, jobs, hours, types, periodStart, periodEnd,
     doneStageKey, alreadyPaid = new Set(), includeMonthly = true,
-    rushMultiplier = 1,
+    rushMultiplier = 1, lang = 'et',
   } = ctx
+  const L = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate(lang, key, params)
 
   const mine = rates.filter(r => r.profile_id === profileId)
   const inPeriod = (d: string) => !!d && d >= periodStart && d <= periodEnd
@@ -557,7 +570,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     const rush = job.kiirtoo ? rushMultiplier : 1
     // Said out loud on the line: "45.00 €" against a 15 €/tooth rule and three
     // teeth is a number the person has to be able to check for themselves.
-    const rushNote = rush !== 1 ? ` · kiirtöö ×${rush}` : ''
+    const rushNote = rush !== 1 ? L('payLine.rush', { x: rush }) : ''
 
     if (isTech && countable && !alreadyPaid.has(`job:${job.id}`)) {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
@@ -567,7 +580,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `job:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `${itemsLabel(pay.paidItems)} · ${job.patsient}${rushNote}`,
+          description: `${itemsLabel(pay.paidItems, lang)} · ${job.patsient}${rushNote}`,
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -585,7 +598,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `design:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Disain: ${itemsLabel(pay.paidItems)} · ${job.patsient}${rushNote}`,
+          description: L('payLine.design', { items: itemsLabel(pay.paidItems, lang), patient: job.patsient, rush: rushNote }),
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -611,7 +624,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `mudel:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
-          description: `Mudel · ${job.patsient}${rushNote}`,
+          description: L('payLine.model', { patient: job.patsient, rush: rushNote }),
           qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: earnedOn,
         })
       }
@@ -640,7 +653,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key,
             job_id: job.id, revision_id: null, work_hours_id: null,
             kind: extra.rule.kind,
-            description: `${additiveLabel(extra.rule)}: ${itemsLabel(extra.items)} · ${job.patsient}${rushNote}`,
+            description: `${additiveLabel(extra.rule, lang)}: ${itemsLabel(extra.items, lang)} · ${job.patsient}${rushNote}`,
             qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
             earned_on: earnedOn,
           })
@@ -677,7 +690,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       // A remake carries its OWN rush flag — the original may have been routine
       // and the redo needed by Friday, or the other way round.
       const revRush = rev.kiirtoo ? rushMultiplier : 1
-      const revRushNote = revRush !== 1 ? ` · kiirtöö ×${revRush}` : ''
+      const revRushNote = revRush !== 1 ? L('payLine.rush', { x: revRush }) : ''
 
       // A revision-specific rule wins. Only when there is none does the job's
       // own rule apply, and then only if it says it covers rework — which is
@@ -692,7 +705,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key: `rev:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: pay.kind,
-            description: `Muudatus #${i + 1}: ${itemsLabel(pay.paidItems)} · ${job.patsient}${revRushNote}`,
+            description: L('payLine.revision', { n: i + 1, items: itemsLabel(pay.paidItems, lang), patient: job.patsient, rush: revRushNote }),
             qty: pay.qty, rate: pay.rate, amount: pay.amount, earned_on: revDate,
           })
         }
@@ -713,7 +726,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key: `revdesign:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: design.kind,
-            description: `Disain, muudatus #${i + 1}: ${itemsLabel(design.paidItems)} · ${job.patsient}${revRushNote}`,
+            description: L('payLine.revisionDesign', { n: i + 1, items: itemsLabel(design.paidItems, lang), patient: job.patsient, rush: revRushNote }),
             qty: design.qty, rate: design.rate, amount: design.amount, earned_on: revDate,
           })
         }
@@ -730,7 +743,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
             key: `revmudel:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: model.kind,
-            description: `Mudel, muudatus #${i + 1} · ${job.patsient}${revRushNote}`,
+            description: L('payLine.revisionModel', { n: i + 1, patient: job.patsient, rush: revRushNote }),
             qty: model.qty, rate: model.rate, amount: model.amount, earned_on: revDate,
           })
         }
@@ -746,7 +759,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key,
           job_id: job.id, revision_id: rev.id, work_hours_id: null,
           kind: extra.rule.kind,
-          description: `${additiveLabel(extra.rule)} (muudatus #${i + 1}) · ${job.patsient}${revRushNote}`,
+          description: L('payLine.revisionExtra', { label: additiveLabel(extra.rule, lang), n: i + 1, patient: job.patsient, rush: revRushNote }),
           qty: extra.qty, rate: extra.rule.amount, amount: extra.amount,
           earned_on: revDate,
         })
@@ -782,7 +795,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           key: `auto:${day}`,
           job_id: null, revision_id: null, work_hours_id: null,
           kind: 'tund',
-          description: 'Tööpäev (automaatne)',
+          description: L('payLine.autoDay'),
           qty: h, rate: hourRate.amount, amount: round2(h * hourRate.amount),
           earned_on: day,
         })
@@ -800,7 +813,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         key: `hours:${h.id}`,
         job_id: null, revision_id: null, work_hours_id: h.id,
         kind: 'tund',
-        description: h.note?.trim() || 'Töötunnid',
+        description: h.note?.trim() || L('payLine.hours'),
         qty: Number(h.hours), rate: hourRate.amount, amount, earned_on: h.work_date,
       })
     }
@@ -820,7 +833,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         key: `salary:${periodStart}`,
         job_id: null, revision_id: null, work_hours_id: null,
         kind: 'kuu',
-        description: `Kuutasu ${periodStart} – ${periodEnd}`,
+        description: L('payLine.salary', { start: periodStart, end: periodEnd }),
         qty: 1, rate: monthly.amount, amount: round2(monthly.amount), earned_on: periodEnd,
       })
     }
@@ -882,7 +895,7 @@ export function unassignedFinishedJobs(
     })
     // A designer named on any single work item counts: the job is somebody's.
     .filter(j => !j.assigned_to && jobDesigners(j).length === 0)
-    .map(j => ({ id: j.id, label: `${itemsLabel(payItemsOf(j))} · ${j.patsient}` }))
+    .map(j => ({ id: j.id, label: `${itemsLabel(payItemsOf(j), uiLang)} · ${j.patsient}` }))
 }
 
 export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
@@ -915,7 +928,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
     if (b.examples.length < 3) {
       // Every work type on the job, not just the first — the whole reason a
       // mixed job earned nothing is usually the type that was not named here.
-      b.examples.push({ id: job.id, label: `${itemsLabel(payItemsOf(job))} · ${job.patsient}` })
+      b.examples.push({ id: job.id, label: `${itemsLabel(payItemsOf(job), uiLang)} · ${job.patsient}` })
     }
     if (month && !b.months.includes(month)) b.months.push(month)
     buckets.set(key, b)

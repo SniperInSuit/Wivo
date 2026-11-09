@@ -18,6 +18,7 @@ import {
 import { usePermissions } from '../../hooks/usePermissions'
 import { useSettings } from '../../stores/useSettings'
 import { useAuth } from '../../context/AuthContext'
+import { clinicCountry, invoicesAvailable } from '../../lib/country'
 import { stageChipStyle } from '../../config/pipeline'
 import { describeError } from '../Patients/errors'
 import { InvoiceForm } from './InvoiceForm'
@@ -52,7 +53,10 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
   const [printing, setPrinting] = useState<InvoiceFull | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const canWrite = can('payments.write')
+  // Wivo's invoice is an Estonian document (lib/country). Elsewhere none is made
+  // here until that country's invoice exists: the clinic invoices from its own software.
+  const invoicesHere = invoicesAvailable(clinicCountry(auth.clinic))
+  const canWrite = can('payments.write') && invoicesHere
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -143,6 +147,12 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
             </button>
           )}
         </div>
+
+        {!invoicesHere && (
+          <p className="text-xs text-ink-muted bg-bg-sidebar/60 border border-ink-faint/15 rounded-lg px-3 py-2 max-w-3xl">
+            {t('invoices.notAvailableInCountry')}
+          </p>
+        )}
 
         {/* ── Summary ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -273,7 +283,7 @@ export function InvoicesView({ jobs }: InvoicesViewProps) {
       )}
 
       <AnimatePresence>
-        {showForm && (
+        {showForm && invoicesHere && (
           <InvoiceForm
             jobs={jobs}
             onClose={() => setShowForm(false)}

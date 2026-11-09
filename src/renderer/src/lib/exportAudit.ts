@@ -13,6 +13,7 @@ import { describeError } from '../components/Patients/errors'
 export type ExportKind =
   | 'audit_log' | 'jobs' | 'customers' | 'invoices' | 'patient_contacts'
   | 'payouts' | 'payout_lines' | 'revision_repricing'
+  | 'pay_people' | 'pay_lines'
 
 type Plain = string | number | boolean
 export type ExportFilters = Record<string, Plain | Plain[] | null | undefined>

@@ -9,6 +9,7 @@ import type { OverheadPeriood } from '@shared/pricing/priceBook'
 import type { ThemeKey } from '../stores/useSettings'
 import { usePipeline } from '../context/PipelineContext'
 import { useAuth, type Clinic } from '../context/AuthContext'
+import { clinicCountry, hasEstonianTax } from '../lib/country'
 import { usePermissions } from '../hooks/usePermissions'
 import { useClinicSyncState } from './ClinicSettingsSync'
 import { WORK_TYPE_PALETTE, sortedTiers, type WorkType, type PriceMode, type WorkTypeCost } from '../config/workTypes'
@@ -1286,6 +1287,9 @@ export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { init
   } = useSettings()
   const { stages, addStage, removeStage, renameStage, recolorStage, moveStage, setStageNotify, resetToDefaults } = usePipeline()
   const auth = useAuth()
+  // Estonian tax only in an Estonian clinic (lib/country): elsewhere the employee's
+  // side is the accountant's, and the employer's share is called contributions.
+  const estonianTax = hasEstonianTax(clinicCountry(auth.clinic))
   const { can } = usePermissions()
 
   const [group, setGroup] = useState<GroupKey>(initialGroup)
@@ -1989,16 +1993,17 @@ export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { init
                 hint={t('settingsPage.daysFromTheInvoiceDateTo')}
               />
               <NumField
-                label={t('settingsPage.employerTaxes')} suffix="%" min={0} max={100} step={0.1}
+                label={estonianTax ? t('settingsPage.employerTaxes') : t('settingsPage.employerContributions')} suffix="%" min={0} max={100} step={0.1}
                 value={settings.tooandjaMaksudProtsent}
                 onChange={v => setNumber('tooandjaMaksudProtsent', v)}
-                hint={t('settingsPage.addedToGrossPayToShow')}
+                hint={estonianTax ? t('settingsPage.addedToGrossPayToShow') : t('settingsPage.employerContributionsHint')}
               />
               {/* The employee side. Needed only when someone's pay is entered
                   NET — then bruto, and with it the clinic's real cost, has to
                   be computed backwards from take-home pay. Left at 0 they do
                   nothing, and Töötasud says so rather than quietly showing a
-                  gross equal to the net. */}
+                  gross equal to the net. Estonian only. */}
+              {estonianTax && (<>
               <NumField
                 label={t('settingsPage.incomeTax')} suffix="%" min={0} max={100} step={0.1}
                 value={settings.tulumaksProtsent}
@@ -2023,6 +2028,7 @@ export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { init
                 onChange={v => setNumber('kogumispensionProtsent', v)}
                 hint={t('settingsPage.theDefaultRateItIsEach')}
               />
+              </>)}
             </div>
           </section>
                   <section>

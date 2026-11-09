@@ -1527,3 +1527,26 @@ describe('revaluationOf', () => {
     expect(revaluationOf(group(3, 0.1, 0.3), 0.2)).toEqual({ should: 0.6, difference: 0.3 })
   })
 })
+
+describe("payout lines are written in the clinic's language (phase 1, slice 7)", () => {
+  const withLang = (lang: 'en' | 'et' | undefined, rates: WorkerRate[], jobs: Job[], profileId = TECH) => calculateEarnings({
+    profileId, rates, jobs, hours: [], types: TYPES, lang,
+    periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+  })
+  const designJob = () => job({ too: 'Kroon', hambad: '11', designed_by: DESIGNER, kiirtoo: true })
+  const designRate = rate({ kind: 'too', amount: 10, applies_to: 'disain', profile_id: DESIGNER })
+
+  it('Estonian when the clinic says nothing, exactly as the lines read before', () => {
+    expect(withLang(undefined, [designRate], [designJob()], DESIGNER)[0].description).toBe('Disain: Kroon · Mari Maasikas')
+    expect(withLang('et', [designRate], [designJob()], DESIGNER)[0].description).toBe('Disain: Kroon · Mari Maasikas')
+  })
+
+  it('English in an English-speaking clinic, such as Riga', () => {
+    expect(withLang('en', [designRate], [designJob()], DESIGNER)[0].description).toBe('Design: Kroon · Mari Maasikas')
+    const salary = calculateEarnings({
+      profileId: TECH, rates: [rate({ kind: 'kuu', amount: 1500 })], jobs: [], hours: [], types: TYPES, lang: 'en',
+      periodStart: '2026-08-01', periodEnd: '2026-08-31', doneStageKey: DONE,
+    })
+    expect(salary[0].description).toBe('Monthly salary 2026-08-01 – 2026-08-31')
+  })
+})

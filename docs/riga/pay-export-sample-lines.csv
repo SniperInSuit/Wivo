@@ -1,0 +1,10 @@
+﻿sep=;
+Person;Job code;Work;Teeth;Kind of pay;Calculated;Quantity;Rate;Amount (gross)
+Anna Paraugs;RIG-0042;Crown + Bridge;11,21,14,15,16;Jobs;Per tooth;5;18;90
+Anna Paraugs;RIG-0042;Crown + Bridge;11,21,14,15,16;Design;Per job;1;25;25
+Anna Paraugs;RIG-0043;Crown;36;Revisions;Per tooth;1;18;18
+Anna Paraugs;;;;Hours (pay);Per hour;6,50;12;78
+Ilze Testa SIA;RIG-0043;Crown;36;Jobs;% of the job's price;1;30;42
+Ilze Testa SIA;RIG-0043;Crown;36;Extras;Per job;1;10;10
+Jānis Piemērs;;;;Monthly salary;Monthly;1;1400;1400
+Jānis Piemērs;job-0002;Splint;;Models;Per job;1;15;15

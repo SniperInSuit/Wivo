@@ -14,6 +14,8 @@ import { useWorkTypes } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
 import { projectedJobPay } from '../../lib/jobPay'
 import { t } from '@/lib/i18n'
+import { useAuth } from '../../context/AuthContext'
+import { clinicCountry, hasEstonianTax } from '../../lib/country'
 
 export function JobPayCard({ job }: { job: Job }) {
   const { data: rates = [] } = useWorkerRates()
@@ -21,6 +23,8 @@ export function JobPayCard({ job }: { job: Job }) {
   const { types } = useWorkTypes()
   const { doneStageKey } = usePipeline()
   const today = new Date().toISOString().slice(0, 10)
+  // Outside Estonia, Wivo does no tax: the amount is said to be gross, before tax.
+  const beforeTax = !hasEstonianTax(clinicCountry(useAuth().clinic))
 
   const people = [
     { id: job.assigned_to, role: t('jobDetail.technicianPay') },
@@ -45,7 +49,10 @@ export function JobPayCard({ job }: { job: Job }) {
           <Wallet size={18} className="text-accent flex-shrink-0" aria-hidden="true" />
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wider text-ink-muted">{r.role}{r.name ? ` · ${r.name}` : ''}</p>
-            <p className="text-2xl font-bold text-ink tabular-nums">{r.amount.toFixed(2)} €</p>
+            <p className="text-2xl font-bold text-ink tabular-nums">
+              {r.amount.toFixed(2)} €
+              {beforeTax && <span className="ml-1.5 text-[11px] font-normal text-ink-muted">{t('workers.grossBeforeTax')}</span>}
+            </p>
           </div>
         </div>
       ))}

@@ -11,7 +11,7 @@ import {
   ChevronDown, ChevronRight, Euro, Lock, Download
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, addMonths, parseISO, isValid } from 'date-fns'
-import { t, dateLocale, weekdays } from '@/lib/i18n'
+import { t, lang as uiLang, dateLocale, weekdays } from '@/lib/i18n'
 import type { Job } from '../../types/job'
 import { jobHasDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
@@ -38,6 +38,8 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
 import { payoutColumns, payoutLineColumns } from '../../lib/exports'
 import { auditedCsvExport } from '../../lib/exportAudit'
+import { clinicCountry, hasEstonianTax } from '../../lib/country'
+import { payExportRows, peopleColumns, lineColumns } from '../../lib/payExport'
 
 /**
  * The person's own tax settings, as overrides. Undefined where they have none —
@@ -74,6 +76,11 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
   const { doneStageKey } = usePipeline()
   const wt = useWorkTypes()
   const { settings } = useSettings()
+  // Estonian tax only in an Estonian clinic (lib/country). Anywhere else: gross,
+  // before tax, with no payslip estimate and no net agreements.
+  const estonianTax = hasEstonianTax(clinicCountry(auth.clinic))
+  // Payout lines are stored, so they are written in the clinic's language, not the viewer's.
+  const lineLang = auth.clinic?.default_language ?? 'et'
 
   const { data: workers = [] } = useClinicProfiles()
 
@@ -155,6 +162,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       doneStageKey,
       alreadyPaid,
       rushMultiplier: w.kiirtoo_kordaja ?? 1,
+      lang: lineLang,
     })
     const periodPayouts = payouts.filter(
       p => p.profile_id === w.id && p.period_start === period.start
@@ -171,6 +179,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       doneStageKey,
       alreadyPaid,
       rushMultiplier: w.kiirtoo_kordaja ?? 1,
+      lang: lineLang,
     })
     // What is still owed for this period. `calculateEarnings` drops every line
     // already frozen into a payout, so this is the UNPAID half and nothing else.
@@ -222,7 +231,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       // employer tax, the clinic's total — is computed from this, never from
       // the entered number, because employer tax on a net figure is a smaller
       // tax on a smaller wage: wrong twice.
-      gross: grossOf(outstanding + paid, w.tasu_arvestus, taxRates, taxProfileOf(w)),
+      gross: grossOf(outstanding + paid, estonianTax ? w.tasu_arvestus : 'bruto', taxRates, taxProfileOf(w)),
       rates: rates.filter(r => r.profile_id === w.id),
       payouts: periodPayouts,
       // Computed ALWAYS, not only when the total is zero. Gating it on an empty
@@ -240,7 +249,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
         (j.assigned_to === w.id || jobHasDesigner(j, w.id)) && j.status === doneStageKey
       ).length,
     }
-  }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey, taxRates])
+  }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey, taxRates, estonianTax, lineLang])
 
   // Not per worker — see unassignedFinishedJobs. A job with nobody on it is in
   // no worker's list, so no worker's diagnostics can ever mention it.
@@ -265,12 +274,32 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
     .reduce((s, x) => s + (x.worker.tasu_arvestus === 'neto'
       ? x.total
       : payslipFromGross(x.total, taxRates, taxProfileOf(x.worker)).net), 0)
-  const hasNetWorkers = perWorker.some(x =>
+  const hasNetWorkers = estonianTax && perWorker.some(x =>
     x.worker.tasu_arvestus === 'neto' && (x.worker.toosuhe ?? 'tootaja') === 'tootaja')
   const contractorTotal = perWorker
     .filter(x => x.worker.toosuhe === 'ettevote')
     .reduce((s, x) => s + x.total, 0)
   const employerTax = employerTaxAmount(employeeGross, settings.tooandjaMaksudProtsent)
+  // The accountant's monthly export (lib/payExport): the month's confirmed
+  // payouts only, so it can't change afterwards. Who still has unconfirmed pay
+  // this month is said next to the button.
+  const month = period.start.slice(0, 7)
+  const accountantRows = useMemo(() => payExportRows({
+    month,
+    payouts,
+    people: [...new Set(payouts.map(p => p.profile_id))].map(id => ({
+      id, name: nameOf(id), toosuhe: workers.find(w => w.id === id)?.toosuhe ?? null,
+    })),
+    jobs,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [month, payouts, jobs, workers, archivedProfiles])
+  const unconfirmed = perWorker.filter(x => x.outstanding > 0.005).map(x => x.worker.full_name || t('workers.unnamed'))
+  async function exportForAccountant() {
+    const filters = { period: month }
+    if (!(await auditedCsvExport('pay_people', `palgad-${month}`, accountantRows.people, peopleColumns(uiLang), filters))) return
+    await auditedCsvExport('pay_lines', `palgad-${month}-read`, accountantRows.lines, lineColumns(uiLang), filters)
+  }
+
   // How much of the period's cost has already left the account. Shown under the
   // total rather than subtracted from it — the month cost what it cost.
   const paidTotal = perWorker.reduce((s, x) => s + x.paid, 0)
@@ -385,6 +414,16 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           >
             <Download size={13} /> {t('workers.lines')}
           </button>
+          {isOwner && (
+            <button
+              onClick={() => void exportForAccountant()}
+              disabled={accountantRows.people.length === 0}
+              className="btn-ghost text-xs border border-ink-faint/25 disabled:opacity-40"
+              title={t('workers.forTheAccountantHint')}
+            >
+              <Download size={13} /> {t('workers.forTheAccountant')}
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -408,6 +447,15 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
       <p className="text-xs text-ink-faint max-w-3xl leading-relaxed">
         {t('workers.only')} <strong className="text-ink-muted">{t('workers.done')}</strong> {t('workers.jobsWithAnAssignedTechnicianOr')}
       </p>
+
+      {!estonianTax && (
+        <p className="text-xs text-ink-muted max-w-3xl leading-relaxed">{t('workers.payIsGrossHere')}</p>
+      )}
+      {isOwner && unconfirmed.length > 0 && accountantRows.people.length > 0 && (
+        <p className="text-[11px] text-orange-600 max-w-3xl leading-relaxed">
+          {t('workers.notConfirmedYet', { month: period.label, names: unconfirmed.join(', ') })}
+        </p>
+      )}
 
       {actionError && (
         <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -437,7 +485,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           {/* Only the payroll half carries employer taxes. */}
           <div className="pl-6 border-l border-ink-faint/20">
             <p className="text-xs text-ink-muted">
-              {t('workers.employerTaxes')} ({settings.tooandjaMaksudProtsent}%)
+              {estonianTax ? t('workers.employerTaxes') : t('workers.employerContributions')} ({settings.tooandjaMaksudProtsent}%)
             </p>
             <p className="text-base font-semibold text-ink tabular-nums">
               {employerTax.toFixed(2)} €
@@ -566,7 +614,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
           .filter(i => i.code !== 'periood' && i.code !== 'makstud')
           .reduce((n, i) => n + i.count, 0)
         const onPayroll = (worker.toosuhe ?? 'tootaja') === 'tootaja'
-        const netBasis = onPayroll && worker.tasu_arvestus === 'neto'
+        const netBasis = estonianTax && onPayroll && worker.tasu_arvestus === 'neto'
         return (
           <div key={worker.id} className="card overflow-hidden">
             <button
@@ -634,7 +682,7 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                   {total.toFixed(2)} €
                 </span>
                 <span className="block text-[10px] text-ink-faint">
-                  {worker.toosuhe === 'ettevote' ? t('workers.invoiceAmount') : netBasis ? t('workers.netTakeHome') : t('workers.gross')}
+                  {worker.toosuhe === 'ettevote' ? t('workers.invoiceAmount') : netBasis ? t('workers.netTakeHome') : estonianTax ? t('workers.gross') : t('workers.grossBeforeTax')}
                 </span>
                 {netBasis && gross > 0 && (
                   <span className="block text-[10px] text-ink-faint tabular-nums">
@@ -653,17 +701,17 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                     value={worker.toosuhe ?? 'tootaja'}
                   />
                 )}
-                {isOwner && onPayroll && (
+                {isOwner && onPayroll && estonianTax && (
                   <PayBasisPicker profileId={worker.id} value={worker.tasu_arvestus ?? 'bruto'} />
                 )}
-                {isOwner && onPayroll && (
+                {isOwner && onPayroll && estonianTax && (
                   <TaxProfilePicker
                     profileId={worker.id}
                     kogumispension={worker.kogumispension_protsent ?? null}
                     maksuvabaTulu={worker.maksuvaba_tulu ?? null}
                   />
                 )}
-                {onPayroll && total > 0 && (
+                {onPayroll && estonianTax && total > 0 && (
                   <PayslipPanel
                     slip={payslipFromGross(gross, taxRates, taxProfileOf(worker))}
                     rates={taxRates}
