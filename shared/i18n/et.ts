@@ -2752,6 +2752,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'payExport.zipName': "palgad-{month}",
   'payExport.peopleFile': "palgad-{month}-inimesed.csv",
   'payExport.linesFile': "palgad-{month}-read.csv",
+  'workers.earlierMonths': "Varasemad kuud",
+  'workers.earlierMonthsHint': "Varasemate kuude töö ja kuutasu, mida keegi pole veel kinnitanud. Ava kaart, et need kinnitada, igaüks oma kuusse.",
   'payLine.work': "Töö",
   'payLine.rush': " · kiirtöö ×{x}",
   'payLine.design': "Disain: {items} · {patient}{rush}",

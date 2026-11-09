@@ -2765,6 +2765,8 @@ export const en = {
   'payExport.zipName': "pay-{month}",
   'payExport.peopleFile': "pay-{month}-people.csv",
   'payExport.linesFile': "pay-{month}-lines.csv",
+  'workers.earlierMonths': "Earlier months",
+  'workers.earlierMonthsHint': "Work and monthly salary from earlier months that nobody has confirmed yet. Open the card to settle them, each in its own month.",
   'payLine.work': "Work",
   'payLine.rush': " · rush ×{x}",
   'payLine.design': "Design: {items} · {patient}{rush}",

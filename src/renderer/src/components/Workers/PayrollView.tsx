@@ -676,6 +676,17 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
                   {t('workers.totalUnpaid')} {owed.toFixed(2)} €
                 </span>
               )}
+              {/* Earlier months nobody has confirmed: work, and monthly salary
+                  even with no jobs or hours that month. On the row, so a month
+                  isn't seen only by opening the card. */}
+              {backlog.length > 0 && (
+                <span
+                  className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-orange-100 text-orange-700"
+                  title={t('workers.earlierMonthsHint')}
+                >
+                  {t('workers.earlierMonths')} {backlog.reduce((s, p) => s + p.total, 0).toFixed(2)} €
+                </span>
+              )}
               {/* The headline is always the number that was AGREED — the one
                   the owner recognises. What it costs is spelled out beneath it
                   rather than substituted for it. */}

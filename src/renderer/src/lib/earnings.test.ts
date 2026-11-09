@@ -1387,6 +1387,48 @@ describe('backlogPeriods — what earlier months still owe', () => {
   })
 })
 
+describe('backlogPeriods offers an unconfirmed monthly salary, jobs or no jobs', () => {
+  // Kevin, 2026-11-09: a salary must never be skipped silently. Found from
+  // jobs and hours alone, the month of a person with neither was never offered.
+  const salary = (over: Partial<WorkerRate> = {}) => rate({ kind: 'kuu', amount: 1500, ...over })
+  const back = (rates: WorkerRate[], alreadyPaid = new Set<string>(), jobs: Job[] = []) => backlogPeriods({
+    profileId: TECH, rates, jobs, hours: [], types: TYPES,
+    periodStart: '2026-11-01', periodEnd: '2026-11-30', doneStageKey: DONE, alreadyPaid,
+  })
+
+  it('every earlier month the rule covers, with no jobs or hours at all, newest first', () => {
+    const got = back([salary({ active_from: '2026-09-01' })])
+    expect(got.map(p => p.month)).toEqual(['2026-10', '2026-09'])
+    expect(got[0].lines).toEqual([expect.objectContaining({ key: 'salary:2026-10-01', amount: 1500, kind: 'kuu' })])
+    expect(got[0].total).toBe(1500)
+  })
+
+  it('a month already paid is not offered again', () => {
+    expect(back([salary({ active_from: '2026-09-01' })], new Set(['salary:2026-10-01'])).map(p => p.month)).toEqual(['2026-09'])
+  })
+
+  it('from the month the rule was entered when it has no start, and not after its end', () => {
+    expect(back([salary({ active_from: null, created_at: '2026-10-14T09:00:00Z' })]).map(p => p.month)).toEqual(['2026-10'])
+    expect(back([salary({ active_from: '2026-07-01', active_to: '2026-08-31' })]).map(p => p.month)).toEqual(['2026-08', '2026-07'])
+  })
+
+  it('never the month on screen, which offers its own salary', () => {
+    expect(back([salary({ active_from: '2026-11-01' })])).toEqual([])
+  })
+
+  it('in the same month as unpaid jobs: one month, both kinds of line', () => {
+    const got = back([salary({ active_from: '2026-10-01' }), rate({ kind: 'hammas', amount: 15 })], new Set(),
+      [job({ too: 'Kroon', hambad: '11', valmis_kuupaev: '2026-10-10', kuupaev: '2026-10-10' })])
+    expect(got).toHaveLength(1)
+    expect(got[0].lines.map(l => l.kind).sort()).toEqual(['hammas', 'kuu'])
+  })
+
+  it('someone else\'s salary, or a salary of 0, offers nothing', () => {
+    expect(back([salary({ active_from: '2026-09-01', profile_id: 'muu' })])).toEqual([])
+    expect(back([salary({ active_from: '2026-09-01', amount: 0 })])).toEqual([])
+  })
+})
+
 describe('backlogPeriods only looks at this person\'s own months', () => {
   const ctx = (jobs: Job[], profileId: string, rates: WorkerRate[]) => backlogPeriods({
     profileId, rates, jobs, hours: [], types: TYPES,

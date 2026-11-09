@@ -1247,6 +1247,12 @@ export interface BacklogPeriod {
   total: number
 }
 
+/** The month after 'yyyy-MM'. */
+function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`
+}
+
 /** Last day of 'yyyy-MM', as 'yyyy-MM-dd'. */
 function monthEnd(month: string): string {
   const [y, m] = month.split('-').map(Number)
@@ -1291,9 +1297,10 @@ export function backlogPeriods(ctx: EarningsContext): BacklogPeriod[] {
   const { jobs, hours, profileId, periodStart } = ctx
   const cutoff = periodStart.slice(0, 7)
 
-  // Only months the data actually contains. Walking a calendar backwards would
-  // mean choosing how far back to look, and the oldest debt is exactly the one
-  // a cutoff would hide.
+  // Only months the data actually contains: jobs, hours, and the months a
+  // monthly salary rule covers. Walking a calendar backwards would mean
+  // choosing how far back to look, and the oldest debt is exactly the one a
+  // cutoff would hide.
   const months = new Set<string>()
   for (const j of jobs) {
     // This person's work only. A month where somebody ELSE has unpaid jobs
@@ -1308,6 +1315,19 @@ export function backlogPeriods(ctx: EarningsContext): BacklogPeriod[] {
     if (h.profile_id !== profileId) continue
     const m = (h.work_date ?? '').slice(0, 7)
     if (m && m < cutoff) months.add(m)
+  }
+  // A monthly salary is owed for every month its rule covers, whether or not
+  // the person had a job or an hour that month. Found from jobs and hours
+  // alone, a salaried person's unconfirmed month was never offered again: it
+  // was skipped without a word (Kevin, 2026-11-09). Each month the rule
+  // covers, from its start, or the month it was entered if it has none, to
+  // its end; months already paid produce no line and drop out below.
+  for (const r of ctx.rates) {
+    if (r.profile_id !== profileId || r.kind !== 'kuu' || !(r.amount > 0)) continue
+    const from = (r.active_from ?? r.created_at ?? '').slice(0, 7)
+    if (!/^\d{4}-\d{2}$/.test(from)) continue
+    const until = r.active_to ? r.active_to.slice(0, 7) : null
+    for (let m = from; m < cutoff && (until === null || m <= until); m = nextMonth(m)) months.add(m)
   }
 
   const out: BacklogPeriod[] = []
