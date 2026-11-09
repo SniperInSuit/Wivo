@@ -34,7 +34,7 @@ describe('an export is recorded', () => {
   })
 
   it('every export the app has', async () => {
-    for (const kind of ['audit_log', 'jobs', 'customers', 'invoices', 'patient_contacts', 'payouts', 'payout_lines', 'revision_repricing']) {
+    for (const kind of ['audit_log', 'jobs', 'customers', 'invoices', 'patient_contacts', 'payouts', 'payout_lines', 'revision_repricing', 'pay_people', 'pay_lines']) {
       expect(await errorAs(db, { id: A.ownerId }, `select public.audit_export($1, 0)`, [kind]), kind).toBeNull()
     }
   })

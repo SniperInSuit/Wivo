@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 1919.
+-- Expected rows: 1922.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -548,13 +548,14 @@ with expected(kind, key, def) as (values
     ('function', 'public.confirm_job_file_preview(p_file uuid)', 'security definer, volatile, search_path=public, body md5 29e8df711a458c61463ecc2356d9264c'),
     ('function', 'public.confirm_partnership(p_id uuid)', 'security definer, volatile, search_path=public, body md5 f0287d295c7142148a3d575f3fee6d83'),
     ('function', 'public.create_partnership_invite()', 'security definer, volatile, search_path=public, extensions, body md5 cc73bc00dac8f6029e833648989dc495'),
+    ('function', 'public.create_payout(p_profile uuid, p_period_start date, p_period_end date, p_note text, p_lines jsonb)', 'security invoker, volatile, search_path=public, body md5 452e7632e9cd8556fa07618c2e9abcd6'),
     ('function', 'public.create_worker_invite()', 'security definer, volatile, search_path=public, extensions, body md5 e75bf693b2dcd6b890f88df153e1ede6'),
     ('function', 'public.customers_full()', 'security definer, stable, search_path=public, body md5 5f531f69cebbc4ef3a6fc41ce6bbf8f4'),
     ('function', 'public.delete_job_file(p_file uuid)', 'security definer, volatile, search_path=public, body md5 bb405e883e90b227b18279d2433009f5'),
     ('function', 'public.deleted_jobs()', 'security definer, stable, search_path=public, body md5 5cc3a29fc2b9437b66abf2f2b1f6678d'),
     ('function', 'public.ensure_mfa_policies()', 'security invoker, volatile, search_path=public, body md5 4251b5495308d400e88eb2833485f2df'),
     ('function', 'public.export_filters_ok(p jsonb)', 'security invoker, immutable, search_path=public, body md5 191e362187f84a7ba80f04521f06e079'),
-    ('function', 'public.export_kinds()', 'security invoker, immutable, search_path=public, body md5 548b2f53e17faa91887f6c8cc08fb727'),
+    ('function', 'public.export_kinds()', 'security invoker, immutable, search_path=public, body md5 eb12cea80ad02b6e67f6de7c422ec4d9'),
     ('function', 'public.find_invite(p_org uuid, p_code text)', 'security definer, volatile, search_path=public, extensions, body md5 6523f69ddb889c699c8e612c89b46734'),
     ('function', 'public.free_code_prefix(p_name text, p_except uuid)', 'security definer, stable, search_path=public, body md5 2f8d8fe865dae3e7988cc7f6af0874a1'),
     ('function', 'public.fresh_second_factor(p_max_age_seconds integer)', 'security invoker, stable, search_path=public, body md5 e4d4423fdb8dbd06ebb11fa6c862e4fa'),
@@ -835,6 +836,8 @@ with expected(kind, key, def) as (values
     ('grant', 'public.confirm_partnership(p_id uuid) to service_role', 'EXECUTE'),
     ('grant', 'public.create_partnership_invite() to authenticated', 'EXECUTE'),
     ('grant', 'public.create_partnership_invite() to service_role', 'EXECUTE'),
+    ('grant', 'public.create_payout(p_profile uuid, p_period_start date, p_period_end date, p_note text, p_lines jsonb) to authenticated', 'EXECUTE'),
+    ('grant', 'public.create_payout(p_profile uuid, p_period_start date, p_period_end date, p_note text, p_lines jsonb) to service_role', 'EXECUTE'),
     ('grant', 'public.create_worker_invite() to authenticated', 'EXECUTE'),
     ('grant', 'public.create_worker_invite() to service_role', 'EXECUTE'),
     ('grant', 'public.customers to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,TRIGGER,TRUNCATE,UPDATE'),
