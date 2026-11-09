@@ -14,8 +14,12 @@
  * In a packaged build the git IPC fails into `false`/`null`, so this is inert —
  * but it is also gated on `import.meta.env.DEV`, because polling for something
  * that can never change is just a timer burning a user's battery.
+ *
+ * Off in test mode (`npm run dev:test`): it compares with origin/main, and a
+ * pull there would merge main into the branch under test.
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { IS_TEST_COPY } from '../lib/testCopy'
 
 export interface DevGitUpdate {
   /** A new version appeared on disk since boot — restart to run it. */
@@ -45,7 +49,7 @@ export function useDevGitUpdate(): DevGitUpdate {
   const [pullDone, setPullDone] = useState(false)
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return
+    if (!import.meta.env.DEV || IS_TEST_COPY) return
     const bridge = window.wivo
     if (!bridge) return
     let cancelled = false
@@ -99,7 +103,7 @@ export function useDevGitUpdate(): DevGitUpdate {
     }
   }, [])
 
-  if (!import.meta.env.DEV) return IDLE
+  if (!import.meta.env.DEV || IS_TEST_COPY) return IDLE
 
   return {
     diskAvailable,

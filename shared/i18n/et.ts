@@ -2748,6 +2748,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'dbUpdate.resultRefused': "keeldutud",
   'dbUpdate.automatic': "automaatne",
   'dbUpdate.keys': "Wivo uuendusvõtmed, mida see andmebaas tunnustab:",
+  'settings.updatesOffInTestMode': "Testrežiimis on uuendused välja lülitatud, et ükski väljalase ei paigalduks testseadistuse peale.",
   'payLine.work': "Töö",
   'payLine.rush': " · kiirtöö ×{x}",
   'payLine.design': "Disain: {items} · {patient}{rush}",

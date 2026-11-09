@@ -180,6 +180,8 @@ app.whenReady().then(async () => {
   // ── Git auto-update (dev mode only) ──────────────────────────────────────
   // Check if remote has new commits. Returns true if origin/main is ahead.
   ipcMain.handle('wivo:check-remote-update', () => {
+    // Test mode: never. It compares with origin/main, which isn't the branch under test.
+    if (import.meta.env.MODE === 'test') return false
     try {
       const cwd = app.getAppPath()
       execSync('git fetch origin main --quiet', { cwd, timeout: 10_000, stdio: 'ignore' })
@@ -200,6 +202,8 @@ app.whenReady().then(async () => {
 
   // Pull latest code from origin. Returns the new version or null on failure.
   ipcMain.handle('wivo:git-pull', () => {
+    // Test mode: never merge main into the branch under test.
+    if (import.meta.env.MODE === 'test') return null
     try {
       const cwd = app.getAppPath()
       execSync('git pull origin main --quiet', { cwd, timeout: 30_000, stdio: 'ignore' })

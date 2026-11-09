@@ -39,6 +39,13 @@ import { join } from 'path'
 import type { UpdateState, UpdaterSplashState } from '../types/update'
 import { releaseCheckDeps, verifyDownloadedApp } from './releaseCheck'
 
+/**
+ * Test mode (`npm run dev:test`) never checks, downloads or installs a
+ * release: a release installed over the test setup would replace the code
+ * under test. The renderer hides the notice and the buttons there too.
+ */
+const TEST_MODE = import.meta.env.MODE === 'test'
+
 /** How long the launch-time feed check may take before we give up and open. */
 const CHECK_MS = 6_000
 /** Belt and braces around the whole launch flow. */
@@ -270,6 +277,7 @@ const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =
  * destroying the last window before the main one exists would exit outright.
  */
 export async function installPendingAtLaunch(): Promise<boolean> {
+  if (TEST_MODE) return false
   configure()
 
   if (!autoUpdater.isUpdaterActive()) return false
@@ -400,6 +408,10 @@ function runInstall(from: string, to: string): Promise<boolean> {
 
 // ── Background checking during the session ───────────────────────────────────
 export function wireUpdater(): void {
+  if (TEST_MODE) {
+    log('INFO', 'test mode: no update checks')
+    return
+  }
   configure()
   if (!autoUpdater.isUpdaterActive()) {
     log('INFO', 'updater inactive (not packaged) — background checks skipped')
@@ -451,7 +463,7 @@ export function registerUpdaterIpc(): void {
 
   // 'ready' is reached only after Wivo's signature checked out when it was staged.
   ipcMain.handle('wivo:install-now', () => {
-    if (!autoUpdater.isUpdaterActive() || lastState.stage !== 'ready') return
+    if (TEST_MODE || !autoUpdater.isUpdaterActive() || lastState.stage !== 'ready') return
     installing = true
     try {
       autoUpdater.quitAndInstall(true, true)
@@ -462,6 +474,7 @@ export function registerUpdaterIpc(): void {
   })
 
   ipcMain.handle('wivo:check-now', async () => {
+    if (TEST_MODE) return
     if (!autoUpdater.isUpdaterActive()) {
       pushState({ stage: 'failed', message: 'Uuendused on saadaval ainult paigaldatud versioonis.' })
       return

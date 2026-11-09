@@ -2761,6 +2761,7 @@ export const en = {
   'dbUpdate.resultRefused': "refused",
   'dbUpdate.automatic': "automatic",
   'dbUpdate.keys': "Wivo update keys this database accepts:",
+  'settings.updatesOffInTestMode': "Updates are off in test mode, so no release is installed over the test setup.",
   'payLine.work': "Work",
   'payLine.rush': " · rush ×{x}",
   'payLine.design': "Design: {items} · {patient}{rush}",

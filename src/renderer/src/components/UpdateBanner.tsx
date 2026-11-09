@@ -22,11 +22,16 @@ import { ArrowUpCircle, RefreshCw, X, AlertTriangle } from 'lucide-react'
 import { useUpdate } from '../providers/UpdateProvider'
 import { useDevGitUpdate } from '../hooks/useDevGitUpdate'
 import { t } from '@/lib/i18n'
+import { IS_TEST_COPY } from '../lib/testCopy'
 
 export function UpdateBanner() {
   const { running, state, installNow } = useUpdate()
   const dev = useDevGitUpdate()
   const [dismissed, setDismissed] = useState<string | null>(null)
+
+  // Never in test mode: nobody installs a release, or pulls main, over the
+  // test setup by mistake. The main process refuses both there too.
+  if (IS_TEST_COPY) return null
 
   const devShow = dev.remoteAvailable || dev.diskAvailable !== null || dev.pullDone
   const prodShow = state.stage === 'ready' || state.stage === 'failed'

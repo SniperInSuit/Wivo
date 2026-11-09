@@ -9,6 +9,7 @@
 import { RefreshCw, ArrowUpCircle, Check, AlertTriangle } from 'lucide-react'
 import { useUpdate } from '../../providers/UpdateProvider'
 import { t } from '@/lib/i18n'
+import { IS_TEST_COPY } from '../../lib/testCopy'
 
 export function UpdateSection() {
   const { running, state, checkNow, installNow } = useUpdate()
@@ -53,6 +54,9 @@ export function UpdateSection() {
         <span className="text-sm text-ink">
           {t('settings.version')} <strong className="tabular-nums">{running}</strong>
         </span>
+        {IS_TEST_COPY ? (
+          <span className="text-[11px] text-ink-muted">{t('settings.updatesOffInTestMode')}</span>
+        ) : (<>
         <button
           type="button"
           onClick={checkNow}
@@ -70,11 +74,14 @@ export function UpdateSection() {
             {t('settings.restartAndUpdate')}
           </button>
         )}
+        </>)}
       </div>
 
-      <p className="flex items-center gap-1.5 text-[11px] text-ink-muted mt-2">
-        {s.icon} {s.text}
-      </p>
+      {!IS_TEST_COPY && (
+        <p className="flex items-center gap-1.5 text-[11px] text-ink-muted mt-2">
+          {s.icon} {s.text}
+        </p>
+      )}
     </section>
   )
 }
