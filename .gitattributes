@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# The accountant sample is the export byte for byte (CRLF, as Excel on Windows wants): never normalised.
+docs/riga/*.csv -text
