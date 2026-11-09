@@ -19,6 +19,7 @@ import { supabase, updateProfile, displayIdentity } from '../lib/supabase'
 import type { PipelineStage } from '../config/pipeline'
 import { LicenseSection } from './Settings/LicenseSection'
 import { UpdateSection } from './Settings/UpdateSection'
+import { DatabaseUpdatesSection } from './Settings/DatabaseUpdatesSection'
 import { PublicServicesSection } from './Settings/PublicServicesSection'
 import { EmailSection } from './Settings/EmailSection'
 import { slugify } from '@shared/portal/publicService'
@@ -1463,6 +1464,7 @@ export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { init
 
         {activeGroup === 'litsents' && <LicenseSection />}
         {activeGroup === 'litsents' && <UpdateSection />}
+        {activeGroup === 'litsents' && <DatabaseUpdatesSection />}
 
         {activeGroup === 'andmebaas' && <MigrationStatus />}
 

@@ -1019,6 +1019,12 @@ That is Kevin's production session, and it isn't counted below.
   - the ledger and the records (sql/119), the install planner, and the fresh code (sql/120);
   - **`wivo-update`:** a check of the list (by the scheduled job or an approver), and an install by hand (an approver with a code under 5 minutes old). It installs every migration and its ledger row in one transaction, refuses a migration that would end it, runs the read-only checks, and records every attempt. Tested against the real migrations, with made-up signed releases.
   - **Waiting:** the published addresses (`UPDATE_SOURCES`, set by the release tool); Edge Functions in a package (slice 3); the first install and the daily check's schedule (the setup tool, slice 5); Kevin's test on project A.
+- **Slice 4, the desktop:**
+  - **"Database update ready"** for approvers: the version, its note, and the migrations and functions it brings. **Install** asks for a fresh code, then the clinic's own `wivo-update` installs it, and the banner says what happened, in words;
+  - **Settings → Updates, the clinic's database** (approvers): what is installed, how fresh the list is, the last check, **Check now**, the last installs and why, and the update keys accepted;
+  - the warning when the list can't be refreshed (built with sql/119);
+  - **an app update installs only as Wivo's signed release:** checked before it is staged and again before it installs (a fresh list names it, a certified app key signed it). Before the root keys are pinned there is nothing to check against, and updates install as before; from the first build with pinned roots, an unsigned update is refused and the app stays on its version.
+  - **Waiting:** the functions token's state in Settings (slice 3); the release tool publishing the signed list with the app's release statement (slice 1).
 - **Slice 7, Riga's workers and pay (option a):**
   - **the country** (`clinics.country`): outside Estonia, Payroll, the job's pay card and each worker's own view show gross pay, "before tax"; the payslip estimate, net agreements and the employee's tax settings are hidden; the employer's share is "employer contributions" in Settings, Payroll and Statistics;
   - **the accountant's export** in Payroll, from the month's confirmed payouts: one file per person (gross by kind, hours, jobs) and one of the lines (job code, work, teeth, how it was calculated, the amount). Never a patient's name; headers in the exporter's language; audited (sql/121). The sample for Riga's accountant is in `docs/riga/`, made by the same code;

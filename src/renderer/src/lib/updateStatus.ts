@@ -6,6 +6,7 @@
  * today), and in a database without sql/119.
  */
 import { supabase } from './supabase'
+import type { IndexEntry } from '@shared/release/release'
 
 export interface UpdateStatus {
   channel: 'stable' | 'test'
@@ -17,7 +18,7 @@ export interface UpdateStatus {
     expires: string
     checked_at: string
     content: {
-      versions: { version: string; package: string; sha256: string; size: number; manual_only: boolean; auto_after: string }[]
+      versions: IndexEntry[]
       withdrawn: { version: string; reason: string }[]
       app?: { version: string; file: string; sha512: string; size: number }
     } | null

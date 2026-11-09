@@ -5,6 +5,7 @@ import { TopBar } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
 import { LicenseBanner } from './components/LicenseBanner'
 import { UpdateStaleBanner } from './components/UpdateStaleBanner'
+import { DatabaseUpdateBanner } from './components/DatabaseUpdateBanner'
 import { Board } from './components/Board/Board'
 import { TableView } from './components/TableView/TableView'
 import { Dashboard } from './components/Dashboard/Dashboard'
@@ -369,6 +370,7 @@ function AppContent() {
 
         <LicenseBanner onOpenSettings={() => setView('settings')} />
         <UpdateStaleBanner />
+        <DatabaseUpdateBanner />
         <main className="flex-1 overflow-hidden flex flex-col">
           {view === 'overview' && (
             <InventoryBanner className="mx-4 mt-4" onOpen={() => setView('stock')} />
