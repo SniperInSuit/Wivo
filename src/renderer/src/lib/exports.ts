@@ -32,6 +32,17 @@ export function downloadCsv(filename: string, csv: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/** Any file, as a download: for a ZIP of several CSVs (exportAudit `auditedZipExport`). */
+export function downloadFile(filename: string, data: Uint8Array, type: string): void {
+  const blob = new Blob([data as Uint8Array<ArrayBuffer>], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function exportCsv<T>(
   base: string, rows: T[], columns: CsvColumn<T>[]
 ): void {

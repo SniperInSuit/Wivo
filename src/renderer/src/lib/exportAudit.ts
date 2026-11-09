@@ -6,8 +6,9 @@
  * could be a patient's name. The file is made only once the entry is written.
  */
 import { supabase } from './supabase'
-import { exportCsv } from './exports'
-import type { CsvColumn } from '@shared/export/csv'
+import { exportCsv, downloadFile } from './exports'
+import { toCsv, csvFileName, type CsvColumn } from '@shared/export/csv'
+import { zipStored } from '@shared/export/zip'
 import { describeError } from '../components/Patients/errors'
 
 export type ExportKind =
@@ -53,5 +54,35 @@ export async function auditedCsvExport<T>(
     return false
   }
   exportCsv(base, rows, columns)
+  return true
+}
+
+/** One CSV of a ZIP export: its own kind and row count in the audit log. */
+export interface ZipPart<T> {
+  kind: ExportKind
+  name: string
+  rows: T[]
+  columns: CsvColumn<T>[]
+}
+
+/**
+ * Several CSVs as ONE download, a ZIP. Each file leaves its own audit entry
+ * (its kind and row count), all of them before the file is made. One file,
+ * because Chromium blocks a second automatic download from the same click:
+ * two downloads lost the second file without a word.
+ */
+export async function auditedZipExport(
+  base: string, parts: ZipPart<any>[], filters: ExportFilters = {}, // eslint-disable-line @typescript-eslint/no-explicit-any
+  onError: (message: string) => void = message => window.alert(message),
+): Promise<boolean> {
+  try {
+    for (const p of parts) await recordExport(p.kind, p.rows.length, filters)
+  } catch (e) {
+    onError(describeError(e))
+    return false
+  }
+  const enc = new TextEncoder()
+  const zip = zipStored(parts.map(p => ({ name: p.name, data: enc.encode(toCsv(p.rows, p.columns)) })))
+  downloadFile(csvFileName(base, new Date()).replace(/\.csv$/, '.zip'), zip, 'application/zip')
   return true
 }

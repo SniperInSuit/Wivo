@@ -37,7 +37,7 @@ import { useAuth } from '../../context/AuthContext'
 import { usePermissions } from '../../hooks/usePermissions'
 import { describeError } from '../Patients/errors'
 import { payoutColumns, payoutLineColumns } from '../../lib/exports'
-import { auditedCsvExport } from '../../lib/exportAudit'
+import { auditedCsvExport, auditedZipExport } from '../../lib/exportAudit'
 import { clinicCountry, hasEstonianTax } from '../../lib/country'
 import { payExportRows, peopleColumns, lineColumns } from '../../lib/payExport'
 
@@ -294,10 +294,12 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [month, payouts, jobs, workers, archivedProfiles])
   const unconfirmed = perWorker.filter(x => x.outstanding > 0.005).map(x => x.worker.full_name || t('workers.unnamed'))
+  // One ZIP with both files: a second download from the same click is blocked.
   async function exportForAccountant() {
-    const filters = { period: month }
-    if (!(await auditedCsvExport('pay_people', `palgad-${month}`, accountantRows.people, peopleColumns(uiLang), filters))) return
-    await auditedCsvExport('pay_lines', `palgad-${month}-read`, accountantRows.lines, lineColumns(uiLang), filters)
+    await auditedZipExport(t('payExport.zipName', { month }), [
+      { kind: 'pay_people', name: t('payExport.peopleFile', { month }), rows: accountantRows.people, columns: peopleColumns(uiLang) },
+      { kind: 'pay_lines', name: t('payExport.linesFile', { month }), rows: accountantRows.lines, columns: lineColumns(uiLang) },
+    ], { period: month })
   }
 
   // How much of the period's cost has already left the account. Shown under the
