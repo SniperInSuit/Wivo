@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 1913.
+-- Expected rows: 1919.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -557,6 +557,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.export_kinds()', 'security invoker, immutable, search_path=public, body md5 548b2f53e17faa91887f6c8cc08fb727'),
     ('function', 'public.find_invite(p_org uuid, p_code text)', 'security definer, volatile, search_path=public, extensions, body md5 6523f69ddb889c699c8e612c89b46734'),
     ('function', 'public.free_code_prefix(p_name text, p_except uuid)', 'security definer, stable, search_path=public, body md5 2f8d8fe865dae3e7988cc7f6af0874a1'),
+    ('function', 'public.fresh_second_factor(p_max_age_seconds integer)', 'security invoker, stable, search_path=public, body md5 e4d4423fdb8dbd06ebb11fa6c862e4fa'),
     ('function', 'public.guard_channel_member_change()', 'security definer, volatile, search_path=public, body md5 75324f8dd725373a2c516244b230b7bd'),
     ('function', 'public.guard_code_prefix()', 'security invoker, volatile, search_path=public, body md5 7ccb08d496e41cd2ac274943891331f3'),
     ('function', 'public.guard_partner_visible_job_text()', 'security definer, volatile, search_path=public, body md5 ebb721059bfec14c1952650eedd19e8e'),
@@ -689,6 +690,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.technician_permissions()', 'security invoker, immutable, search_path=public, body md5 914018a2b2d08397dfb668a8c0df2206'),
     ('function', 'public.touch_clinic_settings()', 'security invoker, volatile, search_path=public, body md5 9b1889f56258bf9d6554213c05019c76'),
     ('function', 'public.unshare_job(p_job uuid, p_partner_org uuid)', 'security definer, volatile, search_path=public, body md5 65fe1cf58c6226e50795d8234be965b3'),
+    ('function', 'public.update_approval()', 'security definer, stable, search_path=public, body md5 5878cd4061b29f0b3d87748d3a2764c1'),
     ('function', 'public.update_approvers()', 'security definer, stable, search_path=public, body md5 e284f27ce2d10a2cd080261323539c31'),
     ('function', 'public.update_status()', 'security definer, stable, search_path=public, body md5 6c94a2a679eb74d2320a8106fb04043e'),
     ('function', 'public.update_stock_item(p_item uuid, p_manufacturer text, p_system text, p_size text, p_product text, p_lot text, p_expiry date, p_consignment_due date)', 'security definer, volatile, search_path=public, body md5 b312aa87e4f5cb22ad303b377072af88'),
@@ -861,6 +863,8 @@ with expected(kind, key, def) as (values
     ('grant', 'public.file_download_grant_id_seq to service_role', 'SELECT,UPDATE,USAGE'),
     ('grant', 'public.find_invite(p_org uuid, p_code text) to service_role', 'EXECUTE'),
     ('grant', 'public.free_code_prefix(p_name text, p_except uuid) to service_role', 'EXECUTE'),
+    ('grant', 'public.fresh_second_factor(p_max_age_seconds integer) to authenticated', 'EXECUTE'),
+    ('grant', 'public.fresh_second_factor(p_max_age_seconds integer) to service_role', 'EXECUTE'),
     ('grant', 'public.guard_channel_member_change() to PUBLIC', 'EXECUTE'),
     ('grant', 'public.guard_channel_member_change() to anon', 'EXECUTE'),
     ('grant', 'public.guard_channel_member_change() to authenticated', 'EXECUTE'),
@@ -1252,6 +1256,8 @@ with expected(kind, key, def) as (values
     ('grant', 'public.touch_clinic_settings() to service_role', 'EXECUTE'),
     ('grant', 'public.unshare_job(p_job uuid, p_partner_org uuid) to authenticated', 'EXECUTE'),
     ('grant', 'public.unshare_job(p_job uuid, p_partner_org uuid) to service_role', 'EXECUTE'),
+    ('grant', 'public.update_approval() to authenticated', 'EXECUTE'),
+    ('grant', 'public.update_approval() to service_role', 'EXECUTE'),
     ('grant', 'public.update_status() to authenticated', 'EXECUTE'),
     ('grant', 'public.update_status() to service_role', 'EXECUTE'),
     ('grant', 'public.update_stock_item(p_item uuid, p_manufacturer text, p_system text, p_size text, p_product text, p_lot text, p_expiry date, p_consignment_due date) to authenticated', 'EXECUTE'),
