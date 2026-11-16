@@ -3,7 +3,15 @@
  * One SQL file that builds a FRESH Wivo database from sql/000 … the newest,
  * for pasting into a new Supabase project's SQL editor (the test project).
  *
- *   TEST_SERVICE_ROLE_KEY=eyJ... node scripts/fresh-schema.mjs > fresh.sql
+ *   node scripts/fresh-schema.mjs > fresh.sql
+ *
+ * It asks for the TEST project's service-role key and reads it with the echo
+ * off. NOT from an environment variable and never as an argument: typed on a
+ * command line it is in the shell's history afterwards, which is a
+ * service-role key sitting in a file on disk.
+ *
+ * The question goes to STDERR, because stdout is the SQL — a prompt written
+ * there would end up inside the file this produces.
  *
  * The two manual edits a person makes when pasting migrations one by one are
  * made here, so the whole thing runs in one go:
@@ -20,11 +28,30 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createInterface } from 'node:readline'
 
 const PROD_REF = 'wrtucsfmpbwekugzzzxw'
-const key = process.env.TEST_SERVICE_ROLE_KEY ?? ''
+
+/**
+ * Reads one line with the echo off.
+ *
+ * The prompt goes to STDERR on purpose: stdout is the SQL this script
+ * produces, and a question written there would end up inside the file.
+ */
+const askHidden = (question) => new Promise(resolve => {
+  const rl = createInterface({ input: process.stdin, output: process.stderr, terminal: true })
+  process.stderr.write(question)
+  rl._writeToOutput = () => {}
+  rl.question('', answer => {
+    rl.close()
+    process.stderr.write('\n')
+    resolve(answer.trim())
+  })
+})
+
+const key = await askHidden('TEST project service-role key (hidden): ')
 if (!/^eyJ/.test(key)) {
-  console.error('Set TEST_SERVICE_ROLE_KEY to the TEST project\'s service-role key (starts with eyJ).')
+  console.error('That is not a service-role key. Copy it from Supabase > Settings > API.')
   process.exit(2)
 }
 try {
