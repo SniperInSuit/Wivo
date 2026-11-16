@@ -31,7 +31,21 @@ export type UpdateState =
    * `code` names a failure the renderer says in the user's language; `message`
    * is the main process's own text for the rest.
    */
-  | { stage: 'failed'; message: string; code?: 'unsigned' }
+  | {
+      stage: 'failed'
+      message: string
+      /**
+       * Every failure the user can actually be shown has one. `message` stays
+       * as the fallback for anything unforeseen, but it is written in the main
+       * process, which does not know the interface language — so a `message`
+       * reaching the screen means the app is speaking the wrong language to
+       * somebody. See src/main/updater.ts.
+       */
+      code?: 'unsigned' | 'noSpace' | 'downloadFailed' | 'installFailed'
+        | 'devBuild' | 'checkFailed'
+      /** For the codes that name a version. */
+      version?: string
+    }
 
 /** What the splash window needs. A subset, so it cannot grow a dependency. */
 export interface UpdaterSplashState {

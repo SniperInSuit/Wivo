@@ -19,6 +19,7 @@ interface ImportMetaEnv {
 interface Window {
   wivo?: {
     getVersion: () => Promise<string>
+    setUiLanguage: (lang: string) => Promise<void>
     relaunch: () => Promise<void>
     checkRemoteUpdate: () => Promise<boolean>
     gitPull: () => Promise<string | null>

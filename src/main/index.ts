@@ -11,6 +11,7 @@ import { currentLicence, installLicence, licensingEnforced } from './license'
 import { registerWatchFolder } from './watchFolder'
 import { trackDownloads, mainBusy } from './busy'
 import { initSentryMain } from './sentry'
+import { chromiumLocaleFor, rememberedLanguage, rememberLanguage } from './uiLanguage'
 
 // Force 24-hour clock in all Chromium form controls (datetime-local, time)
 // Test mode (`npm run dev:test`) keeps everything in its own folder: the
@@ -21,7 +22,12 @@ if (import.meta.env.MODE === 'test') {
   app.setPath('userData', join(app.getPath('appData'), `${app.getName()}-test-copy`))
 }
 
-app.commandLine.appendSwitch('lang', 'et-EE')
+// Chromium's own controls — the date and time pickers, the right-click menu,
+// the spellchecker — follow the chosen interface language. This used to be
+// pinned to 'et-EE' to force a 24-hour clock; en-GB gives the same clock
+// without putting an Estonian calendar on top of an English screen.
+// See src/main/uiLanguage.ts, including why it is a launch behind.
+app.commandLine.appendSwitch('lang', chromiumLocaleFor(rememberedLanguage()))
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -133,6 +139,9 @@ app.whenReady().then(async () => {
   await initSentryMain(app.getVersion())
 
   ipcMain.handle('wivo:version', () => readDiskVersion())
+  // Reported by the renderer on every boot; applies to Chromium's own
+  // controls from the next launch. See src/main/uiLanguage.ts.
+  ipcMain.handle('wivo:ui-language', (_e, lang: string) => rememberLanguage(lang))
   registerWatchFolder()
 
   /**

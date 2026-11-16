@@ -7,6 +7,7 @@
  * buildings, that call will happen.
  */
 import { RefreshCw, ArrowUpCircle, Check, AlertTriangle } from 'lucide-react'
+import { updateFailureText } from '../../lib/updateMessage'
 import { useUpdate } from '../../providers/UpdateProvider'
 import { t } from '@/lib/i18n'
 import { IS_TEST_COPY } from '../../lib/testCopy'
@@ -33,7 +34,7 @@ export function UpdateSection() {
       case 'installing':
         return { icon: <RefreshCw size={12} className="animate-spin text-accent" />, text: t('settings.installing') }
       case 'failed':
-        return { icon: <AlertTriangle size={12} className="text-amber-500" />, text: state.code === 'unsigned' ? t('updateBanner.notSignedByWivo') : state.message }
+        return { icon: <AlertTriangle size={12} className="text-amber-500" />, text: updateFailureText(state) }
       default:
         return { icon: <Check size={12} className="text-ink-faint" />, text: t('settings.upToDate') }
     }

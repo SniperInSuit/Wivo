@@ -24,6 +24,11 @@ const subscribe = <T,>(channel: string, cb: (value: T) => void): (() => void) =>
 const wivoAPI = {
   getVersion: (): Promise<string> => ipcRenderer.invoke('wivo:version'),
   /**
+   * Tells the main process which language the interface is in, so Chromium's
+   * own controls can be started in it next time. See src/main/uiLanguage.ts.
+   */
+  setUiLanguage: (lang: string): Promise<void> => ipcRenderer.invoke('wivo:ui-language', lang),
+  /**
    * The 3D tooth model's bytes, or null when it is not installed.
    *
    * IPC hands back a Uint8Array that VIEWS a larger pooled buffer, so passing

@@ -18,6 +18,7 @@
  * ended up claiming for months that this app had no auto-updater.
  */
 import { useState } from 'react'
+import { updateFailureText } from '../lib/updateMessage'
 import { ArrowUpCircle, RefreshCw, X, AlertTriangle } from 'lucide-react'
 import { useUpdate } from '../providers/UpdateProvider'
 import { useDevGitUpdate } from '../hooks/useDevGitUpdate'
@@ -71,7 +72,7 @@ export function UpdateBanner() {
             <>
               <p className="text-xs font-semibold text-ink">{t('updateBanner.updateFailed')}</p>
               <p className="text-[11px] text-ink-muted mt-0.5">
-                {state.code === 'unsigned' ? t('updateBanner.notSignedByWivo') : state.message} {t('updateBanner.wivoKeepsRunningVersion', { running })}
+                {updateFailureText(state)} {t('updateBanner.wivoKeepsRunningVersion', { running })}
               </p>
             </>
           )}

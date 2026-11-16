@@ -44,6 +44,17 @@ export function setLang(next: Lang): void {
 // because the tests import this file under Node, where there is no document.
 if (typeof document !== 'undefined') document.documentElement.lang = lang
 
+// Tell the main process, which starts Chromium's own controls — the date and
+// time pickers, the right-click menu — in a locale it has to know BEFORE the
+// window exists. It can only read it from the previous run, so this reports
+// the language on every boot rather than only when it changes.
+// See src/main/uiLanguage.ts.
+//
+// Guarded exactly like `document` above: under Node `window` is not a variable
+// holding undefined, it does not exist, and reading a property of it throws a
+// ReferenceError that would take down every suite importing this file.
+if (typeof window !== 'undefined') void window.wivo?.setUiLanguage?.(lang)
+
 /** Whether someone picked this machine's language (rather than it being the default). */
 export function languageChosenHere(): boolean {
   try {

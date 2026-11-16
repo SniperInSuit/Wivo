@@ -259,7 +259,9 @@ async function signedByWivo(file: string | undefined, version: string): Promise<
   }
 }
 
-const UNSIGNED: UpdateState = { stage: 'failed', code: 'unsigned', message: 'Uuendus ei ole Wivo allkirjaga.' }
+const UNSIGNED: UpdateState = {
+  stage: 'failed', code: 'unsigned', message: "This update isn't Wivo's signed release.",
+}
 
 const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
   Promise.race([
@@ -297,7 +299,10 @@ export async function installPendingAtLaunch(): Promise<boolean> {
   if (marker.attempts >= 3) {
     log('ERROR', `giving up on ${marker.version} after ${marker.attempts} attempts`)
     clearMarker()
-    lastState = { stage: 'failed', message: `Uuendus ${marker.version} ei paigaldunud.` }
+    lastState = {
+      stage: 'failed', code: 'installFailed', version: marker.version,
+      message: `Update ${marker.version} did not install.`,
+    }
     return false
   }
   writeMarker({ ...marker, attempts: marker.attempts + 1 })
@@ -444,10 +449,9 @@ export function wireUpdater(): void {
   autoUpdater.on('error', err => {
     log('ERROR', 'updater error', err)
     const nospace = (err as NodeJS.ErrnoException)?.code === 'ENOSPC'
-    pushState({
-      stage: 'failed',
-      message: nospace ? 'Kettal pole uuenduse jaoks ruumi.' : 'Uuendust ei õnnestunud laadida.',
-    })
+    pushState(nospace
+      ? { stage: 'failed', code: 'noSpace', message: 'Not enough disk space for the update.' }
+      : { stage: 'failed', code: 'downloadFailed', message: 'The update could not be downloaded.' })
   })
 
   setTimeout(() => void autoUpdater.checkForUpdates().catch(() => {}), FIRST_CHECK_MS)
@@ -476,14 +480,17 @@ export function registerUpdaterIpc(): void {
   ipcMain.handle('wivo:check-now', async () => {
     if (TEST_MODE) return
     if (!autoUpdater.isUpdaterActive()) {
-      pushState({ stage: 'failed', message: 'Uuendused on saadaval ainult paigaldatud versioonis.' })
+      pushState({
+        stage: 'failed', code: 'devBuild',
+        message: 'Updates are only available in an installed build.',
+      })
       return
     }
     try {
       await autoUpdater.checkForUpdates()
     } catch (err) {
       log('WARN', 'manual check failed', err)
-      pushState({ stage: 'failed', message: 'Uuenduste kontroll ebaõnnestus.' })
+      pushState({ stage: 'failed', code: 'checkFailed', message: 'The update check failed.' })
     }
   })
 }
