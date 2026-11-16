@@ -11,15 +11,39 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import ts from 'typescript'
 import { en } from './en'
 import { et } from './et'
 import { ru } from './ru'
 
-const ROOT = execSync('git rev-parse --show-toplevel').toString().trim()
-const files = execSync(`git ls-files 'src/renderer/src/**/*.tsx' 'src/renderer/src/**/*.ts' 'shared/**/*.ts'`, { cwd: ROOT })
-  .toString().trim().split('\n').filter(f => !/\.test\./.test(f) && !f.startsWith('shared/i18n/'))
+const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel']).toString().trim()
+
+/**
+ * `execFileSync`, not `execSync`: no shell, so the pathspecs go across as
+ * arguments instead of being quoted into a command line.
+ *
+ * With a shell they were wrapped in single quotes, which `sh` strips and
+ * `cmd.exe` does not — so on Windows git received the quote characters as part
+ * of the pathspec, matched nothing, and this whole guard scanned ZERO files.
+ * That it crashed is the only lucky part: the empty result left one blank
+ * entry in the list and reading it raised EISDIR on the repo root. Had the
+ * list simply come back empty, the suite would have reported "no interface
+ * text in code" while looking at nothing at all.
+ *
+ * Blank entries are filtered for that same reason — an empty match must never
+ * be mistaken for an empty report.
+ */
+const files = execFileSync(
+  'git',
+  ['ls-files', 'src/renderer/src/**/*.tsx', 'src/renderer/src/**/*.ts', 'shared/**/*.ts'],
+  { cwd: ROOT },
+)
+  .toString().split('\n').map(f => f.trim()).filter(Boolean)
+  .filter(f => !/\.test\./.test(f) && !f.startsWith('shared/i18n/'))
+
+// The guard on the guard: these globs have silently matched nothing before.
+if (files.length === 0) throw new Error('noHardcodedText: git ls-files matched no files')
 
 /**
  * Raw text that is not language. Each entry is a brand, a code, a unit symbol
