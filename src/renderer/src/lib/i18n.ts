@@ -55,6 +55,22 @@ if (typeof document !== 'undefined') document.documentElement.lang = lang
 // ReferenceError that would take down every suite importing this file.
 if (typeof window !== 'undefined') void window.wivo?.setUiLanguage?.(lang)
 
+/**
+ * The languages offered in the interface, in the order they are shown.
+ *
+ * Here rather than in SettingsPage, where it used to live, because the login
+ * screen offers the same choice and must not keep its own list — a language
+ * added to one and not the other is a toggle that disagrees with itself.
+ *
+ * The labels are each language's own name on purpose. Someone who cannot read
+ * the current language has to be able to find their own, and "Estonian" is no
+ * help to a person who only reads Estonian.
+ */
+export const LANGUAGES: { key: Lang; label: string }[] = [
+  { key: 'et', label: 'Eesti' },
+  { key: 'en', label: 'English' },
+]
+
 /** Whether someone picked this machine's language (rather than it being the default). */
 export function languageChosenHere(): boolean {
   try {

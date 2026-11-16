@@ -30,7 +30,7 @@ import { StageTransitionsSection } from './Settings/StageTransitionsSection'
 import { SoundSection } from './Settings/SoundSection'
 import { SecuritySection } from './Settings/SecuritySection'
 import { DeletedJobsSection } from './Settings/DeletedJobsSection'
-import { t, lang, setLang, intlLocale, type Lang } from '../lib/i18n'
+import { t, lang, setLang, intlLocale, LANGUAGES, type Lang } from '../lib/i18n'
 
 // Stage colour choices. Mid-tone on purpose: the pill tints the background to
 // ~12% and uses the same hex for text, so very pale colours would be unreadable.
@@ -1215,11 +1215,6 @@ function ClinicSettingsSection({ clinic, onUpdate, isOwner }: {
  * Each language is named IN ITSELF, never translated: someone who landed in
  * the wrong one is looking for the word they can read.
  */
-const LANGUAGES: { key: Lang; label: string }[] = [
-  { key: 'et', label: 'Eesti' },
-  { key: 'en', label: 'English' },
-]
-
 function LanguageSection() {
   const auth = useAuth()
   const isAdmin = auth.profile?.role === 'owner' || auth.profile?.org_role === 'admin'

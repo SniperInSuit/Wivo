@@ -3,7 +3,7 @@ import { Loader2, Lock, Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react'
 import { signIn, sendPasswordReset, rememberedClinicCode } from '../../lib/supabase'
 import { resetTarget, resetOutcome } from '../../lib/passwordReset'
 import wivoLogo from '../../assets/Wivo Logo.png'
-import { t } from '@/lib/i18n'
+import { t, lang, setLang, LANGUAGES } from '@/lib/i18n'
 
 /**
  * Sign in, or "Forgot password?" as a screen of its own: only the address
@@ -43,7 +43,27 @@ export function LoginPage() {
 
   return (
     <div className="fixed inset-0 bg-nav-bg flex items-center justify-center">
-      <div className="bg-bg-card rounded-2xl shadow-panel p-8 w-full max-w-sm space-y-6">
+      <div className="relative bg-bg-card rounded-2xl shadow-panel p-8 w-full max-w-sm space-y-6">
+        {/* Before sign-in, so somebody who cannot read this screen can change
+            it. `setLang` reloads, which costs nothing here: there is nothing
+            on this card worth keeping except a half-typed address. */}
+        <div className="absolute right-3 top-3 flex gap-1">
+          {LANGUAGES.map(l => (
+            <button
+              key={l.key}
+              type="button"
+              onClick={() => setLang(l.key)}
+              aria-pressed={lang === l.key}
+              className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${
+                lang === l.key
+                  ? 'bg-accent/10 text-accent'
+                  : 'text-ink-faint hover:text-ink'
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
         <div className="text-center space-y-2">
           <img src={wivoLogo} alt="Wivo" className="w-16 h-16 rounded-xl mx-auto" />
           <h1 className="text-xl font-bold text-ink">Wivo</h1>
