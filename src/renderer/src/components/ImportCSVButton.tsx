@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Upload, X, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { supabase, getActiveClinicId } from '../lib/supabase'
 import { t } from '@/lib/i18n'
+import { usePipeline } from '../context/PipelineContext'
 
 // ─── Status mapping — covers Estonian sheet values ────────────────────────────
 const STATUS_MAP: Record<string, string> = {
@@ -167,6 +168,12 @@ interface ImportCSVButtonProps {
 type ImportState = 'idle' | 'preview' | 'inserting' | 'done' | 'error'
 
 export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
+  // The preview used to name the stages from a hardcoded Estonian map. Wrong
+  // twice: it stayed Estonian whatever the interface language, and it ignored
+  // that stages are the clinic's own — a lab that renamed "Poleerimine" still
+  // saw the original word here. `noHardcodedText` could not see it either,
+  // because the label went through a JSX expression rather than text.
+  const { stageMap } = usePipeline()
   const [state, setState] = useState<ImportState>('idle')
   const [preview, setPreview] = useState<{ count: number; sample: { patsient: string; too: string | null; status: string; kuupaev: string }[] }>({
     count: 0, sample: []
@@ -260,10 +267,6 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
     setTimeout(() => { setState('idle'); onSuccess() }, 1500)
   }
 
-  const STAGE_LABELS: Record<string, string> = {
-    disain: 'Disain', print: 'Printimine', poleeri: 'Poleerimine',
-    puhasta: 'Puhastamine', varvi: 'Värvimine', valmis: 'Valmis'
-  }
 
   return (
     <>
@@ -295,7 +298,7 @@ export function ImportCSVButton({ onSuccess }: ImportCSVButtonProps) {
                       <span className="font-medium text-ink w-36 truncate">{row.patsient}</span>
                       <span className="text-ink-muted flex-1 truncate">{row.too ?? '—'}</span>
                       <span className="text-xs text-ink-faint">{row.kuupaev}</span>
-                      <span className="text-xs font-medium text-accent">{STAGE_LABELS[row.status]}</span>
+                      <span className="text-xs font-medium text-accent">{stageMap[row.status]?.label ?? row.status}</span>
                     </div>
                   ))}
                   {preview.count > preview.sample.length && (
