@@ -187,17 +187,36 @@ export function onAuthStateChange(
  * (lib/paySettings), one's own always, everyone's for payroll. `select *` is
  * refused.
  */
+import { classifyProfileError, type ProfileFailure } from './profileLoad'
+
 export const PROFILE_COLUMNS =
   'id, full_name, username, role, org_role, clinic_id, removed_from, patient_id, language, notify_email, notify_push, ui_prefs, created_at, updated_at' as const
 
-export async function getProfile(userId: string): Promise<Profile | null> {
+export type ProfileRead =
+  | { ok: true; profile: Profile }
+  | { ok: false; failure: ProfileFailure; message: string }
+
+/**
+ * The caller's profile, or WHY there is none.
+ *
+ * It used to return `null` for every outcome, which is how "Role: —" with a
+ * blank name became unexplainable from the screen: a missing row, a refused
+ * column and a dead network all looked the same. See lib/profileLoad.
+ */
+export async function getProfile(userId: string): Promise<ProfileRead> {
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
     .eq('id', userId)
     .single()
-  if (error) return null
-  return data as unknown as Profile
+  if (error) {
+    return {
+      ok: false,
+      failure: classifyProfileError(error),
+      message: error.message ?? '',
+    }
+  }
+  return { ok: true, profile: data as unknown as Profile }
 }
 
 export async function updateProfile(

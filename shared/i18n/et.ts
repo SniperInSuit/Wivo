@@ -2709,6 +2709,10 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'repricing.month': "Kuu",
   'repricing.ratePaid': "Makstud määr",
   'repricing.shouldBe': "Peaks olema",
+  'profileProblem.noProfile': "Sellel kontol ei ole selle kliiniku andmebaasis profiili. Võta ühendust toega.",
+  'profileProblem.offline': "Wivo ei saanud andmebaasiga ühendust. Kontrolli ühendust — profiil laeb ise, kui side taastub.",
+  'profileProblem.title': "Sinu profiili ei õnnestunud lugeda",
+  'profileProblem.unknown': "Profiili laadimisel läks midagi valesti. Kui see ei kao, võta ühendust toega.",
   // CSV export column headings and the values inside them.
   'exports.address': "Aadress",
   'exports.amount': "Summa",

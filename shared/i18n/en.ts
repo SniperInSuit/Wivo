@@ -2722,6 +2722,10 @@ export const en = {
   'repricing.month': "Month",
   'repricing.ratePaid': "Rate paid",
   'repricing.shouldBe': "Should be",
+  'profileProblem.noProfile': "This account has no profile in this clinic's database. Contact support.",
+  'profileProblem.offline': "Wivo could not reach the database. Check the connection; it will load by itself once it is back.",
+  'profileProblem.title': "Your profile could not be read",
+  'profileProblem.unknown': "Something went wrong while loading your profile. Contact support if it does not clear.",
   // CSV export column headings and the values inside them.
   'exports.address': "Address",
   'exports.amount': "Amount",

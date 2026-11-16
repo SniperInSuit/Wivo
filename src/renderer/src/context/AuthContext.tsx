@@ -6,6 +6,8 @@ import {
   setActiveClinicId, type Profile, type UserRole
 } from '../lib/supabase'
 import { isMfaRefusal } from '../lib/mfa'
+import { meansAppIsBehind, worthShowing, type ProfileFailure } from '../lib/profileLoad'
+import { reportUpdateRequired } from '../lib/appVersion'
 
 export interface Clinic {
   id: string
@@ -35,6 +37,8 @@ interface AuthState {
   status: 'loading' | 'authenticated' | 'none'
   user: User | null
   profile: Profile | null
+  /** Why there is no profile, when there is none. See lib/profileLoad. */
+  profileFailure?: ProfileFailure | null
   clinic: Clinic | null
 }
 
@@ -77,11 +81,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status: 'loading',
     user: null,
     profile: null,
-    clinic: null
+    clinic: null,
+    profileFailure: null,
   })
 
   const loadProfile = useCallback(async (user: User) => {
-    const profile = await getProfile(user.id)
+    const read = await getProfile(user.id)
+    const profile = read.ok ? read.profile : null
+
+    // Why there is no profile, kept so the screen can SAY it. Blank name and
+    // "Role: —" used to be the whole report, and it took reading migrations
+    // to find out that the database had refused the read. See lib/profileLoad.
+    const failure = read.ok ? null : read.failure
+    if (failure && worthShowing(failure)) {
+      console.error('[Wivo] profile could not be read:', failure, read.ok ? '' : read.message)
+    }
+    // An app older than the schema it is talking to. The same "Update Wivo"
+    // sql/104 raises for a refused SAVE, reached here by a refused READ —
+    // docs/MIN-VERSION.md. Without this the app shows empty views and blames
+    // nothing.
+    if (failure && meansAppIsBehind(failure)) reportUpdateRequired()
+
     let clinic: Clinic | null = null
     if (profile?.clinic_id) {
       clinic = await fetchClinic(profile.clinic_id)
@@ -89,17 +109,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // A username alone then signs in at this clinic on this device (docs/ACCOUNTS.md).
     rememberClinicCode(clinic?.code_prefix)
     setActiveClinicId(profile?.clinic_id ?? null)
-    setState({ status: 'authenticated', user, profile, clinic })
+    setState({ status: 'authenticated', user, profile, clinic, profileFailure: failure })
   }, [])
 
   const refreshProfile = useCallback(async () => {
     if (!state.user) return
-    const profile = await getProfile(state.user.id)
+    const read = await getProfile(state.user.id)
+    // A refresh that fails keeps what is already on screen: losing a loaded
+    // profile because one later read was refused would be a worse answer than
+    // the one it replaces.
+    if (!read.ok) {
+      if (meansAppIsBehind(read.failure)) reportUpdateRequired()
+      setState(prev => ({ ...prev, profileFailure: read.failure }))
+      return
+    }
+    const profile = read.profile
     let clinic = state.clinic
     if (profile?.clinic_id && profile.clinic_id !== state.profile?.clinic_id) {
       clinic = await fetchClinic(profile.clinic_id)
     }
-    setState(prev => ({ ...prev, profile, clinic }))
+    setState(prev => ({ ...prev, profile, clinic, profileFailure: null }))
   }, [state.user, state.clinic, state.profile?.clinic_id])
 
   useEffect(() => {
@@ -107,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         loadProfile(session.user)
       } else {
-        setState({ status: 'none', user: null, profile: null, clinic: null })
+        setState({ status: 'none', user: null, profile: null, clinic: null, profileFailure: null })
       }
     })
 
@@ -115,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         loadProfile(session.user)
       } else {
-        setState({ status: 'none', user: null, profile: null, clinic: null })
+        setState({ status: 'none', user: null, profile: null, clinic: null, profileFailure: null })
       }
     })
 
@@ -124,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSignOut = useCallback(async () => {
     await doSignOut()
-    setState({ status: 'none', user: null, profile: null, clinic: null })
+    setState({ status: 'none', user: null, profile: null, clinic: null, profileFailure: null })
   }, [])
 
   const setClinic = useCallback((clinic: Clinic) => {
