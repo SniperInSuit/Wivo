@@ -25,6 +25,16 @@ export interface CsvColumn<T> {
   header: string
   /** Return a raw value; formatting and escaping happen here, not in callers. */
   value: (row: T) => CsvValue
+  /**
+   * A price or a payment, left out for someone without `payments.read`.
+   *
+   * A flag on the column rather than a list of header TEXTS held somewhere
+   * else, which is what this replaced. That list matched on the Estonian
+   * wording, so translating a heading would have silently stopped matching it
+   * — and the failure is a money column appearing in an export for somebody
+   * who is not allowed to see money, which nothing would have reported.
+   */
+  money?: boolean
 }
 
 export interface CsvOptions {

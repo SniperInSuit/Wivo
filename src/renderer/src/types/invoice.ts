@@ -1,5 +1,5 @@
 import type { BillToKind } from './customer'
-import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import { t, type MessageKey } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
 // Invoicing (Phase 4, migration 020).
 //
 // An invoice line copies its description and price from the job at billing
@@ -16,11 +16,12 @@ export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
-export const INVOICE_STATUS_LABEL_ET: Record<InvoiceStatus, string> = {
-  mustand:    'Mustand',
-  saadetud:   'Saadetud',
-  makstud:    'Makstud',
-  tuhistatud: 'Tühistatud',
+/** The message key for each invoice state. See CONSENT_KEY in types/patient. */
+export const INVOICE_STATUS_KEY: Record<InvoiceStatus, MessageKey> = {
+  mustand:    'exports.statusDraft',
+  saadetud:   'exports.statusSent',
+  makstud:    'exports.paid',
+  tuhistatud: 'exports.statusCancelled',
 }
 
 export const INVOICE_STATUS_HEX: Record<InvoiceStatus, string> = {

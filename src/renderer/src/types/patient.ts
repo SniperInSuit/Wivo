@@ -1,4 +1,5 @@
 import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import type { MessageKey } from '@shared/i18n'
 
 // A single dated note on the patient card. Mirrors the Revision shape on jobs
 // (types/job.ts:5-17) — same id/ts/free-text idiom, stored as JSONB.
@@ -79,10 +80,18 @@ export const CONSENT_LABEL: Record<Patient['turundusnousolek'], string> = {
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
-export const CONSENT_LABEL_ET: Record<Patient['turundusnousolek'], string> = {
-  jah:      'Tohib saata',
-  ei:       'Ei soovi',
-  kysimata: 'Küsimata',
+/**
+ * The message key for each consent value — not the words.
+ *
+ * It was a map of Estonian text, used in one place: the marketing export. An
+ * English interface exported English column headings over Estonian values,
+ * which is a worse file than either language alone. The stored value (`jah`,
+ * `ei`, `kysimata`) does not change; only what a person is shown does.
+ */
+export const CONSENT_KEY: Record<Patient['turundusnousolek'], MessageKey> = {
+  jah:      'exports.consentYes',
+  ei:       'exports.consentNo',
+  kysimata: 'exports.consentUnasked',
 }
 
 export const CONSENT_HEX: Record<Patient['turundusnousolek'], string> = {

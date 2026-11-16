@@ -7,6 +7,7 @@
  * and `sql/035` says so at length.
  */
 import { t } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import type { MessageKey } from '@shared/i18n'
 
 /** How this customer is billed. */
 export type BillingMode = 'per_job' | 'monthly'
@@ -77,10 +78,11 @@ export const DELIVERY_LABEL: Record<DeliveryStatus, string> = {
 }
 
 /** Always Estonian, for the CSV export: its language is the recipient's, not the UI's. */
-export const DELIVERY_LABEL_ET: Record<DeliveryStatus, string> = {
-  labor:     'Laboris',
-  teel:      'Teel',
-  yle_antud: 'Üle antud',
+/** The message key for each delivery state. See CONSENT_KEY in types/patient. */
+export const DELIVERY_KEY: Record<DeliveryStatus, MessageKey> = {
+  labor:     'exports.deliveryLab',
+  teel:      'exports.deliveryOnWay',
+  yle_antud: 'exports.deliveryHandedOver',
 }
 
 export const DELIVERY_HEX: Record<DeliveryStatus, string> = {

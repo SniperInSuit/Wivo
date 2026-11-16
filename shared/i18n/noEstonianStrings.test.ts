@@ -21,18 +21,18 @@
  * is the second net, not the first.
  *
  * ── Why there is a baseline and not a clean sheet ───────────────────────────
- * Turning this on found 37 strings already in the tree, and most of them are
- * one real job: `lib/exports.ts` writes every CSV column heading in Estonian,
- * so an English interface still exports "Kuupäev" and "Köndivärv".
+ * Turning this on found 37 strings already in the tree. The CSV exports were
+ * most of them — every column heading was written in Estonian, so an English
+ * interface still produced a file headed "Kuupäev" and "Köndivärv" — and those
+ * are now done, which is what took the list to the 15 below.
  *
- * Fixing those is worth doing and is not worth blocking this guard on, because
- * the guard is what stops the list from growing while they are fixed. So the
- * 37 are written down. Nothing may be added; an entry that is cleaned up must
- * be deleted from the list, and the last test here fails if a stale one is
- * left behind.
+ * The rest stay written down rather than blocking the guard, because the guard
+ * is what stops the list from growing while they are fixed. Nothing may be
+ * added; an entry that is cleaned up must be DELETED from the list, and the
+ * stale-entry test below fails if one is left behind. That is what turned the
+ * export work into a list that shrinks instead of a note nobody reread.
  *
- * KNOWN_GAPS is a to-do list, in other words, and it is ordered by how much it
- * matters: the export headings first.
+ * KNOWN_GAPS is a to-do list, in other words, and it says what each line is.
  *
  * ── The allowlist is by file, and each one says why ─────────────────────────
  * Some Estonian in this app is DATA, not language: the words a CSV header may
@@ -71,27 +71,6 @@ const DATA_NOT_LANGUAGE: Record<string, string> = {
  * read.
  */
 const KNOWN_GAPS: string[] = [
-  // ── CSV column headings. An English interface exports Estonian columns.
-  'src/renderer/src/lib/exports.ts: KM määr %',
-  'src/renderer/src/lib/exports.ts: Kiirtöö',
-  'src/renderer/src/lib/exports.ts: Kuupäev',
-  'src/renderer/src/lib/exports.ts: Köndivärv',
-  'src/renderer/src/lib/exports.ts: Maksetähtaeg',
-  'src/renderer/src/lib/exports.ts: Märkus',
-  'src/renderer/src/lib/exports.ts: Määr',
-  'src/renderer/src/lib/exports.ts: Nõusolek',
-  'src/renderer/src/lib/exports.ts: Nõusoleku aeg',
-  'src/renderer/src/lib/exports.ts: Periood lõpp',
-  'src/renderer/src/lib/exports.ts: Tähtaeg',
-  'src/renderer/src/lib/exports.ts: Töö',
-  'src/renderer/src/lib/exports.ts: Töö kaupa',
-  'src/renderer/src/lib/exports.ts: Töötaja',
-  'src/renderer/src/lib/exports.ts: Väljastus',
-  'src/renderer/src/lib/exports.ts: Värv',
-  'src/renderer/src/lib/exports.ts: Üle antud',
-  // Same thing, in the payroll revaluation export.
-  'src/renderer/src/components/Workers/PayrollView.tsx: Makstud määr',
-  'src/renderer/src/components/Workers/PayrollView.tsx: Õige määr',
 
   // ── Defaults a NEW clinic is created with. Data, but ours, and an English
   //    clinic should not start with Estonian stages and visit types.
@@ -100,12 +79,9 @@ const KNOWN_GAPS: string[] = [
   'src/renderer/src/config/visitTypes.ts: Jäljendi tegemine',
   'src/renderer/src/config/visitTypes.ts: Täidis',
 
-  // ── Labels for stored values. Shown, so they want translating; the stored
+  // ── A label for a stored value. Shown, so it wants translating; the stored
   //    value itself must not change.
-  'src/renderer/src/types/customer.ts: Üle antud',
-  'src/renderer/src/types/invoice.ts: Tühistatud',
   'src/renderer/src/types/job.ts: Vale värv',
-  'src/renderer/src/types/patient.ts: Küsimata',
   'src/renderer/src/components/NewJobWizard/steps/StepMaterial.tsx: Läikiv',
 
   // ── Sample values in placeholders. Harmless, and listed so the count is

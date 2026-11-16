@@ -75,11 +75,21 @@ describe('several files as one ZIP (the accountant\'s export)', () => {
 
 describe('no export is left out', () => {
   it('no screen makes a CSV without writing the audit entry first', async () => {
-    const { execSync } = await import('node:child_process')
-    const root = execSync('git rev-parse --show-toplevel').toString().trim()
+    const { execFileSync } = await import('node:child_process')
+    const root = execFileSync('git', ['rev-parse', '--show-toplevel']).toString().trim()
+    // execFileSync, not execSync: with a shell the pathspecs were wrapped in
+    // single quotes, which `sh` strips and `cmd.exe` does not — so on Windows
+    // git grep received the quote characters as part of the path, matched
+    // nothing, and BOTH assertions below read an empty result. The first one
+    // then passed for the wrong reason, which is the dangerous half: that one
+    // is the guard that every CSV goes through `auditedCsvExport`.
     const grep = (pattern: string): string[] => {
       try {
-        return execSync(`git grep -l "${pattern}" -- 'src/renderer/src/components' 'src/renderer/src/mobile'`, { cwd: root }).toString().trim().split('\n').filter(Boolean)
+        return execFileSync(
+          'git',
+          ['grep', '-l', pattern, '--', 'src/renderer/src/components', 'src/renderer/src/mobile'],
+          { cwd: root },
+        ).toString().split('\n').map(l => l.trim()).filter(Boolean)
       } catch { return [] }
     }
     // The plain export is reached only through auditedCsvExport.
