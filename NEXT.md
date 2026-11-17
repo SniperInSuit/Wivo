@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v1.109.0 · 02.11.2026 · haru `main` (2.0 merged)**
+**Seis: v2.0.4 · 18.11.2026 · haru `testing` · commitimata**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -12,6 +12,99 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 > open items (desktop release, dashboard settings, phone app, cleanup).
 
 ---
+
+## 📌 Kus pooleli jäi — 18.11.2026 (haru `testing`)
+
+**Kõik allpool on commitimata.** Viimane commit on `1823350`. Mitte midagi ei
+ole pushitud — Kevin pushib.
+
+### 1. Miks `npm run dev` näitas tühja profiili (lahendatud)
+
+`npm run dev` loeb juurkataloogi `.env`-i, kus on **tootmise** URL. Testingu
+kood küsis profiilist `notify_push`-i (sql/095), mida tootmises ei ole → kogu
+profiililugemine kukkus → tühi nimi, „Role: —", pool menüüd.
+
+- `supabaseTarget` **keeldub tootmisest igas režiimis peale `production`-i**
+  (`lib/testCopy.ts`), ja ekraanil on punane bänner.
+- Profiili vead on nüüd kahes suunas: `schema` = rakendus on taga (42501),
+  `database` = andmebaas on taga (42703 jne). Varem näitas 42703 valet suunda
+  („Uuenda Wivot"), mis saatis mind valele poole.
+- `shared/i18n/noSqlInstructions.test.ts` skaneeris Windowsis **null faili**
+  (`execSync` + ühekordsetes jutumärkides pathspec) ja läks seetõttu alati
+  roheliseks. Parandatud `execFileSync`-iga; test nõuab nüüd > 100 faili.
+
+**Mis tootmisesse jõudis:** ainult GoTrue enda sisselogimine
+(`auth.users.last_sign_in_at`, `auth.sessions`). Kliiniku andmetesse ei
+kirjutatud midagi — `ClinicSettingsSync` on väravas `clinicId`-l, mis oli
+null just selle sama vea tõttu. Lugev kontrollpäring on kirjutatud ja Kevinile
+antud (ajutine fail, vajadusel kirjutan uuesti).
+
+### 2. Dokumendid
+
+| Fail | Mis |
+|---|---|
+| `docs/ROADMAP.md` | **uus** — Riia järjekord: samm 1 … 4, 3.0, 4.0, oma server |
+| `docs/WORKFLOW-STAGES.md` | **ümber kirjutatud** — plaan 3 töövoo **mallide** peale, Riia kolm sisendit sees, migratsioon 122, üheksa avatud küsimust. **Ootab Kevini ülevaatust** |
+| `docs/OWN-SERVER.md` | **uus** — Riia IT sisend (Windows Server + Hyper-V, Ubuntu VM, MikroTik, 443 + Let's Encrypt, krüpteeritud väline varukoopia). **Plaan ise tuleb pärast demot** |
+| `docs/MODULES-AND-RATINGS.md` | osa 1 = **ehitatud** (§1.11), hinnangud = migratsioon **123** |
+
+### 3. Litsentsi moodulid — EHITATUD (plaan 1)
+
+Magab, kuni `LICENCE_PUBLIC_KEYS` (`src/main/license.ts`) on tühi: ilma
+võtmeta on kõik moodulid sees, täpselt nagu enne.
+
+- **Token v2:** `org`, **`api` (lubatud API aadress)**, `modules`. v1 jääb
+  kehtima ja tähendab „kõik".
+- **Allkirja eraldus:** v2 allkirjastab `WIVO-LICENCE-1\n…`, nii et uuenduse
+  allkiri ei kehti litsentsina ega vastupidi.
+- **Kaks võtit (C ja D):** C kaotsiminek ei tohi jätta kliinikuid ilma uuest
+  litsentsist.
+- **Testvõti failist** (`WIVO_LICENCE_TEST_KEY`), ja **pakendatud build
+  keeldub sellest** (`app.isPackaged`).
+- **Mooduli värav:** väljalülitatud moodul **peidab ja keelab kirjutamise,
+  aga mitte lugemise**. Avaleht nihkub, kui `stats` on väljas.
+- **Aadressi keeld enne ühendumist:** rakendus küsib lubatud aadressi
+  main-protsessist **sünkroonselt** (`wivo:licensed-api`), enne kui klient
+  tehakse. Vale aadress → ükski päring ei lahku masinast + punane bänner.
+- **Väljastamise tööriist:** `scripts/make-license.mjs sign | renew | verify`.
+  `renew` hoiab `org`-i, aadressi ja moodulid — uuendamine ei tohi vaikselt
+  moodulit ära võtta.
+
+**Testid:** `shared/license/token.test.ts` 62, `shared/permissions.test.ts` 32,
+`scripts/makeLicense.test.ts` 21 (allkirjastab tööriistaga, kontrollib
+rakenduse mooduliga — koopia ei saa lahku minna), `testCopy.test.ts` 24.
+
+**Tegemata teadlikult:** YubiKey allkirjastamine (võtmed seadistamata),
+litsentsi tõmbamine, `seats` jõustamine, telefonis moodulid (veebil ei ole
+main-protsessi).
+
+### 4. Demokliinik — EHITATUD
+
+`sql/demo/seed.sql` ja `sql/demo/reset.sql`. **Ei ole migratsioonid**, ei lähe
+sql/ numbrite hulka.
+
+- Väljamõeldud Läti kliinik „Baltic Smile Demo", `country='LV'`,
+  `default_language='en'` — nii käitub ka arvete värav nagu Riias.
+- **Kaheksa kontot, kõik Riia rollid**, õigustega. Juhataja ja raamatupidaja
+  **ei saa `jobs.read`-i ega `patients.read`-i** — see on tingimus, mis hoiab
+  patsiendi nime nende vaadetest eemal, ja test valvab seda.
+- **Kolm väravat:** `public.wivo_demo` märgis, ükski võõras kliinik, ükski
+  võõras kasutaja. Kõik kolm kehtivad ka `reset.sql`-ile, mis kustutab.
+- `<DEMO_PASSWORD>` tuleb asendada; asendamata fail keeldub.
+- **`sql/test/demoSeed.test.ts` jooksutab mõlemat faili päris Postgresi peal**
+  (PGlite, kõik migratsioonid) — 10 testi. Kaks päris viga leidis just see:
+  `file_download_grant.file_id` ei ole olemas, ja `notification`/`audit_log`/
+  `job_code_counter` käivad `org_id` järgi, mitte `clinic_id`.
+
+### 5. Mis järgmiseks (Kevini järjekord)
+
+1. **Plaan 3 (`docs/WORKFLOW-STAGES.md`) üle vaadata** — ootab OK-d.
+2. **Demo ühendamine**: demoprojekt + litsents selle aadressiga.
+3. **(C) Oma serveri plaan** — sisend on `docs/OWN-SERVER.md`-is, plaan
+   kirjutamata.
+4. **(D) Windowsi release-masin** — `scripts/yubikey/setup-key.mjs` ja
+   release-tööriista kontroll. **Uurimine, mitte muutmine.**
+5. Vene keel kolmandaks keeleks (väike plaan).
 
 ## 📌 Kus pooleli jäi — 28.10.2026
 
