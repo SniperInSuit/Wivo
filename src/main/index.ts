@@ -7,7 +7,9 @@ import {
   wireUpdater, registerUpdaterIpc, installPendingAtLaunch,
   setMainWindow, closeSplash, isInstalling,
 } from './updater'
-import { currentLicence, installLicence, licensingEnforced } from './license'
+import {
+  currentLicence, installLicence, licensedApiOrigins, licensedModules, licensingEnforced,
+} from './license'
 import { registerWatchFolder } from './watchFolder'
 import { trackDownloads, mainBusy } from './busy'
 import { initSentryMain } from './sentry'
@@ -181,6 +183,19 @@ app.whenReady().then(async () => {
   ipcMain.handle('wivo:license-status', () => currentLicence())
   ipcMain.handle('wivo:license-install', (_e, token: string) => installLicence(token))
   ipcMain.handle('wivo:license-enforced', () => licensingEnforced())
+  ipcMain.handle('wivo:license-modules', () => licensedModules())
+  /**
+   * SYNCHRONOUS, and the only sendSync in the app.
+   *
+   * The renderer has to know which API address its licence allows BEFORE it
+   * creates the database client, and a client is created while modules load —
+   * there is no await to hang an answer on. A promise here would mean the
+   * first request leaves the machine before the answer arrives, which is
+   * exactly the thing this check exists to prevent.
+   *
+   * It costs one local file read. Nothing here touches the network.
+   */
+  ipcMain.on('wivo:licensed-api', (e) => { e.returnValue = licensedApiOrigins() })
   ipcMain.handle('wivo:relaunch', () => {
     app.relaunch()
     app.exit(0)

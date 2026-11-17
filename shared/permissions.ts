@@ -32,6 +32,35 @@ export const TECHNICIAN_PRESET: readonly PermissionKey[] = ['jobs.write', 'stock
  */
 export const ADMIN_PERMISSIONS: readonly PermissionKey[] = ['jobs.delete', 'payments.read', 'payments.write']
 
+/**
+ * Which licence module each permission belongs to, or null for the core, which
+ * is always on (docs/MODULES-AND-RATINGS.md §1.5). The names are the ones in
+ * MODULE_KEYS (shared/license/token.ts); kept as strings so this file still
+ * imports nothing, and shared/permissions.test.ts checks they all exist.
+ */
+export const PERMISSION_MODULE: Record<PermissionKey, string | null> = {
+  'jobs.read': 'jobs', 'jobs.write': 'jobs', 'jobs.delete': 'jobs',
+  'pipeline.write': 'jobs',
+  'patients.read': 'patients', 'patients.write': 'patients',
+  'visits.read': 'patients', 'visits.write': 'patients',
+  'stats.read': 'stats',
+  'payments.read': 'invoices', 'payments.write': 'invoices',
+  'payroll.manage': 'payroll',
+  'stock.read': 'stock', 'stock.write': 'stock',
+  // Core: settings and updates belong to no module. A clinic that may run
+  // nothing at all still has to be able to install the build that fixes that.
+  'settings.read': null, 'updates.install': null,
+}
+
+/**
+ * The write-shaped permissions. Taking these away is how both the licence's
+ * expiry and a switched-off module work, so the list lives in one place rather
+ * than being spelled out twice.
+ */
+export function isWritePermission(perm: PermissionKey): boolean {
+  return perm.endsWith('.write') || perm === 'jobs.delete' || perm === 'payroll.manage'
+}
+
 export interface Who {
   role: string | null
   /** Organisation owner or admin (profiles.org_role). */
@@ -40,6 +69,19 @@ export interface Who {
   licenceCanWrite: boolean
   /** Whether the person has a granted row for this permission. */
   granted: (perm: PermissionKey) => boolean
+  /**
+   * Whether a licence module is switched on. Absent means "everything is on",
+   * which is what a build without licensing, the SQL tests and the phone all
+   * mean — a caller that knows nothing about modules must not accidentally
+   * switch them all off.
+   */
+  moduleOn?: (module: string) => boolean
+}
+
+/** Whether the module this permission belongs to is switched on. */
+function moduleAllows(perm: PermissionKey, who: Who): boolean {
+  const module = PERMISSION_MODULE[perm]
+  return module === null || !who.moduleOn || who.moduleOn(module)
 }
 
 /**
@@ -48,13 +90,19 @@ export interface Who {
  * a patient only sees their visits; a worker has what was granted, nothing
  * by default.
  *
- * An expired licence takes away every write first. Enforced here because every
- * write button already asks this question. Reading is deliberately untouched:
- * a lab must always be able to look up what it promised a customer, whatever
- * the state of its invoice to us.
+ * An expired licence takes away every write first, and so does a module that
+ * is switched off. Enforced here because every write button already asks this
+ * question. Reading is deliberately untouched in both cases: a lab must always
+ * be able to look up what it promised a customer, whatever the state of its
+ * invoice to us and whatever it is paying for.
  */
 export function decidePermission(perm: PermissionKey, who: Who): boolean {
-  if (!who.licenceCanWrite && (perm.endsWith('.write') || perm === 'jobs.delete' || perm === 'payroll.manage')) return false
+  if (!who.licenceCanWrite && isWritePermission(perm)) return false
+  // A switched-off module HIDES and refuses writes; it never refuses a read.
+  // Switching one back on has to find everything still there, so no row is
+  // hidden and no RLS rule changes — losing data must never be what a licence
+  // does (docs/MODULES-AND-RATINGS.md §1.6).
+  if (isWritePermission(perm) && !moduleAllows(perm, who)) return false
   if (who.role === 'owner') return true
   if (who.role === 'patient') return perm === 'visits.read'
   if (who.isOrgAdmin && ADMIN_PERMISSIONS.includes(perm)) return true
@@ -76,11 +124,49 @@ export function seesJobs(who: Pick<Who, 'role'>): boolean {
 export type MenuPlace =
   | 'overview' | 'board' | 'table' | 'calendar' | 'taotlused' | 'patients' | 'kliendid' | 'arved' | 'tootasud' | 'stats' | 'stock'
 
+/** The places, as values. Keep in step with MenuPlace above. */
+export const MENU_PLACES = [
+  'overview', 'board', 'table', 'calendar', 'taotlused', 'patients',
+  'kliendid', 'arved', 'tootasud', 'stats', 'stock',
+] as const
+
+export const isMenuPlace = (v: string): v is MenuPlace =>
+  (MENU_PLACES as readonly string[]).includes(v)
+
+/**
+ * Which licence module each place belongs to (docs/MODULES-AND-RATINGS.md
+ * §1.5). Patients, Calendar and Requests are ONE piece: a practice that books
+ * visits without patient records, or the reverse, is not a thing we sell.
+ */
+export const PLACE_MODULE: Record<MenuPlace, string | null> = {
+  overview: 'stats', stats: 'stats',
+  board: 'jobs', table: 'jobs',
+  calendar: 'patients', taotlused: 'patients', patients: 'patients',
+  kliendid: 'invoices', arved: 'invoices',
+  tootasud: 'payroll',
+  stock: 'stock',
+}
+
+/**
+ * Where the app opens when the module behind the usual home page is off
+ * (docs/MODULES-AND-RATINGS.md §1.7). Settings is the last resort: it is core,
+ * so it is always there, and it is where the licence itself is pasted in — the
+ * one page a clinic with nothing switched on actually needs.
+ */
+export const HOME_ORDER: readonly MenuPlace[] = ['overview', 'board', 'calendar', 'arved', 'tootasud', 'stock']
+
+/** The first place this person can actually open, or null for Settings. */
+export function homePlace(who: Who): MenuPlace | null {
+  return HOME_ORDER.find(place => menuAllows(place, who)) ?? null
+}
+
 /**
  * Who sees a place in the menu: what the database gives them there
  * (docs/PERMISSIONS.md). One rule for the desktop and the phone.
  */
 export function menuAllows(place: MenuPlace, who: Who): boolean {
+  const module = PLACE_MODULE[place]
+  if (module !== null && who.moduleOn && !who.moduleOn(module)) return false
   const can = (perm: PermissionKey) => decidePermission(perm, who)
   switch (place) {
     // Everyone's own numbers and own pay.

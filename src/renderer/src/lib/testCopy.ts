@@ -5,6 +5,11 @@
  * never holds a service_role key, an access token or any other secret
  * (config/testCopyEnv.ts, and its test).
  *
+ * Production is for a release, not for work. Only a build (Vite mode
+ * `production`) may connect to the production project; `npm run dev`,
+ * `npm run mobile:dev` and the tests are refused it and say so on screen —
+ * see supabaseTarget.
+ *
  * Fail closed. Test mode loads no .env file, so production's `.env` cannot
  * fill a gap. In test mode a missing URL or key, or the production project's
  * URL, is replaced by an address where nothing listens: every request fails,
@@ -29,6 +34,8 @@
  * connection.)
  */
 
+import { normaliseOrigin } from '@shared/license/token'
+
 /** The production project (docs/night-run/RUN-3.md). Test mode refuses it. */
 export const PRODUCTION_REF = 'wrtucsfmpbwekugzzzxw'
 
@@ -41,7 +48,8 @@ export const TEST_STORAGE_KEY = 'wivo-test-copy-auth'
 
 const NOWHERE = 'http://127.0.0.1:9'
 
-export type TestCopyProblem = 'missing' | 'production' | 'not-test-copy' | null
+export type TestCopyProblem =
+  'missing' | 'production' | 'not-test-copy' | 'dev-production' | 'licence-api' | null
 
 function originOf(url: string): string | null {
   try { return new URL(url).origin } catch { return null }
@@ -53,9 +61,56 @@ export interface SupabaseTarget {
   problem: TestCopyProblem
 }
 
-/** What the client connects to, given the mode and the env values. Pure. */
-export function supabaseTarget(mode: string, url: string | undefined, key: string | undefined): SupabaseTarget {
-  if (mode !== 'test') return { url: url ?? '', key: key ?? '', problem: null }
+/**
+ * What the client connects to, given the mode and the env values. Pure.
+ *
+ * Only a real build (`electron-vite build`, mode `production`) may reach the
+ * production project. Every other mode — `npm run dev` above all, which reads
+ * the same `.env` a release is built from — is refused it. "Everyday work
+ * never connects to the production Supabase project" (CLAUDE.md) was a rule
+ * nothing enforced: `npm run dev` signed into production and, with a build
+ * from `testing`, read no profile at all, because production has no
+ * `notify_push` yet (sql/095). Blank name, "Role: —", half a menu, and an
+ * evening spent looking for it in the test copy.
+ *
+ * On top of that, a licence may name the API addresses it is valid for
+ * (docs/MODULES-AND-RATINGS.md §1.2). The check happens HERE, before the
+ * client exists, because "the app checks where it may connect before it
+ * connects" has to mean that nothing left the machine — not that a request
+ * was sent and the answer ignored. A clinic moving to a server of its own
+ * (docs/OWN-SERVER.md) is the case this was built for.
+ */
+export function supabaseTarget(
+  mode: string,
+  url: string | undefined,
+  key: string | undefined,
+  /**
+   * The API addresses this machine's licence allows (main/license.ts, read
+   * through window.wivo.licensedApi). Empty means no restriction, which is
+   * what an unlicensed build, a v1 key and a key without the field all mean.
+   */
+  allowedApi: readonly string[] = [],
+): SupabaseTarget {
+  const target = modeTarget(mode, url, key)
+  // The licence check comes last, over the address the mode actually settled
+  // on: a target already refused has nothing to connect to anyway, and the
+  // message a person reads should name the first reason, not the second.
+  if (target.problem !== null || allowedApi.length === 0) return target
+  const asked = normaliseOrigin(target.url)
+  const allowed = allowedApi.map(normaliseOrigin).filter((o): o is string => o !== null)
+  if (asked === null || !allowed.includes(asked)) {
+    return { url: NOWHERE, key: 'licence-refused', problem: 'licence-api' }
+  }
+  return target
+}
+
+function modeTarget(mode: string, url: string | undefined, key: string | undefined): SupabaseTarget {
+  if (mode !== 'test') {
+    if (mode !== 'production' && (url ?? '').includes(PRODUCTION_REF)) {
+      return { url: NOWHERE, key: 'production-refused', problem: 'dev-production' }
+    }
+    return { url: url ?? '', key: key ?? '', problem: null }
+  }
   if (!url?.trim() || !key?.trim()) return { url: NOWHERE, key: 'test-copy-not-configured', problem: 'missing' }
   if (url.includes(PRODUCTION_REF)) return { url: NOWHERE, key: 'test-copy-not-configured', problem: 'production' }
   if (originOf(url.trim()) !== TEST_ORIGIN) return { url: NOWHERE, key: 'test-copy-not-configured', problem: 'not-test-copy' }

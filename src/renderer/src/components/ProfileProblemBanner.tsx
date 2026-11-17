@@ -18,7 +18,10 @@
  *
  * The `schema` case never reaches here as its own message: AuthContext raises
  * the ordinary "Update Wivo" for it, which already has the restart button.
- * This covers the rest.
+ * This covers the rest — `database` among them, which is the same mismatch
+ * the other way round: the build names something this database does not have,
+ * and updating the app would only widen the gap. Neutral words, no migration
+ * and no database command (CLAUDE.md).
  */
 import { AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -34,7 +37,8 @@ export function ProfileProblemBanner() {
   const text =
     profileFailure === 'missing' ? t('profileProblem.noProfile')
       : profileFailure === 'offline' ? t('profileProblem.offline')
-        : t('profileProblem.unknown')
+        : profileFailure === 'database' ? t('profileProblem.databaseBehind')
+          : t('profileProblem.unknown')
 
   return (
     <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2">

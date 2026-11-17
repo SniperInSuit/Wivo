@@ -40,6 +40,15 @@ interface Window {
     onSplashState: (
       cb: (s: import('../../types/update').UpdaterSplashState) => void
     ) => () => void
+    /**
+     * The licence's modules, and the API addresses it allows.
+     *
+     * Both optional: a build whose preload predates them must keep working,
+     * and the renderer reads their absence as "no restriction" — see
+     * hooks/useLicense.ts and lib/licensedApi.ts.
+     */
+    licenseModules?: () => Promise<string[]>
+    licensedApi?: () => string[]
     htmlToPdf?: (html: string) => Promise<Uint8Array>
     readSound?: (file: string) => Promise<ArrayBuffer | null>
     // The scanner export folder — src/main/watchFolder.ts.

@@ -73,6 +73,25 @@ const wivoAPI = {
   licenseInstall: (token: string): Promise<unknown> =>
     ipcRenderer.invoke('wivo:license-install', token),
   licenseEnforced: (): Promise<boolean> => ipcRenderer.invoke('wivo:license-enforced'),
+  /** The modules this clinic's licence allows (docs/MODULES-AND-RATINGS.md). */
+  licenseModules: (): Promise<string[]> => ipcRenderer.invoke('wivo:license-modules'),
+  /**
+   * The API addresses the licence allows, SYNCHRONOUSLY. Empty = no limit.
+   *
+   * Synchronous because the renderer asks while it is building its database
+   * client: by the time a promise resolved, the first request would already be
+   * on its way. See the handler in src/main/index.ts.
+   */
+  licensedApi: (): string[] => {
+    try {
+      const v = ipcRenderer.sendSync('wivo:licensed-api') as unknown
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    } catch {
+      // An older main process without the handler must not stop the app from
+      // starting. No answer means no restriction, as an unlicensed build does.
+      return []
+    }
+  },
 
   /** A sound file's bytes (src/renderer/public/sounds), or null. Sliced for the same reason as getTeethModel. */
   readSound: async (file: string): Promise<ArrayBuffer | null> => {

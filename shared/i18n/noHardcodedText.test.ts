@@ -52,7 +52,7 @@ if (files.length === 0) throw new Error('noHardcodedText: git ls-files matched n
 const NOT_LANGUAGE = new Set([
   'Wivo', 'WivoLab', 'WivoDental', 'WivoX', 'IBAN', 'CSV', 'HH:MM', '.png', 'kroon.png',
   'Tallinn', 'EE123456789', 'LHV, SEB, Swedbank…', 'LHV, SEB…', 'EE00 1234 5678 9012 3456',
-  'Dr. …', 'WIVO1.…', 'mail.elkdata.ee', 'fullgevity', 'Hambaravi OÜ', 'LICENCE_PUBLIC_KEY',
+  'Dr. …', 'WIVO1.…', 'mail.elkdata.ee', 'fullgevity', 'Hambaravi OÜ', 'LICENCE_PUBLIC_KEYS',
   'auto', 'WIVO-XXXX-XXXX', 'MB', 'KB',
   // The language switch's heading names itself in both languages on purpose:
   // it is the one label someone who cannot read the current language must find.

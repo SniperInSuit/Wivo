@@ -49,7 +49,7 @@ const SETTINGS_ITEM = { key: 'settings', label: t('sidebar.settings'), icon: Set
 export function Sidebar({ view, onViewChange }: SidebarProps) {
   const { settings, toggleRiba } = useSettings()
   const { role } = useAuth()
-  const { sees } = usePermissions()
+  const { sees, moduleOn } = usePermissions()
   const running = useRunningVersion()
   // Opens by itself once per person per version; the footer button reopens it.
   const whatsNew = useWhatsNew(running)
@@ -57,7 +57,8 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
   const stockAlerts = useStockAlerts()
   // Only an organisation that has a partnership has partner jobs to look at.
   const { data: partners = [] } = usePartnerOrgs()
-  const hasPartners = partners.some(p => p.status !== 'awaiting_inviter' && p.status !== 'awaiting_platform')
+  const hasPartners = moduleOn('partners')
+    && partners.some(p => p.status !== 'awaiting_inviter' && p.status !== 'awaiting_platform')
   const wide = settings.ribaLaiendatud
 
   // Shared by the nav items and Seaded so the active treatment never drifts
@@ -130,8 +131,10 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
           </button>
         ))}
 
-        {/* Desktop only: the bridge to the scanner folder exists only there. */}
-        {window.wivo?.watchFolder && (
+        {/* Desktop only: the bridge to the scanner folder exists only there.
+            Unsorted is part of the `jobs` module — a scan waiting to become a
+            job is no use to a clinic that cannot make one. */}
+        {window.wivo?.watchFolder && moduleOn('jobs') && (
           <button onClick={() => onViewChange('unsorted')} title={t('unsorted.unsorted')} className={itemClass(view === 'unsorted')}>
             <FolderInput size={wide ? 15 : 17} className="flex-shrink-0" />
             <span className={wide ? 'truncate' : 'text-[10px] leading-none tracking-tight'}>{t('unsorted.unsorted')}</span>

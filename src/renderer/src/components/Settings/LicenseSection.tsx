@@ -3,12 +3,27 @@
  */
 import { useState } from 'react'
 import { KeyRound, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
-import { PLAN_LABEL } from '@shared/license/token'
+import {
+  MODULE_KEYS, PLAN_LABEL, licenceAllowsApi, licenceApiOrigins, type LicenceModule,
+} from '@shared/license/token'
 import { useLicense } from '../../hooks/useLicense'
+import { apiUrl } from '../../lib/supabase'
 import { t } from '@/lib/i18n'
 
+/** The modules, in the order a clinic buys them (docs/ROADMAP.md). */
+const MODULE_LABEL: Record<LicenceModule, () => string> = {
+  jobs:     () => t('settings.moduleJobs'),
+  payroll:  () => t('settings.modulePayroll'),
+  stock:    () => t('settings.moduleStock'),
+  invoices: () => t('settings.moduleInvoices'),
+  patients: () => t('settings.modulePatients'),
+  stats:    () => t('settings.moduleStats'),
+  partners: () => t('settings.modulePartners'),
+  ratings:  () => t('settings.moduleRatings'),
+}
+
 export function LicenseSection() {
-  const { status, enforced, loading, install } = useLicense()
+  const { status, enforced, loading, install, modules } = useLicense()
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -19,6 +34,13 @@ export function LicenseSection() {
       const next = await install(token)
       if (next.state === 'invalid') {
         setMessage(t('settings.thisKeyIsNotValidCheck'))
+      } else if (next.payload && !licenceAllowsApi(next.payload, apiUrl)) {
+        // The key is good, but not for the server this app is pointed at. The
+        // database client was built when the app started and cannot be moved,
+        // so saying "installed" here would be a lie that shows up as failing
+        // saves ten minutes later.
+        setToken('')
+        setMessage(t('settings.theKeyIsForAnotherServer'))
       } else {
         setToken('')
         setMessage(t('settings.licenceInstalled'))
@@ -43,7 +65,7 @@ export function LicenseSection() {
       {!enforced ? (
         <p className="text-xs text-ink-muted max-w-xl leading-relaxed">
           {t('settings.thisBuildDoesNotCheckThe')}{' '}
-          <code className="px-1 rounded bg-bg-sidebar">LICENCE_PUBLIC_KEY</code>{' '}
+          <code className="px-1 rounded bg-bg-sidebar">LICENCE_PUBLIC_KEYS</code>{' '}
           {t('settings.isSet')}
         </p>
       ) : loading ? (
@@ -66,8 +88,22 @@ export function LicenseSection() {
                 <Row label={t('settings.plan')} value={PLAN_LABEL[status.payload.plan]} />
                 <Row label={t('settings.users')} value={status.payload.seats?.toString() ?? t('settings.unlimited2')} />
                 <Row label={t('settings.validUntil')} value={status.payload.exp} />
+                {/* v2 only. A v1 key has neither, and showing an empty row
+                    would read as "nothing is allowed" rather than "this key
+                    predates the field". */}
+                {status.payload.org && (
+                  <Row label={t('settings.organisation')} value={status.payload.org} />
+                )}
+                <Row
+                  label={t('settings.apiAddress')}
+                  value={licenceApiOrigins(status.payload).join(', ') || t('settings.apiAddressAny')}
+                />
+                <Row label={t('settings.modules')} value={moduleList(modules)} />
               </dl>
             )}
+            <p className="text-[11px] text-ink-faint mt-3 leading-relaxed">
+              {t('settings.aSwitchedOffPartIsHidden')}
+            </p>
             {status.state === 'active' && status.daysLeft != null && status.daysLeft <= 30 && (
               <p className="text-[11px] text-amber-600 mt-2">
                 {t('settings.expiresInDayDays', { status, daysLeft: status.daysLeft })}
@@ -101,6 +137,13 @@ export function LicenseSection() {
       )}
     </section>
   )
+}
+
+/** The modules, named, in a fixed order so the line does not reshuffle. */
+function moduleList(modules: readonly LicenceModule[]): string {
+  if (modules.length === 0) return t('settings.moduleNone')
+  if (modules.length === MODULE_KEYS.length) return t('settings.moduleAll')
+  return MODULE_KEYS.filter(m => modules.includes(m)).map(m => MODULE_LABEL[m]()).join(', ')
 }
 
 function Row({ label, value }: { label: string; value: string }) {

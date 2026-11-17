@@ -3,19 +3,32 @@
  *
  * Nothing here appears in a build with no public key compiled in, which is
  * every development build — see src/main/license.ts.
+ *
+ * WHO SEES WHAT (docs/MODULES-AND-RATINGS.md §1.10). The warning is for the
+ * owner and whoever may see Settings, because they are the ones who can act
+ * on it. The read-only wall is for everyone: a technician does not need to
+ * know that a bill went unpaid, but he does need to know why the save button
+ * refuses.
  */
 import { useState } from 'react'
 import { KeyRound, AlertTriangle, X } from 'lucide-react'
 import { useLicense } from '../hooks/useLicense'
+import { usePermissions } from '../hooks/usePermissions'
 import { t } from '@/lib/i18n'
 
 export function LicenseBanner({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { status, enforced, loading } = useLicense()
+  const { isOwner, can } = usePermissions()
   const [dismissed, setDismissed] = useState(false)
+  /** Who can do something about it — and who the key is therefore shown to. */
+  const handles = isOwner || can('settings.read')
 
   if (loading || !enforced) return null
   if (status.state === 'active') return null
   if (dismissed && status.state === 'grace') return null
+  // Still inside grace nothing has changed for a technician: everything saves.
+  // Telling him about an invoice he cannot pay is noise.
+  if (status.state === 'grace' && !handles) return null
 
   // Grace: a warning you can push aside for the session. The lab keeps working.
   if (status.state === 'grace') {
@@ -49,9 +62,11 @@ export function LicenseBanner({ onOpenSettings }: { onOpenSettings: () => void }
         </strong>{' '}
         {t('licenseBanner.theAppIsReadOnlyAll')}
       </p>
-      <button onClick={onOpenSettings} className="text-xs font-medium text-accent hover:underline">
-        {t('licenseBanner.enterKey')}
-      </button>
+      {handles && (
+        <button onClick={onOpenSettings} className="text-xs font-medium text-accent hover:underline">
+          {t('licenseBanner.enterKey')}
+        </button>
+      )}
     </div>
   )
 }

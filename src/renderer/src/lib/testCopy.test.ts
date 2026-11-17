@@ -5,8 +5,28 @@ const TEST_URL = 'https://jhqyvancrzykxhzwnost.supabase.co'
 const PROD_URL = `https://${PRODUCTION_REF}.supabase.co`
 
 describe('supabaseTarget: test mode never reaches production', () => {
-  it('outside test mode: the values as they are', () => {
-    expect(supabaseTarget('development', PROD_URL, 'k')).toEqual({ url: PROD_URL, key: 'k', problem: null })
+  it('a build, and only a build, reaches production', () => {
+    expect(supabaseTarget('production', PROD_URL, 'k')).toEqual({ url: PROD_URL, key: 'k', problem: null })
+  })
+
+  it('development pointed at production: refused, nowhere', () => {
+    // `npm run dev` reads the same .env a release is built from. It signed
+    // into production, and with a build from `testing` read no profile at all
+    // (production has no notify_push yet, sql/095): blank name, "Role: -",
+    // half a menu. "Everyday work never connects to production" (CLAUDE.md)
+    // is now something the code does, not something a document asks for.
+    for (const mode of ['development', 'unit', '']) {
+      const r = supabaseTarget(mode, PROD_URL, 'k')
+      expect(r.problem, mode).toBe('dev-production')
+      expect(r.url, mode).not.toContain(PRODUCTION_REF)
+      expect(r.key, mode).not.toBe('k')
+    }
+  })
+
+  it('development pointed anywhere else: the values as they are', () => {
+    expect(supabaseTarget('development', TEST_URL, 'k')).toEqual({ url: TEST_URL, key: 'k', problem: null })
+    expect(supabaseTarget('development', 'http://127.0.0.1:54321', 'k'))
+      .toEqual({ url: 'http://127.0.0.1:54321', key: 'k', problem: null })
   })
 
   it('test mode with the test copy: connected', () => {
@@ -26,6 +46,52 @@ describe('supabaseTarget: test mode never reaches production', () => {
       expect(r.problem).toBe('missing')
       expect(r.url).toBe('http://127.0.0.1:9')
     }
+  })
+})
+
+describe('the address the licence allows (docs/MODULES-AND-RATINGS.md §1.2)', () => {
+  const OWN_SERVER = 'https://wivo.dentiks.lv'
+
+  it('an empty list is no restriction: an unlicensed build, or a v1 key', () => {
+    expect(supabaseTarget('production', PROD_URL, 'k', [])).toEqual({ url: PROD_URL, key: 'k', problem: null })
+  })
+
+  it('the address the licence names: connected', () => {
+    expect(supabaseTarget('production', PROD_URL, 'k', [PROD_URL]))
+      .toEqual({ url: PROD_URL, key: 'k', problem: null })
+  })
+
+  it('an address it does not name: refused, nowhere, and NOT with the real key', () => {
+    const r = supabaseTarget('production', PROD_URL, 'k', [OWN_SERVER])
+    expect(r.problem).toBe('licence-api')
+    expect(r.url).toBe('http://127.0.0.1:9')
+    expect(r.key).not.toBe('k')
+  })
+
+  it('either address while a clinic is moving to its own server', () => {
+    for (const url of [PROD_URL, OWN_SERVER]) {
+      expect(supabaseTarget('production', url, 'k', [PROD_URL, OWN_SERVER]).problem, url).toBeNull()
+    }
+  })
+
+  it('a trailing slash or a path in the licence is still the same server', () => {
+    expect(supabaseTarget('production', PROD_URL, 'k', [`${PROD_URL}/rest/v1`]).problem).toBeNull()
+  })
+
+  it('a look-alike host is not the licensed one', () => {
+    expect(supabaseTarget('production', `${PROD_URL}.evil.example`, 'k', [PROD_URL]).problem)
+      .toBe('licence-api')
+  })
+
+  it('the mode\'s own refusal comes first — the first reason is the one to read', () => {
+    // A development build pointed at production is refused for THAT, not for
+    // the licence: "use dev:test" is the useful sentence, not "wrong server".
+    expect(supabaseTarget('development', PROD_URL, 'k', [PROD_URL]).problem).toBe('dev-production')
+  })
+
+  it('it applies in test mode too: a licensed address is not a mode exemption', () => {
+    expect(supabaseTarget('test', TEST_URL, 'k', [TEST_URL]).problem).toBeNull()
+    expect(supabaseTarget('test', TEST_URL, 'k', [OWN_SERVER]).problem).toBe('licence-api')
   })
 })
 

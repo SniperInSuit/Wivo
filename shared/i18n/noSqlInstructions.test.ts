@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import ts from 'typescript'
 import { en } from './en'
 import { et } from './et'
@@ -39,8 +39,12 @@ describe('no SQL advice anywhere a person reads', () => {
   })
 
   it('no string or JSX text in the app names a migration, the SQL editor or a database command', () => {
-    const files = execSync(`git ls-files 'src/renderer/src/**/*.tsx' 'src/renderer/src/**/*.ts'`, { cwd: ROOT })
-      .toString().trim().split('\n').filter(f => f && !/\.test\./.test(f))
+    // The pathspecs as ARGUMENTS, never a command line: through cmd.exe the
+    // single quotes survive, git matches nothing, and the test passes while
+    // looking at no files at all. Third place in this repo with that bug.
+    const files = execFileSync('git', ['ls-files', 'src/renderer/src/**/*.tsx', 'src/renderer/src/**/*.ts'], { cwd: ROOT })
+      .toString().trim().split('\n').map(f => f.trim()).filter(f => f && !/\.test\./.test(f))
+    expect(files.length, 'the scan found no files to read').toBeGreaterThan(100)
     const bad: string[] = []
     for (const file of files) {
       const src = ts.createSourceFile(file, readFileSync(`${ROOT}/${file}`, 'utf8'), ts.ScriptTarget.Latest, true,

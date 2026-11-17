@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { isMenuPlace } from '@shared/permissions'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { TopBar } from './components/TopBar'
@@ -117,7 +118,25 @@ function AppContent() {
   const updateJob = useUpdateJob()
   const deleteJob = useDeleteJob()
   // sql/102: deleting a job is its own permission; marking paid writes payments.
-  const { can } = usePermissions()
+  const { can, sees, moduleOn, home } = usePermissions()
+
+  // The same hazard once more, from the licence rather than the mode: a module
+  // that is off takes its pages with it, and 'overview' — where the app opens —
+  // belongs to `stats`. Without this, a clinic licensed for jobs only would
+  // start on a blank page (docs/MODULES-AND-RATINGS.md §1.7).
+  //
+  // Settings is the last resort because it is core, always present, and it is
+  // where a licence is pasted in: the one page a clinic with nothing switched
+  // on actually needs.
+  const viewAllowed =
+    isMenuPlace(view) ? sees(view)
+    : view === 'unsorted' ? moduleOn('jobs')
+    : view === 'partner' ? moduleOn('partners')
+    : true
+  useEffect(() => {
+    if (!viewAllowed) setView(home ?? 'settings')
+  }, [viewAllowed, home])
+
   const canDelete = can('jobs.delete')
   // Without Edit jobs, the jobs a member sees are read only: no new job, no
   // stage moves, no bulk changes (the database would refuse each of them).

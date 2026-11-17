@@ -2,7 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLicense } from './useLicense'
-import { decidePermission, menuAllows, type MenuPlace, type PermissionKey, type Who } from '@shared/permissions'
+import {
+  decidePermission, homePlace, menuAllows,
+  type MenuPlace, type PermissionKey, type Who,
+} from '@shared/permissions'
 import { t } from '@/lib/i18n'
 
 export type { PermissionKey }
@@ -45,7 +48,7 @@ interface PermissionRow {
 export function usePermissions() {
   const { role, user, status, profile } = useAuth()
   const isOrgAdmin = profile?.org_role === 'admin' || profile?.org_role === 'owner'
-  const { canWrite: licenceCanWrite } = useLicense()
+  const { canWrite: licenceCanWrite, moduleOn } = useLicense()
 
   const { data: rows = [] } = useQuery<PermissionRow[]>({
     queryKey: ['permissions', user?.id],
@@ -62,12 +65,13 @@ export function usePermissions() {
   })
 
   const who: Who = {
-    role, isOrgAdmin, licenceCanWrite,
+    role, isOrgAdmin, licenceCanWrite, moduleOn,
     granted: p => rows.find(r => r.permission === p)?.granted ?? false,
   }
   const can = (perm: PermissionKey): boolean => decidePermission(perm, who)
   /** Whether a place shows in the menu: the same rule on the desktop and the phone. */
   const sees = (place: MenuPlace): boolean => menuAllows(place, who)
 
-  return { can, sees, role, isOwner: role === 'owner', licenceCanWrite }
+  /** Whether a licence module is on. For the places that are not in the menu. */
+  return { can, sees, role, isOwner: role === 'owner', licenceCanWrite, moduleOn, home: homePlace(who) }
 }

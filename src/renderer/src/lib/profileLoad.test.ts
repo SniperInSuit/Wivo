@@ -16,10 +16,19 @@ describe('classifyProfileError', () => {
     expect(classifyProfileError({ code: '42501', message: 'permission denied' })).toBe('schema')
   })
 
-  it('calls a column or table this build names and the schema lost a mismatch', () => {
-    expect(classifyProfileError({ code: '42703' })).toBe('schema')
-    expect(classifyProfileError({ code: '42P01' })).toBe('schema')
-    expect(classifyProfileError({ code: 'PGRST204' })).toBe('schema')
+  it('calls a column this build names and the database does not have the OTHER direction', () => {
+    // The one that happened the same evening: `npm run dev` on testing against
+    // PRODUCTION, which has no notify_push yet (sql/095). The app is ahead of
+    // the schema, so "Update Wivo" would be the wrong way round.
+    expect(classifyProfileError({ code: '42703' })).toBe('database')
+    expect(classifyProfileError({ code: '42P01' })).toBe('database')
+    expect(classifyProfileError({ code: 'PGRST204' })).toBe('database')
+    expect(classifyProfileError({ code: 'PGRST202' })).toBe('database')
+  })
+
+  it('never calls the database being behind "update the app"', () => {
+    expect(meansAppIsBehind(classifyProfileError({ code: '42703' }))).toBe(false)
+    expect(meansAppIsBehind(classifyProfileError({ code: '42501' }))).toBe(true)
   })
 
   it('calls a bare 403 a schema mismatch too', () => {
@@ -51,7 +60,7 @@ describe('classifyProfileError', () => {
 describe('meansAppIsBehind', () => {
   it('is true only for a schema mismatch', () => {
     expect(meansAppIsBehind('schema')).toBe(true)
-    for (const f of ['missing', 'mfa', 'offline', 'unknown'] as const) {
+    for (const f of ['database', 'missing', 'mfa', 'offline', 'unknown'] as const) {
       expect(meansAppIsBehind(f), f).toBe(false)
     }
   })
@@ -60,7 +69,7 @@ describe('meansAppIsBehind', () => {
 describe('worthShowing', () => {
   it('stays quiet during the second factor and speaks for the rest', () => {
     expect(worthShowing('mfa')).toBe(false)
-    for (const f of ['schema', 'missing', 'offline', 'unknown'] as const) {
+    for (const f of ['schema', 'database', 'missing', 'offline', 'unknown'] as const) {
       expect(worthShowing(f), f).toBe(true)
     }
   })

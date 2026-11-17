@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { supabaseTarget, allowedInTestMode, TestCopyRefused } from './testCopy'
+import { licensedApiOrigins } from './licensedApi'
 import { supabaseOptions } from './supabaseOptions'
 import type { Job } from '../types/job'
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
@@ -11,11 +12,18 @@ const target = supabaseTarget(
   import.meta.env.MODE,
   import.meta.env.VITE_SUPABASE_URL as string | undefined,
   import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined,
+  licensedApiOrigins(),
 )
 const supabaseUrl = target.url
 const supabaseAnonKey = target.key
 /** Why test mode is not connected, if it is not (the banner says it). */
 export const testCopyProblem = target.problem
+/**
+ * The address this client talks to. Exported for the Licence page, which has
+ * to be able to say "this key is for another server" — the client is built
+ * once, at load, so a key installed now cannot move it.
+ */
+export const apiUrl = target.url
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -186,11 +194,14 @@ export function onAuthStateChange(
  * and tax fields are not among them: those come only from pay_settings()
  * (lib/paySettings), one's own always, everyone's for payroll. `select *` is
  * refused.
+ *
+ * The list itself lives in shared/db/profileColumns, where a test can run it
+ * against the replayed schema without building a Supabase client.
  */
 import { classifyProfileError, type ProfileFailure } from './profileLoad'
 
-export const PROFILE_COLUMNS =
-  'id, full_name, username, role, org_role, clinic_id, removed_from, patient_id, language, notify_email, notify_push, ui_prefs, created_at, updated_at' as const
+export { PROFILE_COLUMNS } from '@shared/db/profileColumns'
+import { PROFILE_COLUMNS } from '@shared/db/profileColumns'
 
 export type ProfileRead =
   | { ok: true; profile: Profile }

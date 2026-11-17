@@ -10,4 +10,9 @@ out
 
 # Licence signing key — NEVER commit. See scripts/make-license.mjs
 license-private.pem
+# A development test keypair, and the public half the app reads through
+# WIVO_LICENCE_TEST_KEY. Neither goes in: a packaged build refuses a file key
+# anyway (src/main/license.ts), and a key in git is a key everyone has.
+license-*.pem
+license-*.hex
 dist-mobile

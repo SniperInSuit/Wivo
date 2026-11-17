@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
 import { freshDb, createTenant, createUser, rowsAs, errorAs, grant, type Tenant } from './harness'
 import { TECHNICIAN_PRESET } from '../../shared/permissions'
+import { PROFILE_COLUMNS, PROFILE_COLUMN_LIST } from '../../shared/db/profileColumns'
 
 let db: PGlite
 let A: Tenant
@@ -100,5 +101,32 @@ describe('writing is unchanged', () => {
   it('the public key: nothing at all', async () => {
     expect(await errorAs(db, 'anon', `select full_name from public.profiles`)).toMatch(/permission denied/)
     expect(await errorAs(db, 'anon', `select * from public.pay_settings()`)).toMatch(/permission denied/)
+  })
+})
+
+/**
+ * The list the app reads, run against the schema the migrations actually
+ * build. It is the guard that was missing: the app names its columns since
+ * sql/117, and one column too many — or one the database has not got yet —
+ * fails the WHOLE read, which on screen is a blank name and "Role: -" and
+ * nothing else. Cost: an evening, twice.
+ */
+describe('the columns the app reads', () => {
+  it('every one of them is readable by an ordinary member', async () => {
+    expect(await errorAs(db, { id: tech }, `select ${PROFILE_COLUMNS} from public.profiles where id = $1`, [tech])).toBeNull()
+  })
+
+  it('and by the owner, for a colleague', async () => {
+    expect(await errorAs(db, { id: A.ownerId }, `select ${PROFILE_COLUMNS} from public.profiles where id = $1`, [tech])).toBeNull()
+  })
+
+  it('one column more than the grant fails the whole read, not that column', async () => {
+    // Why the test above is worth having: this is what the screen was showing.
+    expect(await errorAs(db, { id: tech }, `select ${PROFILE_COLUMNS}, toosuhe from public.profiles where id = $1`, [tech]))
+      .toMatch(/permission denied/)
+  })
+
+  it('names no pay or tax field', () => {
+    for (const col of PAY) expect(PROFILE_COLUMN_LIST, col).not.toContain(col)
   })
 })

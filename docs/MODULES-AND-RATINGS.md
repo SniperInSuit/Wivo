@@ -1,6 +1,10 @@
 # Moodulid litsentsi sees ja hinnangud arsti ja tehniku vahel
 
-**Seis: plaan, 16.11.2026. Ehitamine ootab Kevini OK-d.**
+**Seis: osa 1 on EHITATUD (18.11.2026), osa 2 on plaan.**
+
+Osa 1 on `testing`-us, avaliku võtmeta: kuni `LICENCE_PUBLIC_KEYS` on tühi, ei
+kontrolli build litsentsi ja kõik moodulid on sees — täpselt nagu enne. Mis
+täpselt valmis on ja kuidas seda proovida, on §1.11.
 
 Kaks tööd ühes failis, sest nad puutuvad kokku: hinnangud on kaheksas moodul ja
 boonus sõltub `payroll`-moodulist.
@@ -31,8 +35,8 @@ Masinavärk on olemas ja **välja lülitatud**.
 | Tokeni kuju `WIVO1.<payload>.<sig>`, Ed25519 | `shared/license/token.ts` | olemas |
 | `LicencePayload` v1: `name`, `plan`, `seats`, `iat`, `exp` | sama | olemas |
 | `GRACE_DAYS = 14` | sama | olemas |
-| Avalik võti | `src/main/license.ts:33` — **tühi** | puudub |
-| `licensingEnforced()` | sama fail | tagastab `false` |
+| Avalik võti | `src/main/license.ts`, `LICENCE_PUBLIC_KEYS` — **tühi** | puudub |
+| `licensingEnforced()` | sama fail | `false`, kuni võti tuleb |
 | Kirjutamise värav | `usePermissions.can()` loeb `licenceCanWrite` | **olemas ja ootab võtit** |
 
 Kontroll on **täielikult offline** ja jääb selleks: labor ei tohi seisma jääda
@@ -45,9 +49,25 @@ Kaks uut välja, ühtegi ei eemaldata:
 ```
 v: 2
 org:     <instantsi UUID>
+api:     ['https://abc.supabase.co']
 modules: ['jobs', 'payroll', 'stock', 'invoices', 'patients', 'stats',
           'partners', 'ratings']
 ```
+
+**`api` on lubatud API aadress** (Kevin, 17.11.2026), mitte ainult `org`.
+Põhjus on kaks: rakendus peab teadma, kuhu ta tohib ühenduda, **enne kui ta
+ühendub**, ja Riia võib hiljem tulla oma serverisse, kus aadress ei ole
+`*.supabase.co` (docs/OWN-SERVER.md). Mitu aadressi on lubatud meelega —
+kolimise ajal on vana ja uus mõnda aega mõlemad elus.
+
+Võrdlus käib **täpse päritolu järgi** (skeem, host, port); teed, järelkaldkriipsu
+ja vaikeporti ei arvestata. **Metamärke ei ole:** `*.supabase.co` teeks ühest
+lekkinud võtmest võtme iga meie projekti vastu, mis on just see, mida `org` ja
+`api` ära hoiavad.
+
+**Tühi `api` või selle puudumine tähendab „piirangut ei ole".** Nii käituvad
+kõik v1 võtmed ja litsentsita build. Ükski kliinik ei tohi jääda oma
+andmebaasist eemale sellepärast, et me lisasime vormingusse välja.
 
 **`org` on sama UUID, mida uuenduste süsteem ja seadistustööriist juba kliiniku
 instantsi kohta kasutavad.** Üks id kõikjal — litsents, uuendused, seadistus.
@@ -59,7 +79,17 @@ siis kui fail kopeeritakse.
 
 **v1 tokenid jäävad kehtima** ja loetakse „kõik moodulid sees" — nad on
 väljastatud enne, kui moodul mõistena olemas oli. Ühtegi olemasolevat võtit ei
-pea välja vahetama.
+pea välja vahetama. **v1 allkirjastab täpselt neid baite, mida ta alati
+allkirjastas** (`WIVO1.<payload>`), nii et vana võti ei muutu kehtetuks; v2 oma
+prefiksiga. Versioon payloadi sees otsustab, kumbaga kontrollitakse.
+
+**Tundmatu mooduli nimi jäetakse vahele, mitte ei tee võtit kehtetuks.** Uuema
+tööriistaga allkirjastatud võti, mis nimetab moodulit, millest see build pole
+kuulnud, ei tohi kliinikut tema olemasolevatest moodulitest ilma jätta.
+
+**v2 ilma `org`-i või `modules`-ita ei ole v2 võti, vaid vigane fail**, ja see
+loetakse kehtetuks. Vigase faili lugemine „kõik moodulid sees" tähendaks, et
+rikutud fail annab täislitsentsi.
 
 ## 1.3 Allkirjad: litsents ja uuendus on eraldatud
 
@@ -176,6 +206,59 @@ eraldi URL-ina.
 näevad alles kirjutuskaitset, kui see tuleb — tehnik ei pea teadma, et arve on
 maksmata, ta peab teadma, miks nupp ei tööta.
 
+## 1.11 Mis on ehitatud (18.11.2026)
+
+Kõik allpool on `testing`-us ja **magab**, kuni `LICENCE_PUBLIC_KEYS` on tühi.
+
+| Mis | Kus |
+|---|---|
+| v2 payload, `org` / `api` / `modules`, v1 jääb kehtima | `shared/license/token.ts` |
+| Allkirja eraldus: `WIVO-LICENCE-1\n…` ainult v2-l | sama, `signingInput(payloadB64, v)` |
+| Mooduli komplekti kontroll (`ratings` vajab `jobs`-i) | sama, `moduleSetProblem` |
+| Aadressi võrdlus päritolu järgi | sama, `normaliseOrigin`, `licenceAllowsApi` |
+| Kaks võtit (C ja D) ja failist testvõti | `src/main/license.ts` |
+| Mooduli värav õigustes ja menüüs | `shared/permissions.ts` (`PERMISSION_MODULE`, `PLACE_MODULE`) |
+| Avaleht, kui `stats` on väljas | sama, `HOME_ORDER`, `homePlace` |
+| Aadressi keeld enne ühendumist | `src/renderer/src/lib/testCopy.ts` + `lib/licensedApi.ts` |
+| Punane bänner, kui litsents ei luba aadressi | `components/TestCopyBanner.tsx` |
+| Litsentsi leht näitab organisatsiooni, aadressi ja mooduleid | `components/Settings/LicenseSection.tsx` |
+| Väljastamise tööriist: `sign`, `renew`, `verify` | `scripts/make-license.mjs` |
+
+**Testid:** `shared/license/token.test.ts` (62), `shared/permissions.test.ts`
+(32), `scripts/makeLicense.test.ts` (21, allkirjastab tööriistaga ja kontrollib
+rakenduse mooduliga — koopia ei saa vaikselt lahku minna),
+`src/renderer/src/lib/testCopy.test.ts` (aadressi keeld).
+
+### Kuidas seda ise proovida
+
+```
+node scripts/make-license.mjs keygen --out license-test-private.pem
+# kirjuta välja trükitud hex ühe reana faili, nt license-test-public.hex
+node scripts/make-license.mjs sign   --org <instantsi UUID> --name "Riia kliinik"   --api https://<projekt>.supabase.co   --modules jobs,payroll,stock --months 12 --key license-test-private.pem
+```
+
+Siis käivita rakendus nii, et `WIVO_LICENCE_TEST_KEY` osutab avaliku võtme
+failile, ja kleebi token Seaded → Litsents.
+
+**Testvõti ei tööta pakendatud väljalaskes.** See ei ole kokkulepe, vaid
+`app.isPackaged` kontroll `src/main/license.ts`-is: release ei loe failist
+võtmeid üldse, nii et siin allkirjastatud token on seal kehtetu.
+
+**Mõlemad failid on gitignore'is** ja neid ei panda `main`-i.
+
+### Mida see teadlikult ei tee
+
+- **Serveripoolset moodulilukku ei ole**, ja see on §1.6 otsus, mitte
+  tegemata töö. Litsents on äriline kokkulepe; päris lukk on RLS, mis käib
+  rolli ja õiguse järgi.
+- **Telefonis ei ole litsentsifaili** — veebirakendusel ei ole main-protsessi.
+  Telefoni menüü käib õiguste järgi, nagu seni. Sama põhjus: moodul on
+  kokkulepe, mitte turvapiir.
+- **`seats` ei ole jõustatud.** Ta on payloadis ja nähtav, nagu enne.
+- **Litsentsi tõmbamist ei ole** (§1.9): kleepimine, nagu kokku lepitud.
+- **YubiKey allkirjastamine on tegemata**, sest võtmed on seadistamata.
+  Tööriist allkirjastab failiga ja **ütleb seda iga kord välja**.
+
 ---
 
 # Osa 2 — hinnangud arsti ja tehniku vahel
@@ -264,7 +347,7 @@ mida teine andis.**
 
 ## 2.8 Tehniline kuju
 
-Üks migratsioon (**122**), tabel `job_ratings`:
+Üks migratsioon (**123**), tabel `job_ratings`:
 
 ```
 org_id, job_id, rater_id, ratee_id,
@@ -294,4 +377,10 @@ otsustavad raha ja on testitavad ilma andmebaasita.
 3. **Osa 2:** hinnangud
 4. Faas 2 (partnersild) — **ootel**
 
-**Ehitamine ootab OK-d.**
+**Osa 1 on kinnitatud ja ehitamisel** (Kevin, 2026-11-17), koos lisandusega, et
+litsents kannab lubatud API aadressi, mitte ainult organisatsiooni. Osa 2 ootab
+sammu 1 lõppu (docs/ROADMAP.md), sest hinnatav tuleb etapile määratud inimesest.
+
+**Migratsiooninumbrid on kinnitatud:** **122** töövoole
+(docs/WORKFLOW-STAGES.md), **123** hinnangutele. Litsentsi moodulid ei vaja
+migratsiooni — litsents on allkirjastatud fail, mitte andmebaasi rida.

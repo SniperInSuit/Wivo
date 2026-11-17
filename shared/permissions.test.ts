@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { decidePermission, menuAllows, seesJobs, PERMISSION_KEYS, TECHNICIAN_PRESET, ADMIN_PERMISSIONS, type MenuPlace, type PermissionKey, type Who } from './permissions'
+import { decidePermission, homePlace, isMenuPlace, isWritePermission, menuAllows, seesJobs, MENU_PLACES, PERMISSION_KEYS, PERMISSION_MODULE, PLACE_MODULE, TECHNICIAN_PRESET, ADMIN_PERMISSIONS, type MenuPlace, type PermissionKey, type Who } from './permissions'
+import { MODULE_KEYS } from './license/token'
 
 const worker = (granted: PermissionKey[] = [], extra: Partial<Who> = {}): Who =>
   ({ role: 'worker', isOrgAdmin: false, licenceCanWrite: true, granted: p => granted.includes(p), ...extra })
@@ -88,5 +89,123 @@ describe('the menu, desktop and phone alike (menuAllows)', () => {
     expect(seesJobs({ role: 'owner' })).toBe(true)
     expect(seesJobs({ role: 'patient' })).toBe(false)
     expect(seesJobs({ role: null })).toBe(false)
+  })
+})
+
+// ─── Licence modules (docs/MODULES-AND-RATINGS.md part 1) ───────────────────
+
+/** A person with everything, so only the module can be the reason for a no. */
+const ownerWith = (modules: string[]): Who =>
+  ({ ...worker(), role: 'owner', moduleOn: m => modules.includes(m) })
+
+describe('the module maps name modules that exist', () => {
+  it('every permission is mapped, to a real module or to the core', () => {
+    for (const p of PERMISSION_KEYS) {
+      expect(Object.prototype.hasOwnProperty.call(PERMISSION_MODULE, p), p).toBe(true)
+      const module = PERMISSION_MODULE[p]
+      if (module !== null) expect(MODULE_KEYS, p).toContain(module)
+    }
+  })
+
+  it('every place is mapped the same way', () => {
+    for (const place of MENU_PLACES) {
+      const module = PLACE_MODULE[place]
+      if (module !== null) expect(MODULE_KEYS, place).toContain(module)
+    }
+  })
+
+  it('MENU_PLACES and MenuPlace agree — the list is what callers filter by', () => {
+    for (const place of MENU_PLACES) expect(menuAllows(place, worker())).toBeTypeOf('boolean')
+    expect(isMenuPlace('board')).toBe(true)
+    expect(isMenuPlace('settings')).toBe(false)
+  })
+
+  it('Settings and Install updates belong to no module: core is always on', () => {
+    expect(PERMISSION_MODULE['settings.read']).toBeNull()
+    expect(PERMISSION_MODULE['updates.install']).toBeNull()
+  })
+})
+
+describe('a switched-off module hides and refuses writes — and never a read', () => {
+  const noJobs = ownerWith(MODULE_KEYS.filter(m => m !== 'jobs'))
+
+  it('takes the writes of that module, from the owner too', () => {
+    for (const p of ['jobs.write', 'jobs.delete', 'pipeline.write'] as const) {
+      expect(decidePermission(p, noJobs), p).toBe(false)
+    }
+  })
+
+  it('LEAVES THE READS. Switching a module back on has to find everything there', () => {
+    expect(decidePermission('jobs.read', noJobs)).toBe(true)
+  })
+
+  it('touches nothing in another module', () => {
+    for (const p of ['stock.write', 'payments.write', 'payroll.manage'] as const) {
+      expect(decidePermission(p, noJobs), p).toBe(true)
+    }
+  })
+
+  it('hides that module\'s places, and only those', () => {
+    const menu = MENU_PLACES.filter(place => menuAllows(place, noJobs))
+    expect(menu).not.toContain('board')
+    expect(menu).not.toContain('table')
+    expect(menu).toContain('stock')
+    expect(menu).toContain('arved')
+  })
+
+  it('Patients, Calendar and Requests go together: one module, one piece', () => {
+    const noPatients = ownerWith(MODULE_KEYS.filter(m => m !== 'patients'))
+    for (const place of ['patients', 'calendar', 'taotlused'] as const) {
+      expect(menuAllows(place, noPatients), place).toBe(false)
+    }
+  })
+
+  it('Overview is Statistics: switching stats off takes the home page with it', () => {
+    const noStats = ownerWith(MODULE_KEYS.filter(m => m !== 'stats'))
+    expect(menuAllows('overview', noStats)).toBe(false)
+    expect(menuAllows('stats', noStats)).toBe(false)
+  })
+
+  it('a caller that knows nothing about modules gets everything, not nothing', () => {
+    // The SQL tests and the phone build a Who without moduleOn. If absence
+    // meant "off", a missing field would empty the menu.
+    expect(decidePermission('jobs.write', { ...worker(), role: 'owner' })).toBe(true)
+    expect(MENU_PLACES.filter(p => menuAllows(p, { ...worker(), role: 'owner' }))).toEqual([...MENU_PLACES])
+  })
+
+  it('an expired licence and a switched-off module take the same list of writes', () => {
+    for (const p of PERMISSION_KEYS) {
+      const byLicence = !decidePermission(p, { ...worker(), role: 'owner', licenceCanWrite: false })
+      expect(byLicence, p).toBe(isWritePermission(p))
+    }
+  })
+})
+
+describe('where the app opens when a module took the home page away', () => {
+  it('Overview, when statistics are on', () => {
+    expect(homePlace(ownerWith([...MODULE_KEYS]))).toBe('overview')
+  })
+
+  it('Jobs, when they are not', () => {
+    expect(homePlace(ownerWith(['jobs', 'payroll', 'stock']))).toBe('board')
+  })
+
+  it('the calendar, when there are no jobs either', () => {
+    expect(homePlace(ownerWith(['patients', 'payroll']))).toBe('calendar')
+  })
+
+  it('down the order: invoices, then pay, then stock', () => {
+    expect(homePlace(ownerWith(['invoices', 'payroll', 'stock']))).toBe('arved')
+    expect(homePlace(ownerWith(['payroll', 'stock']))).toBe('tootasud')
+    expect(homePlace(ownerWith(['stock']))).toBe('stock')
+  })
+
+  it('null — meaning Settings — when nothing is on. That is where a licence is pasted in', () => {
+    expect(homePlace(ownerWith([]))).toBeNull()
+  })
+
+  it('a member\'s own home, not the owner\'s: it answers per person', () => {
+    expect(homePlace(worker([...TECHNICIAN_PRESET], { moduleOn: m => m === 'jobs' }))).toBe('board')
+    expect(homePlace(worker([], { moduleOn: m => m === 'stock' }))).toBeNull()
   })
 })
