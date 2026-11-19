@@ -281,6 +281,53 @@ Välja jäävad alati:
 
 Teavitus kannab töö koodi ja etapi võtme. **Patsienti mitte**, nagu praegu.
 
+## 3.1 Kes saab mida (Kevin, 19.11)
+
+| Sündmus | Kellele | Kell | E-kiri | Push |
+|---|---|---|---|---|
+| **Töö jõudis etappi** („sinu kord") | selle etapi vastutajad (ahel ülal) | jah | jah* | jah* |
+| **Töö jõudis etappi**, teised osalised | töö teiste etappide vastutajad, kes on sisse lülitanud „Saada mulle e-kiri iga etapi kohta tööde puhul, kus olen osaline" | jah | jah | ei |
+| **Uus töö** („Uus töö, sina oled etapis X") | kõik selle töö etappide vastutajad, töö loomisel | jah | **ei** | **ei** |
+
+\* inimese enda `notify_email` / `notify_push` järgi, nagu praegu (sql/095).
+
+- **Uus valik inimese enda seadetes:** `profiles.notify_every_stage`
+  (boolean, **vaikimisi väljas**): „Saada mulle e-kiri iga etapi kohta tööde
+  puhul, kus olen osaline". Ainult e-kiri, mitte push.
+- **„Uus töö"** läheb ainult kellukesse. Üks teade inimese kohta, ka siis, kui
+  ta on mitmes etapis; teade nimetab tema esimese etapi. Looja ise seda ei saa.
+- Väljajätmise reeglid ülal (liigutaja ise, vahele jäetud etapp, eelmise etapi
+  sama inimene „sinu kord" puhul) kehtivad kõigile ridadele.
+- Ükski teade ei kanna patsienti.
+
+## 3.2 Osaline näeb tööd algusest peale
+
+**Iga etapi vastutaja näeb tööd oma tööde nimekirjas kohe töö loomisest**,
+mitte alles siis, kui on tema kord. Tööl on näha:
+- etapid järjekorras, igaühel vastutajad;
+- **kes praegu teeb** (praegune etapp, „alustasin" märkija ja aeg);
+- **mis on tehtud** (`done_at`, `done_by`), mis on vahele jäetud;
+- **mis on järgmine** ja **mitu etappi on tema korrani**.
+
+**Õigused — kontrollitud, mitte eeldatud.** `TECHNICIAN_PRESET` on
+`jobs.write`, `stock.read`, `stock.write`: **`jobs.read`-i ei ole.** Tehnik
+näeb tööd ainult `jobs_select` teise haru kaudu,
+`job_is_mine(assigned_to, designed_by, work_items)` (sql/089). Etapi
+vastutajat see ei tunne. **Seega:**
+- **`jobs.read` ei muutu**, ei õigusena ega eelseadetes;
+- **`jobs_select` saab juurde haru „olen selle töö mõne etapi vastutaja"**
+  (`job_stage_person`, `security definer` abifunktsioon, et RLS ei läheks
+  ringi). Sama haru loeb ka `job_stage` / `job_stage_person`;
+- see on **sama ulatus, mis tehnikul täna oma tööga on**: ta näeb töö
+  patsiendi nime nagu praegu oma töö puhul (7.1). Rohkem mitte;
+- leak-test: teise kliiniku etapi vastutaja ei näe; etapist eemaldatud
+  inimene ei näe enam.
+
+**Hinnangute koht:** töö etappide vaates jääb iga etapi rea juurde koht
+hinnangule (docs/MODULES-AND-RATINGS.md osa 2, migratsioon 123). Praegu ei
+ehitata midagi peale koha: komponent võtab etapi rea kaupa valikulise
+lisasisu.
+
 ---
 
 # 4. „Alustasin" ja „tehtud"
@@ -649,6 +696,13 @@ Riia litsents ja moodul `jobs` tema sees.
   jagamine ainult sama etapi inimeste vahel.
 - Telefon: töö mallist, etapi liigutamine, „alustasin", fotod ja failid
   läbivad samad andmebaasi kontrollid kui töölaual.
+- Teavitused 3.1: „sinu kord" e-kiri ja push ainult etapi vastutajale;
+  `notify_every_stage` väljas → teised osalised e-kirja ei saa, sees → saavad
+  e-kirja, mitte pushi; „uus töö" ainult kellukesse, igale vastutajale üks,
+  loojale mitte.
+- Nähtavus 3.2: tehnik ilma `jobs.read`-ita näeb tööd, kus ta on hilisema
+  etapi vastutaja, enne oma korda; eemaldatuna enam mitte; teine kliinik
+  mitte.
 
 ---
 
