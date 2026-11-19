@@ -22,6 +22,12 @@ const text = (n: AppNotification, stageLabel: (key: string) => string): string =
     const stage = stageLabel(String(n.detail.to ?? ''))
     return n.detail.revision ? t('notifications.remakeReachedStage', { code, stage }) : t('notifications.reachedStage', { code, stage })
   }
+  // sql/123: the job moved (for someone else on it who asked); put on one of its stages.
+  if (n.kind === 'stage_progress') return t('notifications.stageProgress', { code, stage: stageLabel(String(n.detail.to ?? '')) })
+  if (n.kind === 'stage_assigned') {
+    const stage = stageLabel(String(n.detail.stage ?? ''))
+    return n.detail.new ? t('notifications.newJobOnStage', { code, stage }) : t('notifications.putOnStage', { code, stage })
+  }
   if (n.kind === 'assigned') {
     return n.detail.role === 'designer' ? t('notifications.assignedDesigner', { code }) : t('notifications.assignedTechnician', { code })
   }

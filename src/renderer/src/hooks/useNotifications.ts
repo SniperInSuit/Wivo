@@ -15,6 +15,8 @@ export interface AppNotification {
   job_code: string | null
   kind: 'job_shared' | 'stage_handover' | 'question' | 'files_added' | 'stage_reached' | 'assigned' | 'mfa_removed' | 'mfa_reset'
     | 'update_installed' | 'update_failed' | 'update_stale'
+    // sql/123: the job moved, told to everyone on it who asked; put on a stage (the bell only).
+    | 'stage_progress' | 'stage_assigned'
   detail: Record<string, unknown>
   created_at: string
   read_at: string | null
@@ -59,7 +61,7 @@ export function useNotifications() {
           qc.invalidateQueries({ queryKey: ['notifications', user.id] })
           // With the bell's badge — never instead of it.
           const kind = (payload.new as { kind?: string } | undefined)?.kind
-          playSound(kind === 'job_shared' || kind === 'files_added' || kind === 'assigned' ? 'notify-new-work'
+          playSound(kind === 'job_shared' || kind === 'files_added' || kind === 'assigned' || kind === 'stage_assigned' ? 'notify-new-work'
             : kind === 'stage_handover' || kind === 'stage_reached' ? 'notify-handoff' : 'notify-message')
         })
       .subscribe()

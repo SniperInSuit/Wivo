@@ -6,8 +6,9 @@ reegel (5) ja palk palgaliikide kaupa (10). 8. peatüki küsimused on vastatud
 vaikeväärtustega, mida Riia saab hiljem seadetes muuta.
 **Uuendatud Riia kolme sisendi järgi (töövoog, mallid, kasutajad ja tarkvara).**
 
-Riia samm 1 (docs/ROADMAP.md). Migratsioon **122**, ainult `testing`;
-hinnangud nihkusid **123**-ks (Kevin, OK).
+Riia samm 1 (docs/ROADMAP.md). Migratsioonid **122** (skeem) ja **123**
+(liigutamine, teavitused, nähtavus, `files.write`), ainult `testing`;
+hinnangud nihkusid **124**-ks.
 
 Riia sisend muutis plaani kuju, mitte ainult mahtu: **üks etappide nimekiri
 kliiniku kohta ei kanna välja.** Põhjus allpool, 1. peatükk.
@@ -324,7 +325,7 @@ vastutajat see ei tunne. **Seega:**
   inimene ei näe enam.
 
 **Hinnangute koht:** töö etappide vaates jääb iga etapi rea juurde koht
-hinnangule (docs/MODULES-AND-RATINGS.md osa 2, migratsioon 123). Praegu ei
+hinnangule (docs/MODULES-AND-RATINGS.md osa 2, migratsioon 124). Praegu ei
 ehitata midagi peale koha: komponent võtab etapi rea kaupa valikulise
 lisasisu.
 
@@ -663,10 +664,47 @@ Riia litsents ja moodul `jobs` tema sees.
   reegliga, mitte mõlemat; `default_on` ainult lülitiga etapil.
 - **`shared/workflow/`:** reeglid, töö mallist, mallide valideerimine,
   liigutamise reegel (§5), võrdne jagamine sentides.
-- **Järgmisena (2. osa):** `guard_stage_change` kutsub `can_move_stage`-i,
-  teavitused etapi vastutajatelt, `earnings.ts` palgaliigi etapi järgi,
-  töö loomine mallist andmebaasi funktsiooniga (ka `job_stage` read uuele
-  tööle), uue kliiniku vaikemall.
+
+**Ehitatud, `testing`-us (19.11.2026) — 2. osa, andmebaas (sql/123), ilma UI-ta:**
+- **Töö mallist:** iga uus töö saab oma etapid ja inimesed loomise hetkel
+  (päästik, ka vanema buildi otse-insert: vaikemall, lülitid vaikimisi).
+  `create_job(töö, lülitid)` on sama insert lülititega; staatuseta töö saab
+  oma esimese etapi. SQL-i plaan = `materialiseTemplate`, test võrdleb.
+- **Vaikemall** tehakse kliinikuga ja järgib Seaded → Töö etapid salvestust
+  (lisab, eemaldab, järjestab; alles jääva etapi inimesed, ülesanne ja
+  palgaliik jäävad).
+- **§5:** `can_move_stage(töö, siht)`; `guard_stage_change` ja
+  `move_job_stage` küsivad sama reeglit. Etapi vastutaja liigutab
+  `move_job_stage` kaudu ilma `jobs.write`-ita (IT vastuvõtust). Kliiniku
+  enda üleminekureeglid (`stage_transition`) kehtivad peale.
+- **§4:** edasi liikudes märgitakse lahkutud etapp tehtuks; tagasi liikudes
+  saab sihtetapp tehtu-märke maha. `start_job_stage(töö)` = „alustasin"
+  praegusel etapil, esimene jääb, iga vajutus auditis (`stage_start`).
+- **§2.4:** `add_job_stage`, `set_job_stage_skipped`, `set_job_stage_people`
+  (auditis `stage_edit`).
+- **§3/3.1:** „sinu kord" ahel etapp → töö omad → omanik; uued liigid
+  `stage_progress` (kell + e-kiri, `notify_every_stage`) ja `stage_assigned`
+  (ainult kell). `set_notify_every_stage`.
+- **§3.2:** `jobs_select` ja `can_read_own_job` uus haru: mõne (mitte
+  vahelejäetud) etapi vastutaja.
+- **§7.3:** `files.write` — lisab faile tööle, mille etapil oled; uut
+  versiooni, kustutamist ega töö muutmist mitte.
+- **Otsustatud ehitamisel (Kevin, vaata üle):**
+  - etappe töö juures muudab omanik, admin, `pipeline.write` või töö tellinud
+    arst `jobs.write`-iga, **mitte `jobs.write` üksi** (enda etapile panek
+    annaks liigutamise ja palga);
+  - vahelejäetud etapi inimene ei näe tööd ega lisa faile;
+  - `stage_progress` e-kiri järgib ainult `notify_every_stage`-i;
+  - kes sai uue töö puhul `assigned` (teostaja/disainija), ei saa lisaks
+    `stage_assigned`-i;
+  - „alustasin" ainult töö praegusel etapil;
+  - parandused (sql/087) liiguvad ja teavitavad nagu enne;
+  - partneri tagastatud töö puhul ei saa omanik „sinu kord" teadet lisaks
+    `stage_handover`-ile.
+- **Teadaolev, muutmata:** kes tööd näeb, näeb ka hinda (docs/PERMISSIONS.md,
+  „money on jobs"). Etapi vastutaja näeb seda nagu tehnik oma tööl;
+  `files.write` ei lisa midagi.
+- **Järgmisena:** palk §10 (2b), UI (2c), telefon (3).
 
 ---
 

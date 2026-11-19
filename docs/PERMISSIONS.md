@@ -25,6 +25,7 @@ In the database, `has_perm_or_admin(perm)` means `has_perm(perm)` (an owner has 
 | `visits.write` | booking requests: reading, adding, changing, deleting; Requests in the menu | **yes, since 116**; owners and admins always |
 | `stats.read` | Statistics in the menu | app only |
 | `settings.read`, `pipeline.write` | (barely used) | – |
+| `files.write` **(new, 123)** | adds files to a job the person is on a stage of (plan 3, §7.3: IT on intake), without `jobs.write`. Not a new version of a file, not deleting, not editing the job | **yes, since 123**; owners always; nobody else by default |
 | `updates.install` **(new, 119)** | approves this clinic's Wivo updates, each time with a fresh authenticator code; the update status, and the warning when the list of updates can't be refreshed (docs/ARCHITECTURE-INSTANCES.md 5b, 5g). Shown in Team only in a clinic's own project | **yes, since 119**; owners always; **admins only with this permission**; not taken away by an expired licence, so a security fix still installs |
 
 Own jobs and own pay need no permission: the database returns a person's own jobs and their own rates, hours and payouts.
@@ -36,7 +37,8 @@ One rule for the desktop menu and the phone: `menuAllows()` in `shared/permissio
 - **Overview and Payroll:** everyone. They show the person's own numbers and own pay; Payroll shows everyone's with `payroll.manage`.
 - **Jobs and Table:** every member of the clinic. The database returns a member's own jobs with no permission:
   - jobs where they are the technician or the designer;
-  - jobs where they designed one of the work items.
+  - jobs where they designed one of the work items;
+  - **since 123:** jobs where they are on one of the job's stages (not a skipped one), from the moment the job is created (docs/WORKFLOW-STAGES.md §3.2).
 
   `jobs.read` widens this to every job, and `jobs.write` lets them edit the jobs they see. The phone's job lists follow the same rule.
 - **Clients:** `jobs.read`. A client's page counts all of the clinic's work with them, so with only one's own jobs it would show the wrong counts.

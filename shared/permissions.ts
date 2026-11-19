@@ -13,6 +13,8 @@ export const PERMISSION_KEYS = [
   'pipeline.write',
   'payroll.manage',
   'stock.read', 'stock.write',
+  // sql/123: adds files to the jobs one is on a stage of, without jobs.write (IT).
+  'files.write',
   // sql/119: approves this clinic's Wivo updates. An admin doesn't get it without a grant.
   'updates.install',
 ] as const
@@ -40,7 +42,7 @@ export const ADMIN_PERMISSIONS: readonly PermissionKey[] = ['jobs.delete', 'paym
  */
 export const PERMISSION_MODULE: Record<PermissionKey, string | null> = {
   'jobs.read': 'jobs', 'jobs.write': 'jobs', 'jobs.delete': 'jobs',
-  'pipeline.write': 'jobs',
+  'pipeline.write': 'jobs', 'files.write': 'jobs',
   'patients.read': 'patients', 'patients.write': 'patients',
   'visits.read': 'patients', 'visits.write': 'patients',
   'stats.read': 'stats',

@@ -27,6 +27,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   'payroll.manage':  { label: t('usePermissions.managePayroll'), description: t('usePermissions.seesEveryoneSPayRatesAnd') },
   'stock.read':      { label: t('usePermissions.viewStock'), description: t('usePermissions.seesStockAndCounts') },
   'stock.write':     { label: t('usePermissions.manageStock'), description: t('usePermissions.canAddUseAndCountStock') },
+  'files.write':     { label: t('usePermissions.addFiles'), description: t('usePermissions.addsFilesToJobsOnTheirStage') },
   'updates.install': { label: t('usePermissions.installUpdates'), description: t('usePermissions.approvesWivoUpdates') },
 }
 

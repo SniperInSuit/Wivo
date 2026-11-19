@@ -44,25 +44,27 @@ commit `testing`-usse. Kevin pushib.
 | # | Ülesanne | Mudel | Effort | Seis |
 |---|---|---|---|---|
 | 1 | `make-license.mjs` allkirjastab YubiKey C-ga (slot 83, `licence-C-217c4193`; D varuks). Kasuta `scripts/yubikey/setup-device.py` `sign` sammu. Testid: tööriista allkiri kontrollitakse rakenduse mooduliga (`scripts/makeLicense.test.ts`); failivõti jääb ainult `--key`-ga ja hoiatusega | Sonnet | medium | **tehtud 19.11** (`--yubikey C` vaikimisi, `D` varuks, `--key` ainult failivõtmele) |
-| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | **järgmine** |
-| 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | |
-| 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8) | Sonnet | medium | |
-| 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod | Sonnet | medium | |
+| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | **tehtud 19.11** (`sql/123_workflow_moving.sql`, 41 testi; otsused docs/WORKFLOW-STAGES.md §11 — vaata üle) |
+| 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | **järgmine** |
+| 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8). **Andmebaas on valmis (123):** uus töö `create_job(töö, lülitid)`; liigutamine `move_job_stage` (mitte otse-update: IT-l pole `jobs.write`-i), nupp `can_move_stage`; „alustasin" `start_job_stage`; etapid töö juures `add_job_stage` / `set_job_stage_skipped` / `set_job_stage_people` (kas tohib: `may_edit_job_stages`); oma seadetes `set_notify_every_stage`; kell näitab juba `stage_progress` / `stage_assigned` | Sonnet | medium | |
+| 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod (samad RPC-d kui 2c) | Sonnet | medium | |
 | 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | |
 | 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
 | — | Pühapäeva turvakontroll (vt ülal) | Opus | high | |
 | 6 | Vene keel — pärast esmaspäeva | Sonnet | low | |
 
-**Kevini osa:** migratsioonid 122 ja 123 testkoopias (siis
-`notify pgrst, 'reload schema';` ja `sql/checks/schema_check.sql` → null
-rida), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
+**Kevini osa:** migratsioonid 122 ja 123 testkoopias, järjekorras (siis
+`notify pgrst, 'reload schema';` ja `sql/checks/schema_check.sql` ning
+`sql/checks/trigger_check.sql` → null rida), Edge Function
+`send-notifications` uuesti üles (uue teate `stage_progress` e-kirja
+pealkiri), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
 
 ### Tehtud täna
 
 - `RIGA-GO-LIVE.md` (`098935f`), YubiKey avalikud võtmed (`fd16ca6`),
   plaan 3 OK + parandused (`b10cc8e`, `f1c62a6`), testlitsentsi käsud
   Windowsile (docs/MODULES-AND-RATINGS.md), **plaan 3 osa 1: migratsioon 122
-  ja `shared/workflow/`** (`1b08d55`), **ülesanne 1: `make-license.mjs` allkirjastab YubiKey C-ga** (PIN ja puudutus; allkiri kontrollitakse enne trükkimist C avaliku võtmega; testid võlts-`ykman`-iga `WIVO_YKMAN`; päris võtmega proovi pole veel tehtud — Kevin: `node scripts/make-license.mjs sign --org … --api … --name …`).
+  ja `shared/workflow/`** (`1b08d55`), **ülesanne 2a: plaan 3 andmebaas, sql/123** (töö mallist, vaikemall, §5 liigutamine, tehtud/„alustasin", etapid töö juures, teavitused 3/3.1, nähtavus 3.2, `files.write`; `sql/test/workflowMoving.test.ts` 41 testi; järgmine migratsioon 124, hinnangud nihkusid 124-ks), **ülesanne 1: `make-license.mjs` allkirjastab YubiKey C-ga** (PIN ja puudutus; allkiri kontrollitakse enne trükkimist C avaliku võtmega; testid võlts-`ykman`-iga `WIVO_YKMAN`; päris võtmega proovi pole veel tehtud — Kevin: `node scripts/make-license.mjs sign --org … --api … --name …`).
 
 ## 📌 Kus pooleli jäi — 18.11.2026 (haru `testing`)
 

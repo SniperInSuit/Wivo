@@ -18,7 +18,7 @@
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: trigger.
--- Expected rows: 48.
+-- Expected rows: 52.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -29,6 +29,8 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.audit_log.audit_log_no_truncate', 'CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_no_truncate()'),
     ('trigger', 'public.channel_members.guard_channel_member_change', 'CREATE TRIGGER guard_channel_member_change BEFORE UPDATE ON public.channel_members FOR EACH ROW EXECUTE FUNCTION guard_channel_member_change()'),
     ('trigger', 'public.clinic_settings.clinic_settings_touch', 'CREATE TRIGGER clinic_settings_touch BEFORE UPDATE ON public.clinic_settings FOR EACH ROW EXECUTE FUNCTION touch_clinic_settings()'),
+    ('trigger', 'public.clinic_settings.stages_default_template', 'CREATE TRIGGER stages_default_template AFTER INSERT OR UPDATE OF pipeline_stages ON public.clinic_settings FOR EACH ROW EXECUTE FUNCTION on_clinic_default_template()'),
+    ('trigger', 'public.clinics.clinic_default_template', 'CREATE TRIGGER clinic_default_template AFTER INSERT ON public.clinics FOR EACH ROW EXECUTE FUNCTION on_clinic_default_template()'),
     ('trigger', 'public.clinics.guard_code_prefix', 'CREATE TRIGGER guard_code_prefix BEFORE UPDATE OF code_prefix ON public.clinics FOR EACH ROW EXECUTE FUNCTION guard_code_prefix()'),
     ('trigger', 'public.clinics.set_code_prefix', 'CREATE TRIGGER set_code_prefix BEFORE INSERT ON public.clinics FOR EACH ROW EXECUTE FUNCTION set_code_prefix()'),
     ('trigger', 'public.invoice_lines.invoice_lines_recalc', 'CREATE TRIGGER invoice_lines_recalc AFTER INSERT OR DELETE OR UPDATE ON public.invoice_lines FOR EACH ROW EXECUTE FUNCTION invoice_lines_touch()'),
@@ -42,6 +44,8 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.jobs.guard_partner_visible_job_text', 'CREATE TRIGGER guard_partner_visible_job_text BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_job_text()'),
     ('trigger', 'public.jobs.guard_stage_change', 'CREATE TRIGGER guard_stage_change BEFORE UPDATE OF status ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_stage_change()'),
     ('trigger', 'public.jobs.job_stage_notify', 'CREATE TRIGGER job_stage_notify AFTER UPDATE OF status ON public.jobs FOR EACH ROW EXECUTE FUNCTION on_job_stage_notify()'),
+    ('trigger', 'public.jobs.job_stage_progress', 'CREATE TRIGGER job_stage_progress AFTER UPDATE OF status ON public.jobs FOR EACH ROW EXECUTE FUNCTION on_job_stage_progress()'),
+    ('trigger', 'public.jobs.job_stages_from_template', 'CREATE TRIGGER job_stages_from_template AFTER INSERT ON public.jobs FOR EACH ROW EXECUTE FUNCTION on_job_created_stages()'),
     ('trigger', 'public.jobs.job_team_notify', 'CREATE TRIGGER job_team_notify AFTER INSERT OR UPDATE OF status, revisions, assigned_to, designed_by, work_items ON public.jobs FOR EACH ROW EXECUTE FUNCTION on_job_team_notify()'),
     ('trigger', 'public.jobs.jobs_updated_at', 'CREATE TRIGGER jobs_updated_at BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at()'),
     ('trigger', 'public.jobs.set_job_code', 'CREATE TRIGGER set_job_code BEFORE INSERT OR UPDATE OF job_code, clinic_id ON public.jobs FOR EACH ROW EXECUTE FUNCTION set_job_code()'),

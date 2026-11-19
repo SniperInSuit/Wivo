@@ -33,7 +33,7 @@ const NO_NAMES: Names = new Map()
 export const AUDIT_ACTIONS = [
   'create', 'edit', 'view', 'download', 'upload', 'file_deleted', 'share', 'unshare', 'stage_move', 'partnership',
   'export', 'question', 'delete', 'restore', 'permission', 'stock_override', 'mfa_added', 'mfa_removed', 'mfa_reset',
-  'account_deleted', 'update',
+  'account_deleted', 'update', 'stage_start', 'stage_edit',
 ] as const
 
 export function actionLabel(a: string): string {
@@ -45,7 +45,7 @@ export function actionLabel(a: string): string {
     mfa_added: t('audit.mfaAdded'), mfa_removed: t('audit.mfaRemoved'), mfa_reset: t('audit.mfaReset'),
     account_deleted: t('audit.accountDeleted'),
     create: t('audit.create'), edit: t('audit.edit'), permission: t('audit.permission'), file_deleted: t('audit.fileDeleted'),
-    update: t('audit.update'),
+    update: t('audit.update'), stage_start: t('audit.stageStart'), stage_edit: t('audit.stageEdit'),
   } as Record<string, string>)[a] ?? a
 }
 
@@ -227,10 +227,25 @@ function updateText(d: Record<string, unknown>): string {
   }
 }
 
+/** A change to a job's own stages (sql/123): which stage, and what. */
+function stageEditText(d: Record<string, unknown>): string {
+  const stage = String(d.stage ?? '')
+  switch (d.change) {
+    case 'people': return t('audit.stageEditPeople', { stage })
+    case 'skipped': return t('audit.stageEditSkipped', { stage })
+    case 'unskipped': return t('audit.stageEditUnskipped', { stage })
+    case 'added': return t('audit.stageEditAdded', { stage })
+    default: return stage
+  }
+}
+
 /** The detail column. */
 export function describeEntry(e: AuditEntry, names: Names = NO_NAMES): string {
   const d = e.detail ?? {}
   if (e.action === 'stage_move') return `${d.from ?? ''} → ${d.to ?? ''}`
+  // sql/123: "I started", and a job's own stages changed.
+  if (e.action === 'stage_start') return String(d.stage ?? '')
+  if (e.action === 'stage_edit') return stageEditText(d)
   if (e.action === 'partnership') return String(d.step ?? '')
   // A CSV export (sql/106): how many rows and with which filters.
   if (e.action === 'export' && typeof d.kind === 'string') {

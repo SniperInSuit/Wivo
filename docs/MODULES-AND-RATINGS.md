@@ -381,7 +381,7 @@ mida teine andis.**
 
 ## 2.8 Tehniline kuju
 
-Üks migratsioon (**123**), tabel `job_ratings`:
+Üks migratsioon (**124**), tabel `job_ratings`:
 
 ```
 org_id, job_id, rater_id, ratee_id,
@@ -415,6 +415,6 @@ otsustavad raha ja on testitavad ilma andmebaasita.
 litsents kannab lubatud API aadressi, mitte ainult organisatsiooni. Osa 2 ootab
 sammu 1 lõppu (docs/ROADMAP.md), sest hinnatav tuleb etapile määratud inimesest.
 
-**Migratsiooninumbrid on kinnitatud:** **122** töövoole
-(docs/WORKFLOW-STAGES.md), **123** hinnangutele. Litsentsi moodulid ei vaja
+**Migratsiooninumbrid:** **122** ja **123** töövoole
+(docs/WORKFLOW-STAGES.md; 123 on töövoo 2. osa), **124** hinnangutele. Litsentsi moodulid ei vaja
 migratsiooni — litsents on allkirjastatud fail, mitte andmebaasi rida.

@@ -133,18 +133,19 @@ describe('leak test: the new tables', () => {
       `insert into public.clinic_stage_default (org_id, stage_key, profile_id) values ($1, 'print', $2)`, [A.clinicId, A.workerId])
     jobA = (await rowsAs<{ id: string }>(db, { id: A.ownerId },
       `insert into public.jobs (clinic_id, patsient, status) values ($1, 'Zelinda Quorrington', 'disain') returning id`, [A.clinicId]))[0].id
-    // The job's own stages are written by database functions (slice 2); here, as the database.
+    // The job's own stages are written by the database when it is created (sql/123).
     jStage = (await db.query<{ id: string }>(
-      `insert into public.job_stage (org_id, job_id, stage_key, position) values ($1, $2, 'disain', 0) returning id`, [A.clinicId, jobA])).rows[0].id
+      `select id from public.job_stage where job_id = $1 and stage_key = 'disain'`, [jobA])).rows[0].id
     await db.query(`insert into public.job_stage_person (job_stage_id, profile_id, org_id) values ($1, $2, $3)`, [jStage, A.workerId, A.clinicId])
   }, 120_000)
 
   it('another clinic reads nothing of any new table, and changes nothing', async () => {
     for (const actor of [{ id: B.ownerId }, { id: B.workerId }, 'anon' as const]) {
+      // A's rows (B has its own default template since sql/123).
       for (const t of NEW_TABLES) {
-        expect(await rowsAs(db, actor, `select * from public.${t}`).catch(() => []), `${t}`).toEqual([])
-        expect(await rowsAs(db, actor, `update public.${t} set org_id = org_id returning 1`).catch(() => []), `${t}`).toEqual([])
-        expect(await rowsAs(db, actor, `delete from public.${t} returning 1`).catch(() => []), `${t}`).toEqual([])
+        expect(await rowsAs(db, actor, `select * from public.${t} where org_id = $1`, [A.clinicId]).catch(() => []), `${t}`).toEqual([])
+        expect(await rowsAs(db, actor, `update public.${t} set org_id = org_id where org_id = $1 returning 1`, [A.clinicId]).catch(() => []), `${t}`).toEqual([])
+        expect(await rowsAs(db, actor, `delete from public.${t} where org_id = $1 returning 1`, [A.clinicId]).catch(() => []), `${t}`).toEqual([])
       }
     }
   })
@@ -161,8 +162,9 @@ describe('leak test: the new tables', () => {
   })
 
   it('inside the clinic: whoever works with jobs reads the templates; nobody without rights does', async () => {
-    expect(await rowsAs(db, { id: jobsWriter }, `select id from public.workflow_template`)).toHaveLength(1)
-    expect(await rowsAs(db, { id: stageEditor }, `select id from public.workflow_template_stage`)).toHaveLength(1)
+    // Crown, lab and the clinic's default template (sql/123: made with the clinic).
+    expect(await rowsAs(db, { id: jobsWriter }, `select id from public.workflow_template`)).toHaveLength(2)
+    expect(await rowsAs(db, { id: stageEditor }, `select id from public.workflow_template_stage where template_id = $1`, [template])).toHaveLength(1)
     for (const t of ['workflow_template', 'workflow_template_stage', 'workflow_template_stage_person', 'clinic_stage_default']) {
       expect(await rowsAs(db, { id: nobody }, `select * from public.${t}`), t).toEqual([])
     }
@@ -185,8 +187,10 @@ describe('leak test: the new tables', () => {
   })
 
   it('a job\'s stages: read with the job, written by nobody through the API, not even the owner', async () => {
-    expect(await rowsAs(db, { id: A.ownerId }, `select id from public.job_stage`)).toHaveLength(1)
-    expect(await rowsAs(db, { id: A.ownerId }, `select profile_id from public.job_stage_person`)).toHaveLength(1)
+    // The default template's six stages (sql/123 wrote them with the job).
+    expect(await rowsAs(db, { id: A.ownerId }, `select id from public.job_stage`)).toHaveLength(6)
+    // The worker on design (above) and on print: the clinic's default person for it, copied at creation.
+    expect(await rowsAs(db, { id: A.ownerId }, `select profile_id from public.job_stage_person`)).toHaveLength(2)
     expect(await rowsAs(db, { id: nobody }, `select * from public.job_stage`)).toEqual([])
     expect(await rowsAs(db, { id: nobody }, `select * from public.job_stage_person`)).toEqual([])
     expect(await errorAs(db, { id: A.ownerId },
