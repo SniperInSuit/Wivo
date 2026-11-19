@@ -30,15 +30,19 @@ import {
  * renew. Either key verifies; neither can sign an update, because an update's
  * signature covers different bytes (LICENCE_SIGNING_DOMAIN in shared/license).
  *
- * Empty = licensing is NOT enforced, which is what an unreleased build wants.
- * The moment one is set, every install needs a key.
+ * Empty = licensing is NOT enforced. With these set, every install needs a
+ * licence signed by C or D; in development, `WIVO_LICENCE_TEST_KEY` adds a
+ * test key (below).
  *
  * Only `testing` carries these. They do not go into `main` until the keys are
  * set up and a clinic has a licence in hand.
  */
-// TODO: TAASTA LITSENTS — pane siia võtmed C ja D, kui setup-key.mjs on jooksnud.
-// Originaal key: 'e39d2ca4c5f3ecb4d801206f2581d1b991a8de45ed6af19d26993cb845c9c211'
-const LICENCE_PUBLIC_KEYS: readonly string[] = []
+// From the YubiKey setup of 2026-11-19 (docs/YUBIKEYS.md): PIV slot 83 on each.
+// The file key this replaces (`license-private.pem`) is no longer trusted.
+const LICENCE_PUBLIC_KEYS: readonly string[] = [
+  '2238a030d6895e917a01e56228a2dc65e2e5a3e9b4a12fc16b66784edf48f5ca', // licence-C-217c4193 (YubiKey C, 38272295)
+  'a9cf05454e01cbea598901624c7f8ad2770c8cc54c09ec131facf659ec1539f0', // licence-D-b61d3095 (YubiKey D, 38272284)
+]
 
 /**
  * A public key from a file, for development and for `testing` while the

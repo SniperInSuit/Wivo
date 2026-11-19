@@ -1011,7 +1011,8 @@ To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the on
 - **Slice 1:**
   - the release formats and their checks (`shared/release`), with the key signing a short statement that carries the hash (docs/YUBIKEYS.md §2);
   - the YubiKey arrival test (all four passed) and the setup script (docs/YUBIKEYS.md).
-  - **Waiting:** Kevin runs the key setup; then the roots are pinned (`PINNED_ROOTS`, empty until then, so nothing is trusted). Then the release tool, CI no longer publishing, and the licence key.
+  - **The key setup (2026-11-19):** all four keys passed. Roots A and B are pinned (`PINNED_ROOTS`, and in `wivo-update`'s copy), root A's four certificates for C's and D's update and app keys are in `shared/release/certificates.ts`, and the app trusts C's and D's licence keys (`LICENCE_PUBLIC_KEYS`). On `testing` only, until the Riga release.
+  - **Waiting:** the release tool (signing on YubiKey C, publishing the list), CI no longer publishing, and `make-license.mjs` signing on YubiKey C instead of a file.
 - **Slice 2:**
   - the ledger and the records (sql/119), the install planner, and the fresh code (sql/120);
   - **`wivo-update`:** a check of the list (by the scheduled job or an approver), and an install by hand (an approver with a code under 5 minutes old). It installs every migration and its ledger row in one transaction, refuses a migration that would end it, runs the read-only checks, and records every attempt. Tested against the real migrations, with made-up signed releases.

@@ -382,7 +382,7 @@ As for A, but its PIN on paper is kept where root A is kept, and it signs one te
 
 **7. Put the keys away** (step 8 of §3), and the two papers crosswise (step 9).
 
-**8. Tell me "done".** I then read `~/wivo-yubikey-setup/*/public.json`, which holds public keys, attestations and certificates only, and:
+**8. Tell me "done".** *(Done 2026-11-19: A 38272275, B 38272285, C 38272295, D 38272284 all passed; pinned on `testing`.)* I then read `~/wivo-yubikey-setup/*/public.json`, which holds public keys, attestations and certificates only, and:
 - pin the two root public keys in `shared/release` (and later in `wivo-update`);
 - add root A's four certificates;
 - make `shared/license` trust C's and D's licence keys;

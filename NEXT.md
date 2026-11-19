@@ -40,8 +40,18 @@ Kõik on kirjas **`RIGA-GO-LIVE.md`**-s (Kevin kinnitas 19.11).
    vestluses.
 2. **GO-LIVE osa B:** ühendus litsentsi kaudu, `build.yml`-ist kaob
    `.env`-i samm.
-3. **Kevin:** YubiKey seadistamine Macis (19.11 pooleli). Pärast seda lähevad
-   avalikud võtmed `LICENCE_PUBLIC_KEYS`-i ja `PINNED_ROOTS`-i.
+3. **YubiKeyd on seadistatud (19.11), kõik neli läbisid.** Avalikud võtmed
+   on `testing`-us, mitte `main`-is: juurvõtmed A ja B `PINNED_ROOTS`-is
+   (ka `wivo-update`-i koopias), A neli sertifikaati
+   `shared/release/certificates.ts`-is, C ja D litsentsivõtmed
+   `LICENCE_PUBLIC_KEYS`-is. `shared/release/certificates.test.ts` kontrollib
+   neid. **Järgmisena:** `make-license.mjs` allkirjastab YubiKey C-ga, ja
+   release-tööriist.
+   - **Arenduses on nüüd vaja testlitsentsi** (`WIVO_LICENCE_TEST_KEY`,
+     docs/MODULES-AND-RATINGS.md „Kuidas seda ise proovida"). Ilma selleta
+     on rakendus ainult lugemiseks.
+   - **`testing`-ust ehitatud ja paigaldatud** rakendus ei võta enam
+     allkirjastamata uuendusi vastu.
 4. **GitHubi ja Cloudflare'i saladused** kustutab Kevin alles vahetult enne
    release'i pushi, kui osa B on `testing`-us testitud (GO-LIVE, järjekorra
    samm 4). Varem mitte: kuni osa B ei ole `main`-is, ehitaks iga push

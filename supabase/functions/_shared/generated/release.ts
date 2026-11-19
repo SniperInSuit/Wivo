@@ -385,10 +385,20 @@ export async function checkSigned<K extends 'manifest' | 'index' | 'app'>(
 
 /**
  * The two root keys (5e), pinned here, and so in the app and in `wivo-update`
- * (its generated copy). Filled from the YubiKey setup (docs/YUBIKEYS.md §3,
- * step 5). Empty until then: with no root, nothing is trusted.
+ * (its generated copy). From the YubiKey setup of 2026-11-19 (docs/YUBIKEYS.md
+ * §3, step 5): root A on YubiKey 38272275, root B on 38272285, each in PIV
+ * slot 9c, attested by Yubico. The private keys never left the keys.
+ *
+ * An id is its purpose, its letter and the start of the public key's SHA-256
+ * (release.test.ts checks that). A root signs only certificates and
+ * revocations.
+ *
+ * Only `testing` carries these until the Riga release (RIGA-GO-LIVE.md).
  */
-export const PINNED_ROOTS: RootKey[] = []
+export const PINNED_ROOTS: RootKey[] = [
+  { id: 'root-A-946e9af8', publicKey: 'BQDQD7X_NZl4cH8ymVDGXRQvE9BDBB1b_yqkUli0MFU' },
+  { id: 'root-B-74204f3e', publicKey: 'Lnoem574VEg8PvG4cU0m99z3b9VfxE1sbszSQrYgj3Y' },
+]
 
 /**
  * Where the signed list and the packages are published (5a, 5g). Each

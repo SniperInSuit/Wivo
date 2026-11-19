@@ -231,6 +231,13 @@ rakenduse mooduliga — koopia ei saa vaikselt lahku minna),
 
 ### Kuidas seda ise proovida
 
+**Alates 19.11.2026 on `testing`-us C ja D litsentsivõtmed sees**, nii et
+litsentsi kontrollitakse. Ilma litsentsita on rakendus ainult lugemiseks.
+Arenduses (`npm run dev`, `npm run dev:test`) on vaja testvõtit ja
+sellega allkirjastatud litsentsi, nagu allpool. Päris litsentsi saab
+allkirjastada alles siis, kui `make-license.mjs` oskab YubiKey C-ga
+allkirjastada.
+
 ```
 node scripts/make-license.mjs keygen --out license-test-private.pem
 # kirjuta välja trükitud hex ühe reana faili, nt license-test-public.hex

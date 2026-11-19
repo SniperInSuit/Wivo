@@ -372,10 +372,10 @@ describe('what the list names, and nothing else (TUF: endless data, mix-and-matc
 describe('the published list, and where it lives', () => {
   const file = (v: unknown) => new TextEncoder().encode(JSON.stringify(v))
 
-  it('nothing is pinned or published until the YubiKey setup and the release tool: so nothing is trusted', async () => {
-    expect(PINNED_ROOTS).toEqual([])
+  it('the two roots from the YubiKey setup are pinned, and nothing is published until the release tool', async () => {
+    expect(PINNED_ROOTS.map(r => r.id)).toEqual(['root-A-946e9af8', 'root-B-74204f3e'])
     expect(UPDATE_SOURCES).toEqual([])
-    expect((await trustFrom(PINNED_ROOTS, [])).roots).toEqual([])
+    expect((await trustFrom(PINNED_ROOTS, [])).roots).toHaveLength(2)
   })
 
   it('the list and its packages sit side by side, per channel', () => {
