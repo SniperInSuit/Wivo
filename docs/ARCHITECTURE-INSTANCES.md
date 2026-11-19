@@ -858,7 +858,7 @@ For Riga, **Kevin runs the setup on site with a setup tool** (in the desktop app
    Or the owner chooses "no stored token", and each update with function changes then asks for a short-lived one (option 4).
 6. **Updates:** Riga approves each update by hand at first. The owner decides whom, besides themselves, to give "Install updates".
 7. **Connecting the apps and checking, with the owner:**
-   - staff computers and phones join with the clinic's connection code (6d);
+   - staff computers and phones join with the clinic's licence (6d);
    - a test e-mail through their Resend;
    - a push to a phone;
    - an invite to one staff member;
@@ -884,8 +884,10 @@ For Riga, **Kevin runs the setup on site with a setup tool** (in the desktop app
 
 ### 6d. How the clinic's apps find their project
 
+**Decided (Kevin, 2026-11-19): the licence carries the connection, and there is no separate connection code.** How it works is in RIGA-GO-LIVE.md, part B.
+
 Today the desktop has one project URL built in, and the phone app is one build for production. Instead:
-- **A connection code (and QR),** shown in the owner's app: the project URL, the publishable key and the clinic's name and prefix. These are public values, but a code pointing at the wrong project could lead staff to a fake one. So the app shows the clinic's name and asks the person to confirm it.
+- ~~**A connection code (and QR)**~~ **The licence (and its QR),** shown in the owner's app: the project URL, the publishable key and the clinic's name. These are public values, but an address pointing at the wrong project could lead staff to a fake one. The licence is signed by Wivo, so it can't be faked to do that, and the app still shows the clinic's name and asks the person to confirm it.
   - The desktop stores the result per computer.
   - The phone app at `app.wivodent.com` is the same static code for every clinic, and stores the connection in the browser.
   - No Wivo server is asked: the code carries everything.
@@ -978,17 +980,12 @@ To scale to 100 clinics with no per-clinic work for Wivo, Riga's visit is the on
 
   **Assumed: 3–4 hours of Kevin's testing on most days in the coming weeks** (Kevin, 2026-11-05). A round's findings are fixed the same day or the next.
 - **Outside both of us:**
-  - the 2.1 release;
   - the delivery of the hardware keys (order them on the OK);
   - an independent reviewer's dates, if one is used (5f);
   - Riga's preparations (§6a) and the visit date;
   - the lawyer's answers.
 
-**Before phase 1: 2.1 on production.**
-- Riga needs a released desktop build.
-- Tallinn's project needs sql/102–118, released together with 2.1 (docs/PERMISSIONS.md, "Releasing sql/117 and sql/118").
-
-That is Kevin's production session, and it isn't counted below.
+~~**Before phase 1: 2.1 on production.**~~ **No longer a condition (Kevin, 2026-11-19).** Tallinn no longer uses Wivo, and Riga is the first real clinic. Production (`wrtucsfmpbwekugzzzxw`) is not migrated or changed: sql/102–118 never reach it, and there is no 2.1 release onto it. It holds Tallinn's data until the handover and is then deleted. `testing` goes to `main` in one release, the one that is Riga's first (RIGA-GO-LIVE.md).
 
 ### Phase 1: Riga on its own instance, before any partnership
 
@@ -1005,10 +1002,10 @@ That is Kevin's production session, and it isn't counted below.
 | 3. **The functions token** (5c):<ul><li>the scope check that refuses a broader token;</li><li>the Vault entry read only by `wivo-update`;</li><li>a log entry for every use;</li><li>the 30-day reminders and the owner's renewal steps;</li><li>the short-lived fallback.</li></ul> | 2–3 days | Make a correct token and a too-broad one; renew; let one expire and see that migrations still install. One or two sessions. |
 | 4. **The desktop:**<ul><li>"Database update ready" for approvers;</li><li>Settings → Updates (the token's state and renewal);</li><li>the warning when the list can't be refreshed (5g);</li><li>the app's release signature checked before an app update installs (5e).</li></ul> | 3 days | A signed and an unsigned app update; approver and non-approver views; a test-channel list left to expire, to see the warning. One or two sessions. |
 | 5. **The setup tool,** operated by Kevin (6b) | 2–3 days | A full rehearsal on project B, as on the day in Riga. Two sessions of 2–3 hours. |
-| 6. **The connection code** for desktop and phone (6d), **and the version gate** | 2 days | Desktop and phone against project B, and production still working as before. One session. |
+| 6. **The connection through the licence** for desktop and phone (6d, RIGA-GO-LIVE.md part B), **and the version gate** | 2 days | Desktop and phone against project B with a licence, a licence for the wrong project, no licence, and a build with the CI secrets still set. One session. |
 | 7. **Riga's workers and pay** (below, option a):<ul><li>the country switch, and gross pay only in a Latvian clinic;</li><li>the monthly export for the accountant;</li><li>payout lines in the clinic's language, and a payout saved in one step;</li><li>the setup tool sets the country.</li></ul> | 3–4 days | Project B as a Latvian clinic: two or three made-up technicians with rules, jobs taken to done, a payout, the export. Send the sample file to Riga's accountant. Two sessions. |
 | 8. **The first security review** (5f) on project C with made-up data: the threat model, Claude's separate review pass, and the adversarial script | Threat model and script: 2 days. Review: 1 day. Fixes: 2–3 days. | Run the adversarial script and read the findings. One or two sessions. |
-| 9. **A desktop release** with all of the above, after 2.1 | – | A release session, signed with the hardware key for the first time. |
+| 9. **A desktop release** with all of the above: `testing` merged into `main` (RIGA-GO-LIVE.md) | – | A release session, signed with the hardware key for the first time. |
 
 **Built so far, on `testing`** (2026-11-09):
 - **Slice 1:**
@@ -1175,11 +1172,11 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 | Chat, and changes after sending | `comment.posted`, `question.resolved`, `job.updated` | 1.5–2 weeks |
 | Stock across projects | §3 | 2.5–3.5 weeks |
 | Hardening | <ul><li>Key rotation in the app.</li><li>The "Messages" admin view (1g).</li><li>Monitoring per partnership.</li><li>The pentest of the new endpoints (prompt 22).</li></ul> | 1.5–2 weeks, plus the pentest's own schedule |
-| Optional: our own production on the update path | The same packages for Tallinn's project, so the path is tested every release | about 1 week |
+| ~~Optional: our own production on the update path~~ | Dropped (2026-11-19): production is not migrated any more (RIGA-GO-LIVE.md) | – |
 
 ### In short
 
-- **Riga on its own instance, with workers and gross pay:** about **5–6 weeks** after the OK, plus the 2.1 release and the visit date.
+- **Riga on its own instance, with workers and gross pay:** about **5–6 weeks** after the OK, plus the visit date.
 - **The first shared job:** about **4–5 weeks** after that, including the independent review, so about **9–11 weeks** from the OK, if the lawyer's answers are in and the consultant's dates fit.
 - **Automatic installs and setup without Wivo:** about 2–3 weeks once Riga is running.
 - **Chat, changes after sending, and stock:** about 4–5.5 weeks more.
@@ -1249,7 +1246,7 @@ Sources: [VID, the employer's report](https://vid.gov.lv/en/services/employers-r
 **Now:** Kevin works through docs/GITHUB-CHECKLIST.md, because the unsigned release path exists today.
 
 **Still open:**
-15. **Our own production on the update path** (an optional phase in §9). Recommended once phase 1 is built, so the path is tested every release.
+15. ~~**Our own production on the update path** (an optional phase in §9).~~ Dropped (Kevin, 2026-11-19): production is not migrated or changed, and is deleted after the handover (RIGA-GO-LIVE.md).
 16. **Retention after unsharing and unpairing** (2d), after the lawyer's answers.
 17. **Stock defaults:** the due date and the 30-day settling window.
 18. **Local partnerships:** keep them for tests and multi-site groups, or retire them later (§7).

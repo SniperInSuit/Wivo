@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v2.0.4 · 18.11.2026 · haru `testing` · commitimata**
+**Seis: v2.0.4 · 19.11.2026 · haru `testing` · commititud, pushimata**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -13,10 +13,44 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ---
 
+## 📌 Kus pooleli jäi — 19.11.2026 (haru `testing`)
+
+### Otsus: Riia on esimene klient, Tallinn ei kasuta Wivot enam
+
+Kõik on kirjas **`RIGA-GO-LIVE.md`**-s (Kevin kinnitas 19.11).
+
+- **`testing` liidetakse ühes suures release'is `main`-i.**
+- **Production'it (`wrtucsfmpbwekugzzzxw`) ei migreerita ega muudeta.** Seal
+  on Tallinna andmed kuni üleandmiseni. Pärast juristi OK-d production
+  kustutatakse.
+- **„2.1 ja sql/102–118 production'isse" ei ole enam tingimus**
+  (ARCHITECTURE-INSTANCES.md §9 parandatud).
+- **Ühendus käib litsentsi kaudu:** litsentsis on aadress koos publishable
+  võtmega, eraldi ühenduskoodi ei tehta. Release'is ei ole ühtegi aadressi.
+- **Testkoopia on tehtud production'ist ja seal on päris andmed.** See
+  kustutatakse koos production'iga. Asemele tuleb uus testprojekt
+  demoandmetega, ja `TEST_REF` muutub samas muudatuses (GO-LIVE D4).
+- **CLAUDE.md parandatud:** `main` ei ole enam production'i andmebaas, Riia
+  on esimene kliinik.
+
+### Mis järgmiseks
+
+1. **Plaan 3 ehitus** (`docs/WORKFLOW-STAGES.md`, migratsioon 122) Kevini
+   parandustega. **Ootab parandusi**: neid ei ole veel failis ega
+   vestluses.
+2. **GO-LIVE osa B:** ühendus litsentsi kaudu, `build.yml`-ist kaob
+   `.env`-i samm.
+3. **Kevin:** YubiKey seadistamine Macis (19.11 pooleli). Pärast seda lähevad
+   avalikud võtmed `LICENCE_PUBLIC_KEYS`-i ja `PINNED_ROOTS`-i.
+4. **GitHubi ja Cloudflare'i saladused** kustutab Kevin alles vahetult enne
+   release'i pushi, kui osa B on `testing`-us testitud (GO-LIVE, järjekorra
+   samm 4). Varem mitte: kuni osa B ei ole `main`-is, ehitaks iga push
+   `main`-i ilma aadressita rakenduse.
+
 ## 📌 Kus pooleli jäi — 18.11.2026 (haru `testing`)
 
-**Kõik allpool on commitimata.** Viimane commit on `1823350`. Mitte midagi ei
-ole pushitud — Kevin pushib.
+**Commititud** (`a457788`, `91baf7f`, `b8210b4`). Mitte midagi ei ole
+pushitud — Kevin pushib.
 
 ### 1. Miks `npm run dev` näitas tühja profiili (lahendatud)
 

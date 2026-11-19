@@ -6,11 +6,13 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - wivo-2.0-spec.md: Wivo 2.0 build plan (in Estonian). Its locked decisions are final.
 - docs/VISION.md: the long-term product vision (consultation to procedure day), its build order and its locked rules.
 - HANDOFF.md, NEXT.md, Testing.md: current state and testing notes.
+- RIGA-GO-LIVE.md: the release that makes Riga the first clinic, the handover of Tallinn's data, and the deletion of production and the test copy.
 - docs/night-run/INSTRUCTIONS.md: rules for unattended runs.
 
 ## Branches
-- `main` = production: the desktop release, the phone app at app.wivodent.com (Cloudflare Pages project `wivo`) and the production database. A push to `main` with a new version in package.json publishes the desktop update to every machine (.github/workflows/build.yml).
-- `testing` = the test site wivo-test.pages.dev (Cloudflare Pages project `wivo-test`) and the test copy database.
+- `main` = the released apps: the desktop release and the phone app at app.wivodent.com (Cloudflare Pages project `wivo`). It is **not tied to a database**: from the Riga release on, an app finds its clinic's project through its licence (RIGA-GO-LIVE.md, part B). A push to `main` with a new version in package.json publishes the desktop update to every machine (.github/workflows/build.yml).
+- **Riga is the first real clinic, on its own Supabase project.** Tallinn no longer uses Wivo. Production (`wrtucsfmpbwekugzzzxw`) is Tallinn's old project: it is **never migrated or changed again**, holds Tallinn's data until the handover, and is then deleted (RIGA-GO-LIVE.md, parts C and D).
+- `testing` = the test site wivo-test.pages.dev (Cloudflare Pages project `wivo-test`) and the test copy database. The test copy was made from production and **holds real data**; it is deleted with production and replaced by a new test project with demo data only (RIGA-GO-LIVE.md, D4).
 - **Only these two branches.** No hotfix-*, release-* or other branches, and no worktrees.
 - **A small fix with no database change:** make it directly on `main`, then cherry-pick it onto `testing`. Leave the folder on `main` and tell Kevin "ready to push main". After Kevin has pushed, switch the folder back to `testing`.
 - **Anything with a migration:** only on `testing`, tested on the test copy, and released later by merging `testing` into `main`.
@@ -28,10 +30,10 @@ Electron + React + TypeScript desktop app with a Supabase/Postgres backend.
 - Every export leaves an audit entry before the file is made (sql/106): a CSV goes through `auditedCsvExport` (lib/exportAudit), recording the row count and the filters in use, never the rows; free text and names only as "set". `lib/exportAudit.test.ts` fails for a screen that makes a CSV any other way.
 - Never tell people using Wivo to run SQL: no screen or message names a migration file, the SQL editor or a database command. A database that lacks something gets a neutral message (`app.notAvailableYet`, `app.contactSupport`); `shared/i18n/noSqlInstructions.test.ts` fails otherwise.
 - All UI text goes through i18n keys. English is the source language, Estonian and Russian are translations.
-- Everyday work never connects to the production Supabase project: local Supabase, the PGlite tests or a test copy only.
+- Everyday work never connects to the production Supabase project or to any clinic's project (Riga's): local Supabase, the PGlite tests or a test copy only.
 - Test mode (`npm run dev:test`, `config/test-copy.env`: tracked, the test copy's URL and public anon key only, never a secret; config/testCopyEnv.test.ts fails otherwise) accepts only the test copy, by its ID (`TEST_REF`), and refuses production by its ID (`PRODUCTION_REF`), both hard-coded in src/renderer/src/lib/testCopy.ts; every request to any other Supabase address is refused before it is sent, and test mode keeps its own session and userData folder. If either project ever changes, update its ID in the same change.
-- Production changes happen only in a session Kevin explicitly starts for that purpose. Everything is tested on a test copy first.
-- Until automated migrations exist (docs/MIGRATIONS.md), Kevin applies every migration himself in the Supabase SQL Editor, in order: the test copy first, production later. Claude writes the migration, the exact steps and the read-only checks, and never connects to the test copy or production, nor sets up a connection to either.
+- Production gets no change. The only things done to it are the handover export (`scripts/export-clinic.mjs`, read only) and, after the lawyer's OK, its deletion, each in a session Kevin explicitly starts for that purpose. A clinic's own project changes only through Wivo's signed updates (`wivo-update`) or the setup tool, run by the clinic. Everything is tested on a test copy first.
+- Until automated migrations exist (docs/MIGRATIONS.md), Kevin applies every migration himself in the Supabase SQL Editor, in order, on the test copy. Production is not migrated; a clinic's project gets migrations from the signed package through `wivo-update` (docs/ARCHITECTURE-INSTANCES.md §5b). Claude writes the migration, the exact steps and the read-only checks, and never connects to the test copy, production or a clinic's project, nor sets up a connection to any of them.
 - Never push, merge or force anything.
 - Wivo is not a medical device: no feature may recommend or rank treatment based on patient data.
 - No personal data crosses borders between clinics (lawyer's locked decision). A partner organisation sees only job information, never who the patient is: no name, personal code, contacts, birth date, medical card, visit notes or prices, through any view, RPC, file, notification or e-mail. Full visibility is off (sql/092); free text a partner reads may not name the patient.
