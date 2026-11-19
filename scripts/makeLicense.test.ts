@@ -15,7 +15,7 @@
  */
 import { afterAll, describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createPublicKey, verify as nodeVerify } from 'node:crypto'
@@ -224,5 +224,119 @@ describe('the copy in the script has not drifted', () => {
     const line = /modules: (.+)/.exec(usage)
     expect(line, usage).not.toBeNull()
     expect(line![1].split(',').map(s => s.trim()).sort()).toEqual([...MODULE_KEYS].sort())
+  })
+})
+
+/**
+ * Signing on a YubiKey. There is no key to touch in a test, so WIVO_YKMAN names
+ * a stand-in for `ykman` that speaks setup-device.py's `sign` file format and
+ * signs with the test key. Everything else — the statement the key is asked to
+ * sign, the check against the pinned public key — is the real code.
+ */
+describe('signing on a YubiKey', () => {
+  const FAKE = join(dir, 'fake-ykman.mjs')
+  const SEEN = join(dir, 'seen.json')
+  writeFileSync(FAKE, `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from 'node:fs'
+import { createPrivateKey, sign } from 'node:crypto'
+const [, , , , py, step, serial, inFile, outFile] = process.argv
+const job = JSON.parse(readFileSync(inFile, 'utf8'))
+writeFileSync(process.env.FAKE_SEEN, JSON.stringify({ py, step, serial, job }))
+if (process.env.FAKE_MODE === 'refuse') { process.stderr.write('Refused (6982).\\n'); process.exit(2) }
+if (process.env.FAKE_MODE === 'untouched') {
+  writeFileSync(outFile, JSON.stringify({ signed: [{ id: 'licence', error: '6982' }] })); process.exit(0)
+}
+const key = createPrivateKey(readFileSync(process.env.FAKE_KEY))
+const s = job.statements[0]
+const sig = sign(null, Buffer.from(s.hex, 'hex'), key)
+writeFileSync(outFile, JSON.stringify({ signed: [{ id: s.id, signature_hex: sig.toString('hex') }] }))
+`)
+  chmodSync(FAKE, 0o755)
+
+  const env = (mode = 'ok', pub: string | undefined = PUBLIC_HEX) => ({
+    ...process.env, WIVO_YKMAN: FAKE, FAKE_KEY: KEY, FAKE_SEEN: SEEN, FAKE_MODE: mode,
+    ...(pub ? { WIVO_YUBIKEY_PUBLIC_FOR_TEST: pub } : {}),
+  })
+  const yk = (extra: string[], e = env()) =>
+    execFileSync('node', [SCRIPT, 'sign', '--org', ORG, '--name', 'Riia kliinik', '--api', API,
+      '--modules', 'jobs,stock', '--quiet', ...extra], { encoding: 'utf8', env: e }).trim()
+
+  it('with no --key, YubiKey C signs, and the app verifies what comes back', () => {
+    const token = yk([])
+    expect(verifies(token, 2)).toBe(true)
+    const seen = JSON.parse(readFileSync(SEEN, 'utf8'))
+    expect(seen.step).toBe('sign')
+    expect(seen.py).toMatch(/scripts[\\/]yubikey[\\/]setup-device\.py$/)
+    expect(seen.serial).toBe('38272295')                       // C
+    expect(seen.job.statements).toHaveLength(1)
+    expect(seen.job.statements[0].slot).toBe('83')
+  })
+
+  it('the key is asked to sign exactly the bytes the app verifies', () => {
+    const token = yk([])
+    const seen = JSON.parse(readFileSync(SEEN, 'utf8'))
+    const parsed = parseToken(token)!
+    expect(seen.job.statements[0].hex)
+      .toBe(Buffer.from(signingInput(parsed.payloadB64, 2)).toString('hex'))
+  })
+
+  it('--yubikey D asks the spare, serial 38272284', () => {
+    yk(['--yubikey', 'D'])
+    expect(JSON.parse(readFileSync(SEEN, 'utf8')).serial).toBe('38272284')
+  })
+
+  it('refuses another letter, and --key together with --yubikey', () => {
+    expect(refusal('sign', '--org', ORG, '--name', 'X', '--api', API, '--modules', 'jobs', '--yubikey', 'A'))
+      .toMatch(/C or D/)
+    expect(refusal('sign', '--org', ORG, '--name', 'X', '--api', API, '--modules', 'jobs',
+                   '--key', KEY, '--yubikey', 'C')).toMatch(/choose one/)
+  })
+
+  it('prints no token when the signature is not by the pinned key', () => {
+    // The stand-in signs with the test key, the tool expects the other key.
+    const other = /'([0-9a-f]{64})'/.exec(run('keygen', '--out', join(dir, 'other.pem')))![1]
+    let out = ''
+    try { yk([], env('ok', other)) } catch (e) {
+      const err = e as { stdout?: string; stderr?: string }
+      out = String(err.stdout ?? '') + String(err.stderr ?? '')
+      expect(String(err.stdout ?? '')).not.toMatch(/WIVO1\./)
+    }
+    expect(out).toMatch(/REFUSING: the signature does not verify/)
+  })
+
+  it('prints no token when the key refuses or is not touched', () => {
+    for (const mode of ['refuse', 'untouched']) {
+      try { yk([], env(mode)); throw new Error('printed a token') } catch (e) {
+        const err = e as { status?: number; stdout?: string; stderr?: string }
+        expect(err.status).toBe(1)
+        expect(String(err.stdout ?? '')).not.toMatch(/WIVO1\./)
+        expect(String(err.stderr ?? '')).toMatch(/No licence was made/)
+      }
+    }
+  })
+
+  it('--key stays a file key, and says so', () => {
+    const out = execFileSync('node', [SCRIPT, 'sign', '--org', ORG, '--name', 'X', '--api', API,
+      '--modules', 'jobs', '--key', KEY], { encoding: 'utf8' })
+    expect(out).toMatch(/FILE key/)
+  })
+
+  it('renew signs on the key too', () => {
+    const old = yk([])
+    const renewed = execFileSync('node', [SCRIPT, 'renew', old, '--months', '6', '--quiet'],
+      { encoding: 'utf8', env: env() }).trim()
+    expect(verifies(renewed, 2)).toBe(true)
+  })
+
+  it('the serials and public keys in the tool are those pinned elsewhere', () => {
+    const tool = readFileSync('scripts/make-license.mjs', 'utf8')
+    const app = readFileSync('src/main/license.ts', 'utf8')
+    const keys = readFileSync('scripts/yubikey/keys.mjs', 'utf8')
+    for (const [letter, serial] of [['C', '38272295'], ['D', '38272284']]) {
+      expect(keys).toContain(`${letter}: ${serial}`)
+      expect(tool).toMatch(new RegExp(`${letter}: \\{ serial: ${serial}`))
+    }
+    for (const m of tool.matchAll(/pub: '([0-9a-f]{64})'/g)) expect(app).toContain(m[1])
+    expect([...tool.matchAll(/pub: '([0-9a-f]{64})'/g)]).toHaveLength(2)
   })
 })

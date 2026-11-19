@@ -43,8 +43,8 @@ commit `testing`-usse. Kevin pushib.
 
 | # | Ülesanne | Mudel | Effort | Seis |
 |---|---|---|---|---|
-| 1 | `make-license.mjs` allkirjastab YubiKey C-ga (slot 83, `licence-C-217c4193`; D varuks). Kasuta `scripts/yubikey/setup-device.py` `sign` sammu. Testid: tööriista allkiri kontrollitakse rakenduse mooduliga (`scripts/makeLicense.test.ts`); failivõti jääb ainult `--key`-ga ja hoiatusega | Sonnet | medium | **järgmine** |
-| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | |
+| 1 | `make-license.mjs` allkirjastab YubiKey C-ga (slot 83, `licence-C-217c4193`; D varuks). Kasuta `scripts/yubikey/setup-device.py` `sign` sammu. Testid: tööriista allkiri kontrollitakse rakenduse mooduliga (`scripts/makeLicense.test.ts`); failivõti jääb ainult `--key`-ga ja hoiatusega | Sonnet | medium | **tehtud 19.11** (`--yubikey C` vaikimisi, `D` varuks, `--key` ainult failivõtmele) |
+| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | **järgmine** |
 | 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | |
 | 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8) | Sonnet | medium | |
 | 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod | Sonnet | medium | |
@@ -62,7 +62,7 @@ rida), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
 - `RIGA-GO-LIVE.md` (`098935f`), YubiKey avalikud võtmed (`fd16ca6`),
   plaan 3 OK + parandused (`b10cc8e`, `f1c62a6`), testlitsentsi käsud
   Windowsile (docs/MODULES-AND-RATINGS.md), **plaan 3 osa 1: migratsioon 122
-  ja `shared/workflow/`** (`1b08d55`).
+  ja `shared/workflow/`** (`1b08d55`), **ülesanne 1: `make-license.mjs` allkirjastab YubiKey C-ga** (PIN ja puudutus; allkiri kontrollitakse enne trükkimist C avaliku võtmega; testid võlts-`ykman`-iga `WIVO_YKMAN`; päris võtmega proovi pole veel tehtud — Kevin: `node scripts/make-license.mjs sign --org … --api … --name …`).
 
 ## 📌 Kus pooleli jäi — 18.11.2026 (haru `testing`)
 

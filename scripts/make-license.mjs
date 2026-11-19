@@ -17,17 +17,16 @@
  *
  * SIGN prints a token to paste into the customer's app, or to put on a stick.
  *
- * ── WHAT THIS TOOL DOES NOT DO YET ──────────────────────────────────────────
- * It signs with a FILE. The real signature is meant to come off YubiKey C,
- * with its PIN and a touch, so the private key never exists on a disk
- * (docs/YUBIKEYS.md, docs/MODULES-AND-RATINGS.md §1.4). The keys are not set
- * up yet — `scripts/yubikey/setup-key.mjs` has not been run — so until then a
- * file key is what there is, and that is deliberately NOT a quiet fallback:
- * see the warning this prints.
+ * ── WHO SIGNS ───────────────────────────────────────────────────────────────
+ * By default YubiKey C (PIV slot 83, `licence-C-217c4193`): the PIN once and a
+ * touch, through scripts/yubikey/setup-device.py `sign`, so the private key
+ * never exists on a disk. `--yubikey D` uses the spare. The signature is
+ * checked here against the key's pinned public key before a token is printed.
  *
- * What protects a release meanwhile is the app, not this script: a public key
- * read from a file is refused in a packaged build (src/main/license.ts), so a
- * token signed here cannot be made to work in a release.
+ * `--key <pem>` signs with a FILE instead. That is for development and for
+ * testing only, never a quiet fallback: it prints a warning, and the app
+ * refuses a file-key public key in a packaged build (src/main/license.ts), so
+ * such a token cannot be made to work in a release.
  *
  * ── THE TOKEN FORMAT LIVES IN shared/license/token.ts ───────────────────────
  * The few lines below (base64url, the signed bytes) are a deliberate copy of
@@ -35,8 +34,10 @@
  * `scripts/makeLicense.test.ts` signs a token with this script and verifies it
  * with that module, so the copy cannot drift without a test failing.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   generateKeyPairSync, createPrivateKey, createPublicKey, sign as nodeSign,
@@ -44,7 +45,19 @@ import {
 } from 'node:crypto'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const PRIVATE_PATH = resolve(root, 'license-private.pem')
+const here = dirname(fileURLToPath(import.meta.url))
+
+/**
+ * The licence keys on the YubiKeys: PIV slot 83. Serials as in
+ * scripts/yubikey/keys.mjs; public keys as in src/main/license.ts (a test
+ * compares the two lists). C signs; D is the spare.
+ */
+const YUBIKEYS = {
+  C: { serial: 38272295, slot: '83', id: 'licence-C-217c4193',
+       pub: '2238a030d6895e917a01e56228a2dc65e2e5a3e9b4a12fc16b66784edf48f5ca' },
+  D: { serial: 38272284, slot: '83', id: 'licence-D-b61d3095',
+       pub: 'a9cf05454e01cbea598901624c7f8ad2770c8cc54c09ec131facf659ec1539f0' },
+}
 
 /** Must equal MODULE_KEYS in shared/license/token.ts (the test checks). */
 const MODULES = [
@@ -127,20 +140,73 @@ function moduleSetProblem(modules) {
 const iso = d => d.toISOString().slice(0, 10)
 
 /** Issue a token from a payload built by sign() or renew(). */
-function issue(payload, keyPath, quiet) {
-  if (!existsSync(keyPath)) {
-    die(`No ${keyPath}. Run: node scripts/make-license.mjs keygen`)
+function rawToPublicKey(hex) {
+  const der = Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(hex, 'hex')])
+  return createPublicKey({ key: der, format: 'der', type: 'spki' })
+}
+
+/**
+ * Ask a YubiKey for the signature, through Yubico's `ykman script`. The key's
+ * own prompts (PIN, "touch the key") go straight to the terminal. `WIVO_YKMAN`
+ * names another program for the tests, which have no key to touch.
+ */
+function signOnYubikey(letter, message) {
+  const k = YUBIKEYS[letter]
+  const dir = mkdtempSync(join(tmpdir(), 'wivo-licence-sign-'))
+  try {
+    const inFile = join(dir, 'in.json')
+    const outFile = join(dir, 'out.json')
+    writeFileSync(inFile, JSON.stringify({
+      what: `Licence, signed by YubiKey ${letter} (${k.id})`,
+      statements: [{ id: 'licence', label: 'Licence token', slot: k.slot, hex: message.toString('hex') }],
+    }))
+    writeFileSync(outFile, '{}')
+    const r = spawnSync(process.env.WIVO_YKMAN || 'ykman',
+      ['script', '--force', join(here, 'yubikey', 'setup-device.py'), 'sign', String(k.serial), inFile, outFile],
+      { stdio: ['inherit', 2, 'inherit'] })  // the key's prompts go to stderr, so stdout is only the token
+    if (r.error) die(`Could not run ykman (${r.error.message}). Install it: brew install ykman`)
+    if (r.status !== 0) die(`The YubiKey ${letter} did not sign (above says why). No licence was made.`)
+    let out
+    try { out = JSON.parse(readFileSync(outFile, 'utf8')) } catch { out = {} }
+    const got = (out.signed ?? []).find(s => s.id === 'licence' && s.signature_hex)
+    if (!got) die(`The YubiKey ${letter} did not sign (not touched in time?). No licence was made.`)
+    const sig = Buffer.from(got.signature_hex, 'hex')
+    // The pinned public key decides: a signature from another key, or another
+    // slot, is not a licence the app would accept, so it is not printed.
+    const pub = process.env.WIVO_YUBIKEY_PUBLIC_FOR_TEST && process.env.WIVO_YKMAN
+      ? process.env.WIVO_YUBIKEY_PUBLIC_FOR_TEST : k.pub
+    if (!nodeVerify(null, message, rawToPublicKey(pub), sig)) {
+      die(`REFUSING: the signature does not verify against ${k.id}'s public key. No licence was made.`)
+    }
+    return sig
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
   }
+}
+
+/** Issue a token from a payload built by sign() or renew(). `signer` is { key } or { yubikey }. */
+function issue(payload, signer, quiet) {
   const payloadB64 = b64url(Buffer.from(JSON.stringify(payload), 'utf8'))
-  const key = createPrivateKey(readFileSync(keyPath))
-  // Ed25519 signs the message directly — the algorithm argument must be null.
-  const sig = nodeSign(null, signedBytes(payloadB64, payload.v), key)
+  const message = signedBytes(payloadB64, payload.v)
+  let sig
+  if (signer.key) {
+    if (!existsSync(signer.key)) die(`No ${signer.key}. Run: node scripts/make-license.mjs keygen`)
+    // Ed25519 signs the message directly — the algorithm argument must be null.
+    sig = nodeSign(null, message, createPrivateKey(readFileSync(signer.key)))
+  } else {
+    sig = signOnYubikey(signer.yubikey, message)
+  }
   const token = `WIVO1.${payloadB64}.${b64url(sig)}`
 
   if (!quiet) {
     console.log('')
-    console.log('⚠  Signed with a FILE key, not YubiKey C. Fine for development and for')
-    console.log('   testing; a real customer licence waits until the keys are set up.')
+    if (signer.key) {
+      console.log('⚠  Signed with a FILE key, not a YubiKey. Fine for development and for')
+      console.log('   testing; a real customer licence is signed by YubiKey C (no --key).')
+    } else {
+      const k = YUBIKEYS[signer.yubikey]
+      console.log(`Signed by YubiKey ${signer.yubikey} (${k.id}); the signature verifies against its public key.`)
+    }
     console.log('')
     console.log(`${payload.name} · ${payload.plan} · ${payload.seats ?? 'piiramatu'} kasutajat`)
     console.log(`Organisatsioon: ${payload.org ?? '—'}`)
@@ -150,6 +216,19 @@ function issue(payload, keyPath, quiet) {
   }
   console.log(token)
   if (!quiet) console.log('')
+}
+
+/** `--key <pem>` is a file key; otherwise a YubiKey: C, or `--yubikey D`. */
+function signerFrom(args) {
+  const keyArg = flag(args, '--key')
+  if (keyArg !== undefined) {
+    if (args.includes('--yubikey')) die('--key and --yubikey together: choose one signer.')
+    return { key: resolve(root, keyArg) }
+  }
+  if (args.includes('--key')) die('--key needs a file: --key <pem>')
+  const letter = (flag(args, '--yubikey') ?? 'C').toUpperCase()
+  if (!YUBIKEYS[letter]) die('--yubikey must be C or D (D is the spare)')
+  return { yubikey: letter }
 }
 
 function basePayload(args, old) {
@@ -217,7 +296,7 @@ function sign(args) {
   issue({
     v: 2, name: base.name, plan: base.plan, seats: base.seats,
     iat: base.iat, exp: base.exp, org, api, modules,
-  }, resolve(root, flag(args, '--key') ?? PRIVATE_PATH), args.includes('--quiet'))
+  }, signerFrom(args), args.includes('--quiet'))
 }
 
 /**
@@ -247,7 +326,7 @@ function renew(args) {
     // A v1 key renewed stays v1 and keeps meaning "everything": turning it
     // into a v2 key here would have to invent an org and an address.
     : { v: 1, name: base.name, plan: base.plan, seats: base.seats, iat: base.iat, exp: base.exp }
-  issue(payload, resolve(root, flag(args, '--key') ?? PRIVATE_PATH), args.includes('--quiet'))
+  issue(payload, signerFrom(args), args.includes('--quiet'))
 }
 
 /** Check a token against a public key, the way the app does. */
@@ -283,8 +362,10 @@ else {
   console.log('  node scripts/make-license.mjs keygen [--out license-test-private.pem]')
   console.log('  node scripts/make-license.mjs sign --org <uuid> --name "Lab OÜ" --api https://…')
   console.log('        [--modules jobs,payroll,stock|all] [--plan labor|labor_plus]')
-  console.log('        [--months 12] [--seats 5|unlimited] [--key <pem>] [--quiet]')
-  console.log('  node scripts/make-license.mjs renew WIVO1.… [--months 12]')
+  console.log('        [--months 12] [--seats 5|unlimited] [--quiet]')
+  console.log('        signed by YubiKey C (PIN, touch); [--yubikey D] for the spare,')
+  console.log('        or [--key <pem>] for a FILE key (development and testing only)')
+  console.log('  node scripts/make-license.mjs renew WIVO1.… [--months 12] [--yubikey D|--key <pem>]')
   console.log('  node scripts/make-license.mjs verify WIVO1.… --public <hex|file>')
   console.log('')
   console.log(`  modules: ${MODULES.join(', ')}`)
