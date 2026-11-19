@@ -603,6 +603,24 @@ Riia litsents ja moodul `jobs` tema sees.
 
 **Eraldi otsus, mitte sammu 1 sees:** 7.2 (töid ilma patsiendi nimeta).
 
+**Ehitatud, `testing`-us (19.11.2026) — 1. osa, skeem ja reeglid, ilma UI-ta:**
+- **sql/122:** mallid, malli etapid ja inimesed, kliiniku vaikevastutajad,
+  töö oma etapid ja inimesed; `jobs.template_id`, `ordered_by` (looja,
+  muutmatu), reeglite väljad; failitüübid `ct` ja `project`.
+- **Tagasitäide:** igale kliinikule vaikemall tema etappidest (või
+  rakenduse sisseehitatud nimekirjast), igale tööle `job_stage` read.
+  **`job_stage_person` ridu ei kirjutata ja `jobs` ridu ei puudutata**
+  (`template_id` tühi = vaikemall): vana töö liigub ja maksab nagu enne.
+- **Otsustatud ehitamisel:** `only_if` on nimekiri (`text[]`), sest
+  fotogramm-meetria vajab kahte reeglit korraga; etapp on kas lülitiga või
+  reegliga, mitte mõlemat; `default_on` ainult lülitiga etapil.
+- **`shared/workflow/`:** reeglid, töö mallist, mallide valideerimine,
+  liigutamise reegel (§5), võrdne jagamine sentides.
+- **Järgmisena (2. osa):** `guard_stage_change` kutsub `can_move_stage`-i,
+  teavitused etapi vastutajatelt, `earnings.ts` palgaliigi etapi järgi,
+  töö loomine mallist andmebaasi funktsiooniga (ka `job_stage` read uuele
+  tööle), uue kliiniku vaikemall.
+
 ---
 
 # 12. Testid, mis peavad olema

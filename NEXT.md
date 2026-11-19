@@ -41,6 +41,11 @@ Kõik on kirjas **`RIGA-GO-LIVE.md`**-s (Kevin kinnitas 19.11).
 1. **Plaan 3 ehitus** (`docs/WORKFLOW-STAGES.md`, migratsioon 122): **OK
    19.11**, parandused sees (telefon §13, tellija §2.6a, liigutamine §5, palk
    palgaliikide kaupa §10, vaikeväärtused §8). Ehitamine käib.
+   - **1. osa ehitatud (19.11):** migratsioon 122 (skeem, tagasitäide,
+     RLS) ja `shared/workflow/` reeglid. Tööd liiguvad ja maksavad veel
+     nagu enne. **Sinu osa:** jooksuta sql/122 testkoopias, siis
+     `notify pgrst, 'reload schema';`, siis sql/checks/schema_check.sql
+     (peab andma null rida). Järgmine migratsioon on 123.
    - **Testlitsents Windowsis:** käsud on docs/MODULES-AND-RATINGS.md-s
      („Kuidas seda ise proovida"). Osa B muudab litsentsi `api` välja
      (aadress + võti), siis tuleb testlitsents uuesti allkirjastada.
