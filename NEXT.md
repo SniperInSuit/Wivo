@@ -35,9 +35,15 @@ Kõik on kirjas **`RIGA-GO-LIVE.md`**-s (Kevin kinnitas 19.11).
 
 ### Mis järgmiseks
 
-1. **Plaan 3 ehitus** (`docs/WORKFLOW-STAGES.md`, migratsioon 122) Kevini
-   parandustega. **Ootab parandusi**: neid ei ole veel failis ega
-   vestluses.
+**Järjekord (Kevin, 19.11):** plaan 3 → GO-LIVE osa B →
+`make-license.mjs` allkirjastab YubiKey C-ga ja release-tööriist.
+
+1. **Plaan 3 ehitus** (`docs/WORKFLOW-STAGES.md`, migratsioon 122): **OK
+   19.11**, parandused sees (telefon §13, tellija §2.6a, liigutamine §5, palk
+   palgaliikide kaupa §10, vaikeväärtused §8). Ehitamine käib.
+   - **Testlitsents Windowsis:** käsud on docs/MODULES-AND-RATINGS.md-s
+     („Kuidas seda ise proovida"). Osa B muudab litsentsi `api` välja
+     (aadress + võti), siis tuleb testlitsents uuesti allkirjastada.
 2. **GO-LIVE osa B:** ühendus litsentsi kaudu, `build.yml`-ist kaob
    `.env`-i samm.
 3. **YubiKeyd on seadistatud (19.11), kõik neli läbisid.** Avalikud võtmed

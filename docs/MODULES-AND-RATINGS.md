@@ -238,6 +238,33 @@ sellega allkirjastatud litsentsi, nagu allpool. Päris litsentsi saab
 allkirjastada alles siis, kui `make-license.mjs` oskab YubiKey C-ga
 allkirjastada.
 
+**Windowsis, `npm run dev:test` jaoks** (PowerShell, repo kaustas, üks kord):
+
+```powershell
+# 1. testvõti (license-test-private.pem on gitignore'is)
+node scripts/make-license.mjs keygen --out license-test-private.pem
+
+# 2. avalik võti hex-ina faili, UTF-8, ilma reavahetuseta
+#    (mitte `>`: Windows PowerShell 5.1 kirjutaks UTF-16 ja võtit ei loetaks)
+node -e "const c=require('crypto'),fs=require('fs');const k=c.createPublicKey(fs.readFileSync('license-test-private.pem'));fs.writeFileSync('license-test-public.hex',k.export({type:'spki',format:'der'}).subarray(12).toString('hex'))"
+
+# 3. keskkonnamuutuja püsivalt sinu kasutajale; ava pärast uus terminal
+[Environment]::SetEnvironmentVariable('WIVO_LICENCE_TEST_KEY', "$PWD\license-test-public.hex", 'User')
+
+# 4. testlitsents testkoopia aadressile, kõik moodulid, 10 kohta, 12 kuud
+#    (org ei pea ühtima: rakendus seda kliiniku vastu ei kontrolli)
+node scripts/make-license.mjs sign --org 00000000-0000-4000-8000-000000000001 --name "Wivo test" --api https://jhqyvancrzykxhzwnost.supabase.co --modules all --seats 10 --months 12 --key license-test-private.pem
+```
+
+Siis uues terminalis `npm run dev:test`, Seaded → Litsents, kleebi 4. sammu
+token. Kontroll: `echo $env:WIVO_LICENCE_TEST_KEY` näitab faili teed.
+
+- **`npm run dev`** (kohalik Supabase) vajab oma aadressi litsentsis: lisa
+  see `--api`-sse komaga, nt
+  `--api https://jhqyvancrzykxhzwnost.supabase.co,http://127.0.0.1:54321`.
+- **Testkoopia vahetumisel** (RIGA-GO-LIVE.md D4) tuleb uus testlitsents uue
+  aadressiga.
+
 ```
 node scripts/make-license.mjs keygen --out license-test-private.pem
 # kirjuta välja trükitud hex ühe reana faili, nt license-test-public.hex

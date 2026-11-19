@@ -1,6 +1,9 @@
 # Plaan 3 — töövoo mallid, etapid ja rollid
 
-**Seis: plaan, 16.11.2026. Ehitamine ootab Kevini OK-d.**
+**Seis: OK ehitamiseks (Kevin, 19.11.2026), nelja parandusega.** Parandused on
+sees: telefon (13. peatükk), vastutaja „töö tellija" (2.6a), liigutamise
+reegel (5) ja palk palgaliikide kaupa (10). 8. peatüki küsimused on vastatud
+vaikeväärtustega, mida Riia saab hiljem seadetes muuta.
 **Uuendatud Riia kolme sisendi järgi (töövoog, mallid, kasutajad ja tarkvara).**
 
 Riia samm 1 (docs/ROADMAP.md). Migratsioon **122**, ainult `testing`;
@@ -66,7 +69,8 @@ Failitüübid täna: `scan`, `photo`, `xray`, `print`, `design`, `other`.
 ## 0.5 Telefon
 
 `src/renderer/src/mobile/`: töö vaatamine, `PhoneCamera`, testingus lisaks
-`PhoneVersionGuard` ja `PushTurnOnNotice`.
+`PhoneVersionGuard` ja `PushTurnOnNotice`. Mida telefon selle plaaniga saab,
+on 13. peatükis.
 
 ## 0.6 Palk
 
@@ -141,9 +145,13 @@ workflow_template_stage (
   task        text,            -- ülesande tekst vaikimisi
   optional    boolean,         -- lülitiga valitav töö loomisel
   only_if     text,            -- SULETUD reeglinimi, vt 2.5
-  pay_role    text,            -- 'technician' | 'designer' | null
+  default_on  boolean,         -- lülitiga etapi linnuke töö loomisel, vt 2.5
+  orderer     boolean,         -- vastutaja on töö tellija, vt 2.6a
+  pay_role    text,            -- palgaliik (RateScope): 'too' | 'disain' | 'mudel' | 'muudatus' | null
   unique (template_id, position)
 )
+-- iga palgaliik on mallis täpselt ühel etapil (vt 10):
+unique index on workflow_template_stage (template_id, pay_role) where pay_role is not null
 
 workflow_template_stage_person (template_stage_id, profile_id, org_id,
   primary key (template_stage_id, profile_id))
@@ -165,6 +173,7 @@ job_stage_person (job_stage_id, profile_id, org_id, added_by, added_at,
 
 alter table public.jobs
   add column template_id uuid references public.workflow_template(id),
+  add column ordered_by  uuid default auth.uid(),  -- töö tellija, vt 2.6a
   add column impression_type   text,     -- 'digital' | 'conventional'
   add column implant_count     int,
   add column production_method text,     -- 'print' | 'mill'
@@ -190,7 +199,13 @@ etappe **lisada, vahele jätta ja vastutajaid muuta**. Vahele jäetud etapp saab
 Kaks teed, mõlemad mallis:
 
 - **Lüliti** (`optional = true`): töö loomisel linnuke („vahamudel",
-  „kvaliteedikontroll").
+  „kvaliteedikontroll"). `default_on` ütleb, kas linnuke on vaikimisi peal.
+  Lülitita etapp (`optional = false`, ilma `only_if`-ita) on alati sees: nii
+  teeb mall etapi **kohustuslikuks**.
+
+**Vaikeväärtused (Kevin, 19.11; Riia muudab hiljem seadetes):**
+- **Kvaliteedikontroll:** lülitiga etapp, vaikimisi väljas.
+- **Vahamudel:** lülitiga etapp; mallis saab selle kohustuslikuks teha.
 - **Reegel** (`only_if`): **suletud nimekiri**, mida hinnatakse töö väljadest:
 
 | `only_if` | Etapp tuleb sisse, kui |
@@ -215,6 +230,21 @@ release'ita": **protseduur** on mall, **reegel** on tüüpjuhtum.
 
 `job_stage_person.profile_id` on profiil, mitte „tehnik". Arst, tehnik, IT —
 vahet ei ole. Juhtum B eeldab seda.
+
+## 2.6a Vastutaja „töö tellija"
+
+Malli etapi vastutaja võib olla **„arst, kes töö lõi"** (`orderer = true`),
+mitte nimeline inimene. Töö loomisel kirjutatakse `jobs.ordered_by` (looja,
+vaikimisi `auth.uid()`) selle etapi `job_stage_person` reaks, nagu iga teine
+vaikevastutaja (kopeeritakse, ei viidata, 2.3).
+
+**Tellija omad vaikimisi** (Kevin, 19.11):
+- Skaneering;
+- Fotogramm-meetria;
+- kabinetis tehtud töö mallis („Kroon, kabinetis") Disain ja Freesimine.
+
+Vanal tööl on `ordered_by` tühi. Seal ei kirjutata midagi ja kehtib 3. ja 5.
+peatüki tagavara.
 
 ## 2.7 Olemasolev kliinik ei lähe katki
 
@@ -272,8 +302,18 @@ täpselt see.
 | Kliiniku **omanik** | jah |
 | Keegi muu, ka `jobs.write`-iga | **ei** |
 
-Kontroll RLS-is (`can_move_stage(job_id, target)`), mitte nupu peitmises. Iga
-liigutus auditilogisse (olemas: `audit_log`, action `stage_move`, sql/070).
+**Sihtetapi vastutaja tohib tööd tõmmata ainult eelmisest etapist** — sellest,
+mis on töö etappide järjekorras vahetult enne sihtetappi, vahele jäetud
+etappe (`skipped_at`) arvestamata. Vahele jäetud etapist ega kaugemalt mitte.
+
+**Tööl, mille `job_stage_person` on tühi** (vanad tööd, vaikemall ilma
+vastutajateta), **kehtib tänane reegel:** `jobs.write` ja
+`stage_move_allowed` (sql/078), nagu enne. Uus reegel hakkab kehtima alles
+siis, kui tööl on vähemalt üks etapi vastutaja.
+
+Kontroll andmebaasis (`can_move_stage(job_id, target)`, `guard_stage_change`
+kutsub seda), mitte nupu peitmises. Iga liigutus auditilogisse (olemas:
+`audit_log`, action `stage_move`, sql/070).
 
 See reegel annab IT-le tasuta selle, mida Riia küsis: **IT on vastuvõtu etapi
 vastutaja ja saab seetõttu tööd vastuvõtust edasi liigutada — ja mitte kuhugi
@@ -285,7 +325,8 @@ mujalt.**
 
 ## 6.1 Mida vastu võetakse
 
-**Kõik** — STL, PLY, CEREC eksport, exocadi projekt ZIP-ina, fotod, DICOM.
+**Kõik** — STL, PLY, CEREC eksport (**nii üks fail kui ka kaust; kaust
+ZIP-iks**, nagu 6.2), exocadi projekt ZIP-ina, fotod, DICOM.
 Wivo ei kontrolli laiendit, vaid salvestab, mis antakse. Tüübid
 `job_file.type` saavad juurde **`ct`** ja **`project`** (migratsioon 122).
 
@@ -372,21 +413,18 @@ on hoidlas, mitte andmebaasis, ja read on väikesed.
 
 1. **Kopa `job-files` piir tuleb tõsta** 500 MB-lt (§6.3). Pro-plaanil on
    globaalne piir seatav kuni 500 GB; meie vajadus on ~1 GB faili kohta.
-2. **Säilitusreegel on vaja enne, mitte pärast.** Ilma selleta kasvab ruum
-   igavesti, sest ükski töö ei lõpe failide kustutamisega. Kõige odavam ja
-   kõige vähem riskantne reegel: **toorskaneering ja projektifail lähevad
-   arhiivi või kustutamisele N kuud pärast üleandmist, valmistoode ja fotod
-   jäävad.** N on kliiniku otsus ja see on avatud küsimus (Q10) — Wivo ei ole
-   haiguslugu, aga see, mida kliinik oma dokumentatsiooniks peab, on tema
-   otsus, mitte meie.
+2. **Säilitus: hoitakse kõike, midagi ei kustutata** (Kevin, 19.11). Ruum
+   kasvab seega igavesti, umbes 28 GB kuus 120 töö juures. Salvestus on
+   odav (aasta pärast ~5 USD kuus lisaks); jälgida tuleb egressi. Säilitusreeglit
+   selles plaanis ei ehitata.
 3. **Hinnakiri kinnitada Riia projekti pealt enne starti.** Pro on 25 USD
    kuus (allikad vaidlevad, kas projekti või organisatsiooni kohta) — ja see
    läheb **Riia enda kontole**, nagu kokku lepitud (docs/ROADMAP.md).
 
 ## 6.4 Integratsioon tuleb hiljem
 
-3Shape Communicate, Medit Link, DS Core, exocad — **mitte nüüd**. Praegu
-laetakse failid käsitsi üles. Plaan ehitatakse nii, et vahetuskoht on hiljem
+3Shape Communicate, Medit Link, DS Core, exocad — **mitte nüüd**. **Vahetuskoht
+on käsitsi üleslaadimine** (Kevin, 19.11). Plaan ehitatakse nii, et vahetuskoht on hiljem
 **üks uus laadimistee samasse `register → upload → confirm` ahelasse**, mitte
 uus failimudel.
 
@@ -398,14 +436,14 @@ uus failimudel.
 
 | Riia roll | Mitu | Olemasolevatest õigustest | Puudub |
 |---|---|---|---|
-| **Arst** (loob tellimusi) | 3 | `jobs.write` + `jobs.read`; `patients.read`, kui patsiendikaarti on vaja | — |
+| **Arst** (loob tellimusi) | 3 | `jobs.write` + `jobs.read`, **patsiendikaart ja patsiendi lisamine** (`patients.read` + `patients.write`) | — |
 | **Tehnik** (märgib, mida tegi) | 3 | `TECHNICIAN_PRESET`: `jobs.write`, `stock.read`, `stock.write` | — (etapimärked tulevad siit plaanist) |
-| **Raamatupidaja** (näeb, mis tehtud) | 1 | `payroll.manage` | **tööde nägemine ilma patsiendi nimeta** |
-| **Sekretär** (näeb töid koos patsiendiga) | 1 | `jobs.read`, soovi korral `visits.read` | — |
+| **Raamatupidaja** (näeb, mis tehtud) | 1 | `payroll.manage`: Töötasud ja eksport | — (7.2 ei ehitata) |
+| **Sekretär** (näeb töid koos patsiendiga) | 1 | `jobs.read`, **kalendrit mitte** | — |
 | **Juhataja** (näeb ladu) | 1 | `stock.read` | — |
 | **IT** (laeb faile) | 0–1 | — | **failiõigus ilma `jobs.write`-ita** |
 
-Litsentsi `seats` ≈ **10** (plaan 1).
+Litsentsi `seats` = **10 koos IT-ga** (Kevin, 19.11).
 
 ## 7.1 Mida ma kontrollisin, mitte eeldasin
 
@@ -427,7 +465,7 @@ Litsentsi `seats` ≈ **10** (plaan 1).
 
 Vaja raamatupidajale (ja hiljem juhatajale, kui ta tahab töid näha).
 
-**Soovitus Riia stardiks: ära ehita seda veel.** Raamatupidaja saab
+**Otsus (Kevin, 19.11): ei ehitata.** Raamatupidaja saab
 `payroll.manage` ja töötab Töötasude pealt + raamatupidaja ekspordist, kus
 nimesid juba ei ole (`auditedCsvExport`, sql/106). See on **null uut koodi** ja
 katab sõnastatud vajaduse („näeb töökoode, tehtud tööd ja palka").
@@ -470,11 +508,26 @@ demo seemnesse (`sql/demo/seed.sql`).
 
 ---
 
-# 8. Avatud küsimused
+# 8. Avatud küsimused — vastatud vaikeväärtustega
 
-Need on Riia käest küsimata või vastuseta. **Plaan ei eelda ühtegi vastust** —
-iga küsimus on koht, kus mall või lüliti teeb vastuse hiljem võimalikuks ilma
-skeemi muutmata.
+**Kevin, 19.11:** iga küsimus on vastatud vaikeväärtusega, mida Riia saab
+hiljem seadetes muuta. Algsed küsimused jäävad alla, et oleks näha, mida
+vastus katab.
+
+| # | Vaikeväärtus |
+|---|---|
+| 1 | Fotogramm-meetria: **töö tellija** (2.6a) |
+| 2 | Kvaliteedikontroll: **lülitiga etapp, vaikimisi väljas** |
+| 3 | Vahamudel: **lülitiga etapp, mallis saab kohustuslikuks teha** |
+| 4 | Raamatupidaja: **Töötasud ja eksport. 7.2 ei ehitata** |
+| 5 | Sekretär: **`jobs.read`, kalendrit mitte** |
+| 6 | Arstid: **patsiendikaart ja patsiendi lisamine** |
+| 7 | Vahetuskoht: **käsitsi üleslaadimine** |
+| 8 | CEREC eksport: **nii üks fail kui ka kaust (kaust ZIP-iks)** |
+| 9 | Litsentsi kohti: **10 koos IT-ga** |
+| 10 | Failide säilitus: **hoitakse kõike, midagi ei kustutata** |
+
+Algsed küsimused:
 
 1. **Kes teeb fotogramm-meetria?** Tõenäoliselt arst tooli juures — aga see
    määrab, kelle vaikevastutus etapil on.
@@ -514,10 +567,20 @@ skeemi muutmata.
 
 # 10. Mõju palgale
 
-Palgarea saaja ei tule enam ainult `jobs.assigned_to`-st, vaid **`pay_role`
-etapi vastutajatest**; disainirida samuti disainija-rolliga etapist. Mitme
-inimesega etapil jagatakse selle rolli summa **võrdselt** (osakaalud on hilisem
-töö).
+**`pay_role` on olemasolev palgaliik** (`RateScope`, `lib/earnings.ts`):
+`too` (tükitöö), `disain`, `mudel`, `muudatus`. Mitte ainult „tehnik" ja
+„disainija".
+
+- **Iga palgaliik on mallis täpselt ühel etapil.** Seda valideeritakse
+  salvestamisel: andmebaasis unikaalne indeks `(template_id, pay_role)`, ja
+  seadete vorm ütleb enne salvestamist, millisel etapil see palgaliik juba on.
+  Etapp ilma palgaliigita on lubatud (nt Vastuvõtt).
+- **Palgarea saaja on selle etapi vastutajad**, kus palgaliik mallis on.
+- **Võrdselt jagatakse ainult sama etapi inimeste vahel.** Kaks inimest
+  Disaini etapil jagavad disaini summa pooleks; tükitöö etapi inimesed ei
+  saa sellest midagi. Osakaalud on hilisem töö.
+- **`muudatus`:** parandusel on oma teostaja (sql/087). Kui see on täidetud,
+  saab tema; kui ei ole, siis `muudatus`-etapi vastutajad.
 
 **Olemasolevad tööd ei muutu.** Kus `job_stage_person` on tühi, loeb
 `earnings.ts` `assigned_to` ja osa disainija pealt täpselt nagu praegu. Ühtegi
@@ -559,3 +622,45 @@ Riia litsents ja moodul `jobs` tema sees.
   inimesega etapp jagab võrdselt.
 - `files.write`: lubab faili lisada oma etapi tööle, ei luba tööd muuta ega
   hinda näha.
+- Liigutamine: sihtetapi vastutaja tõmbab eelmisest etapist **jah**, vahele
+  jäetud etapist ja kaugemalt **ei**; tühja `job_stage_person`-iga töö
+  liigub tänase reegli järgi.
+- Tellija: `orderer`-etapp saab töö looja; vanal tööl (`ordered_by` tühi) ei
+  kirjutata midagi.
+- Palgaliik: teine sama palgaliigiga etapp samas mallis **ei salvestu**;
+  jagamine ainult sama etapi inimeste vahel.
+- Telefon: töö mallist, etapi liigutamine, „alustasin", fotod ja failid
+  läbivad samad andmebaasi kontrollid kui töölaual.
+
+---
+
+# 13. Telefon
+
+Telefon (`src/renderer/src/mobile/`, app.wivodent.com) on koht, kus tööd
+tehakse tooli ja laua juures. **Kõik telefonis käib samade andmebaasi
+kontrollide kaudu kui töölaual** — telefon ei saa midagi, mida RLS ja
+`can_move_stage` ei luba.
+
+**Telefonis saab:**
+- **töö lisada mallist:** mall, lülitiga etapid (vaikimisi linnukesed
+  `default_on` järgi), reeglite väljad (jäljend digitaalne/tavaline,
+  implantaatide arv, print/freesimine, prinditud mudel). Vaikevastutajad
+  tulevad mallist, nagu töölaual;
+- **etappi liigutada:** järgmisse etappi või tagasi, 5. peatüki reegli järgi.
+  Nupp on ainult inimesel, keda reegel lubab; andmebaas kontrollib ikka;
+- **märkida „alustasin"** oma etapil (4. peatükk);
+- **lisada fotosid** (`PhoneCamera`) **ja faile** (üks või mitu faili korraga,
+  sama `register → TUS → confirm` ahel, katkestuse järel jätkatav).
+
+**Ainult töölaual:**
+- **KT ja muu kausta üleslaadimine** (6.2): kaust → ZIP voona Web Workeris.
+  Telefoni brauseris ei ole usaldusväärset kaustavalikut ja sadade failide
+  ZIP-imine telefonis ei ole see, mida keegi seal teha tahab. Ka CEREC-i
+  kaust (6.1) on seega töölaua oma; üks CEREC-i fail läheb telefonist.
+- **Mallide ja etapikogu muutmine** seadetes, vaikevastutajad
+  (`clinic_stage_default`) ja palgaliigid etappidel.
+- **Töö juures etappide lisamine, vahelejätmine ja vastutajate muutmine**
+  (2.4). Telefon näitab neid, aga ei muuda.
+- **STL/PLY eelvaate tegemine:** eelvaade tehakse laadija masinas (sql/073).
+  Telefonist laetud STL saab tüübiikooni.
+- Palk, eksport ja statistika, nagu praegu.
