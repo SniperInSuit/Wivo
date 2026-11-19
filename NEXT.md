@@ -13,60 +13,56 @@ hetkeseis: mis on tehtud, mis ootab sind, mis on blokeeritud.
 
 ---
 
-## 📌 Kus pooleli jäi — 19.11.2026 (haru `testing`)
+## 📌 Kus pooleli jäi — 19.11.2026 õhtul (haru `testing`)
 
-### Otsus: Riia on esimene klient, Tallinn ei kasuta Wivot enam
+**Tähtaeg: esmaspäev 23.11.2026, Riia jaoks kõik valmis.** Iga ülesanne
+tehakse **uues vestluses**: alusta sellest failist. Iga ülesande lõpus
+testikontroll (`npx vitest run --mode unit` ja kaks `tsc --noEmit -p`-d) ja
+commit `testing`-usse. Kevin pushib.
 
-Kõik on kirjas **`RIGA-GO-LIVE.md`**-s (Kevin kinnitas 19.11).
+### Otsused (Kevin, 19.11)
 
-- **`testing` liidetakse ühes suures release'is `main`-i.**
-- **Production'it (`wrtucsfmpbwekugzzzxw`) ei migreerita ega muudeta.** Seal
-  on Tallinna andmed kuni üleandmiseni. Pärast juristi OK-d production
-  kustutatakse.
-- **„2.1 ja sql/102–118 production'isse" ei ole enam tingimus**
-  (ARCHITECTURE-INSTANCES.md §9 parandatud).
-- **Ühendus käib litsentsi kaudu:** litsentsis on aadress koos publishable
-  võtmega, eraldi ühenduskoodi ei tehta. Release'is ei ole ühtegi aadressi.
-- **Testkoopia on tehtud production'ist ja seal on päris andmed.** See
-  kustutatakse koos production'iga. Asemele tuleb uus testprojekt
-  demoandmetega, ja `TEST_REF` muutub samas muudatuses (GO-LIVE D4).
-- **CLAUDE.md parandatud:** `main` ei ole enam production'i andmebaas, Riia
-  on esimene kliinik.
+- **Riia on esimene klient, Tallinn ei kasuta Wivot.** Production'it ei
+  migreerita ega muudeta; üleandmine ja kustutamine: `RIGA-GO-LIVE.md` C ja D.
+  Testkoopias on päris andmed (D4).
+- **Esmaspäevaks ajutine ühendus, osa B pärast:** Windowsi installer Riia
+  aadressiga Kevini masinas, eraldi Cloudflare'i projekt Riia telefonile
+  (`RIGA-GO-LIVE.md`, „Monday 23.11.2026").
+- **Turvaülevaatus:** täielik 2 nädala jooksul (7.12-ni); **pühapäeval 22.11
+  lühike kontroll** (Opus, high): RLS + leak-testid uutel tabelitel,
+  `can_move_stage`, `files.write`, saladusi installeris/`.env`-is ei ole,
+  Storage'i reeglid `ct`/`project` jaoks.
+- **E-post:** Riia oma Resend (tasuta, 100/päev), domeen `dentiks.lv`.
+  Päevapiiri täitumine logisse ja omanikule nähtavaks.
+- **YubiKeyd seadistatud** (A, B, C, D); avalikud võtmed ainult `testing`-us
+  (`fd16ca6`).
+- **GitHubi ja Cloudflare'i `wivo` saladused** kustutatakse alles osa B
+  release'i pushi eel, mitte esmaspäevaks.
 
-### Mis järgmiseks
+### Ülesanded, järjekorras (mudel / effort)
 
-**Järjekord (Kevin, 19.11):** plaan 3 → GO-LIVE osa B →
-`make-license.mjs` allkirjastab YubiKey C-ga ja release-tööriist.
+| # | Ülesanne | Mudel | Effort | Seis |
+|---|---|---|---|---|
+| 1 | `make-license.mjs` allkirjastab YubiKey C-ga (slot 83, `licence-C-217c4193`; D varuks). Kasuta `scripts/yubikey/setup-device.py` `sign` sammu. Testid: tööriista allkiri kontrollitakse rakenduse mooduliga (`scripts/makeLicense.test.ts`); failivõti jääb ainult `--key`-ga ja hoiatusega | Sonnet | medium | **järgmine** |
+| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | |
+| 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | |
+| 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8) | Sonnet | medium | |
+| 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod | Sonnet | medium | |
+| 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | |
+| 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
+| — | Pühapäeva turvakontroll (vt ülal) | Opus | high | |
+| 6 | Vene keel — pärast esmaspäeva | Sonnet | low | |
 
-1. **Plaan 3 ehitus** (`docs/WORKFLOW-STAGES.md`, migratsioon 122): **OK
-   19.11**, parandused sees (telefon §13, tellija §2.6a, liigutamine §5, palk
-   palgaliikide kaupa §10, vaikeväärtused §8). Ehitamine käib.
-   - **1. osa ehitatud (19.11):** migratsioon 122 (skeem, tagasitäide,
-     RLS) ja `shared/workflow/` reeglid. Tööd liiguvad ja maksavad veel
-     nagu enne. **Sinu osa:** jooksuta sql/122 testkoopias, siis
-     `notify pgrst, 'reload schema';`, siis sql/checks/schema_check.sql
-     (peab andma null rida). Järgmine migratsioon on 123.
-   - **Testlitsents Windowsis:** käsud on docs/MODULES-AND-RATINGS.md-s
-     („Kuidas seda ise proovida"). Osa B muudab litsentsi `api` välja
-     (aadress + võti), siis tuleb testlitsents uuesti allkirjastada.
-2. **GO-LIVE osa B:** ühendus litsentsi kaudu, `build.yml`-ist kaob
-   `.env`-i samm.
-3. **YubiKeyd on seadistatud (19.11), kõik neli läbisid.** Avalikud võtmed
-   on `testing`-us, mitte `main`-is: juurvõtmed A ja B `PINNED_ROOTS`-is
-   (ka `wivo-update`-i koopias), A neli sertifikaati
-   `shared/release/certificates.ts`-is, C ja D litsentsivõtmed
-   `LICENCE_PUBLIC_KEYS`-is. `shared/release/certificates.test.ts` kontrollib
-   neid. **Järgmisena:** `make-license.mjs` allkirjastab YubiKey C-ga, ja
-   release-tööriist.
-   - **Arenduses on nüüd vaja testlitsentsi** (`WIVO_LICENCE_TEST_KEY`,
-     docs/MODULES-AND-RATINGS.md „Kuidas seda ise proovida"). Ilma selleta
-     on rakendus ainult lugemiseks.
-   - **`testing`-ust ehitatud ja paigaldatud** rakendus ei võta enam
-     allkirjastamata uuendusi vastu.
-4. **GitHubi ja Cloudflare'i saladused** kustutab Kevin alles vahetult enne
-   release'i pushi, kui osa B on `testing`-us testitud (GO-LIVE, järjekorra
-   samm 4). Varem mitte: kuni osa B ei ole `main`-is, ehitaks iga push
-   `main`-i ilma aadressita rakenduse.
+**Kevini osa:** migratsioonid 122 ja 123 testkoopias (siis
+`notify pgrst, 'reload schema';` ja `sql/checks/schema_check.sql` → null
+rida), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
+
+### Tehtud täna
+
+- `RIGA-GO-LIVE.md` (`098935f`), YubiKey avalikud võtmed (`fd16ca6`),
+  plaan 3 OK + parandused (`b10cc8e`, `f1c62a6`), testlitsentsi käsud
+  Windowsile (docs/MODULES-AND-RATINGS.md), **plaan 3 osa 1: migratsioon 122
+  ja `shared/workflow/`** (`1b08d55`).
 
 ## 📌 Kus pooleli jäi — 18.11.2026 (haru `testing`)
 

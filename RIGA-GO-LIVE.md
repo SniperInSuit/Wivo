@@ -217,6 +217,39 @@ OK to delete.
 
 ---
 
+## Monday 23.11.2026: the temporary connection, and what moves after the start
+
+**Decided (Kevin, 2026-11-19).**
+
+- **Part B comes after Monday.** For Monday, the connection is temporary:
+  - **a Windows installer built on Kevin's machine** with Riga's project URL
+    and publishable key in its `.env`, not in CI. GitHub's secrets stay
+    Tallinn's and are not used for it. The licence names only Riga's address,
+    so the installer refuses any other (`supabaseTarget`, already built);
+  - **a separate Cloudflare Pages project** for Riga's phone version, with
+    Riga's URL and publishable key in its own variables. `wivo` (Tallinn) is
+    not touched;
+  - the installer comes from `testing`, which pins the root keys, so it
+    **refuses an unsigned app update**: until the release tool exists, every
+    update to Riga is a new installer, installed by hand;
+  - the database baseline goes in with `psql` (docs/RIGA-SETUP.md), not
+    through `wivo-update`.
+- **The security review:** the full review (5f) may come after the start,
+  **within two weeks, by 2026-12-07**. **On Sunday 22.11, before Riga's
+  build, a short check** (Opus, high):
+  - RLS and a leak test on every new table;
+  - `can_move_stage` and `files.write`;
+  - no `service_role` key or other secret in the installer or its `.env`;
+  - Storage rules for the new file types `ct` and `project`.
+- **E-mail:** Riga's own Resend account (free plan, 100 e-mails a day), from
+  the domain `dentiks.lv`. docs/RIGA-SETUP.md holds the DNS records for Ilja,
+  the sending key in Riga's Supabase function secrets, and Supabase Auth's
+  SMTP through Riga's Resend. **When the daily limit is reached, it has to be
+  in the log and visible to the owner.** Auth's own e-mails (invites,
+  password links) also count toward the 100.
+- **After Monday:** part B, `make-license.mjs`'s and the release tool's
+  remaining work, the full security review, Russian.
+
 ## The release, in order
 
 1. **Phase 1 is built and tested on `testing`** (ARCHITECTURE-INSTANCES.md
