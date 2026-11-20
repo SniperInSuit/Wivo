@@ -18,7 +18,7 @@
 -- No rows: this database matches the migrations in all of it.
 --
 -- Covered: trigger.
--- Expected rows: 52.
+-- Expected rows: 53.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -39,6 +39,7 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.job_file.refuse_file_on_deleted_job', 'CREATE TRIGGER refuse_file_on_deleted_job BEFORE INSERT ON public.job_file FOR EACH ROW EXECUTE FUNCTION refuse_file_on_deleted_job()'),
     ('trigger', 'public.job_share.job_share_notify', 'CREATE TRIGGER job_share_notify AFTER INSERT OR UPDATE OF revoked_at ON public.job_share FOR EACH ROW EXECUTE FUNCTION on_job_share_notify()'),
     ('trigger', 'public.job_share.refuse_share_of_deleted_job', 'CREATE TRIGGER refuse_share_of_deleted_job BEFORE INSERT OR UPDATE ON public.job_share FOR EACH ROW EXECUTE FUNCTION refuse_share_of_deleted_job()'),
+    ('trigger', 'public.job_stage.job_stage_pay_role', 'CREATE TRIGGER job_stage_pay_role BEFORE INSERT ON public.job_stage FOR EACH ROW EXECUTE FUNCTION job_stage_pay_role_from_template()'),
     ('trigger', 'public.jobs.audit_job_change', 'CREATE TRIGGER audit_job_change AFTER INSERT OR UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION audit_job_change()'),
     ('trigger', 'public.jobs.guard_job_orderer', 'CREATE TRIGGER guard_job_orderer BEFORE INSERT OR UPDATE OF ordered_by ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_job_orderer()'),
     ('trigger', 'public.jobs.guard_partner_visible_job_text', 'CREATE TRIGGER guard_partner_visible_job_text BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_job_text()'),

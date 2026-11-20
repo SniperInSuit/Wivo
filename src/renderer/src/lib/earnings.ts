@@ -25,6 +25,7 @@ import type { Job, Revision, WorkItem } from '../types/job'
 import { jobWorkItems, jobPeriodDate, workItemDesigner, designTeeth, jobDesigners } from '../types/job'
 import { resolveWorkType, type WorkType } from '../config/workTypes'
 import { t, translate, lang as uiLang, type Lang } from '@shared/i18n' // not @/lib/i18n: that touches `document` on load, and node tests import this
+import { jobPayees, revisionPayees, paysPerson, partOf, type Payees } from '@shared/workflow/pay'
 
 // How the money is calculated. Deliberately ONLY billing methods: "design" used
 // to sit in this list, which is a category error — design is a kind of work, not
@@ -236,6 +237,47 @@ function revisionDesignItems(rev: Revision, job: Job, profileId: string): PayIte
   }
   return fallback === profileId ? revisionPayItems(rev, job) : []
 }
+
+/**
+ * The whole design of a job, for the people on its design stage (§10).
+ *
+ * The stage decides who designed, so the work items' own designers are not
+ * asked: every item, at the teeth marked as designed (`designTeeth`), which is
+ * exactly what a job with one designer for everything gives that designer
+ * today.
+ */
+const stageDesignItemsOf = (job: Job): PayItem[] =>
+  jobWorkItems(job).map(i => ({ too: i.too, hambad: designTeeth(i) }))
+
+/** The same for a revision: its items, else the job's as today's fallback. */
+function stageRevisionDesignItems(rev: Revision, job: Job): PayItem[] {
+  const items = rev.work_items
+  if (Array.isArray(items) && items.length > 0) {
+    return items.map((i: WorkItem) => ({ too: i.too, hambad: designTeeth(i) }))
+  }
+  return revisionPayItems(rev, job)
+}
+
+/**
+ * Who is paid for this job's own lines (piece work, design, model), today's
+ * rule resolved: the technician and the designers by item where no stage says
+ * otherwise (§10). For "does this job concern this person" and "does this job
+ * concern anybody", which must agree with what calculateEarnings pays.
+ */
+export function jobPayeeIds(job: Job): string[] {
+  const p = jobPayees(job.pay_stages)
+  const ids: (string | null | undefined)[] = []
+  const add = (payees: Payees, legacy: () => (string | null | undefined)[]) =>
+    ids.push(...(payees.by === 'stage' ? payees.people : legacy()))
+  add(p.too, () => [job.assigned_to])
+  add(p.mudel, () => [job.assigned_to])
+  add(p.disain, () => jobDesigners(job))
+  return [...new Set(ids.filter((id): id is string => !!id))]
+}
+
+/** Does this job pay this person anything of its own (revisions aside)? */
+export const jobPaysPerson = (job: Job, profileId: string): boolean =>
+  jobPayeeIds(job).includes(profileId)
 
 /**
  * The work types a rule is limited to. Empty means it covers every type.
@@ -541,23 +583,59 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
   const inPeriod = (d: string) => !!d && d >= periodStart && d <= periodEnd
   const lines: EarningLine[] = []
 
+  /**
+   * A line priced for this person, cut to their part when a stage's people
+   * share it (§10). Today's rule (`legacy`) and a stage of one return the line
+   * untouched, which is how every old job pays to the cent what it did.
+   *
+   * qty is scaled with the amount and the rate is left as the rule's, so
+   * qty × rate still describes the part, and re-valuing a paid line at a
+   * corrected rate (revaluationOf) asks the right question.
+   */
+  const pushShare = (payees: Payees, line: EarningLine) => {
+    if (payees.by === 'legacy') { lines.push(line); return }
+    const part = partOf(line.amount, payees.people, profileId)
+    if (!part) return
+    if (part.heads === 1) { lines.push(line); return }
+    if (part.amount <= 0) return
+    lines.push({
+      ...line,
+      amount: part.amount,
+      qty: round2(line.qty * part.fraction),
+      description: line.description + L('payLine.shared', { n: part.heads }),
+    })
+  }
+
   // ── Production: per job ───────────────────────────────────────────────────
   for (const job of jobs) {
-    const isTech = job.assigned_to === profileId
+    // Who the job pays: its stages' people where a stage carries the pay kind,
+    // today's rule (assigned_to, designed_by) everywhere else. An old job has
+    // no stage people, so all three are `legacy` and nothing below changes.
+    const payees = jobPayees(job.pay_stages)
+    const isTech = payees.too.by === 'legacy'
+      ? job.assigned_to === profileId
+      : paysPerson(payees.too, profileId)
     const items = payItemsOf(job)
     // Only the parts THIS person designed. A job whose items name no designer
     // of their own yields all of them for whoever `designed_by` names, so the
     // ordinary one-designer case is the same list it always was.
-    const designItems = designPayItemsOf(job, profileId)
+    const designItems = payees.disain.by === 'legacy'
+      ? designPayItemsOf(job, profileId)
+      : (paysPerson(payees.disain, profileId) ? stageDesignItemsOf(job) : [])
     const isDesigner = designItems.length > 0
+    // The model goes with the piece work unless a stage carries it on its own.
+    const isModeller = payees.mudel.by === 'legacy'
+      ? job.assigned_to === profileId
+      : paysPerson(payees.mudel, profileId)
     // A remake may name someone who touched no other part of the case. Skipping
     // the job outright would have hidden their rework entirely — the guard has
     // to ask about the revisions too, not only the job's own two names.
-    const onARevision = (job.revisions ?? []).some(r =>
-      (r.assigned_to ?? job.assigned_to) === profileId
-      || revisionDesignItems(r, job, profileId).length > 0
-    )
-    if (!isTech && !isDesigner && !onARevision) continue
+    const onARevision = (job.revisions ?? []).some(r => {
+      const rp = revisionPayees(job.pay_stages, r)
+      return (rp.tech.by === 'legacy' ? (r.assigned_to ?? job.assigned_to) === profileId : paysPerson(rp.tech, profileId))
+        || (rp.design.by === 'legacy' ? revisionDesignItems(r, job, profileId).length > 0 : paysPerson(rp.design, profileId))
+    })
+    if (!isTech && !isDesigner && !isModeller && !onARevision) continue
 
     const earnedOn = jobEarnedOn(job)
     const jobDone = job.status === doneStageKey
@@ -576,7 +654,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
       const pay = payProduction(mine, items, earnedOn, types, 'too', price, rush)
       if (pay && pay.amount > 0) {
-        lines.push({
+        pushShare(payees.too, {
           key: `job:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
@@ -594,7 +672,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       const price = (Number(job.disain_hind ?? 0) || Number(job.hind ?? 0)) * designShare
       const pay = payProduction(mine, designItems, earnedOn, types, 'disain', price, rush)
       if (pay && pay.amount > 0) {
-        lines.push({
+        pushShare(payees.disain, {
           key: `design:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
@@ -610,7 +688,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // production rule rather than competing with it, and a flat rule pays once
     // per job however many work items the case holds. Paid to the technician —
     // the model is made, not designed.
-    if (isTech && countable && job.mudel && !alreadyPaid.has(`mudel:${job.id}`)) {
+    if (isModeller && countable && job.mudel && !alreadyPaid.has(`mudel:${job.id}`)) {
       const price = Number(job.hind ?? 0) + Number(job.disain_hind ?? 0)
       // A model is something the job HAS, not one of its work items, so a job
       // that names no work at all still carries one. Without the stand-in,
@@ -620,7 +698,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       const modelItems = items.length > 0 ? items : [{ too: '', hambad: '' }]
       const pay = payProduction(mine, modelItems, earnedOn, types, 'mudel', price, rush)
       if (pay && pay.amount > 0) {
-        lines.push({
+        pushShare(payees.mudel, {
           key: `mudel:${job.id}`,
           job_id: job.id, revision_id: null, work_hours_id: null,
           kind: pay.kind,
@@ -649,7 +727,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
           // freezing one never suppresses the other.
           const key = `extra:${extra.rule.id}:${job.id}`
           if (alreadyPaid.has(key)) continue
-          lines.push({
+          pushShare(scope === 'disain' ? payees.disain : payees.too, {
             key,
             job_id: job.id, revision_id: null, work_hours_id: null,
             kind: extra.rule.kind,
@@ -671,11 +749,17 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
     // meant. The loop is no longer gated on the job's technician: someone who
     // did none of the original work still has to be paid for redoing it.
     for (const [i, rev] of (job.revisions ?? []).entries()) {
-      const revTech = rev.assigned_to ?? job.assigned_to
-      const isRevTech = revTech === profileId
+      // Its own technician or designer when it names one (sql/087); else the
+      // muudatus / design stage; else, as before, the job's (§10).
+      const revPayees = revisionPayees(job.pay_stages, rev)
+      const isRevTech = revPayees.tech.by === 'legacy'
+        ? (rev.assigned_to ?? job.assigned_to) === profileId
+        : paysPerson(revPayees.tech, profileId)
       // Same split as the job: a remake covering both the crowns and the
       // laminates can have been redesigned by two people.
-      const revDesignItems = revisionDesignItems(rev, job, profileId)
+      const revDesignItems = revPayees.design.by === 'legacy'
+        ? revisionDesignItems(rev, job, profileId)
+        : (paysPerson(revPayees.design, profileId) ? stageRevisionDesignItems(rev, job) : [])
       const isRevDesigner = revDesignItems.length > 0
       if (!isRevTech && !isRevDesigner) continue
 
@@ -701,7 +785,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         const pay = onRevisionScope
           ?? payProduction(payable, revItems, revDate, types, 'too', revPrice, revRush)
         if (pay && pay.amount > 0) {
-          lines.push({
+          pushShare(revPayees.tech, {
             key: `rev:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: pay.kind,
@@ -722,7 +806,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         const revDesignPrice = revPrice * priceShare(revItems, revDesignItems)
         const design = payProduction(designPayable, revDesignItems, revDate, types, 'disain', revDesignPrice, revRush)
         if (design && design.amount > 0) {
-          lines.push({
+          pushShare(revPayees.design, {
             key: `revdesign:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: design.kind,
@@ -739,7 +823,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
         const modelPayable = mine.filter(r => r.pay_revisions)
         const model = payProduction(modelPayable, revItems, revDate, types, 'mudel', revPrice, revRush)
         if (model && model.amount > 0) {
-          lines.push({
+          pushShare(revPayees.tech, {
             key: `revmudel:${job.id}:${rev.id}`,
             job_id: job.id, revision_id: rev.id, work_hours_id: null,
             kind: model.kind,
@@ -755,7 +839,7 @@ export function calculateEarnings(ctx: EarningsContext): EarningLine[] {
       for (const extra of payAdditive(mine, revItems, revDate, types, 'muudatus', revPrice, revRush)) {
         const key = `extra:${extra.rule.id}:${job.id}:${rev.id}`
         if (alreadyPaid.has(key)) continue
-        lines.push({
+        pushShare(revPayees.tech, {
           key,
           job_id: job.id, revision_id: rev.id, work_hours_id: null,
           kind: extra.rule.kind,
@@ -893,8 +977,9 @@ export function unassignedFinishedJobs(
       const on = jobEarnedOn(j)
       return !!on && on >= periodStart && on <= periodEnd
     })
-    // A designer named on any single work item counts: the job is somebody's.
-    .filter(j => !j.assigned_to && jobDesigners(j).length === 0)
+    // A designer named on any single work item counts, and so does anyone on a
+    // stage that carries a pay kind (§10): the job is somebody's.
+    .filter(j => jobPayeeIds(j).length === 0)
     .map(j => ({ id: j.id, label: `${itemsLabel(payItemsOf(j), uiLang)} · ${j.patsient}` }))
 }
 
@@ -935,9 +1020,18 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
   }
 
   for (const job of jobs) {
-    const isTech = job.assigned_to === profileId
-    const designItems = designPayItemsOf(job, profileId)
+    // The same people calculateEarnings pays (§10): a stage's, or today's rule.
+    const payees = jobPayees(job.pay_stages)
+    const isTech = payees.too.by === 'legacy'
+      ? job.assigned_to === profileId
+      : paysPerson(payees.too, profileId)
+    const designItems = payees.disain.by === 'legacy'
+      ? designPayItemsOf(job, profileId)
+      : (paysPerson(payees.disain, profileId) ? stageDesignItemsOf(job) : [])
     const isDesigner = designItems.length > 0
+    const isModeller = payees.mudel.by === 'legacy'
+      ? job.assigned_to === profileId
+      : paysPerson(payees.mudel, profileId)
     if (!isTech && !isDesigner) continue
 
     if (job.status !== doneStageKey) {
@@ -992,7 +1086,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       }
       // A model on the job with no rule to pay it is silent money: the job is
       // paid, the line for the model simply never appears.
-      if (job.mudel && !payProduction(mine, items, earnedOn, types, 'mudel', price)) {
+      if (isModeller && job.mudel && !payProduction(mine, items, earnedOn, types, 'mudel', price)) {
         // The near-miss is worth naming separately, because it looks exactly
         // like a rule that works. "Mudel" exists twice in this app: as a rate
         // SCOPE ("Mille eest: Mudel") and as a WORK TYPE, and a rule restricted
@@ -1015,7 +1109,7 @@ export function diagnoseEarnings(ctx: EarningsContext): EarningsIssue[] {
       //
       // Only worth saying to someone who HAS a model rate: without one there is
       // no money going missing and this would be noise on every job.
-      if (!job.mudel
+      if (isModeller && !job.mudel
         && mine.some(r => (r.applies_to ?? 'too') === 'mudel')
         && items.some(i => /mudel|model/i.test(i.too ?? ''))) {
         add('reegel',
@@ -1307,7 +1401,7 @@ export function backlogPeriods(ctx: EarningsContext): BacklogPeriod[] {
     // would otherwise be costed in full for every worker on the screen, and
     // then dropped again for having produced no lines — the same answer,
     // arrived at by doing all the work first.
-    if (j.assigned_to !== profileId && !jobDesigners(j).includes(profileId)) continue
+    if (!jobPaysPerson(j, profileId)) continue
     const m = jobPeriodDate(j).slice(0, 7)
     if (m && m < cutoff) months.add(m)
   }

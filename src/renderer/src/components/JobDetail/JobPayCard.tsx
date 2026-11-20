@@ -13,6 +13,7 @@ import { useClinicProfiles } from '../../hooks/useClinicProfiles'
 import { useWorkTypes } from '../../stores/useSettings'
 import { usePipeline } from '../../context/PipelineContext'
 import { projectedJobPay } from '../../lib/jobPay'
+import { jobPayees, type Payees } from '@shared/workflow/pay'
 import { t } from '@/lib/i18n'
 import { useAuth } from '../../context/AuthContext'
 import { clinicCountry, hasEstonianTax } from '../../lib/country'
@@ -26,10 +27,17 @@ export function JobPayCard({ job }: { job: Job }) {
   // Outside Estonia, Wivo does no tax: the amount is said to be gross, before tax.
   const beforeTax = !hasEstonianTax(clinicCountry(useAuth().clinic))
 
+  // Who the job pays: its stages' people where a stage carries the pay kind
+  // (§10), else the technician and the designer, as before.
+  const payees = jobPayees(job.pay_stages)
+  const ids = (p: Payees, legacy: string | null) => (p.by === 'stage' ? [...p.people] : legacy ? [legacy] : [])
+  const makers = [...new Set([...ids(payees.too, job.assigned_to), ...ids(payees.mudel, job.assigned_to)])]
   const people = [
-    { id: job.assigned_to, role: t('jobDetail.technicianPay') },
-    { id: job.designed_by && job.designed_by !== job.assigned_to ? job.designed_by : null, role: t('jobDetail.designerPay') },
-  ].filter((p): p is { id: string; role: string } => !!p.id)
+    ...makers.map(id => ({ id, role: t('jobDetail.technicianPay') })),
+    ...ids(payees.disain, job.designed_by)
+      .filter(id => !makers.includes(id))
+      .map(id => ({ id, role: t('jobDetail.designerPay') })),
+  ]
 
   const rows = people.map(p => {
     const profile = profiles.find(x => x.id === p.id)

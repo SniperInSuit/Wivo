@@ -13,6 +13,10 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Job } from '../types/job'
 import {
+  JOBS_WITH_PAY_STAGES, PAY_STAGE_FILTER, payStagesUnavailable, withPayStages,
+  payStagesKnownUnavailable, markPayStagesUnavailable,
+} from '../lib/jobPayStages'
+import {
   SEARCH_LIMIT, containsPattern, jobCodeCandidates, partialCodePattern, rankSearchResults,
 } from '../lib/jobSearch'
 
@@ -57,6 +61,15 @@ export function useJobById(id: string | null, enabled: boolean) {
     queryKey: ['job_by_id', id],
     enabled: enabled && !!id,
     queryFn: async () => {
+      // With its pay stages, like the jobs on the board (lib/jobPayStages): the
+      // job's pay card reads them.
+      if (!payStagesKnownUnavailable()) {
+        const { data, error } = await supabase.from('jobs').select(JOBS_WITH_PAY_STAGES)
+          .not(...PAY_STAGE_FILTER).eq('id', id!).is('deleted_at', null).maybeSingle()
+        if (!error) return data ? withPayStages(data as unknown as Record<string, unknown>) : null
+        if (!payStagesUnavailable(error)) throw error
+        markPayStagesUnavailable()
+      }
       const { data, error } = await supabase.from('jobs').select('*').eq('id', id!).is('deleted_at', null).maybeSingle()
       if (error) throw error
       return (data ?? null) as Job | null

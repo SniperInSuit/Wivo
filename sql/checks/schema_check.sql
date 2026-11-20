@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 2121.
+-- Expected rows: 2126.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -126,6 +126,7 @@ with expected(kind, key, def) as (values
     ('constraint', 'public.job_stage.job_stage_job_id_fkey', 'FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE'),
     ('constraint', 'public.job_stage.job_stage_key_unique', 'UNIQUE (job_id, stage_key)'),
     ('constraint', 'public.job_stage.job_stage_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE CASCADE'),
+    ('constraint', 'public.job_stage.job_stage_pay_role_valid', 'CHECK (((pay_role IS NULL) OR (pay_role = ANY (ARRAY[''too''::text, ''disain''::text, ''mudel''::text, ''muudatus''::text]))))'),
     ('constraint', 'public.job_stage.job_stage_pkey', 'PRIMARY KEY (id)'),
     ('constraint', 'public.job_stage.job_stage_task_valid', 'CHECK (((task IS NULL) OR (length(task) <= 2000)))'),
     ('constraint', 'public.job_stage_person.job_stage_person_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE CASCADE'),
@@ -649,6 +650,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.job_identity_terms(p_job uuid)', 'security definer, stable, search_path=public, body md5 c050533edbdf2eae7229588928def4d5'),
     ('function', 'public.job_is_mine(assigned uuid, designer uuid, items jsonb)', 'security invoker, stable, search_path=public, body md5 f06f4a0d4b390d621bfa1774743253b4'),
     ('function', 'public.job_is_shared(p_job uuid)', 'security definer, stable, search_path=public, body md5 298aa65795c7bca23fb1af83c28c2dc0'),
+    ('function', 'public.job_stage_pay_role_from_template()', 'security definer, volatile, search_path=public, body md5 86f79d3260945ac2c53f49313d8c9d6a'),
     ('function', 'public.job_stage_people(p_job uuid, p_stage text)', 'security definer, stable, search_path=public, body md5 fa7d043db8303307b0dc4038288569c2'),
     ('function', 'public.job_stage_plan(p_org uuid, p_template uuid, p_impression text, p_implants integer, p_method text, p_printed boolean, p_switches jsonb, p_orderer uuid)', 'security definer, stable, search_path=public, body md5 2bfa9ec6a113d7ebfed4abe31ece9b53'),
     ('function', 'public.job_thread(p_job uuid)', 'security definer, stable, search_path=public, body md5 4fbc677deff8560f8d7755ddfd63286c'),
@@ -1064,6 +1066,7 @@ with expected(kind, key, def) as (values
     ('grant', 'public.job_stage to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.job_stage to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.job_stage to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.job_stage_pay_role_from_template() to service_role', 'EXECUTE'),
     ('grant', 'public.job_stage_people(p_job uuid, p_stage text) to service_role', 'EXECUTE'),
     ('grant', 'public.job_stage_person to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.job_stage_person to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
@@ -1470,6 +1473,7 @@ with expected(kind, key, def) as (values
     ('index', 'public.job_share_live_key', 'CREATE UNIQUE INDEX job_share_live_key ON public.job_share USING btree (job_id, partner_org) WHERE (revoked_at IS NULL)'),
     ('index', 'public.job_share_partner_idx', 'CREATE INDEX job_share_partner_idx ON public.job_share USING btree (partner_org) WHERE (revoked_at IS NULL)'),
     ('index', 'public.job_stage_job_idx', 'CREATE INDEX job_stage_job_idx ON public.job_stage USING btree (job_id, "position")'),
+    ('index', 'public.job_stage_pay_role_once', 'CREATE UNIQUE INDEX job_stage_pay_role_once ON public.job_stage USING btree (job_id, pay_role) WHERE (pay_role IS NOT NULL)'),
     ('index', 'public.job_stage_person_profile_idx', 'CREATE INDEX job_stage_person_profile_idx ON public.job_stage_person USING btree (profile_id)'),
     ('index', 'public.jobs_assigned_to_idx', 'CREATE INDEX jobs_assigned_to_idx ON public.jobs USING btree (assigned_to)'),
     ('index', 'public.jobs_customer_idx', 'CREATE INDEX jobs_customer_idx ON public.jobs USING btree (customer_id, valmis_kuupaev)'),
@@ -2156,6 +2160,7 @@ with expected(kind, key, def) as (values
     ('trigger', 'public.job_file.refuse_file_on_deleted_job', 'CREATE TRIGGER refuse_file_on_deleted_job BEFORE INSERT ON public.job_file FOR EACH ROW EXECUTE FUNCTION refuse_file_on_deleted_job()'),
     ('trigger', 'public.job_share.job_share_notify', 'CREATE TRIGGER job_share_notify AFTER INSERT OR UPDATE OF revoked_at ON public.job_share FOR EACH ROW EXECUTE FUNCTION on_job_share_notify()'),
     ('trigger', 'public.job_share.refuse_share_of_deleted_job', 'CREATE TRIGGER refuse_share_of_deleted_job BEFORE INSERT OR UPDATE ON public.job_share FOR EACH ROW EXECUTE FUNCTION refuse_share_of_deleted_job()'),
+    ('trigger', 'public.job_stage.job_stage_pay_role', 'CREATE TRIGGER job_stage_pay_role BEFORE INSERT ON public.job_stage FOR EACH ROW EXECUTE FUNCTION job_stage_pay_role_from_template()'),
     ('trigger', 'public.jobs.audit_job_change', 'CREATE TRIGGER audit_job_change AFTER INSERT OR UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION audit_job_change()'),
     ('trigger', 'public.jobs.guard_job_orderer', 'CREATE TRIGGER guard_job_orderer BEFORE INSERT OR UPDATE OF ordered_by ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_job_orderer()'),
     ('trigger', 'public.jobs.guard_partner_visible_job_text', 'CREATE TRIGGER guard_partner_visible_job_text BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION guard_partner_visible_job_text()'),

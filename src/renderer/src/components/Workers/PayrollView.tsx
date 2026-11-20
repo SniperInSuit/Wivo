@@ -13,7 +13,6 @@ import {
 import { format, startOfMonth, endOfMonth, addMonths, parseISO, isValid } from 'date-fns'
 import { t, lang as uiLang, dateLocale, weekdays } from '@/lib/i18n'
 import type { Job } from '../../types/job'
-import { jobHasDesigner } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
 import { useWorkTypes, useSettings } from '../../stores/useSettings'
 import { useClinicProfiles } from '../../hooks/useClinicProfiles'
@@ -26,7 +25,7 @@ import {
 } from '../../hooks/useWorkerPay'
 import {
   calculateEarnings, diagnoseEarnings, earningsTotal, employerCost, employerTaxAmount,
-  unassignedFinishedJobs, grossOf, payslipFromGross, backlogPeriods, owedAcrossPeriods, paidRevisionGroups, revaluationOf,
+  unassignedFinishedJobs, jobPaysPerson, grossOf, payslipFromGross, backlogPeriods, owedAcrossPeriods, paidRevisionGroups, revaluationOf,
   RATE_KIND_LABEL, RATE_KIND_HINT, RATE_KIND_SUFFIX, RATE_SCOPE_LABEL, rateWorkTypes,
   type RateKind, type RateScope, type WorkerRate,
   type PayrollTaxRates, type WorkerTaxProfile, type EarningsIssue, type BacklogPeriod, type PaidRevisionGroup,
@@ -243,10 +242,11 @@ export function PayrollView({ jobs, onOpenJob }: PayrollViewProps) {
         periodStart: period.start, periodEnd: period.end, doneStageKey, alreadyPaid,
         rushMultiplier: w.kiirtoo_kordaja ?? 1,
       }).filter(iss => iss.code !== 'makstud'),
-      // jobHasDesigner, not `designed_by === w.id`: someone who designed only
-      // the laminates on a split case still has that job counted for them.
+      // jobPaysPerson, not `designed_by === w.id`: someone who designed only
+      // the laminates on a split case, or who is on a stage that pays (§10),
+      // still has that job counted for them.
       assignedDone: jobs.filter(j =>
-        (j.assigned_to === w.id || jobHasDesigner(j, w.id)) && j.status === doneStageKey
+        jobPaysPerson(j, w.id) && j.status === doneStageKey
       ).length,
     }
   }), [visible, payouts, rates, jobs, hours, wt.types, period, doneStageKey, taxRates, estonianTax, lineLang])

@@ -2,6 +2,10 @@ import { useEffect, useId } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, getActiveClinicId } from '../lib/supabase'
 import type { Job, JobInput } from '../types/job'
+import {
+  JOBS_WITH_PAY_STAGES, PAY_STAGE_FILTER, payStagesUnavailable, withPayStages,
+  payStagesKnownUnavailable, markPayStagesUnavailable,
+} from '../lib/jobPayStages'
 
 const QUERY_KEY = ['jobs']
 
@@ -26,6 +30,19 @@ export function useJobs() {
   return useQuery<Job[]>({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      // With the stages that carry a pay kind (§10, lib/jobPayStages). A
+      // database older than sql/124 has none to give; the jobs are then read
+      // alone, which pays every job by today's rule, as that database must.
+      if (!payStagesKnownUnavailable()) {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select(JOBS_WITH_PAY_STAGES)
+          .not(...PAY_STAGE_FILTER)
+          .order('created_at', { ascending: false })
+        if (!error) return (data as unknown as Record<string, unknown>[]).map(withPayStages)
+        if (!payStagesUnavailable(error)) throw error
+        markPayStagesUnavailable()
+      }
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
@@ -42,8 +59,10 @@ export function useJobs() {
  * unique; a payload built by spreading an existing job — "Duplicate" does
  * exactly that — would otherwise send the original's code and be refused.
  */
-function withoutDbOwned<T extends object>(row: T): T {
-  const { job_code: _code, ...rest } = row as T & { job_code?: unknown }
+export function withoutDbOwned<T extends object>(row: T): T {
+  // `pay_stages` is read with the job (lib/jobPayStages), not a column: a form
+  // filled by spreading a loaded job carries it, and the save would be refused.
+  const { job_code: _code, pay_stages: _stages, ...rest } = row as T & { job_code?: unknown; pay_stages?: unknown }
   return rest as T
 }
 

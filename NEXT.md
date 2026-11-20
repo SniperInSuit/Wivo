@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v2.0.4 · 19.11.2026 · haru `testing` · commititud, pushimata**
+**Seis: v2.0.4 · 20.11.2026 · haru `testing` · commititud, pushimata**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -44,22 +44,45 @@ commit `testing`-usse. Kevin pushib.
 | # | Ülesanne | Mudel | Effort | Seis |
 |---|---|---|---|---|
 | 1 | `make-license.mjs` allkirjastab YubiKey C-ga (slot 83, `licence-C-217c4193`; D varuks). Kasuta `scripts/yubikey/setup-device.py` `sign` sammu. Testid: tööriista allkiri kontrollitakse rakenduse mooduliga (`scripts/makeLicense.test.ts`); failivõti jääb ainult `--key`-ga ja hoiatusega | Sonnet | medium | **tehtud 19.11** (`--yubikey C` vaikimisi, `D` varuks, `--key` ainult failivõtmele) |
-| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | **tehtud 19.11** (`sql/123_workflow_moving.sql`, 41 testi; otsused docs/WORKFLOW-STAGES.md §11 — vaata üle) |
-| 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | **järgmine** |
-| 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8). **Andmebaas on valmis (123):** uus töö `create_job(töö, lülitid)`; liigutamine `move_job_stage` (mitte otse-update: IT-l pole `jobs.write`-i), nupp `can_move_stage`; „alustasin" `start_job_stage`; etapid töö juures `add_job_stage` / `set_job_stage_skipped` / `set_job_stage_people` (kas tohib: `may_edit_job_stages`); oma seadetes `set_notify_every_stage`; kell näitab juba `stage_progress` / `stage_assigned` | Sonnet | medium | |
+| 2a | Plaan 3 andmebaas, migratsioon **123**: `can_move_stage` + `guard_stage_change` (§5), töö loomine mallist (RPC), vaikemall uutele kliinikutele, teavitused §3 ja §3.1 (`notify_every_stage`, „uus töö" kellukesse), „alustasin", `jobs_select` haru etapi vastutajale (§3.2), `files.write` (§7.3), leak-testid | Opus | high | **tehtud 19.11** (`sql/123_workflow_moving.sql`, 41 testi; otsused §11: **1–5 OK** 20.11, 6 ja 7 ootavad) |
+| 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | **tehtud 20.11** (`shared/workflow/pay.ts`, migratsioon **124** = palgaliik töö etapile; vana töö sendi pealt sama; otsused docs/WORKFLOW-STAGES.md §10 „3. osa") |
+| 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8). **Andmebaas on valmis (123):** uus töö `create_job(töö, lülitid)`; liigutamine `move_job_stage` (mitte otse-update: IT-l pole `jobs.write`-i), nupp `can_move_stage`; „alustasin" `start_job_stage`; etapid töö juures `add_job_stage` / `set_job_stage_skipped` / `set_job_stage_people` (kas tohib: `may_edit_job_stages`); oma seadetes `set_notify_every_stage`; kell näitab juba `stage_progress` / `stage_assigned`. **Palk (2b):** palgaliik tuleb malli etapilt (`pay_role`, üks liik malli kohta: `validateTemplate`); mudeli rida käib `jobs.mudel` järgi, nii et vorm peab selle lipu panema (koos `printed_model`-iga) | Sonnet | medium | |
 | 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod (samad RPC-d kui 2c) | Sonnet | medium | |
 | 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | |
-| 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
+| 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis; palgaliigid etappidel), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
 | — | Pühapäeva turvakontroll (vt ülal) | Opus | high | |
 | 6 | Vene keel — pärast esmaspäeva | Sonnet | low | |
 
-**Kevini osa:** migratsioonid 122 ja 123 testkoopias, järjekorras (siis
+**Kevini osa:** migratsioonid 122, 123 ja 124 testkoopias, järjekorras (siis
 `notify pgrst, 'reload schema';` ja `sql/checks/schema_check.sql` ning
 `sql/checks/trigger_check.sql` → null rida), Edge Function
 `send-notifications` uuesti üles (uue teate `stage_progress` e-kirja
 pealkiri), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
 
-### Tehtud täna
+**Migratsioon 124 testkoopias** (pärast 122 ja 123):
+1. SQL Editor: kogu `sql/124_job_stage_pay_role.sql` sisu, Run.
+2. Eraldi päring: `notify pgrst, 'reload schema';`
+3. `sql/checks/schema_check.sql` ja `sql/checks/trigger_check.sql` → null rida.
+4. Lugev kontroll, ükski palgaliik pole töö peal kaks korda → null rida:
+   `select job_id, pay_role, count(*) from public.job_stage where pay_role is not null group by 1, 2 having count(*) > 1;`
+5. Lugev kontroll, mitmel etapil on palgaliik (vanadel töödel 0, kui
+   vaikemallile pole palgaliiki pandud):
+   `select count(*) filter (where pay_role is not null) as palgaliigiga, count(*) as koik from public.job_stage;`
+Enne 124-t töötab testingu rakendus edasi: tööd loetakse ilma etappideta ja
+palk käib tänase reegli järgi.
+
+### Tehtud 20.11
+
+- **Ülesanne 2b: palk etappide järgi** (docs/WORKFLOW-STAGES.md §10 „3. osa").
+  Etapp maksab oma inimestele, kui tal on palgaliik ja inimesed ja ta pole
+  vahele jäetud; muidu tänane reegel. Mitu inimest: igaüks oma reeglite
+  järgi, 1/n, sentides. **Migratsioon 124** kopeerib palgaliigi malli
+  etapilt töö etapile (2.3 põhimõte + RLS: malle ei näe `jobs.read`-ita).
+  Vana töö maksab sendi pealt sama: olemasolevad 133 palgatesti muutmata
+  rohelised, uued testid (34 + 40 + 8 + 11) ja ühekordne HEAD-i ja uue
+  mootori võrdlus 6000 juhusliku juhtumi peal (18 043 rida, kõik sama).
+
+### Tehtud 19.11
 
 - `RIGA-GO-LIVE.md` (`098935f`), YubiKey avalikud võtmed (`fd16ca6`),
   plaan 3 OK + parandused (`b10cc8e`, `f1c62a6`), testlitsentsi käsud

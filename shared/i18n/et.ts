@@ -2862,6 +2862,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'workers.earlierMonthsHint': "Varasemate kuude töö ja kuutasu, mida keegi pole veel kinnitanud. Ava kaart, et need kinnitada, igaüks oma kuusse.",
   'payLine.work': "Töö",
   'payLine.rush': " · kiirtöö ×{x}",
+  'payLine.shared': " · jagatud {n} vahel",
   'payLine.design': "Disain: {items} · {patient}{rush}",
   'payLine.model': "Mudel · {patient}{rush}",
   'payLine.revision': "Muudatus #{n}: {items} · {patient}{rush}",

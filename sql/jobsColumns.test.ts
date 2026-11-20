@@ -30,6 +30,16 @@ import { join } from 'node:path'
 
 const SQL_DIR = __dirname
 const JOB_TYPES = join(__dirname, '..', 'src', 'renderer', 'src', 'types', 'job.ts')
+const USE_JOBS = join(__dirname, '..', 'src', 'renderer', 'src', 'hooks', 'useJobs.ts')
+
+/**
+ * Fields READ with a job that are not columns, and never written: each must be
+ * stripped by `withoutDbOwned` (useJobs.ts) before every insert and update,
+ * which the last test checks. Not a way around the rule: a field goes here only
+ * with that strip.
+ *   pay_stages  the stages that carry a pay kind, embedded (lib/jobPayStages, §10)
+ */
+const READ_ONLY_FIELDS = ['pay_stages']
 
 /** Field names of the `Job` interface, in declaration order. */
 function jobFields(): string[] {
@@ -86,8 +96,21 @@ describe('jobs columns', () => {
   })
 
   it('creates every column the app writes', () => {
-    const missing = fields.filter(f => !created.has(f))
+    const missing = fields.filter(f => !created.has(f) && !READ_ONLY_FIELDS.includes(f))
     expect(missing, 'columns in types/job.ts that no migration creates').toEqual([])
+  })
+
+  it('a read-only field is stripped before every write, and is not a column', () => {
+    const src = readFileSync(USE_JOBS, 'utf8')
+    const strip = /function withoutDbOwned[\s\S]*?\n}/.exec(src)?.[0] ?? ''
+    expect(strip, 'withoutDbOwned not found in useJobs.ts').not.toBe('')
+    for (const f of READ_ONLY_FIELDS) {
+      expect(fields, f).toContain(f)
+      expect(strip, `withoutDbOwned must strip ${f}`).toMatch(new RegExp(`\\b${f}:\\s*_`))
+      expect(created.has(f), `${f} is a column after all: take it off READ_ONLY_FIELDS`).toBe(false)
+    }
+    // Both writes go through it.
+    expect(src.match(/withoutDbOwned\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
   })
 
   it('creates the five that existed in no file before sql/000', () => {

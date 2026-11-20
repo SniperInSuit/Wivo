@@ -6,9 +6,9 @@ reegel (5) ja palk palgaliikide kaupa (10). 8. peatüki küsimused on vastatud
 vaikeväärtustega, mida Riia saab hiljem seadetes muuta.
 **Uuendatud Riia kolme sisendi järgi (töövoog, mallid, kasutajad ja tarkvara).**
 
-Riia samm 1 (docs/ROADMAP.md). Migratsioonid **122** (skeem) ja **123**
-(liigutamine, teavitused, nähtavus, `files.write`), ainult `testing`;
-hinnangud nihkusid **124**-ks.
+Riia samm 1 (docs/ROADMAP.md). Migratsioonid **122** (skeem), **123**
+(liigutamine, teavitused, nähtavus, `files.write`) ja **124** (etapi
+palgaliik, §10), ainult `testing`; hinnangud nihkusid **125**-ks.
 
 Riia sisend muutis plaani kuju, mitte ainult mahtu: **üks etappide nimekiri
 kliiniku kohta ei kanna välja.** Põhjus allpool, 1. peatükk.
@@ -325,7 +325,7 @@ vastutajat see ei tunne. **Seega:**
   inimene ei näe enam.
 
 **Hinnangute koht:** töö etappide vaates jääb iga etapi rea juurde koht
-hinnangule (docs/MODULES-AND-RATINGS.md osa 2, migratsioon 124). Praegu ei
+hinnangule (docs/MODULES-AND-RATINGS.md osa 2, migratsioon 125). Praegu ei
 ehitata midagi peale koha: komponent võtab etapi rea kaupa valikulise
 lisasisu.
 
@@ -638,6 +638,53 @@ See on plaani riskantseim osa: `earnings.ts` on suur ja tema testid on see,
 mis hoiab palga õigena. Jagamine kirjutatakse **puhta funktsioonina**
 `shared/` alla oma testidega, enne kui `earnings.ts` teda kutsub.
 
+**Ehitatud, `testing`-us (20.11.2026) — 3. osa, palk (ülesanne 2b):**
+`shared/workflow/pay.ts` (puhas funktsioon), `lib/earnings.ts` kutsub teda,
+migratsioon **124**.
+
+- **Palgaliik kopeeritakse töö etapile** (`job_stage.pay_role`, sql/124),
+  etapi loomisel malli samanimeliselt etapilt (töö mall, tühja korral
+  kliiniku vaikemall). Kaks põhjust: (1) 2.3 „kopeeritakse, ei viidata" —
+  malli hilisem muutmine ei tohi ümber suunata juba tehtud tööde palka;
+  (2) malle loeb ainult `jobs.read`/`jobs.write`/`pipeline.write`, töö
+  etappe aga igaüks, kes tööd näeb — muidu näeks `jobs.read`-ita etapi
+  vastutaja oma palka vana reegli järgi. Üks palgaliik töö kohta (unikaalne
+  indeks + päästik). sql/123 funktsioone ei muudetud.
+- **Reegel palgaliigi kaupa, mitte töö kaupa:** etapp maksab oma inimestele,
+  kui tal on palgaliik **ja** inimesed **ja** ta ei ole vahele jäetud. Igal
+  muul juhul tänane reegel (`assigned_to`, osa disainijad). Seega ei kao
+  kunagi raha võrreldes tänasega, ja vana töö (inimesi pole) maksab nagu enne.
+- **`mudel`** ilma oma etapita läheb sinna, kuhu `too` (täna: tehnikule).
+- **`muudatus`:** paranduse oma teostaja (sql/087) → `muudatus`-etapp →
+  need, kes saavad `too`. Paranduse disain: paranduse oma disainija →
+  `disain`-etapp.
+- **Disain etapi järgi:** etapi inimesed jagavad kogu töö disaini; tööosa
+  oma disainijat (`designed_by` osal) siis ei küsita, märgitud hambad
+  (`disain_hambad`) kehtivad nagu ühe disainija puhul täna.
+- **Jagamine:** igaüks hinnatakse **oma** reeglite järgi, nagu teeks ta kogu
+  etapi töö, ja saab sellest 1/n (`splitEqually`, sendid, ülejääk id
+  järjekorras). Samade reeglitega annavad osad kokku täpselt terve summa.
+  Real: `qty` jagatud n-ga, `rate` reegli oma (nii et `revaluationOf` küsib
+  õigesti), kirjelduses „jagatud N vahel".
+- **Kõik, mis küsib „kas töö puudutab seda inimest"** käib sama reegli järgi:
+  diagnostika, „töö, mis ei kuulu kellelegi", varasemad kuud, Töötasude
+  loendur, töö palgakaart (`jobPayeeIds`).
+- **Laadimine:** `useJobs` loeb töö koos palgaliigiga etappidega
+  (PostgREST embed, ainult `pay_role is not null` read). Andmebaas ilma
+  sql/124-ta → tööd loetakse üksi ja kõik maksab tänase reegli järgi; iga muu
+  viga visatakse, mitte ei vaigistata.
+- **Testid:** `shared/workflow/pay.test.ts` (34), `lib/earningsStages.test.ts`
+  (40, sh vana töö viie „tühja etapi" kujuga reahaaval sama),
+  `lib/jobPayStages.test.ts` (8), `sql/test/jobStagePay.test.ts` (11);
+  `lib/earnings.test.ts` (133) muutmata roheline. Lisaks ühekordne
+  võrdlus: HEAD-i ja uue mootori väljund 6000 juhusliku juhtumi peal
+  (18 043 rida, kõik reaviigid, diagnostika, varasemad kuud) — sendi pealt
+  sama.
+- **2c jaoks:** mudeli rida käib endiselt `jobs.mudel` järgi. Uus vorm peab
+  `mudel` lipu panema (või `printed_model`-iga kooskõlas hoidma), muidu
+  `mudel`-etapp ei saa midagi.
+- **Hilisem:** osakaalud (mitte võrdselt); palgaliigi muutmine töö juures.
+
 ---
 
 # 11. Mida saab kohe ja mis ootab faasi 1
@@ -689,7 +736,7 @@ Riia litsents ja moodul `jobs` tema sees.
   vahelejäetud) etapi vastutaja.
 - **§7.3:** `files.write` — lisab faile tööle, mille etapil oled; uut
   versiooni, kustutamist ega töö muutmist mitte.
-- **Otsustatud ehitamisel (Kevin, vaata üle):**
+- **Otsustatud ehitamisel** (Kevin 20.11: **1–5 OK**; 6 ja 7 ootavad):
   - etappe töö juures muudab omanik, admin, `pipeline.write` või töö tellinud
     arst `jobs.write`-iga, **mitte `jobs.write` üksi** (enda etapile panek
     annaks liigutamise ja palga);
@@ -704,7 +751,7 @@ Riia litsents ja moodul `jobs` tema sees.
 - **Teadaolev, muutmata:** kes tööd näeb, näeb ka hinda (docs/PERMISSIONS.md,
   „money on jobs"). Etapi vastutaja näeb seda nagu tehnik oma tööl;
   `files.write` ei lisa midagi.
-- **Järgmisena:** palk §10 (2b), UI (2c), telefon (3).
+- **Järgmisena:** UI (2c), telefon (3). Palk §10 (2b) on tehtud, vt 10.
 
 ---
 

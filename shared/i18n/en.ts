@@ -2875,6 +2875,7 @@ export const en = {
   'workers.earlierMonthsHint': "Work and monthly salary from earlier months that nobody has confirmed yet. Open the card to settle them, each in its own month.",
   'payLine.work': "Work",
   'payLine.rush': " · rush ×{x}",
+  'payLine.shared': " · shared by {n}",
   'payLine.design': "Design: {items} · {patient}{rush}",
   'payLine.model': "Model · {patient}{rush}",
   'payLine.revision': "Revision #{n}: {items} · {patient}{rush}",

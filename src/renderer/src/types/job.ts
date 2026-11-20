@@ -1,3 +1,4 @@
+import type { PayStage } from '@shared/workflow/pay'
 import type { DeliveryStatus } from './customer'
 // @shared rather than @/lib/i18n: node tests load this file, and that one touches `document`.
 import { t, type MessageKey } from '@shared/i18n'
@@ -528,6 +529,13 @@ export interface Job {
   updated_at: string
   /** PREFIX-YY-NNNN, set by the database on insert (sql/070). Never written by the app. */
   job_code?: string | null
+  /**
+   * The job's stages that carry a pay kind, with their people (§10,
+   * docs/WORKFLOW-STAGES.md): who the pay engine pays where a stage says so.
+   * Read with the job (lib/jobPayStages.ts), NOT a column: never written back
+   * (useJobs strips it). Absent or empty: today's rule, as before stages.
+   */
+  pay_stages?: PayStage[]
 }
 
 // Partial type for create/edit forms (id and timestamps are server-generated).
