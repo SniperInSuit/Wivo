@@ -21,7 +21,9 @@ import { todayISO, type NewJobStateInit } from '@shared/wizard'
 import type { Job, StageKey } from '@/types/job'
 import { priceBookOf, useSettings, useWorkTypes } from '@/stores/useSettings'
 import { usePipeline } from '@/context/PipelineContext'
-import { useCreateJob } from '@/hooks/useJobs'
+import { useCreateWorkflowJob } from '@/hooks/useJobs'
+import { useWorkflowTemplates } from '@/hooks/useWorkflowTemplates'
+import { switchesToSend } from './state/workflowFields'
 import { useNewJobWizard } from './state/useNewJobWizard'
 import { wizardQuoteInput } from './state/workItems'
 import { toJobInput } from './state/toJobInput'
@@ -52,7 +54,8 @@ export function NewJobWizard({
   const { settings } = useSettings()
   const { types } = useWorkTypes()
   const { stages } = usePipeline()
-  const createJob = useCreateJob()
+  const createJob = useCreateWorkflowJob()
+  const { data: templates = [] } = useWorkflowTemplates()
 
   // The calendar hands over a moment in time, and what the user picked on the
   // calendar is a DEADLINE, not the day the case arrived — kuupaev stays today.
@@ -120,13 +123,17 @@ export function NewJobWizard({
     setCreateError(null)
     wizard.patch({ status: 'creating' })
     try {
-      const job = await createJob.mutateAsync(
-        toJobInput(wizard.state, {
+      // The switches as they stand on screen, for the template in use (the
+      // default one when none was chosen). A clinic with no templates sends none.
+      const template = templates.find(x => x.id === wizard.state.templateId) ?? templates.find(x => x.isDefault) ?? null
+      const job = await createJob.mutateAsync({
+        input: toJobInput(wizard.state, {
           defaultStatus: (stages[0]?.key ?? 'disain') as StageKey,
           quote,
           types,
-        })
-      )
+        }),
+        switches: template ? switchesToSend(template.stages, wizard.state.switches) : {},
+      })
       wizard.patch({ status: 'created' })
       // The draft has served its purpose. Leaving it behind means the next
       // "Lisa uus töö" reopens the job that was just created.
@@ -150,7 +157,7 @@ export function NewJobWizard({
     } finally {
       inFlight.current = false
     }
-  }, [wizard, createJob, stages, quote, types, share])
+  }, [wizard, createJob, stages, quote, types, share, templates])
 
   const requestClose = useCallback(() => {
     // Refused while the insert is in flight. Closing here unmounts this

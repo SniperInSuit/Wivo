@@ -7,6 +7,7 @@ import { MachinePicker } from '../production/MachinePicker'
 import { PriorityPicker } from '../production/PriorityPicker'
 import { DesignSplit } from '../production/DesignSplit'
 import { PartnerShare } from '../production/PartnerShare'
+import { WorkflowSection } from '../production/WorkflowSection'
 import { WIZARD_INPUT, WIZARD_HELP } from '../wizardTheme'
 import { t } from '@/lib/i18n'
 
@@ -162,6 +163,8 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
           </div>
         )}
       </section>
+
+      <WorkflowSection state={state} patch={patch} />
     </div>
   )
 }

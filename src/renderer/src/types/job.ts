@@ -486,6 +486,16 @@ export interface Job {
   // written only while `mudel` is true; cleared when the flag comes off, so a
   // job never carries an identifier for a model it does not have.
   mudel_id?: string | null
+  // --- Workflow (sql/122, docs/WORKFLOW-STAGES.md): absent on a database without it ---
+  /** The template the job's stages were made from; null: the clinic's default one. */
+  template_id?: string | null
+  /** The doctor who created the job (set by the database, never edited). */
+  ordered_by?: string | null
+  impression_type?: 'digital' | 'conventional' | null
+  implant_count?: number | null
+  production_method?: 'print' | 'mill' | null
+  /** Kept in step with `mudel` by the new-job form: one answer, two columns. */
+  printed_model?: boolean | null
   // Where the work physically is. The pipeline ending at "done" says the bench
   // has finished with it, not that the practice has it (migration 035).
   delivery_status: DeliveryStatus

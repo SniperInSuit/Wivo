@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decidePermission, homePlace, isMenuPlace, isWritePermission, menuAllows, seesJobs, MENU_PLACES, PERMISSION_KEYS, PERMISSION_MODULE, PLACE_MODULE, TECHNICIAN_PRESET, ADMIN_PERMISSIONS, type MenuPlace, type PermissionKey, type Who } from './permissions'
+import { decidePermission, homePlace, isMenuPlace, isWritePermission, menuAllows, seesJobs, MENU_PLACES, PERMISSION_KEYS, PERMISSION_MODULE, PLACE_MODULE, TECHNICIAN_PRESET, ADMIN_PERMISSIONS, ROLE_PRESETS, ROLE_PRESET_KEYS, type MenuPlace, type PermissionKey, type Who } from './permissions'
 import { MODULE_KEYS } from './license/token'
 
 const worker = (granted: PermissionKey[] = [], extra: Partial<Who> = {}): Who =>
@@ -207,5 +207,30 @@ describe('where the app opens when a module took the home page away', () => {
   it('a member\'s own home, not the owner\'s: it answers per person', () => {
     expect(homePlace(worker([...TECHNICIAN_PRESET], { moduleOn: m => m === 'jobs' }))).toBe('board')
     expect(homePlace(worker([], { moduleOn: m => m === 'stock' }))).toBeNull()
+  })
+})
+
+describe('the role presets of Riga (docs/WORKFLOW-STAGES.md §7)', () => {
+  it('only names real permissions, and the technician one is the database default', () => {
+    for (const k of ROLE_PRESET_KEYS) for (const p of ROLE_PRESETS[k]) expect(PERMISSION_KEYS).toContain(p)
+    expect(ROLE_PRESETS.technician).toEqual(TECHNICIAN_PRESET)
+  })
+
+  it('whoever must not see a patient never gets a way to', () => {
+    for (const k of ['manager', 'accountant', 'it'] as const) {
+      expect(ROLE_PRESETS[k]).not.toContain('jobs.read')
+      expect(ROLE_PRESETS[k]).not.toContain('patients.read')
+    }
+  })
+
+  it('doctor: orders and the patient card; secretary: jobs, no calendar; IT: files only', () => {
+    expect([...ROLE_PRESETS.doctor].sort()).toEqual(['jobs.read', 'jobs.write', 'patients.read', 'patients.write'])
+    expect(ROLE_PRESETS.secretary).toEqual(['jobs.read'])
+    expect(ROLE_PRESETS.secretary).not.toContain('visits.read')
+    expect(ROLE_PRESETS.it).toEqual(['files.write'])
+  })
+
+  it('no preset hands out the update approval or the money pages', () => {
+    for (const k of ROLE_PRESET_KEYS) for (const p of ['updates.install', 'payments.write', 'payments.read'] as const) expect(ROLE_PRESETS[k]).not.toContain(p)
   })
 })

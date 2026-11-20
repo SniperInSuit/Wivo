@@ -10,10 +10,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Upload, Trash2, RotateCw, X, History, Paperclip } from 'lucide-react'
+import { Download, Upload, FolderUp, Trash2, RotateCw, X, History, Paperclip } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { guessFileType, type JobFileType } from '../../lib/fileClean'
-import { enqueueUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
+import { enqueueUpload, enqueueFolderUpload, retryUpload, dismissUpload, useJobUploads, onUploadDone } from '../../lib/uploadQueue'
+import { folderName } from '../../lib/zipFolder'
+import { extensionOf } from '../../lib/fileClean'
 import { saveFile } from '../../lib/fileLink'
 import { confirmSharedUpload } from '../../lib/sharedUpload'
 import { viewKind, viewerFor } from '../../lib/fileViewer'
@@ -37,12 +39,13 @@ interface JobFileRow {
   completed: boolean
 }
 
-const ALL_TYPES: JobFileType[] = ['scan', 'photo', 'xray', 'print', 'design', 'other']
+const ALL_TYPES: JobFileType[] = ['scan', 'photo', 'xray', 'print', 'design', 'other', 'ct', 'project']
 const PARTNER_TYPES: JobFileType[] = ['print', 'design']
 
 export const fileTypeLabel = (type: JobFileType): string => ({
   scan: t('files.typeScan'), photo: t('files.typePhoto'), xray: t('files.typeXray'),
   print: t('files.typePrint'), design: t('files.typeDesign'), other: t('files.typeOther'),
+  ct: t('files.typeCt'), project: t('files.typeProject'),
 })[type]
 
 const sizeText = (n: number): string =>
@@ -76,12 +79,17 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     },
   })
   const types = partner ? PARTNER_TYPES : ALL_TYPES
-  // Adding, replacing or deleting a file is editing the job: Edit jobs
-  // (may_upload_job_file, sql/072). A partner's uploads follow the share.
-  const canWrite = usePermissions().can('jobs.write') || partner
+  // Adding a NEW file needs Edit jobs or Add files (may_upload_job_file,
+  // sql/072 + 123); a new version and a delete need Edit jobs (register_job_file
+  // refuses p_supersedes without it, delete_job_file too). A partner's uploads
+  // follow the share.
+  const { can } = usePermissions()
+  const editJobs = can('jobs.write')
+  const canWrite = editJobs || can('files.write') || partner
   const [type, setType] = useState<JobFileType | 'auto'>('auto')
   const [actionError, setActionError] = useState<string | null>(null)
   const input = useRef<HTMLInputElement>(null)
+  const folderInput = useRef<HTMLInputElement>(null)
   const versionOf = useRef<string | null>(null)
 
   useEffect(() => onUploadDone(done => {
@@ -100,6 +108,16 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
     })
     if (!partner && !(await confirmSharedUpload(jobId, items.map(i => ({ name: i.file.name, type: i.type, mime: i.file.type }))))) return
     for (const i of items) enqueueUpload(jobId, i.file, i.type, supersedes)
+  }
+
+  /** A picked folder becomes ONE ZIP. CT by default when it looks like a DICOM series. */
+  async function addFolder(list: FileList | null) {
+    const picked = Array.from(list ?? []).filter(f => f.size >= 0)
+    if (picked.length === 0) return
+    const dicomLike = picked.some(f => ['dcm', 'dicom', ''].includes(extensionOf(f.name)))
+    const chosen: JobFileType = type === 'auto' ? (dicomLike ? 'ct' : 'project') : type
+    if (!partner && !(await confirmSharedUpload(jobId, [{ name: `${folderName(picked)}.zip`, type: chosen, mime: 'application/zip' }]))) return
+    enqueueFolderUpload(jobId, picked, chosen)
   }
 
   // Click an image or a PDF: it opens large. Images move between the job's images.
@@ -143,6 +161,17 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
               className="btn-ghost text-xs border border-ink-faint/30 flex items-center gap-1">
               <Upload size={12} aria-hidden="true" /> {t('files.addFiles')}
             </button>
+            {!partner && (
+              <>
+                <button type="button" onClick={() => folderInput.current?.click()}
+                  className="btn-ghost text-xs border border-ink-faint/30 flex items-center gap-1">
+                  <FolderUp size={12} aria-hidden="true" /> {t('files.addFolder')}
+                </button>
+                <input ref={folderInput} type="file" hidden
+                  {...{ webkitdirectory: '', directory: '' }}
+                  onChange={e => { void addFolder(e.target.files); e.target.value = '' }} />
+              </>
+            )}
             <input ref={input} type="file" multiple hidden onChange={e => { void add(e.target.files); e.target.value = '' }} />
           </>
         )}
@@ -159,7 +188,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
             <span className="text-ink-muted">{fileTypeLabel(u.type)}</span>
             <span className="ml-auto text-ink-muted">
               {u.status === 'failed' ? t('files.failed') : u.status === 'queued' ? t('files.waiting')
-                : u.status === 'preparing' ? t('files.preparing') : `${Math.round((u.sent / Math.max(u.size, 1)) * 100)} %`}
+                : u.status === 'preparing' ? `${t('files.preparing')}${u.size > 0 && u.sent > 0 ? ` ${Math.round((u.sent / u.size) * 100)} %` : ''}` : `${Math.round((u.sent / Math.max(u.size, 1)) * 100)} %`}
             </span>
             {u.status === 'failed' && (
               <button type="button" onClick={() => retryUpload(u.id)} title={t('files.retry')} aria-label={t('files.retry')}>
@@ -185,7 +214,7 @@ export function JobFiles({ jobId, partner = false }: { jobId: string; partner?: 
           <ul className="space-y-1">
             {active.map(f => (
               <FileRow key={f.id} f={f} preview={previews?.get(f.id)} history={older.filter(o => chainOf(o, files).includes(f.id))}
-                canDelete={!partner && canWrite} canVersion={canWrite && types.includes(f.type)}
+                canDelete={!partner && editJobs} canVersion={(editJobs || partner) && types.includes(f.type)}
                 onDownload={download} onDelete={remove} onView={view}
                 onVersion={() => { versionOf.current = f.id; input.current?.click() }} />
             ))}

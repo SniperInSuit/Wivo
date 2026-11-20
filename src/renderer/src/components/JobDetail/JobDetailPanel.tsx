@@ -742,6 +742,10 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
       // keeping a value after it is switched off would store an ID for a model
       // this job no longer has — invisible in the form, visible in the export.
       mudel_id: form.mudel ? (form.mudel_id || null) : null,
+      // The workflow's `printed_model` rule follows the same flag (docs/
+      // WORKFLOW-STAGES.md §10). Only where the column exists: a row read from a
+      // database without sql/122 has no such key, and writing it would be refused.
+      ...(job && 'printed_model' in job ? { printed_model: form.mudel } : {}),
       varv: form.varv || null,
       kondivarv: form.kondivarv || null,
       // The form holds LOCAL wall time; the column is timestamptz. Sending the

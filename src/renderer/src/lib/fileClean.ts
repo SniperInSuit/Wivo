@@ -530,7 +530,7 @@ export function stripObjComments(input: Uint8Array): Uint8Array {
 
 // ── Everything a file needs before upload ───────────────────────────────────
 
-export type JobFileType = 'scan' | 'photo' | 'xray' | 'print' | 'design' | 'other'
+export type JobFileType = 'scan' | 'photo' | 'xray' | 'print' | 'design' | 'other' | 'ct' | 'project'
 
 export function extensionOf(name: string): string {
   const m = /\.([A-Za-z0-9]+)$/.exec(name)

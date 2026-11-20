@@ -36,7 +36,8 @@ function server(opts: { failPatchAt?: number[]; partialOnFail?: boolean; forgetA
       patches++
       const offset = Number(h.get('Upload-Offset'))
       if (offset !== u.data.length) return new Response(null, { status: 409 })
-      const body = init.body as Uint8Array
+      const raw = init.body as Uint8Array | Blob
+      const body = raw instanceof Blob ? new Uint8Array(await raw.arrayBuffer()) : raw
       if (fails.has(patches)) {
         fails.delete(patches)
         // The connection drops part-way: the server may have kept some bytes.
@@ -109,5 +110,19 @@ describe('tusUpload', () => {
   it('gives up after the last retry, and says so', async () => {
     const s = server({ failPatchAt: [1, 2, 3, 4, 5, 6] })
     await expect(tusUpload(file, base(s))).rejects.toThrow('Failed to fetch')
+  })
+
+  it('uploads a Blob in slices, and resumes it after a drop', async () => {
+    const s = server({ failPatchAt: [3], partialOnFail: true })
+    await tusUpload(new Blob([file as BlobPart]), base(s))
+    expect(stored(s)).toEqual(file)
+    expect(s.counts().creates).toBe(1)
+  })
+
+  it('a Blob upload reports its size as the total', async () => {
+    const s = server()
+    const seen: number[] = []
+    await tusUpload(new Blob([file as BlobPart]), { ...base(s), onProgress: (_n, total) => { seen.push(total) } })
+    expect(new Set(seen)).toEqual(new Set([1000]))
   })
 })

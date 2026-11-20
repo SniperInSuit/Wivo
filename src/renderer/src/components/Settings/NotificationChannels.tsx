@@ -5,12 +5,13 @@
  * An account without a real address (a stand-in, docs/ACCOUNTS.md) is never
  * mailed (sql/099), so it is not offered the e-mail switch.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BellRing } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { isStandinEmail } from '@shared/auth/loginAddress'
 import { AddOwnEmail } from './AddOwnEmail'
+import { fetchNotifyEveryStage, setNotifyEveryStage } from '../../lib/jobStages'
 import { t } from '@/lib/i18n'
 
 type Channel = 'notify_push' | 'notify_email'
@@ -23,6 +24,12 @@ export function NotificationChannels() {
     notify_email: auth.profile?.notify_email ?? true,
   })
   const [error, setError] = useState<string | null>(null)
+  // sql/123: e-mail for every stage of jobs one is on. null: this database has no such setting.
+  const [everyStage, setEveryStage] = useState<boolean | null>(null)
+  const userId = auth.user?.id
+  useEffect(() => {
+    if (userId) void fetchNotifyEveryStage(userId).then(setEveryStage)
+  }, [userId])
 
   async function toggle(channel: Channel, next: boolean) {
     setError(null)
@@ -58,6 +65,20 @@ export function NotificationChannels() {
       {isStandinEmail(auth.user?.email)
         ? <><p className="text-xs text-ink-muted">{t('notifications.emailNoAddress')}</p><AddOwnEmail /></>
         : row('notify_email', t('notifications.emailMe'), t('notifications.emailHelp'))}
+      {everyStage !== null && (
+        <label className="flex items-start gap-2 text-sm text-ink">
+          <input type="checkbox" role="switch" aria-checked={everyStage} className="mt-0.5" checked={everyStage}
+            onChange={e => {
+              const next = e.target.checked
+              setEveryStage(next)
+              setNotifyEveryStage(next).catch(() => { setEveryStage(!next); setError(t('notifications.channelSaveFailed')) })
+            }} />
+          <span>
+            {t('notifications.everyStage')}
+            <span className="block text-xs text-ink-muted">{t('notifications.everyStageHelp')}</span>
+          </span>
+        </label>
+      )}
       {error && <p role="alert" className="text-xs text-rose-500">{error}</p>}
     </section>
   )

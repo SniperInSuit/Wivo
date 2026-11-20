@@ -29,6 +29,33 @@ export type PermissionKey = (typeof PERMISSION_KEYS)[number]
 export const TECHNICIAN_PRESET: readonly PermissionKey[] = ['jobs.write', 'stock.read', 'stock.write']
 
 /**
+ * The starting points the Team page offers for Riga's roles (docs/WORKFLOW-
+ * STAGES.md §7, answers in §8). Each is only a set of grants to start from.
+ * Two rules the plan makes explicit:
+ *  - manager and accountant never get jobs.read or patients.read: anyone who
+ *    reads a job reads its patient's name (docs/PERMISSIONS.md), and those two
+ *    must not see it;
+ *  - IT gets files.write alone: it adds files to the jobs it is on a stage of
+ *    and sees nothing else it did not already see.
+ * The technician's is the one sql/102 gives a new technician.
+ */
+export const ROLE_PRESET_KEYS = ['technician', 'doctor', 'accountant', 'secretary', 'manager', 'it'] as const
+export type RolePreset = (typeof ROLE_PRESET_KEYS)[number]
+
+export const ROLE_PRESETS: Record<RolePreset, readonly PermissionKey[]> = {
+  technician: TECHNICIAN_PRESET,
+  // Creates orders; the patient card and adding patients (§8, answer 6).
+  doctor: ['jobs.read', 'jobs.write', 'patients.read', 'patients.write'],
+  // Payroll and the accountant's export; no jobs page (§8, answer 4).
+  accountant: ['payroll.manage'],
+  // Sees jobs with their patient; no calendar (§8, answer 5).
+  secretary: ['jobs.read'],
+  // Sees stock.
+  manager: ['stock.read'],
+  it: ['files.write'],
+}
+
+/**
  * Permissions an organisation admin has without a grant: the database checks
  * these with has_perm_or_admin() (sql/102). An owner has every permission.
  */

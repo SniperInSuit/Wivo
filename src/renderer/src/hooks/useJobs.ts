@@ -6,6 +6,7 @@ import {
   JOBS_WITH_PAY_STAGES, PAY_STAGE_FILTER, payStagesUnavailable, withPayStages,
   payStagesKnownUnavailable, markPayStagesUnavailable,
 } from '../lib/jobPayStages'
+import { jobStagesUnavailable } from '../lib/jobStages'
 
 const QUERY_KEY = ['jobs']
 
@@ -73,6 +74,47 @@ export function useCreateJob() {
       const { data, error } = await supabase.from('jobs').insert({ ...withoutDbOwned(input), clinic_id: getActiveClinicId() }).select().single()
       if (error) throw error
       return data as Job
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY })
+  })
+}
+
+/**
+ * The columns sql/122 added to jobs. A database without them refuses an insert
+ * that names one, so the fallback below leaves them out.
+ */
+export const WORKFLOW_JOB_COLUMNS = [
+  'template_id', 'ordered_by', 'impression_type', 'implant_count', 'production_method', 'printed_model',
+] as const
+
+/** The job as the older insert takes it: without the workflow columns. Pure. */
+export function withoutWorkflowColumns<T extends object>(row: T): T {
+  const out: Record<string, unknown> = { ...(row as Record<string, unknown>) }
+  for (const c of WORKFLOW_JOB_COLUMNS) delete out[c]
+  return out as T
+}
+
+/**
+ * A new job made from its template (docs/WORKFLOW-STAGES.md §2.3–2.5) with the
+ * switches ticked at creation: create_job (sql/123) is the same insert, run as
+ * the caller, so the same rights apply, and the job takes its first stage from
+ * its plan (the status is left out for that). A database without it (an error
+ * saying so) gets the plain insert, without the workflow columns, as before:
+ * such a database has no templates to make a job from.
+ */
+export function useCreateWorkflowJob() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ input, switches }: { input: JobInput; switches: Record<string, boolean> }) => {
+      const row = { ...withoutDbOwned(input), clinic_id: getActiveClinicId() }
+      const { status: _status, ...withoutStatus } = row
+      const { data, error } = await supabase.rpc('create_job', { p_job: withoutStatus, p_switches: switches })
+      if (!error) return data as unknown as Job
+      if (!jobStagesUnavailable(error)) throw error
+      const { data: plain, error: insertError } = await supabase
+        .from('jobs').insert(withoutWorkflowColumns(row)).select().single()
+      if (insertError) throw insertError
+      return plain as Job
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY })
   })

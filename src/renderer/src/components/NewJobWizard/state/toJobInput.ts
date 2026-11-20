@@ -23,6 +23,7 @@ import {
   composeKirjeldus, hambadToTeeth, jobRules, machinesOf, materialsOf, teethToHambad, todayISO,
 } from '@shared/wizard'
 import { wizardWorkItems } from './workItems'
+import { workflowJobFields } from './workflowFields'
 import { fromLocalInput } from '@/lib/dates'
 
 export interface ToJobInputContext {
@@ -94,6 +95,10 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     valmis_kuupaev: null,
     kiirtoo: state.priority === 'kiirtoo',
     mudel: state.priority === 'mudel',
+    // The same answer for the workflow's `printed_model` rule, plus the rule
+    // fields and the template (state/workflowFields.ts). `mudel` above is what
+    // the model pay line reads; the two never differ.
+    ...workflowJobFields(state, workItems),
     // Tied to the flag, not merely to what was typed: the field is only shown
     // for a Mudel job, so a number left behind by a changed mind must not ride
     // along on a standard job that has no model at all.

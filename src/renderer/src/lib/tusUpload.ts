@@ -62,11 +62,12 @@ class HttpError extends Error {
 const retryable = (e: unknown): boolean =>
   !(e instanceof HttpError) || e.status >= 500 || e.status === 409 || e.status === 423 || e.status === 429
 
-export async function tusUpload(bytes: Uint8Array, o: TusOptions): Promise<void> {
+/** Bytes in memory, or a Blob (a folder's ZIP: Chromium keeps big blobs on disk, so slicing it costs 6 MB at a time). */
+export async function tusUpload(bytes: Uint8Array | Blob, o: TusOptions): Promise<void> {
   const http = o.fetch ?? fetch
   const chunk = o.chunkSize ?? SUPABASE_CHUNK
   const delays = o.retryDelays ?? [1000, 3000, 5000, 10_000, 20_000, 30_000]
-  const total = bytes.length
+  const total = bytes instanceof Blob ? bytes.size : bytes.length
   const base = { 'Tus-Resumable': '1.0.0' }
 
   const create = async (): Promise<string> => {
@@ -119,7 +120,7 @@ export async function tusUpload(bytes: Uint8Array, o: TusOptions): Promise<void>
             'Upload-Offset': String(offset),
           },
           // A copy, not a view: fetch wants an ArrayBuffer-backed body, and 6 MB is cheap.
-          body: bytes.slice(offset, end),
+          body: bytes.slice(offset, end) as BodyInit,
           signal: o.signal,
         })
         if (res.status !== 204) throw new HttpError(res.status, `Upload interrupted (${res.status})`)

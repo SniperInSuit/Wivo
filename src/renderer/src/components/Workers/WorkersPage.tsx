@@ -4,7 +4,7 @@ import { supabase, displayIdentity, PROFILE_COLUMNS } from '../../lib/supabase'
 import { AddMemberDialog } from './AddMemberDialog'
 import { teamAccounts, accountBadges, signInLine, resendInvite, teamErrorMessage, type TeamAccount } from '../../lib/teamAccount'
 import { MIN_PASSWORD } from '../../lib/authConfirm'
-import { TECHNICIAN_PRESET } from '@shared/permissions'
+import { ROLE_PRESETS, ROLE_PRESET_KEYS, type RolePreset } from '@shared/permissions'
 import { useUpdateStatus } from '../../hooks/useUpdateStatus'
 import { useAuth } from '../../context/AuthContext'
 import { DebugConsole } from './DebugConsole'
@@ -107,6 +107,11 @@ function RemoveWorkerButton({ name, busy, onRemove }: {
   )
 }
 
+const rolePresetLabel = (k: RolePreset): string => ({
+  technician: t('team.roleTechnician'), doctor: t('team.roleDoctor'), accountant: t('team.roleAccountant'),
+  secretary: t('team.roleSecretary'), manager: t('team.roleManager'), it: t('team.roleIt'),
+})[k]
+
 export function WorkersPage() {
   const { clinicId, role } = useAuth()
   const isOwner = role === 'owner'
@@ -126,6 +131,7 @@ export function WorkersPage() {
   const [accountsFailed, setAccountsFailed] = useState(false)
   const [resend, setResend] = useState<{ id: string; state: 'busy' | 'sent' | string } | null>(null)
   const [presetConfirm, setPresetConfirm] = useState<string | null>(null)
+  const [presetRole, setPresetRole] = useState<RolePreset>('technician')
   const [removed, setRemoved] = useState<Profile[]>([])
   const [removing, setRemoving] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
@@ -320,14 +326,14 @@ export function WorkersPage() {
     }
   }
 
-  /** Every permission set to the technician's defaults: the preset on, the rest off. */
-  async function applyTechnicianPreset(profileId: string) {
+  /** Every permission set to a role's starting point: the preset on, the rest off. */
+  async function applyRolePreset(profileId: string) {
     if (!clinicId) return
     setSaving(true)
     setPresetConfirm(null)
     try {
       const rows = shownPermissions.map(perm => ({
-        profile_id: profileId, clinic_id: clinicId, permission: perm, granted: TECHNICIAN_PRESET.includes(perm),
+        profile_id: profileId, clinic_id: clinicId, permission: perm, granted: ROLE_PRESETS[presetRole].includes(perm),
       }))
       const { error } = await supabase.from('worker_permissions').upsert(rows, { onConflict: 'profile_id,permission' })
       if (error) throw error
@@ -465,16 +471,20 @@ export function WorkersPage() {
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {presetConfirm === selected.id ? (
                     <>
-                      <span className="text-ink-muted">{t('team.technicianPresetConfirm')}</span>
-                      <button onClick={() => void applyTechnicianPreset(selected.id)} disabled={saving}
+                      <span className="text-ink-muted">{t('team.rolePresetConfirm', { role: rolePresetLabel(presetRole) })}</span>
+                      <button onClick={() => void applyRolePreset(selected.id)} disabled={saving}
                         className="btn-primary text-xs px-2.5 py-1 disabled:opacity-50">{t('team.technicianPresetYes')}</button>
                       <button onClick={() => setPresetConfirm(null)} className="btn-ghost text-xs">{t('workers.cancel')}</button>
                     </>
                   ) : (
                     <>
+                      <select className="input w-40 text-xs py-1" value={presetRole} aria-label={t('team.rolePreset')}
+                        onChange={e => setPresetRole(e.target.value as RolePreset)}>
+                        {ROLE_PRESET_KEYS.map(k => <option key={k} value={k}>{rolePresetLabel(k)}</option>)}
+                      </select>
                       <button onClick={() => setPresetConfirm(selected.id)} disabled={saving}
-                        className="btn-ghost border border-ink-faint/25 text-xs disabled:opacity-50">{t('team.technicianPreset')}</button>
-                      <span className="text-ink-faint">{t('team.technicianPresetHelp')}</span>
+                        className="btn-ghost border border-ink-faint/25 text-xs disabled:opacity-50">{t('team.rolePreset')}</button>
+                      <span className="text-ink-faint">{t('team.rolePresetHelp')}</span>
                     </>
                   )}
                 </div>

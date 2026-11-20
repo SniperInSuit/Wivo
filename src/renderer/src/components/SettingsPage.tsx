@@ -27,6 +27,7 @@ import { MigrationStatus } from './Settings/MigrationStatus'
 import { PartnershipsSection } from './Settings/PartnershipsSection'
 import { AuditLogSection } from './Settings/AuditLogSection'
 import { StageTransitionsSection } from './Settings/StageTransitionsSection'
+import { WorkflowTemplatesSection } from './Settings/WorkflowTemplatesSection'
 import { SoundSection } from './Settings/SoundSection'
 import { SecuritySection } from './Settings/SecuritySection'
 import { DeletedJobsSection } from './Settings/DeletedJobsSection'
@@ -2322,6 +2323,7 @@ export function SettingsPage({ initialGroup = 'profiil', onOpenPatient }: { init
 
           {/* Pipeline stages */}
           {activeGroup === 'etapid' && <StageTransitionsSection />}
+          {activeGroup === 'etapid' && <WorkflowTemplatesSection />}
 
           {activeGroup === 'etapid' && (
           <section>

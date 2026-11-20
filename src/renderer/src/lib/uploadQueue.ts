@@ -17,6 +17,8 @@ import { useSyncExternalStore } from 'react'
 import { supabase, storageEndpoint, anonKey } from './supabase'
 import { cleanForUpload, extensionOf, sha256Hex, CleanError, type JobFileType } from './fileClean'
 import { tusUpload } from './tusUpload'
+import { buildFolderZip, folderName } from './zipFolder'
+import { ZipLimitError } from './zipStream'
 import { makePreview } from './previews'
 import { playSound } from './sound'
 import { t } from './i18n'
@@ -34,6 +36,13 @@ export interface UploadTask {
   error?: string
   supersedes?: string | null
   file: File
+  /**
+   * A folder (CT/DICOM series, CEREC export) to be made into ONE ZIP. `file` is
+   * then a placeholder; `built` is the finished ZIP, kept so a Retry resumes the
+   * upload instead of rebuilding from a file list that may be gone.
+   */
+  folder?: File[]
+  built?: { blob: Blob; sha256: string; size: number }
   /** Called with the stored file's id once it is confirmed (a comment attaching it waits for this). */
   onStored?: (fileId: string) => void
 }
@@ -67,7 +76,47 @@ const patch = (id: string, p: Partial<UploadTask>) => {
 
 let running = false
 
+async function runFolder(task: UploadTask): Promise<void> {
+  patch(task.id, { status: 'preparing', error: undefined })
+  if (!task.built) {
+    const total = task.folder!.reduce((n, f) => n + f.size, 0)
+    patch(task.id, { size: total, sent: 0 })
+    const z = await buildFolderZip(task.folder!, done => patch(task.id, { sent: done }))
+    patch(task.id, { built: { blob: z.blob, sha256: z.sha256, size: z.size }, folder: undefined })
+  }
+  const { blob, sha256, size } = task.built!
+  const { data: row, error } = await supabase.rpc('register_job_file', {
+    p_job: task.jobId, p_type: task.type, p_sha256: sha256, p_size: size,
+    p_mime: 'application/zip', p_extension: 'zip', p_supersedes: null,
+  })
+  if (error) throw error
+  const file = row as { id: string; storage_path: string }
+  patch(task.id, { status: 'uploading', size, sent: 0 })
+  await upload(task, blob, file, sha256, 'application/zip')
+  const { error: confirmError } = await supabase.rpc('confirm_job_file', { p_file: file.id })
+  if (confirmError) throw confirmError
+  patch(task.id, { status: 'done', sent: size, built: undefined })
+  doneListeners.forEach(l => l(task.jobId))
+  task.onStored?.(file.id)
+  playSound('notify-upload-done')
+}
+
+function upload(task: UploadTask, body: Uint8Array | Blob, file: { id: string; storage_path: string }, sha: string, mime: string) {
+  return tusUpload(body, {
+    endpoint: storageEndpoint(),
+    headers: async () => {
+      const { data } = await supabase.auth.getSession()
+      return { authorization: `Bearer ${data.session?.access_token ?? ''}`, apikey: anonKey(), 'x-upsert': 'false' }
+    },
+    metadata: { bucketName: 'job-files', objectName: file.storage_path, contentType: mime, cacheControl: '3600' },
+    fingerprint: `${sha}:${file.id}`,
+    store: localStorage,
+    onProgress: sent => patch(task.id, { sent }),
+  })
+}
+
 async function runOne(task: UploadTask): Promise<void> {
+  if (task.folder || task.built) return runFolder(task)
   patch(task.id, { status: 'preparing', error: undefined })
   const bytes = cleanForUpload(new Uint8Array(await task.file.arrayBuffer()), task.file.name)
   const sha = await sha256Hex(bytes)
@@ -79,22 +128,7 @@ async function runOne(task: UploadTask): Promise<void> {
   const file = row as { id: string; storage_path: string }
 
   patch(task.id, { status: 'uploading', size: bytes.length })
-  await tusUpload(bytes, {
-    endpoint: storageEndpoint(),
-    headers: async () => {
-      const { data } = await supabase.auth.getSession()
-      return { authorization: `Bearer ${data.session?.access_token ?? ''}`, apikey: anonKey(), 'x-upsert': 'false' }
-    },
-    metadata: {
-      bucketName: 'job-files',
-      objectName: file.storage_path,
-      contentType: task.file.type || 'application/octet-stream',
-      cacheControl: '3600',
-    },
-    fingerprint: `${sha}:${file.id}`,
-    store: localStorage,
-    onProgress: sent => patch(task.id, { sent }),
-  })
+  await upload(task, bytes, file, sha, task.file.type || 'application/octet-stream')
 
   const { error: confirmError } = await supabase.rpc('confirm_job_file', { p_file: file.id })
   if (confirmError) throw confirmError
@@ -121,6 +155,12 @@ async function attachPreview(fileId: string, name: string, bytes: Uint8Array): P
   }
 }
 
+function failureText(e: unknown): string {
+  if (e instanceof CleanError) return t('files.couldNotClean')
+  if (e instanceof ZipLimitError) return e.reason === 'size' ? t('files.folderTooBig') : t('files.folderTooMany')
+  return (e as Error).message ?? String(e)
+}
+
 async function pump(): Promise<void> {
   if (running) return
   running = true
@@ -129,7 +169,7 @@ async function pump(): Promise<void> {
       try {
         await runOne(next)
       } catch (e) {
-        patch(next.id, { status: 'failed', error: e instanceof CleanError ? t('files.couldNotClean') : (e as Error).message ?? String(e) })
+        patch(next.id, { status: 'failed', error: failureText(e) })
         playSound('notify-error') // with the red "Failed" row and its message
       }
     }
@@ -145,6 +185,20 @@ export function enqueueUpload(
   tasks.push({
     id: crypto.randomUUID(), jobId, type, name: file.name, size: file.size, sent: 0,
     status: 'queued', supersedes, file, onStored,
+  })
+  emit()
+  void pump()
+}
+
+/** A folder becomes one ZIP (built in a worker), then goes the usual way. */
+export function enqueueFolderUpload(
+  jobId: string, files: File[], type: JobFileType, onStored?: (fileId: string) => void,
+): void {
+  if (files.length === 0) return
+  tasks.push({
+    id: crypto.randomUUID(), jobId, type, name: `${folderName(files)}.zip`,
+    size: files.reduce((n, f) => n + f.size, 0), sent: 0,
+    status: 'queued', supersedes: null, file: files[0], folder: files, onStored,
   })
   emit()
   void pump()

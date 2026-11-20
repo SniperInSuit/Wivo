@@ -148,6 +148,17 @@ export interface NewJobState {
   /** The printed model's own job number. Only reaches the row when priority is 'mudel'. */
   modelId: string
   priority: WizardPriority
+  /**
+   * The workflow template this job is made from (workflow_template.id), or
+   * null for the clinic's default one. docs/WORKFLOW-STAGES.md §2.4.
+   */
+  templateId: string | null
+  /** §2.5 rule field: how the impression was taken. Null: not said. */
+  impressionType: 'digital' | 'conventional' | null
+  /** §2.5 rule field: how the work is made. Null: not said. */
+  productionMethod: 'print' | 'mill' | null
+  /** §2.5 switches ticked or unticked here, by stage key. Absent: the stage's own default. */
+  switches: Record<string, boolean>
   patient: WizardPatient | null
   /** customers.id → job.customer_id. */
   customer: string | null
@@ -259,6 +270,10 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     designId: '',
     modelId: '',
     priority: 'standard',
+    templateId: null,
+    impressionType: null,
+    productionMethod: null,
+    switches: {},
     patient: null,
     customer: null,
     customerReference: '',
