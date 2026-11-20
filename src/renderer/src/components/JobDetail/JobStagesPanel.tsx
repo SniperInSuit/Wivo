@@ -27,11 +27,13 @@ export interface JobStagesPanelProps {
   job: { id: string; status: string }
   /** Room for something under a stage's row (ratings, later). */
   renderExtra?: (line: StageLine) => ReactNode
+  /** The phone: shows and moves the stages, but does not add, skip or change people. */
+  compact?: boolean
 }
 
 const when = (iso: string) => format(new Date(iso), 'd MMM HH:mm', { locale: dateLocale })
 
-export function JobStagesPanel({ job, renderExtra }: JobStagesPanelProps) {
+export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesPanelProps) {
   const { user } = useAuth()
   const { stages: clinicStages, stageMap } = usePipeline()
   const { data: profiles = [] } = useClinicProfiles()
@@ -46,9 +48,9 @@ export function JobStagesPanel({ job, renderExtra }: JobStagesPanelProps) {
   const { previous, next } = neighbours(lines)
   const canNext = useCanMove(job.id, job.status, next?.stageKey)
   const canPrevious = useCanMove(job.id, job.status, previous?.stageKey)
-  const { data: mayEdit = false } = useQuery<boolean>({
+  const { data: mayEditStages = false } = useQuery<boolean>({
     queryKey: ['may_edit_job_stages', job.id],
-    enabled: stages.length > 0,
+    enabled: stages.length > 0 && !compact,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error: err } = await supabase.rpc('may_edit_job_stages', { p_job: job.id })
@@ -59,6 +61,8 @@ export function JobStagesPanel({ job, renderExtra }: JobStagesPanelProps) {
       return data === true
     },
   })
+
+  const mayEdit = mayEditStages && !compact
 
   if (stages.length === 0) return null
 

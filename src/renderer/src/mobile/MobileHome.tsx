@@ -1,10 +1,11 @@
 /** Home: my jobs, all active jobs, jobs shared with us; search by code. */
 import { useMemo, useState } from 'react'
 import { format, isPast } from 'date-fns'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, Plus } from 'lucide-react'
 import { useJobs } from '../hooks/useJobs'
 import { usePartnerJobs } from '../hooks/usePartners'
 import { useAuth } from '../context/AuthContext'
+import { usePermissions } from '../hooks/usePermissions'
 import { usePipeline } from '../context/PipelineContext'
 import { StatusPill } from '../components/ui/StatusPill'
 import { phoneLists, type PhoneJobItem } from './jobLists'
@@ -15,8 +16,10 @@ import { t, dateLocale } from '@/lib/i18n'
 
 type Tab = 'mine' | 'active' | 'shared'
 
-export function MobileHome({ onOpen }: { onOpen: (jobId: string) => void }) {
+export function MobileHome({ onOpen, onNew }: { onOpen: (jobId: string) => void; onNew?: () => void }) {
   const { user } = useAuth()
+  // Making a job is Edit jobs, as on the desktop (the database decides in the end).
+  const canCreate = usePermissions().can('jobs.write')
   const { doneStageKey } = usePipeline()
   const { data: jobs = [], isLoading } = useJobs()
   const { data: shared = [] } = usePartnerJobs('')
@@ -62,6 +65,11 @@ export function MobileHome({ onOpen }: { onOpen: (jobId: string) => void }) {
           placeholder={t('mobile.searchByCode')} aria-label={t('mobile.searchByCode')}
           className="w-full bg-transparent text-base outline-none" />
       </label>
+      {canCreate && onNew && (
+        <button type="button" onClick={onNew} className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
+          <Plus size={18} aria-hidden="true" /> {t('mobile.newJob')}
+        </button>
+      )}
       {notFound && <p role="alert" className="text-sm text-red-700 px-1">{t('mobile.noJobFound', { q: query.trim() })}</p>}
 
       <div role="tablist" className="flex gap-1 rounded-xl bg-bg-sidebar p-1">

@@ -16,6 +16,7 @@ import { enqueueUpload } from '../lib/uploadQueue'
 import { confirmSharedUpload } from '../lib/sharedUpload'
 import { StatusPill } from '../components/ui/StatusPill'
 import { JobFiles } from '../components/Files/JobFiles'
+import { JobStagesPanel } from '../components/JobDetail/JobStagesPanel'
 import { JobThread } from '../components/Partners/JobThread'
 import { PartnerJobPanel } from '../components/Partners/PartnerJobsView'
 import { PhoneCamera } from './PhoneCamera'
@@ -47,7 +48,9 @@ function OwnJob({ job }: { job: Job }) {
   const { stageMap } = usePipeline()
   const [shooting, setShooting] = useState(false)
   // A photo onto the job is a file on it: Edit jobs, as on the desktop.
-  const canEdit = usePermissions().can('jobs.write')
+  // A person on one of the job's stages with Add files adds one too; the database decides.
+  const perms = usePermissions()
+  const canEdit = perms.can('jobs.write') || perms.can('files.write')
   // Opening a job is a `view` in the audit log (sql/078), as on the desktop.
   useEffect(() => { void supabase.rpc('log_job_view', { p_job: job.id }).then(() => {}, () => {}) }, [job.id])
 
@@ -80,6 +83,10 @@ function OwnJob({ job }: { job: Job }) {
         )}
         {job.kirjeldus && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.kirjeldus}</span>} />}
       </section>
+
+      {/* Stages, "I started", forward and back: as on the desk. Adding, skipping and
+          changing people is for the desk (docs/WORKFLOW-STAGES.md §13). */}
+      <JobStagesPanel job={job} compact />
 
       {canEdit && (
         <button type="button"

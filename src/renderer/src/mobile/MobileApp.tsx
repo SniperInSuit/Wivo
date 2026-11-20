@@ -12,6 +12,7 @@ import { isSecurityNotice, isUpdateNotice } from '../hooks/useNotifications'
 import { parseRoute, routePath, type Route } from './route'
 import { MobileHome } from './MobileHome'
 import { MobileJob } from './MobileJob'
+import { MobileNewJob } from './MobileNewJob'
 import { MobileSettings } from './MobileSettings'
 import { PhoneVersionGuard } from './PhoneVersionGuard'
 import { PushTurnOnNotice } from './PushTurnOnNotice'
@@ -68,7 +69,8 @@ export function MobileApp() {
       <PushTurnOnNotice />
 
       {route.name !== 'settings' && !seesJobs && <p className="py-10 text-center text-sm text-ink-muted">{t('mobile.noJobs')}</p>}
-      {route.name === 'home' && seesJobs && <MobileHome onOpen={id => go({ name: 'job', id })} />}
+      {route.name === 'home' && seesJobs && <MobileHome onOpen={id => go({ name: 'job', id })} onNew={() => go({ name: 'new' })} />}
+      {route.name === 'new' && seesJobs && <MobileNewJob onCreated={id => { history.replaceState(null, '', routePath({ name: 'job', id })); setRoute({ name: 'job', id }); window.scrollTo(0, 0) }} />}
       {route.name === 'job' && seesJobs && <MobileJob id={route.id} onClose={back} />}
       {route.name === 'settings' && <MobileSettings onWhatsNew={whatsNew.open} />}
       {whatsNew.dialog}

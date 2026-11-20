@@ -8,13 +8,14 @@ describe('phone routes', () => {
     expect(parseRoute(`/job/${id}`)).toEqual({ name: 'job', id })
     expect(parseRoute(`/job/${id.toUpperCase()}/`)).toEqual({ name: 'job', id })
     expect(parseRoute('/settings')).toEqual({ name: 'settings' })
-    for (const p of ['/', '', '/job/', '/job/not-an-id', `/job/${id}/x`, '/board', '/settings/x']) {
+    expect(parseRoute('/new')).toEqual({ name: 'new' })
+    for (const p of ['/', '', '/job/', '/job/not-an-id', `/job/${id}/x`, '/board', '/settings/x', '/new/x']) {
       expect(parseRoute(p)).toEqual({ name: 'home' })
     }
   })
 
   it('round-trips', () => {
-    for (const r of [{ name: 'home' }, { name: 'settings' }, { name: 'job', id }] as const) {
+    for (const r of [{ name: 'home' }, { name: 'settings' }, { name: 'new' }, { name: 'job', id }] as const) {
       expect(parseRoute(routePath(r))).toEqual(r)
     }
   })
