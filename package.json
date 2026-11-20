@@ -12,6 +12,7 @@
     "test": "vitest run --mode unit",
     "test:watch": "vitest --mode unit",
     "dist": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& set WIN_CSC_LINK=&& electron-builder --config.forceCodeSigning=false",
+    "dist:riga": "node scripts/build-riga.mjs",
     "dist-portable": "npm run build && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir --config.forceCodeSigning=false",
     "mobile:dev": "vite --config vite.mobile.config.ts",
     "mobile:build": "vite build --config vite.mobile.config.ts"

@@ -11,6 +11,14 @@ Work Kevin has agreed to, not yet scheduled, and the steps saved for the live re
      1. on the test copy: the deploy, two test invoices (one draft, one marked Sent) and the dry run;
      2. then production: the same deploy, in a session Kevin starts for it.
 
+## After Riga's start (Monday 23.11.2026)
+
+1. **A database block: no CT or X-ray on a shared job until the partner gets a cleaned copy** (Kevin, 2026-11-20).
+   - **Why:** DICOM headers are no longer cleaned: every file, CT and X-ray included, is stored exactly as uploaded (commit 4560a98, 2026-11-20). A CT on a shared job would reach the partner with the patient's name in its header, and the rule "a partner never learns who the patient is" (sql/092, lawyer's decision) would then hold only through a warning and a person's tick.
+   - **Decided:** photo and STL cleaning stays as it is for Monday. The Riga partner module is **off**, so no CT or X-ray can reach a partner at the start.
+   - **To build (a migration, on `testing` only):** the database refuses a `ct` or `xray` file on a job that is shared with a partner (and refuses sharing a job that already has one), until a cleaned copy exists to send the partner. The screens say it in plain words (`app.notAvailableYet`-style, no SQL named), in en/et.
+   - **Before the partner module is switched on for any clinic.** Not before the full security review (by 2026-12-07) has looked at it.
+
 ## Agreed, not scheduled
 
 1. **Show on each invoice when it was e-mailed, and when sending failed** (Kevin, 2026-11-09).

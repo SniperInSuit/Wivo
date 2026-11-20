@@ -16,3 +16,7 @@ license-private.pem
 license-*.pem
 license-*.hex
 dist-mobile
+
+# Riga's temporary installer (docs/RIGA-TEMPORARY.md): its two public values, and its output
+riga.env
+dist-riga
