@@ -3207,7 +3207,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   // ── files ─────────────────────────────────────────────────────────────────
   'files.couldNotClean': "Wivo ei saanud seda faili lugeda, et peidetud andmeid eemaldada, seega jäi see üles laadimata. Ekspordi fail uuesti või salvesta see teises vormingus.",
   'files.sharedWarnConfirm': "Kas lisada failid ikkagi?",
-  'files.sharedWarnXray': "Röntgen: patsiendi nimi võib olla pildi sisse põletatud. Wivo eemaldab selle faili andmetest, mitte pildilt. Vaata pilt enne üle.",
+  'files.sharedWarnXray': "Röntgen ja KT: fail salvestatakse täpselt sellisena, nagu see on, seega patsiendi nimi jääb selle päisesse ja võib olla pildi sisse põletatud. Vaata fail enne üle.",
   'files.sharedWarnPhoto': "Foto: pilt, millel on patsiendi nägu, näitab, kes ta on. Lisa ainult pilte, millel nägu ei ole.",
   'files.sharedWarnPdf': "PDF: saatekirjadel ja tellimustel on sageli patsiendi nimi. Wivo ei saa seda PDF-ist eemaldada.",
   'files.sharedWarnIntro': "See töö on partneriga jagatud. Partner näeb neid faile ega tohi teada saada, kes on patsient.",
@@ -3231,7 +3231,7 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'files.preparing': "Ettevalmistus",
   'files.waiting': "Ootel",
   'files.failed': "Ebaõnnestus",
-  'files.cleaningNote': "Enne üleslaadimist kaovad fotodelt kõik peidetud andmed (asukoht, kaamera, kuupäevad), röntgenitelt patsiendi andmed ja 3D-skaneeringutelt faili sees olev nimi. Fail nimetatakse töö koodi järgi.",
+  'files.cleaningNote': "Enne üleslaadimist kaovad fotodelt kõik peidetud andmed (asukoht, kaamera, kuupäevad), ja 3D-skaneeringutelt faili sees olev nimi. Röntgeni- ja KT-failid salvestatakse täpselt sellisena, nagu need üles laaditi. Fail nimetatakse töö koodi järgi.",
   'files.addFiles': "Lisa failid",
   'files.fileType': "Faili tüüp",
   'files.files': "Failid",

@@ -9,8 +9,7 @@
  * - Output is collected as Blob parts, flushed into a Blob every few MB:
  *   Chromium keeps big blobs on disk, not in the renderer's heap.
  * - The SHA-256 of the finished ZIP is computed in the same pass.
- * - Entries under SCRUB_LIMIT bytes go through cleanForUpload (identity out of
- *   DICOM headers, metadata out of images, names out of STL). Bigger entries
+ * - Entries under SCRUB_LIMIT bytes go through cleanForUpload (metadata out of images, names out of STL). Bigger entries
  *   are stored as they are: reading them whole is what this module exists to
  *   avoid. The ZIP itself is never cleaned (it is an opaque container).
  * - No zip64: a folder over 4 GB, an entry over 4 GB or more than 65,535

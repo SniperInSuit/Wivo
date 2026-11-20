@@ -71,9 +71,14 @@ export function useCreateJob() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (input: JobInput) => {
-      const { data, error } = await supabase.from('jobs').insert({ ...withoutDbOwned(input), clinic_id: getActiveClinicId() }).select().single()
-      if (error) throw error
-      return data as Job
+      const row = { ...withoutDbOwned(input), clinic_id: getActiveClinicId() }
+      const { data, error } = await supabase.from('jobs').insert(row).select().single()
+      if (!error) return data as Job
+      // A database without sql/122 refuses the workflow columns: insert without them.
+      if (error.code !== 'PGRST204' && error.code !== '42703') throw error
+      const { data: plain, error: plainError } = await supabase.from('jobs').insert(withoutWorkflowColumns(row)).select().single()
+      if (plainError) throw plainError
+      return plain as Job
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY })
   })

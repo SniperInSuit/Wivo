@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   stripJpegMetadata, stripPngMetadata, stripWebpMetadata, stripHeifMetadata, stripTiffMetadata,
-  scrubDicom, scrubStl, scrubPly, stripObjComments, cleanForUpload, guessFileType, sha256Hex, isDicom, CleanError,
+  scrubStl, scrubPly, stripObjComments, cleanForUpload, guessFileType, sha256Hex, isDicom, CleanError,
 } from './fileClean'
 
 const ascii = (s: string) => [...s].map(c => c.charCodeAt(0))
@@ -269,29 +269,13 @@ function dicom(explicit: boolean): Uint8Array {
 }
 
 for (const explicit of [true, false]) {
-  describe(`scrubDicom (${explicit ? 'explicit' : 'implicit'} VR)`, () => {
-    const input = dicom(explicit)
-    const out = scrubDicom(input)
-
-    it('blanks the patient group, the institution, the station, the accession — also inside sequences', () => {
-      for (const s of ['Maasikas', '48001010000', '19800101', 'Tartu', 'Tallinna', 'XRAY-ROOM', 'ACC12345', 'Nested', 'OTHER-ID'])
-        expect(text(out)).not.toContain(s)
+  describe(`DICOM (${explicit ? 'explicit' : 'implicit'} VR) is stored exactly as uploaded`, () => {
+    it('cleanForUpload returns the same bytes, patient name and all', () => {
+      const input = dicom(explicit)
+      const out = cleanForUpload(input, 'ct.dcm')
+      expect([...out]).toEqual([...input])
+      expect(text(out)).toContain('Maasikas')
     })
-
-    it('keeps age, sex, the image, the length — and walks the patient-group sequence instead of blanking it', () => {
-      expect(text(out)).toContain('040Y')
-      expect(text(out)).toContain('F ')
-      expect([...out.subarray(out.length - 4)]).toEqual([1, 2, 3, 4])
-      expect(out.length).toBe(input.length)
-      expect([...out]).toEqual(expect.arrayContaining([0xfe, 0xff, 0x00, 0xe0]))
-    })
-
-    if (explicit) {
-      it('blanks private text values but keeps the private creator', () => {
-        expect(text(out)).not.toContain('Zelinda')
-        expect(text(out)).toContain('VENDOR')
-      })
-    }
   })
 }
 
@@ -356,7 +340,7 @@ describe('stripObjComments', () => {
 describe('cleanForUpload', () => {
   it('routes by content where a format has a signature', () => {
     expect(isDicom(dicom(true))).toBe(true)
-    expect(text(cleanForUpload(dicom(true)))).not.toContain('Maasikas')
+    expect(text(cleanForUpload(dicom(true)))).toContain('Maasikas')
     expect(text(cleanForUpload(phoneJpeg()))).not.toContain('Zelinda')
     expect(text(cleanForUpload(new Uint8Array(tiffBlock())))).not.toContain('Zelinda')
     expect(text(cleanForUpload(new Uint8Array(ascii(`solid ${NAME}\nendsolid\n`))))).not.toContain('Zelinda')

@@ -2,7 +2,7 @@
  * Files upload in the background, one at a time, while the app stays usable
  * (spec, Phase 1 Files: "TUS upload in a background queue").
  *
- * Each file: read → clean (fileClean: metadata off photos, identity off DICOM
+ * Each file: read → clean (fileClean: metadata off photos
  * and 3D scans; a file that cannot be cleaned is not uploaded) → SHA-256 of
  * what will actually be stored → `register_job_file` (rights, version, job-code
  * name, path) → resumable upload to that path → `confirm_job_file`. A failure

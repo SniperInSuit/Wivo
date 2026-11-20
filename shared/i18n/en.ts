@@ -3221,7 +3221,7 @@ export const en = {
   // ── files ─────────────────────────────────────────────────────────────────
   'files.couldNotClean': "Wivo could not read this file to remove its hidden data, so it was not uploaded. Export it again, or save it in another format.",
   'files.sharedWarnConfirm': "Add the files anyway?",
-  'files.sharedWarnXray': "X-ray: the patient's name can be burned into the image itself. Wivo removes it from the file's data, not from the picture. Check the image first.",
+  'files.sharedWarnXray': "X-ray and CT: the file is stored exactly as it is, so the patient's name stays in its header and can be burned into the image. Check the file first.",
   'files.sharedWarnPhoto': "Photo: a photo that shows the patient's face identifies them. Add only photos without the face.",
   'files.sharedWarnPdf': "PDF: documents such as referrals and orders often show the patient's name. Wivo cannot remove it from a PDF.",
   'files.sharedWarnIntro': "This job is shared with a partner. They will see these files, and must not learn who the patient is.",
@@ -3245,7 +3245,7 @@ export const en = {
   'files.preparing': "Preparing",
   'files.waiting': "Waiting",
   'files.failed': "Failed",
-  'files.cleaningNote': "Before upload, photos lose all their hidden data (location, camera, dates), X-rays the patient's details, and 3D scans the name inside the file. The file is named after the job code.",
+  'files.cleaningNote': "Before upload, photos lose all their hidden data (location, camera, dates), and 3D scans the name inside the file. X-ray and CT files are stored exactly as uploaded. The file is named after the job code.",
   'files.addFiles': "Add files",
   'files.fileType': "File type",
   'files.files': "Files",

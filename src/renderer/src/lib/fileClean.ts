@@ -6,11 +6,12 @@
  *  - Photos lose ALL their metadata — EXIF (camera, dates, GPS, owner, the
  *    embedded thumbnail), XMP, IPTC, comments — keeping only what the picture
  *    needs to look right (orientation, colour profile).
- *  - DICOM loses the patient module and the people and places around it.
+ *  - DICOM (X-ray, CT) is left exactly as it is: the clinic's archive does
+ *    not change medical files.
  *  - 3D scans lose the names exporters write into them: the STL "solid
  *    <name>" line and binary header, PLY and OBJ comment lines.
  *
- * Where a format is full of offsets (TIFF, HEIF, DICOM, binary STL) a value is
+ * Where a format is full of offsets (TIFF, HEIF, binary STL) a value is
  * overwritten in place and the length never changes — cutting would shift
  * every offset after it, and a shorter file no viewer can open is not
  * "cleaned". Where nothing points into the file (JPEG segments, PNG and WebP
@@ -312,136 +313,17 @@ export function stripTiffMetadata(input: Uint8Array): Uint8Array {
   return out
 }
 
-// ── X-rays and CT: DICOM header ─────────────────────────────────────────────
+// ── X-rays and CT: DICOM ────────────────────────────────────────────────────
 
 /**
- * Outside the patient group, the tags that name a person or the place.
- * The patient group (0010) is blanked whole, except sex and age: the partner
- * view shows the age on purpose (sql/092).
+ * DICOM is NOT cleaned. The clinic's archive keeps medical files exactly as
+ * they were uploaded, CT included: Wivo does not edit them. (A header cleaner
+ * used to blank the patient group and the people and places around it; it was
+ * taken out on 20.11.2026.) The warning before a file goes onto a shared job
+ * (sharedUpload.ts) still names X-ray and CT files.
  */
-const DICOM_BLANK = new Set([
-  0x00080050, // AccessionNumber
-  0x00080080, // InstitutionName
-  0x00080081, // InstitutionAddress
-  0x00080090, // ReferringPhysicianName
-  0x00080092, // ReferringPhysicianAddress
-  0x00080094, // ReferringPhysicianTelephoneNumbers
-  0x00081010, // StationName
-  0x00081040, // InstitutionalDepartmentName
-  0x00081048, // PhysiciansOfRecord
-  0x00081050, // PerformingPhysicianName
-  0x00081060, // NameOfPhysiciansReadingStudy
-  0x00081070, // OperatorsName
-  0x00200010, // StudyID
-  0x00321032, // RequestingPhysician
-  0x00400006, // ScheduledPerformingPhysicianName
-])
-const DICOM_KEEP = new Set([
-  0x00100040, // PatientSex
-  0x00101010, // PatientAge
-])
-const TEXT_VR = new Set(['AE', 'AS', 'CS', 'DA', 'DS', 'DT', 'IS', 'LO', 'LT', 'PN', 'SH', 'ST', 'TM', 'UC', 'UI', 'UR', 'UT'])
-
-const LONG_VR = new Set(['OB', 'OW', 'OF', 'SQ', 'UT', 'UN', 'UC', 'UR', 'OD', 'OL', 'OV', 'SV', 'UV'])
-const UNDEFINED = 0xffffffff
-const ITEM = 0xfffee000
-const ITEM_END = 0xfffee00d
-const SEQ_END = 0xfffee0dd
-const PIXEL_DATA = 0x7fe00010
-
 export function isDicom(input: Uint8Array): boolean {
   return input.length > 132 && input[128] === 0x44 && input[129] === 0x49 && input[130] === 0x43 && input[131] === 0x4d
-}
-
-/**
- * Should this element's value be blanked? `vr` is '' in implicit VR files,
- * where the type is not written: there a patient-group value is blanked
- * unless it is a sequence (it then starts with an item tag and is walked).
- */
-function dicomBlank(tag: number, vr: string, value: Uint8Array): boolean {
-  if (DICOM_BLANK.has(tag)) return true
-  const group = tag >>> 16
-  if (group === 0x0010 && !DICOM_KEEP.has(tag)) {
-    return vr ? TEXT_VR.has(vr) : !(value[0] === 0xfe && value[1] === 0xff && value[2] === 0x00 && value[3] === 0xe0)
-  }
-  // Vendors keep names in private tags too. Text values only (and not the
-  // private creator ids at xx10–xxFF), so the vendor's binary data survives.
-  return (group & 1) === 1 && TEXT_VR.has(vr) && (tag & 0xffff) > 0x00ff
-}
-
-/**
- * Blanks the identifying values of a DICOM Part 10 file (explicit or implicit
- * VR, little endian — what dental CBCT and intraoral sensors write), including
- * inside sequences. Stops at the pixel data. Not a DICOM file → unchanged.
- */
-export function scrubDicom(input: Uint8Array): Uint8Array {
-  if (!isDicom(input)) return input
-  const out = input.slice()
-  const view = new DataView(out.buffer, out.byteOffset, out.byteLength)
-  const tagAt = (o: number) => ((view.getUint16(o, true) << 16) | view.getUint16(o + 2, true)) >>> 0
-  const vrAt = (o: number) => String.fromCharCode(out[o], out[o + 1])
-
-  // File meta (group 0002) is always explicit VR; it says how the rest is written.
-  let explicit = true
-  let p = 132
-  while (p + 8 <= out.length && view.getUint16(p, true) === 0x0002) {
-    const tag = tagAt(p)
-    const vr = vrAt(p + 4)
-    const long = LONG_VR.has(vr)
-    const len = long ? view.getUint32(p + 8, true) : view.getUint16(p + 6, true)
-    const at = p + (long ? 12 : 8)
-    if (tag === 0x00020010) {
-      const syntax = String.fromCharCode(...out.subarray(at, at + len)).replace(/[\0 ]+$/, '')
-      explicit = syntax !== '1.2.840.10008.1.2'
-    }
-    p = at + len
-  }
-
-  /** Walks elements from `p` until `end` or a delimiter; returns where it stopped. */
-  const walk = (start: number, end: number): number => {
-    let q = start
-    while (q + 8 <= end) {
-      const tag = tagAt(q)
-      if (tag === ITEM_END || tag === SEQ_END) return q + 8
-      if (tag === PIXEL_DATA) return end
-      let vr = ''
-      let len: number
-      let at: number
-      if (explicit && !(tag >>> 16 === 0xfffe)) {
-        vr = vrAt(q + 4)
-        if (LONG_VR.has(vr)) { len = view.getUint32(q + 8, true); at = q + 12 }
-        else { len = view.getUint16(q + 6, true); at = q + 8 }
-      } else {
-        len = view.getUint32(q + 4, true)
-        at = q + 8
-      }
-      const isSeq = vr === 'SQ' || (!explicit && len === UNDEFINED)
-      if (isSeq) {
-        q = sequence(at, len === UNDEFINED ? end : Math.min(end, at + len))
-        continue
-      }
-      if (len === UNDEFINED) return end // undefined-length non-sequence (encapsulated pixels): stop
-      if (at + len <= out.length && dicomBlank(tag, vr, out.subarray(at, at + len))) out.fill(0x20, at, at + len)
-      q = at + len
-    }
-    return q
-  }
-
-  const sequence = (start: number, end: number): number => {
-    let q = start
-    while (q + 8 <= end) {
-      const tag = tagAt(q)
-      if (tag === SEQ_END) return q + 8
-      if (tag !== ITEM) return end
-      const len = view.getUint32(q + 4, true)
-      const body = q + 8
-      q = len === UNDEFINED ? walk(body, end) : (walk(body, body + len), body + len)
-    }
-    return q
-  }
-
-  walk(p, out.length)
-  return out
 }
 
 // ── 3D: STL, PLY, OBJ ───────────────────────────────────────────────────────
@@ -551,7 +433,7 @@ export function guessFileType(name: string): JobFileType {
  * a signature; STL (binary has none) and OBJ/MTL (plain text) by the name.
  */
 export function cleanForUpload(bytes: Uint8Array, name = ''): Uint8Array {
-  if (isDicom(bytes)) return scrubDicom(bytes)
+  if (isDicom(bytes)) return bytes // medical files are stored as uploaded
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return stripJpegMetadata(bytes)
   if (isPng(bytes)) return stripPngMetadata(bytes)
   if (isWebp(bytes)) return stripWebpMetadata(bytes)

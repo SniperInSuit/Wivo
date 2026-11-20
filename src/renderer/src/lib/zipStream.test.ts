@@ -89,7 +89,7 @@ describe('buildZip', () => {
     await expect(buildZip([huge])).rejects.toBeInstanceOf(ZipLimitError)
   })
 
-  it('scrubs a small DICOM entry (identity out of the header)', async () => {
+  it('stores a small DICOM entry exactly as it is (the archive does not edit medical files)', async () => {
     // Minimal Part-10 file: 128-byte preamble, DICM, then PatientName (0010,0010) explicit VR.
     const name = new TextEncoder().encode('DOE^JOHN')
     const el = new Uint8Array(8 + name.length)
@@ -98,7 +98,7 @@ describe('buildZip', () => {
     dcm.set(new TextEncoder().encode('DICM'), 128); dcm.set(el, 132)
     const r = await buildZip([src('S/IM1.dcm', dcm)])
     const got = read(await bytesOf(r.blob))
-    expect(new TextDecoder('latin1').decode(got[0].data)).not.toContain('DOE')
+    expect([...got[0].data]).toEqual([...dcm])
   })
 
   it('streams an entry over the scrub limit in slices (never read whole)', async () => {
