@@ -99,3 +99,16 @@ export function forbiddenIn(text, key) {
   }
   return found
 }
+
+/**
+ * The command that moves the `riga` branch (Cloudflare Pages `wivo-riga`
+ * builds Riga's phone app from it) to the installer's commit, so the phone and
+ * the installer are the same version. Never forced: git refuses it unless the
+ * commit is ahead of where `riga` is, so `riga` only ever follows `testing`.
+ * The first run creates the branch.
+ * @param {string} sha  the installer's full commit
+ */
+export function phoneBranchCommand(sha) {
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`not a full commit: ${sha}`)
+  return `git push origin ${sha}:refs/heads/riga`
+}

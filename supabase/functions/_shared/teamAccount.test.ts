@@ -30,12 +30,13 @@ interface Opts {
   linkError?: string
   createError?: string
   mailOk?: boolean
+  mailError?: string
   currentEmail?: string
   code?: string | null
 }
 
 function setup(o: Opts = {}) {
-  const calls = { links: [] as unknown[], created: [] as unknown[], mails: [] as { to: string; subject: string; text: string }[], rpc: [] as string[] }
+  const calls = { links: [] as unknown[], created: [] as unknown[], mails: [] as { to: string; subject: string; text: string }[], rpc: [] as string[], quota: [] as [string, string][] }
   const warn = vi.fn()
   const deps: TeamAccountDeps = {
     asUser: async (fn) => {
@@ -64,7 +65,8 @@ function setup(o: Opts = {}) {
       return o.createError ? { userId: null, error: o.createError } : { userId: NEW, error: null }
     },
     userEmail: async () => o.currentEmail ?? 'tehnik.tal@nomail.wivodent.com',
-    sendMail: async (m) => { calls.mails.push(m); return o.mailOk === false ? { ok: false, error: 'resend 500 for mari@kliinik.ee' } : { ok: true } },
+    sendMail: async (m) => { calls.mails.push(m); return o.mailOk === false ? { ok: false, error: o.mailError ?? 'resend 500 for mari@kliinik.ee' } : { ok: true } },
+    recordQuota: async (kind, source) => { calls.quota.push([kind, source]) },
     env: name => ({ ...ENV, ...o.env })[name],
     warn,
     now: () => NOW,
@@ -158,6 +160,20 @@ describe('invite: a real e-mail', () => {
     const { deps, warn } = setup({ mailOk: false })
     expect(await handleTeamRequest(AUTH, invite, deps)).toEqual({ status: 502, body: { ok: false, error: 'mail_failed', userId: NEW } })
     expect(JSON.stringify(warn.mock.calls)).not.toContain('mari@')
+  })
+
+  it("Resend's daily limit: recorded for the owner (sql/125), the account stays", async () => {
+    const daily = '429 {"statusCode":429,"message":"You have reached your daily email sending quota.","name":"daily_quota_exceeded"}'
+    const { deps, calls, warn } = setup({ mailOk: false, mailError: daily })
+    expect(await handleTeamRequest(AUTH, invite, deps)).toEqual({ status: 502, body: { ok: false, error: 'mail_failed', userId: NEW } })
+    expect(calls.quota).toEqual([['daily', 'team_invite']])
+    expect(JSON.stringify(warn.mock.calls)).toMatch(/daily sending limit/)
+  })
+
+  it('another mail failure records no limit', async () => {
+    const { deps, calls } = setup({ mailOk: false })
+    await handleTeamRequest(AUTH, invite, deps)
+    expect(calls.quota).toEqual([])
   })
 })
 

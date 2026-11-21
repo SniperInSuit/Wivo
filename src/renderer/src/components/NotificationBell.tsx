@@ -38,6 +38,8 @@ const text = (n: AppNotification, stageLabel: (key: string) => string): string =
   if (n.kind === 'update_installed') return t('notifications.updateInstalled', { version: String(n.detail.to ?? '') })
   if (n.kind === 'update_failed') return t('notifications.updateFailed', { version: String(n.detail.to ?? '') })
   if (n.kind === 'update_stale') return t('notifications.updateStale')
+  // sql/125: Resend's limit, for owners.
+  if (n.kind === 'mail_quota') return n.detail.limit === 'monthly' ? t('notifications.mailQuotaMonthly') : t('notifications.mailQuotaDaily')
   return t('notifications.question', { code })
 }
 

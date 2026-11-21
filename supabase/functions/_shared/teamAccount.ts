@@ -26,6 +26,8 @@ import {
   STANDIN_DOMAIN, isStandinEmail, normaliseClinicCode, normaliseUsername, standinAddress, standinLogin,
 } from './generated/loginAddress.ts'
 
+import { quotaLimitInError, QUOTA_WARNING, type QuotaKind } from './mailQuota.ts'
+
 export type Lang = 'en' | 'et' | 'ru'
 
 export interface LinkResult { hashedToken: string | null; userId: string | null; error: string | null }
@@ -46,8 +48,10 @@ export interface TeamAccountDeps {
     Promise<{ userId: string | null; error: string | null }>
   /** GoTrue admin getUserById: the current address. */
   userEmail: (userId: string) => Promise<string | null>
-  /** Resend. */
+  /** Resend. On failure, `error` is `${status} ${body}`. */
   sendMail: (m: { to: string; subject: string; text: string }) => Promise<{ ok: boolean; error?: string }>
+  /** sql/125 record_mail_quota_hit, as the service role: Resend's limit was reached. */
+  recordQuota?: (kind: QuotaKind, source: string) => Promise<void>
   env: (name: string) => string | undefined
   warn: (message: string) => void
   now?: () => number
@@ -240,6 +244,7 @@ async function mailInvite(to: string, clinic: string, language: Lang, hashedToke
   if (!sent.ok) {
     // The account is made and in the clinic; "Send again" retries the e-mail.
     deps.warn(`invite: e-mail not sent: ${scrub(sent.error ?? '')}`)
+    await noteQuota(sent.error, 'team_invite', deps)
     return fail(502, 'mail_failed', userId)
   }
   return { status: 200, body: { ok: true, userId } }
@@ -317,7 +322,18 @@ async function addEmail(caller: string, req: Extract<TeamRequest, { action: 'add
   const sent = await deps.sendMail({ to: req.email, subject: t.subject, text: fill(t.text, { link: url }) })
   if (!sent.ok) {
     deps.warn(`add_email: e-mail not sent: ${scrub(sent.error ?? '')}`)
+    await noteQuota(sent.error, 'team_email', deps)
     return fail(502, 'mail_failed')
   }
   return { status: 200, body: { ok: true } }
+}
+
+/** Resend's daily or monthly limit (mailQuota.ts): logged, and the owner told (sql/125). Never throws. */
+async function noteQuota(error: string | undefined, source: string, deps: TeamAccountDeps): Promise<void> {
+  const kind = quotaLimitInError(error)
+  if (!kind) return
+  deps.warn(`${QUOTA_WARNING[kind]} [${source}]`)
+  try { await deps.recordQuota?.(kind, source) } catch (e) {
+    deps.warn(`record_mail_quota_hit: ${e instanceof Error ? e.message : String(e)}`)
+  }
 }

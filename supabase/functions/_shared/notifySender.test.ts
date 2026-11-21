@@ -16,6 +16,9 @@ function harness(opts: {
   emails?: { id: string; email: string; job_id: string | null; job_code: string | null; kind: string; language: string }[]
   push?: (endpoint: string) => PushResult
   rpcError?: string
+  /** Resend's answer to the n-th send (0-based); default 200. */
+  resend?: (n: number) => { status: number; body: string }
+  bugs?: Record<string, unknown>[]
 } = {}) {
   const calls: { fn: string; args: Record<string, unknown> }[] = []
   const pushed: string[] = []
@@ -29,12 +32,14 @@ function harness(opts: {
       if (opts.rpcError === fn) return { data: null, error: { message: `${fn} broke` } }
       if (fn === 'pending_pushes') return { data: opts.pending ?? [], error: null }
       if (fn === 'pending_notification_emails') return { data: opts.emails ?? [], error: null }
+      if (fn === 'pending_bug_reports') return { data: opts.bugs ?? [], error: null }
       return { data: [], error: null }
     },
     fetch: async (_url, init) => {
       const body = JSON.parse(init.body) as { to: string; subject: string }
+      const answer = opts.resend?.(mailed.length) ?? { status: 200, body: '' }
       mailed.push({ to: body.to, subject: body.subject })
-      return { ok: true, status: 200, text: async () => '' }
+      return { ok: answer.status < 300, status: answer.status, text: async () => answer.body }
     },
     signingKey: async () => ({}) as CryptoKey,
     push: async (endpoint, _s, _p, _sub, message) => { pushed.push(endpoint); messages.push(message); return opts.push?.(endpoint) ?? 'ok' },
@@ -181,5 +186,51 @@ describe('pushes', () => {
     expect(h.called('mark_pushed')).toEqual([])
     expect(h.warnings).toEqual([])
     expect(r).toMatchObject({ dry: true, pushes: { sent: 1 } })
+  })
+})
+
+describe("Resend's sending limit (sql/125)", () => {
+  const DAILY = '{"statusCode":429,"message":"You have reached your daily email sending quota.","name":"daily_quota_exceeded"}'
+  const mail = (id: string) => ({ id, email: `${id}@test.invalid`, job_id: 'j1', job_code: 'RIG-26-0001', kind: 'files_added', language: 'en' })
+
+  it('stops at the first refusal, records it, warns, marks only what went, and still pushes', async () => {
+    const h = harness({
+      env: { ...VAPID, ...EMAIL, BUG_REPORT_TO: 'bugs@test.invalid' },
+      emails: [mail('n1'), mail('n2'), mail('n3')],
+      bugs: [{ id: 'b1', org_name: 'Riga', app_version: '2.1.0', screen: 'x', message: 'm', recent_errors: [], has_screenshot: false, created_at: 'now' }],
+      resend: n => (n === 0 ? { status: 200, body: '' } : { status: 429, body: DAILY }),
+      pending: [phone('n1')],
+    })
+    const r = await runSender(h.deps, false)
+    expect(h.mailed.map(m => m.to)).toEqual(['n1@test.invalid', 'n2@test.invalid'])
+    expect(h.called('record_mail_quota_hit').map(c => c.args)).toEqual([{ p_kind: 'daily', p_source: 'notifications' }])
+    expect(h.called('mark_notifications_emailed')[0].args).toEqual({ p_ids: ['n1'] })
+    expect(h.called('pending_bug_reports')).toEqual([])
+    expect(h.warnings.join('\n')).toMatch(/daily sending limit/)
+    expect(r.email.limit).toBe('daily')
+    expect(r.bugs.limit).toBe('daily')
+    expect(h.pushed).toHaveLength(1)
+  })
+
+  it('a refusal that is not the limit does not stop the others or record anything', async () => {
+    const h = harness({
+      env: { ...VAPID, ...EMAIL },
+      emails: [mail('n1'), mail('n2')],
+      resend: n => (n === 0 ? { status: 422, body: '{"name":"validation_error"}' } : { status: 200, body: '' }),
+    })
+    const r = await runSender(h.deps, false)
+    expect(h.mailed).toHaveLength(2)
+    expect(h.called('record_mail_quota_hit')).toEqual([])
+    expect(r.email.limit).toBeUndefined()
+  })
+
+  it('a failed record is only a warning', async () => {
+    const h = harness({
+      env: { ...VAPID, ...EMAIL }, emails: [mail('n1')], rpcError: 'record_mail_quota_hit',
+      resend: () => ({ status: 429, body: DAILY }),
+    })
+    const r = await runSender(h.deps, false)
+    expect(h.warnings.some(w => w.startsWith('record_mail_quota_hit:'))).toBe(true)
+    expect(r.email.status).toBe('sent')
   })
 })

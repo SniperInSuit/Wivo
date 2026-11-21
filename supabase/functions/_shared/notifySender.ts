@@ -14,9 +14,16 @@
  * EMAIL_ALLOW_ONLY (the test copy only, mailAllow.ts): a notice for any
  * other address is marked done without being sent.
  *
+ * Resend's limit (mailQuota.ts, sql/125): the first refusal for the daily or
+ * monthly limit stops the e-mails of this run (the rest would be refused
+ * too), is recorded with record_mail_quota_hit (the log, and the owner's
+ * bell once a day) and warned in the function's log. The refused notices
+ * stay unsent and are tried again next minute. Pushes still go.
+ *
  * Imports carry their `.ts`: Deno needs the extension and Vitest accepts it.
  */
 import { mayMail } from './mailAllow.ts'
+import { quotaLimit, QUOTA_WARNING, type QuotaKind } from './mailQuota.ts'
 import { pushText, pushLang } from './pushText.ts'
 
 export type PushResult = 'ok' | 'gone' | 'failed'
@@ -35,8 +42,8 @@ export interface SenderDeps {
 export interface SenderResult {
   ok: boolean
   dry: boolean
-  email: { status: 'sent' | 'skipped' | 'error'; sent: number; failed: { id: string; error: string }[]; error?: string }
-  bugs: { sent: number; error?: string }
+  email: { status: 'sent' | 'skipped' | 'error'; sent: number; failed: { id: string; error: string }[]; error?: string; limit?: QuotaKind }
+  bugs: { sent: number; error?: string; limit?: QuotaKind }
   pushes: { sent: number; gone: number; error?: string }
 }
 
@@ -62,7 +69,10 @@ export async function runSender(deps: SenderDeps, dry: boolean): Promise<SenderR
   if (!emailReady) deps.warn(EMAIL_NOT_SET)
 
   const email = emailReady ? await sendEmails(deps, dry, key, from) : { status: 'skipped' as const, sent: 0, failed: [] }
-  const bugs = emailReady ? await sendBugReports(deps, dry, key, from) : { sent: 0, error: 'e-mail not set up' }
+  // Over the limit, bug reports would be refused as well: they wait too.
+  const bugs = !emailReady ? { sent: 0, error: 'e-mail not set up' }
+    : email.limit ? { sent: 0, limit: email.limit }
+      : await sendBugReports(deps, dry, key, from)
   const pushes = await sendPushes(deps, dry)
   if (pushes.error) deps.warn(`push: ${pushes.error}`)
   return { ok: email.status !== 'error' && !pushes.error, dry, email, bugs, pushes }
@@ -75,6 +85,7 @@ async function sendEmails(deps: SenderDeps, dry: boolean, key: string | undefine
 
   const sent: string[] = []
   const failed: { id: string; error: string }[] = []
+  let limit: QuotaKind | null = null
   for (const n of (data ?? []) as Pending[]) {
     const lang: Lang = (['en', 'et', 'ru'] as const).includes(n.language as Lang) ? n.language as Lang : 'en'
     const code = n.job_code ?? '—'
@@ -89,15 +100,30 @@ async function sendEmails(deps: SenderDeps, dry: boolean, key: string | undefine
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to: n.email, subject, text }),
     })
-    if (res.ok) sent.push(n.id)
-    else failed.push({ id: n.id, error: `${res.status} ${(await res.text()).slice(0, 200)}` })
+    if (res.ok) { sent.push(n.id); continue }
+    const body = await res.text()
+    failed.push({ id: n.id, error: `${res.status} ${body.slice(0, 200)}` })
+    limit = quotaLimit(res.status, body)
+    if (limit) break
   }
+  if (limit) await recordQuota(deps, limit, 'notifications')
 
   if (!dry && sent.length > 0) {
     const { error: markErr } = await deps.rpc('mark_notifications_emailed', { p_ids: sent })
-    if (markErr) return { status: 'error', sent: sent.length, failed, error: markErr.message }
+    if (markErr) return { status: 'error', sent: sent.length, failed, error: markErr.message, ...(limit ? { limit } : {}) }
   }
-  return { status: 'sent', sent: sent.length, failed }
+  return { status: 'sent', sent: sent.length, failed, ...(limit ? { limit } : {}) }
+}
+
+/** In the function's log, and in mail_quota_hit (sql/125) for the owner. Never throws. */
+async function recordQuota(deps: SenderDeps, limit: QuotaKind, source: string): Promise<void> {
+  deps.warn(`${QUOTA_WARNING[limit]} [${source}]`)
+  try {
+    const { error } = await deps.rpc('record_mail_quota_hit', { p_kind: limit, p_source: source })
+    if (error) deps.warn(`record_mail_quota_hit: ${error.message}`)
+  } catch (e) {
+    deps.warn(`record_mail_quota_hit: ${e instanceof Error ? e.message : String(e)}`)
+  }
 }
 
 /** No job to open (a security notice): the app's own page on the same site. */
@@ -117,6 +143,7 @@ async function sendBugReports(deps: SenderDeps, dry: boolean, key: string | unde
   const { data, error } = await deps.rpc('pending_bug_reports', { p_limit: 50 })
   if (error) return { sent: 0, error: error.message }
   const done: string[] = []
+  let limit: QuotaKind | null = null
   for (const b of (data ?? []) as BugReport[]) {
     const subject = `Wivo bug: ${b.org_name ?? '—'} · ${b.screen ?? '—'} · v${b.app_version ?? '?'}`
     const errors = (b.recent_errors ?? []).map(e => `- ${e.at ?? ''} ${e.message ?? ''}\n${(e.stack ?? '').split('\n').slice(0, 4).join('\n')}`).join('\n')
@@ -132,10 +159,13 @@ async function sendBugReports(deps: SenderDeps, dry: boolean, key: string | unde
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to, subject, text }),
     })
-    if (res.ok) done.push(b.id)
+    if (res.ok) { done.push(b.id); continue }
+    limit = quotaLimit(res.status, await res.text())
+    if (limit) break
   }
+  if (limit) await recordQuota(deps, limit, 'bug_reports')
   if (!dry && done.length > 0) await deps.rpc('mark_bug_reports_emailed', { p_ids: done })
-  return { sent: done.length }
+  return limit ? { sent: done.length, limit } : { sent: done.length }
 }
 
 interface PendingPush {

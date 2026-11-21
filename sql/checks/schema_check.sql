@@ -26,7 +26,7 @@
 -- (security, volatility, settings, a fingerprint of the body) and the grants
 -- to anon, authenticated, service_role and PUBLIC on tables, columns and
 -- functions.
--- Expected rows: 2126.
+-- Expected rows: 2152.
 -- ============================================================================
 
 with expected(kind, key, def) as (values
@@ -146,6 +146,11 @@ with expected(kind, key, def) as (values
     ('constraint', 'public.jobs.jobs_pkey', 'PRIMARY KEY (id)'),
     ('constraint', 'public.jobs.jobs_production_method_valid', 'CHECK (((production_method IS NULL) OR (production_method = ANY (ARRAY[''print''::text, ''mill''::text]))))'),
     ('constraint', 'public.jobs.jobs_template_fk', 'FOREIGN KEY (template_id, clinic_id) REFERENCES workflow_template(id, org_id)'),
+    ('constraint', 'public.mail_quota_hit.mail_quota_hit_kind_check', 'CHECK ((kind = ANY (ARRAY[''daily''::text, ''monthly''::text])))'),
+    ('constraint', 'public.mail_quota_hit.mail_quota_hit_org_id_day_kind_key', 'UNIQUE (org_id, day, kind)'),
+    ('constraint', 'public.mail_quota_hit.mail_quota_hit_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE CASCADE'),
+    ('constraint', 'public.mail_quota_hit.mail_quota_hit_pkey', 'PRIMARY KEY (id)'),
+    ('constraint', 'public.mail_quota_hit.mail_quota_hit_refused_check', 'CHECK ((refused > 0))'),
     ('constraint', 'public.message_jobs.message_jobs_job_id_fkey', 'FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE'),
     ('constraint', 'public.message_jobs.message_jobs_message_id_fkey', 'FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE'),
     ('constraint', 'public.message_jobs.message_jobs_pkey', 'PRIMARY KEY (message_id, job_id)'),
@@ -160,7 +165,7 @@ with expected(kind, key, def) as (values
     ('constraint', 'public.mfa_attempt.mfa_attempt_pkey', 'PRIMARY KEY (id)'),
     ('constraint', 'public.mfa_attempt.mfa_attempt_user_id_fkey', 'FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE'),
     ('constraint', 'public.notification.notification_job_id_fkey', 'FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE'),
-    ('constraint', 'public.notification.notification_kind_valid', 'CHECK ((kind = ANY (ARRAY[''job_shared''::text, ''stage_handover''::text, ''question''::text, ''files_added''::text, ''stage_reached''::text, ''assigned''::text, ''mfa_removed''::text, ''mfa_reset''::text, ''update_installed''::text, ''update_failed''::text, ''update_stale''::text, ''stage_progress''::text, ''stage_assigned''::text])))'),
+    ('constraint', 'public.notification.notification_kind_valid', 'CHECK ((kind = ANY (ARRAY[''job_shared''::text, ''stage_handover''::text, ''question''::text, ''files_added''::text, ''stage_reached''::text, ''assigned''::text, ''mfa_removed''::text, ''mfa_reset''::text, ''update_installed''::text, ''update_failed''::text, ''update_stale''::text, ''stage_progress''::text, ''stage_assigned''::text, ''mail_quota''::text])))'),
     ('constraint', 'public.notification.notification_org_id_fkey', 'FOREIGN KEY (org_id) REFERENCES clinics(id) ON DELETE CASCADE'),
     ('constraint', 'public.notification.notification_pkey', 'PRIMARY KEY (id)'),
     ('constraint', 'public.notification.notification_user_id_fkey', 'FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE'),
@@ -442,6 +447,11 @@ with expected(kind, key, def) as (values
     ('default', 'public.jobs.status', '''disain''::text'),
     ('default', 'public.jobs.updated_at', 'now()'),
     ('default', 'public.jobs.work_items', '''[]''::jsonb'),
+    ('default', 'public.mail_quota_hit.first_at', 'now()'),
+    ('default', 'public.mail_quota_hit.id', 'gen_random_uuid()'),
+    ('default', 'public.mail_quota_hit.last_at', 'now()'),
+    ('default', 'public.mail_quota_hit.refused', '1'),
+    ('default', 'public.mail_quota_hit.sources', '''{}''::text[]'),
     ('default', 'public.messages.created_at', 'now()'),
     ('default', 'public.messages.id', 'gen_random_uuid()'),
     ('default', 'public.messages.is_question', 'false'),
@@ -707,7 +717,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.patient_export(p_patient uuid)', 'security definer, volatile, search_path=public, body md5 6379815bfd6cc5768198a9e8fc07712f'),
     ('function', 'public.pay_settings()', 'security definer, stable, search_path=public, body md5 86dc03ffe0eab6340107c8a485b73014'),
     ('function', 'public.pending_bug_reports(p_limit integer)', 'security definer, stable, search_path=public, body md5 0ffbd82011d46a08cdbc7bc18773ef63'),
-    ('function', 'public.pending_notification_emails(p_limit integer)', 'security definer, stable, search_path=public, body md5 8c480f9bccd77d01307a170e1f90ffc4'),
+    ('function', 'public.pending_notification_emails(p_limit integer)', 'security definer, stable, search_path=public, body md5 c2f104b5db6d0030187c701b5a92c5b2'),
     ('function', 'public.pending_pushes(p_limit integer)', 'security definer, stable, search_path=public, body md5 288f6f44b6b7d251e65f19138679a2cd'),
     ('function', 'public.personal_code_pattern()', 'security invoker, immutable, search_path=public, body md5 af5b58d1106153b02f61b20d2ca0e289'),
     ('function', 'public.platform_approve_partnership(p_id uuid)', 'security definer, volatile, search_path=public, body md5 39c2cae7dae0bd98ccb64a1beb06163a'),
@@ -720,6 +730,7 @@ with expected(kind, key, def) as (values
     ('function', 'public.recalc_invoice_totals(p_invoice uuid)', 'security definer, volatile, search_path=public, body md5 caeb447d37d0b3a6134418fff8297620'),
     ('function', 'public.receive_stock(p_item uuid, p_qty integer)', 'security definer, volatile, search_path=public, body md5 04f6f8939e9b03a75dad98640cfe8b1d'),
     ('function', 'public.record_inventory_count(p_started_at timestamp with time zone, p_lines jsonb)', 'security definer, volatile, search_path=public, body md5 0c5a5404d29a551fdda93c7b297b1321'),
+    ('function', 'public.record_mail_quota_hit(p_kind text, p_source text)', 'security definer, volatile, search_path=public, body md5 40ed1b0a66e3615414ec2fd44e70b990'),
     ('function', 'public.record_mfa_factors()', 'security definer, volatile, search_path=public, body md5 3d9ccb4f0e95bc51eaedf10ee21e6157'),
     ('function', 'public.redact_identity(p_text text, p_terms text[])', 'security invoker, immutable, search_path=public, body md5 60ee48ddb5de1d3ee8f1d4c2875ba429'),
     ('function', 'public.redact_identity_json(p jsonb, p_terms text[])', 'security invoker, immutable, search_path=public, body md5 cd47eb5578b192dc61c92683e9c01fc0'),
@@ -1081,6 +1092,9 @@ with expected(kind, key, def) as (values
     ('grant', 'public.json_strings(p jsonb) to service_role', 'EXECUTE'),
     ('grant', 'public.log_job_view(p_job uuid) to authenticated', 'EXECUTE'),
     ('grant', 'public.log_job_view(p_job uuid) to service_role', 'EXECUTE'),
+    ('grant', 'public.mail_quota_hit to anon', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.mail_quota_hit to authenticated', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
+    ('grant', 'public.mail_quota_hit to service_role', 'DELETE,INSERT,MAINTAIN,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE'),
     ('grant', 'public.mark_bug_reports_emailed(p_ids uuid[]) to service_role', 'EXECUTE'),
     ('grant', 'public.mark_notifications_emailed(p_ids uuid[]) to service_role', 'EXECUTE'),
     ('grant', 'public.mark_notifications_read(p_ids uuid[]) to authenticated', 'EXECUTE'),
@@ -1259,6 +1273,7 @@ with expected(kind, key, def) as (values
     ('grant', 'public.receive_stock(p_item uuid, p_qty integer) to service_role', 'EXECUTE'),
     ('grant', 'public.record_inventory_count(p_started_at timestamp with time zone, p_lines jsonb) to authenticated', 'EXECUTE'),
     ('grant', 'public.record_inventory_count(p_started_at timestamp with time zone, p_lines jsonb) to service_role', 'EXECUTE'),
+    ('grant', 'public.record_mail_quota_hit(p_kind text, p_source text) to service_role', 'EXECUTE'),
     ('grant', 'public.record_mfa_factors() to authenticated', 'EXECUTE'),
     ('grant', 'public.record_mfa_factors() to service_role', 'EXECUTE'),
     ('grant', 'public.redact_identity(p_text text, p_terms text[]) to authenticated', 'EXECUTE'),
@@ -1667,6 +1682,14 @@ with expected(kind, key, def) as (values
     ('not null', 'public.jobs.status', 'not null'),
     ('not null', 'public.jobs.updated_at', 'not null'),
     ('not null', 'public.jobs.work_items', 'not null'),
+    ('not null', 'public.mail_quota_hit.day', 'not null'),
+    ('not null', 'public.mail_quota_hit.first_at', 'not null'),
+    ('not null', 'public.mail_quota_hit.id', 'not null'),
+    ('not null', 'public.mail_quota_hit.kind', 'not null'),
+    ('not null', 'public.mail_quota_hit.last_at', 'not null'),
+    ('not null', 'public.mail_quota_hit.org_id', 'not null'),
+    ('not null', 'public.mail_quota_hit.refused', 'not null'),
+    ('not null', 'public.mail_quota_hit.sources', 'not null'),
     ('not null', 'public.message_jobs.job_id', 'not null'),
     ('not null', 'public.message_jobs.message_id', 'not null'),
     ('not null', 'public.messages.body', 'not null'),
@@ -1952,6 +1975,8 @@ with expected(kind, key, def) as (values
     ('policy', 'public.jobs.jobs_select', 'PERMISSIVE SELECT to public using (((clinic_id = my_clinic_id()) AND (deleted_at IS NULL) AND (has_perm(''jobs.read''::text) OR job_is_mine(assigned_to, designed_by, work_items) OR (id = ANY (( SELECT my_stage_jobs() AS my_stage_jobs)::uuid[]))))) check ()'),
     ('policy', 'public.jobs.jobs_update', 'PERMISSIVE UPDATE to public using (((clinic_id = my_clinic_id()) AND (deleted_at IS NULL) AND has_perm(''jobs.write''::text))) check (((clinic_id = my_clinic_id()) AND (deleted_at IS NULL) AND has_perm(''jobs.write''::text)))'),
     ('policy', 'public.jobs.mfa_required', 'RESTRICTIVE ALL to authenticated using (( SELECT has_mfa() AS has_mfa)) check (( SELECT has_mfa() AS has_mfa))'),
+    ('policy', 'public.mail_quota_hit.mail_quota_hit_select', 'PERMISSIVE SELECT to public using (((org_id = my_clinic_id()) AND (my_role() = ''owner''::text))) check ()'),
+    ('policy', 'public.mail_quota_hit.mfa_required', 'RESTRICTIVE ALL to authenticated using (( SELECT has_mfa() AS has_mfa)) check (( SELECT has_mfa() AS has_mfa))'),
     ('policy', 'public.message_jobs.message_jobs_delete', 'PERMISSIVE DELETE to public using ((EXISTS ( SELECT 1
    FROM messages m
   WHERE ((m.id = message_jobs.message_id) AND (m.author_id = auth.uid()))))) check ()'),
@@ -2103,6 +2128,7 @@ with expected(kind, key, def) as (values
     ('row security', 'public.job_stage', 'on'),
     ('row security', 'public.job_stage_person', 'on'),
     ('row security', 'public.jobs', 'on'),
+    ('row security', 'public.mail_quota_hit', 'on'),
     ('row security', 'public.message_jobs', 'on'),
     ('row security', 'public.messages', 'on'),
     ('row security', 'public.mfa_attempt', 'on'),

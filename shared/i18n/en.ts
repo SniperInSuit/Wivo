@@ -3316,6 +3316,8 @@ export const en = {
   'notifications.updateInstalled': "Wivo was updated to {version}",
   'notifications.updateFailed': "The update to Wivo {version} failed. Nothing was changed.",
   'notifications.updateStale': "Wivo can't confirm that this clinic has the latest updates",
+  'notifications.mailQuotaDaily': "Today's e-mail limit is reached. Notification e-mails wait, and invites and password links cannot be sent until it resets. The bell and phone notifications still work.",
+  'notifications.mailQuotaMonthly': "This month's e-mail limit is reached. Notification e-mails wait, and invites and password links cannot be sent until it resets. The bell and phone notifications still work.",
 
   // ── audit ─────────────────────────────────────────────────────────────────
   'audit.system': "System",

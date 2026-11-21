@@ -3302,6 +3302,8 @@ export const et: Partial<Record<MessageKey, Message>> = {
   'notifications.updateInstalled': "Wivo uuendati versioonile {version}",
   'notifications.updateFailed': "Uuendus versioonile Wivo {version} ebaõnnestus. Midagi ei muutunud.",
   'notifications.updateStale': "Wivo ei saa kinnitada, et sellel kliinikul on viimased uuendused",
+  'notifications.mailQuotaDaily': "Tänane e-kirjade piir on täis. Teavituste e-kirjad ootavad ning kutseid ja parooli linke ei saa saata, kuni piir lähtestub. Kell ja telefoni teavitused töötavad edasi.",
+  'notifications.mailQuotaMonthly': "Selle kuu e-kirjade piir on täis. Teavituste e-kirjad ootavad ning kutseid ja parooli linke ei saa saata, kuni piir lähtestub. Kell ja telefoni teavitused töötavad edasi.",
 
   // ── audit ─────────────────────────────────────────────────────────────────
   'audit.system': "Süsteem",

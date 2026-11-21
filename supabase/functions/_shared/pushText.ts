@@ -12,7 +12,7 @@
  */
 export type PushLang = 'en' | 'et' | 'ru'
 
-type Group = 'assigned' | 'stage' | 'shared' | 'question' | 'files' | 'security' | 'update' | 'other'
+type Group = 'assigned' | 'stage' | 'shared' | 'question' | 'files' | 'security' | 'update' | 'mail' | 'other'
 
 const GROUP: Record<string, Group> = {
   assigned: 'assigned',
@@ -26,23 +26,24 @@ const GROUP: Record<string, Group> = {
   update_installed: 'update',
   update_failed: 'update',
   update_stale: 'update',
+  mail_quota: 'mail',
 }
 
 const TITLE: Record<PushLang, Record<Group, string>> = {
   en: {
     assigned: 'Work assigned', stage: 'Work phase changed', shared: 'Work shared with you',
     question: 'New question about a job', files: 'New files on a job', security: 'Your sign-in was changed',
-    update: 'A notice about updates', other: 'New notification',
+    update: 'A notice about updates', mail: 'E-mail limit reached', other: 'New notification',
   },
   et: {
     assigned: 'Sulle määrati töö', stage: 'Töö liikus edasi', shared: 'Sinuga jagati tööd',
     question: 'Uus küsimus töö kohta', files: 'Tööle lisati faile', security: 'Sinu sisselogimist muudeti',
-    update: 'Teade uuenduste kohta', other: 'Uus teavitus',
+    update: 'Teade uuenduste kohta', mail: 'E-kirjade piir täis', other: 'Uus teavitus',
   },
   ru: {
     assigned: 'Вам назначена работа', stage: 'Работа перешла на новый этап', shared: 'С вами поделились работой',
     question: 'Новый вопрос по работе', files: 'К работе добавлены файлы', security: 'Ваш вход изменён',
-    update: 'Уведомление об обновлениях', other: 'Новое уведомление',
+    update: 'Уведомление об обновлениях', mail: 'Достигнут лимит писем', other: 'Новое уведомление',
   },
 }
 
@@ -74,6 +75,6 @@ export function pushText(kinds: string[], unread: number, lang: PushLang): { tit
   const waiting = Math.max(unread, kinds.length)
   if (waiting > 1) return { title: manyTitle(waiting, lang), body: BODY[lang].many }
   const group = GROUP[kinds[0] ?? ''] ?? 'other'
-  const body = group === 'security' ? BODY[lang].security : group === 'other' || group === 'update' ? BODY[lang].other : BODY[lang].job
+  const body = group === 'security' ? BODY[lang].security : group === 'other' || group === 'update' || group === 'mail' ? BODY[lang].other : BODY[lang].job
   return { title: TITLE[lang][group], body }
 }

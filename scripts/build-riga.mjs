@@ -17,7 +17,9 @@
  *   5. packages with scripts/electron-builder.riga.cjs: no `.env` resource,
  *      output in dist-riga/, nothing published;
  *   6. checks the package holds no .env and none of the above, and prints the
- *      installer's SHA-256 for the handover.
+ *      installer's SHA-256 for the handover;
+ *   7. prints the command that moves the `riga` branch (Riga's phone app,
+ *      Cloudflare `wivo-riga`) to the same commit. It does not run it.
  *
  * It sends nothing anywhere and reads no secret: riga.env holds only what
  * ships in every phone's bundle anyway.
@@ -27,7 +29,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { forbiddenIn, parseRigaEnv } from './riga-env.mjs'
+import { forbiddenIn, parseRigaEnv, phoneBranchCommand } from './riga-env.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = 'dist-riga'
@@ -72,6 +74,7 @@ const branch = git('rev-parse', '--abbrev-ref', 'HEAD')
 if (branch !== 'testing') fail(`the branch is "${branch}"; the installer is built from testing`)
 if (git('status', '--porcelain') !== '') fail('the working tree has changes; commit or stash them first, so the installer is a known commit')
 const commit = git('rev-parse', '--short', 'HEAD')
+const fullCommit = git('rev-parse', 'HEAD')
 
 // 2. the two public values
 const envPath = join(ROOT, 'riga.env')
@@ -120,3 +123,9 @@ if (exes.length !== 1) fail(`expected one installer in ${OUT}/, found ${exes.len
 const sha = createHash('sha256').update(readFileSync(join(ROOT, OUT, exes[0]))).digest('hex')
 console.log(`\nDone.\n  Installer: ${OUT}/${exes[0]}\n  Commit:    ${commit}\n  Project:   ${rigaEnv.ref}\n  SHA-256:   ${sha}\n`)
 console.log('Send the SHA-256 by another channel than the installer. Windows will warn that the file is unsigned: that is expected.')
+
+// 7. the phone app, from the same commit
+let pushed = false
+try { execFileSync('git', ['merge-base', '--is-ancestor', 'HEAD', 'origin/testing'], { cwd: ROOT }); pushed = true } catch { /* not pushed, or no origin/testing */ }
+console.log(`\nRiga's phone app (Cloudflare wivo-riga builds the riga branch). When you hand over this installer, move it to the same commit:\n\n  ${phoneBranchCommand(fullCommit)}\n`)
+if (!pushed) console.log('First push testing: this commit is not on origin/testing yet.')

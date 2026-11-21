@@ -17,6 +17,8 @@ export interface AppNotification {
     | 'update_installed' | 'update_failed' | 'update_stale'
     // sql/123: the job moved, told to everyone on it who asked; put on a stage (the bell only).
     | 'stage_progress' | 'stage_assigned'
+    // sql/125: Resend's sending limit was reached (owners; the bell and the phone, never e-mail).
+    | 'mail_quota'
   detail: Record<string, unknown>
   created_at: string
   read_at: string | null

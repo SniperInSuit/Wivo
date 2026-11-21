@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error plain .mjs without types
-import { PRODUCTION_REF, TEST_REF, forbiddenIn, parseRigaEnv, refOf } from './riga-env.mjs'
+import { PRODUCTION_REF, TEST_REF, forbiddenIn, parseRigaEnv, phoneBranchCommand, refOf } from './riga-env.mjs'
 
 const RIGA = 'abcdefghijklmnopqrst'
 const URL = `https://${RIGA}.supabase.co`
@@ -92,6 +92,18 @@ describe('the packaging configuration', () => {
   })
   it('is run by a script that refuses to start without the checks', () => {
     const src = readFileSync('scripts/build-riga.mjs', 'utf8')
-    for (const needle of ["'testing'", 'parseRigaEnv', 'forbiddenIn', "'never'", 'MAIN_VITE_SENTRY_DSN']) expect(src).toContain(needle)
+    for (const needle of ["'testing'", 'parseRigaEnv', 'forbiddenIn', "'never'", 'MAIN_VITE_SENTRY_DSN', 'phoneBranchCommand(fullCommit)']) expect(src).toContain(needle)
+  })
+})
+
+describe('the riga branch (Riga\'s phone app)', () => {
+  it('is moved to the installer\'s full commit, never forced', () => {
+    const sha = 'a'.repeat(40)
+    expect(phoneBranchCommand(sha)).toBe(`git push origin ${sha}:refs/heads/riga`)
+    expect(phoneBranchCommand(sha)).not.toMatch(/--force|-f\b|\+/)
+  })
+  it('refuses a short or odd commit', () => {
+    expect(() => phoneBranchCommand('abc1234')).toThrow()
+    expect(() => phoneBranchCommand(`${'a'.repeat(40)} --force`)).toThrow()
   })
 })

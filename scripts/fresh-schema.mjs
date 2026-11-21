@@ -49,7 +49,7 @@ const askHidden = (question) => new Promise(resolve => {
   })
 })
 
-const key = await askHidden('TEST project service-role key (hidden): ')
+const key = await askHidden('Service-role key of the NEW project this file is for (hidden): ')
 if (!/^eyJ/.test(key)) {
   console.error('That is not a service-role key. Copy it from Supabase > Settings > API.')
   process.exit(2)

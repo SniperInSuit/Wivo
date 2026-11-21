@@ -1,6 +1,6 @@
 # Mis edasi
 
-**Seis: v2.0.4 · 20.11.2026 · haru `testing` · commititud, pushimata**
+**Seis: v2.0.4 · 21.11.2026 · haru `testing` · commititud, pushimata**
 
 See fail kirjutatakse iga töö lõpus üle. Siin on alati see, mida ma viimases
 vestluses ütlesin — et uus arvuti või uus vestlus ei alustaks nullist.
@@ -48,8 +48,8 @@ commit `testing`-usse. Kevin pushib.
 | 2b | Palk §10: jagamine puhta funktsioonina (`shared/workflow/` on alus), `earnings.ts` ühendus, **täielikud testid**: vana töö maksab sendi pealt sama | Opus | high | **tehtud 20.11** (`shared/workflow/pay.ts`, migratsioon **124** = palgaliik töö etapile; vana töö sendi pealt sama; otsused docs/WORKFLOW-STAGES.md §10 „3. osa") |
 | 2c | Töölaua UI: mallide seaded, mall töö lisamise vormis (`NewJobWizard`), etapid töö juures (§3.2, koht hinnangule), `ct`/`project` failivaates, kaust ZIP-iks (põhiprotsessis voona), rollide vaikeväärtused (§7, §8). **Andmebaas on valmis (123):** uus töö `create_job(töö, lülitid)`; liigutamine `move_job_stage` (mitte otse-update: IT-l pole `jobs.write`-i), nupp `can_move_stage`; „alustasin" `start_job_stage`; etapid töö juures `add_job_stage` / `set_job_stage_skipped` / `set_job_stage_people` (kas tohib: `may_edit_job_stages`); oma seadetes `set_notify_every_stage`; kell näitab juba `stage_progress` / `stage_assigned`. **Palk (2b):** palgaliik tuleb malli etapilt (`pay_role`, üks liik malli kohta: `validateTemplate`); mudeli rida käib `jobs.mudel` järgi, nii et vorm peab selle lipu panema (koos `printed_model`-iga) | Sonnet | medium | **tehtud 20.11** (vt „Tehtud 20.11“) |
 | 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod (samad RPC-d kui 2c) | Sonnet | medium | **tehtud 20.11** (vt „Tehtud 20.11") |
-| 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | **installer ja Cloudflare tehtud 20.11** (`docs/RIGA-TEMPORARY.md`); **Resendi päevapiir tegemata** (vajab andmebaasi ja Edge Function'i tööd; Kevin ei küsinud seda 20.11) |
-| 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis; palgaliigid etappidel), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
+| 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | **tehtud** (installer ja Cloudflare 20.11, `docs/RIGA-TEMPORARY.md`; Resendi päevapiir 21.11, migratsioon **125**; telefon haru `riga` pealt 21.11) |
+| 5 | `docs/RIGA-SETUP.md`: **Macis** üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis; palgaliigid etappidel), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | **tehtud 21.11** (`docs/RIGA-SETUP.md`, lõpus kontrollnimekiri) |
 | — | Pühapäeva turvakontroll (vt ülal) | Opus | high | **tehtud 21.11** (kriitilist viga ei leitud; leidud `docs/BACKLOG.md`, „After Riga's start“ p 2; uus leak-test: teise kliiniku omanik ei saa etappide funktsioone kutsuda) |
 | 6 | Vene keel — pärast esmaspäeva | Sonnet | low | |
 
@@ -70,6 +70,14 @@ pealkiri), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
    `select count(*) filter (where pay_role is not null) as palgaliigiga, count(*) as koik from public.job_stage;`
 Enne 124-t töötab testingu rakendus edasi: tööd loetakse ilma etappideta ja
 palk käib tänase reegli järgi.
+
+### Tehtud 21.11 hiljem (testing, commititud, pushimata)
+
+- **Telefon samast versioonist kui installer:** Cloudflare'i `wivo-riga` ehitab haru **`riga`**, mitte `testing`-ut. `npm run dist:riga` trükib lõpus käsu `git push origin <täispikk commit>:refs/heads/riga` (installeri commit, kunagi `--force`; git keeldub, kui `riga` ei liiguks edasi). Iga uue installeriga sama käsk. CLAUDE.md „Branches" ütleb seda; `docs/RIGA-TEMPORARY.md` A7 ja B3. Lisaks: `wivo-riga` vajab ka `VITE_VAPID_PUBLIC_KEY`-d (muidu telefon ei saa pushi sisse lülitada); `make-license.mjs verify` vajab `--public`-ut (juhend parandatud).
+- **Resendi päevapiir (migratsioon 125):** Resend vastab 429 `daily_quota_exceeded` / `monthly_quota_exceeded` → `send-notifications` peatab selle jooksu e-kirjad (push läheb edasi), `team-account` (kutse, e-posti lisamine) samuti; mõlemad kirjutavad funktsiooni logisse hoiatuse ja kutsuvad `record_mail_quota_hit` (ainult service role). Tabel `mail_quota_hit` (kliinik, päev UTC, piir, mitu korda, millised osad) on logi; loeb ainult omanik. Päeva esimene kord: omanikele kellateavitus `mail_quota` + push, **mitte e-kiri**. Testid: `sql/test/mailQuota.test.ts`, `_shared/mailQuota.test.ts`, `notifySender.test.ts`, `teamAccount.test.ts`.
+- **`docs/RIGA-SETUP.md`:** projekt (Stockholm, Pro) → baseline psql-iga → Vault → kopa piir → Auth → Resend + DNS Iljale → Auth SMTP → Edge Functions → installer + `riga` → Cloudflare → omanik ja kliinik → litsents (YubiKey C, `--seats 10`, jobs/payroll/stock) → 10 kontot → etapid ja kaks malli → kontrollnimekiri. **Palgaliigid mallides on minu ettepanek** (Design disainijale, Piecework viimistlejale), kinnita Riiaga.
+
+**Kevini osa (125):** testkoopias `sql/125_mail_quota.sql`, siis `notify pgrst, 'reload schema';`, siis `schema_check.sql` ja `trigger_check.sql` → null rida. Siis testkoopias uuesti üles `send-notifications` ja `team-account` (`supabase functions deploy <nimi> --project-ref jhqyvancrzykxhzwnost --no-verify-jwt`). Lugev kontroll: `select count(*) from public.mail_quota_hit;` → 0.
 
 ### Tehtud 21.11 (testisessiooni parandused, testing, commititud, pushimata)
 

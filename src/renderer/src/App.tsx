@@ -371,6 +371,8 @@ function AppContent() {
             if (isSecurityNotice(n)) { setSettingsAt(a => ({ group: 'turvalisus', n: a.n + 1 })); setView('settings'); return }
             // An update notice (sql/119) opens Settings.
             if (isUpdateNotice(n)) { setView('settings'); return }
+            // Resend's limit (sql/125): the text says it all; no job, nothing to open.
+            if (n.kind === 'mail_quota') return
             const own = n.job_id ? jobs.find(j => j.id === n.job_id) : undefined
             if (own) openEdit(own)
             else setView('partner')

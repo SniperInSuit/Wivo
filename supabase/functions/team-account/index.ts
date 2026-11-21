@@ -82,6 +82,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       })
       return res.ok ? { ok: true } : { ok: false, error: `${res.status} ${(await res.text()).slice(0, 200)}` }
     },
+    recordQuota: async (kind, source) => {
+      const { error } = await service.rpc('record_mail_quota_hit', { p_kind: kind, p_source: source })
+      if (error) console.warn(`[team-account] record_mail_quota_hit: ${error.message}`)
+    },
     env,
     warn: message => console.warn(`[team-account] ${message}`),
   })
