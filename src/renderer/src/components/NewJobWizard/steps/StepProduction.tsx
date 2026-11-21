@@ -45,7 +45,13 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
           value={state.designer}
           onChange={designer => patch({ designer })}
         />
+      </div>
 
+      {/* Right under the technician and designer: the stages and who is on
+          each are the same question, and at the bottom nobody saw them. */}
+      <WorkflowSection state={state} patch={patch} />
+
+      <div className="grid gap-6 md:grid-cols-2">
         <DesignSplit
           state={state}
           patch={patch}
@@ -164,8 +170,6 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
           </div>
         )}
       </section>
-
-      <WorkflowSection state={state} patch={patch} />
     </div>
   )
 }
