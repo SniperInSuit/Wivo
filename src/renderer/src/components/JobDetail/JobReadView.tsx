@@ -22,7 +22,6 @@ import { ToothBadges } from '../ui/ToothBadges'
 import { JobNotesPanel } from './JobNotesPanel'
 import { JobThread } from '../Partners/JobThread'
 import { JobFiles } from '../Files/JobFiles'
-import { JobStagesPanel } from './JobStagesPanel'
 import { JobPayCard } from './JobPayCard'
 import { t } from '@/lib/i18n'
 
@@ -337,9 +336,6 @@ export function JobReadView({
             {/* Notes belong to the job as a whole, not to the selected variant —
                 they stay put when you switch between original and revisions. */}
             <JobNotesPanel job={job} highlightNoteId={highlightNoteId} />
-
-            {/* Who is on each stage, what is done and what is next (plan 3). */}
-            <JobStagesPanel job={job} />
 
             {/* Comments and questions — the same thread a partner sees when the
                 job is shared. Notes above stay this clinic's own. */}

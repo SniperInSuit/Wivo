@@ -133,7 +133,7 @@ export function MobileNewJob({ onCreated }: { onCreated: (jobId: string) => void
         </label>
       </fieldset>
 
-      <WorkflowSection state={state} patch={patch} />
+      <WorkflowSection state={state} patch={patch} isPhone />
 
       {showErrors && problems.length > 0 && (
         <div role="alert" className="rounded-xl bg-rose-500/10 p-3 text-sm text-rose-600">

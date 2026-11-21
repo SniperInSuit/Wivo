@@ -1,33 +1,26 @@
+/** Small pure helpers for the people on a stage (the stage bar, quick assign). */
+
 /**
- * Quick assignment: pick one person and tick every stage they do (one
- * technician on Design, Printing and Cleaning at once). Pure; the screens
- * (the new-job form, the job's stages, the phone) share it.
+ * Two letters for a person's circle: first name's and last name's first
+ * letter; from a single name its first two letters.
  */
-export interface StagePeople {
-  stageKey: string
-  people: readonly string[]
+export function initials(fullName: string | null | undefined): string {
+  const words = (fullName ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  const chars = (w: string) => Array.from(w)
+  const out = words.length >= 2
+    ? chars(words[0])[0] + chars(words[words.length - 1])[0]
+    : chars(words[0]).slice(0, 2).join('')
+  return out.toLocaleUpperCase()
 }
 
-/** The stages `person` is on. */
-export const stagesOf = (stages: readonly StagePeople[], person: string): string[] =>
-  stages.filter(s => s.people.includes(person)).map(s => s.stageKey)
+/** `people` with `person` added or taken away. Order kept, no duplicates. */
+export function withPerson(people: readonly string[], person: string, on: boolean): string[] {
+  const rest = people.filter(p => p !== person)
+  return on ? [...rest, person] : rest
+}
 
-/**
- * The stages whose people change when `person` is made to do exactly the
- * `ticked` ones: added where ticked, removed where not. Other people are
- * left as they are. Stages that stay as they are are not listed.
- */
-export function assignPerson(
-  stages: readonly StagePeople[],
-  person: string,
-  ticked: readonly string[],
-): { stageKey: string; people: string[] }[] {
-  const out: { stageKey: string; people: string[] }[] = []
-  for (const s of stages) {
-    const has = s.people.includes(person)
-    const want = ticked.includes(s.stageKey)
-    if (has === want) continue
-    out.push({ stageKey: s.stageKey, people: want ? [...s.people, person] : s.people.filter(p => p !== person) })
-  }
-  return out
+/** Circles to draw: at most two, and how many more there are ("+N"). */
+export function visiblePeople<T>(people: readonly T[]): { shown: T[]; more: number } {
+  return { shown: people.slice(0, 2), more: Math.max(0, people.length - 2) }
 }

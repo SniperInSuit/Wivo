@@ -2,6 +2,8 @@ import { Check } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import type { Job } from '../../types/job'
 import { usePipeline } from '../../context/PipelineContext'
+import { useJobStages } from '../../lib/jobStages'
+import { JobStageBar } from './JobStageBar'
 import { t } from '@/lib/i18n'
 
 interface JobTimelineProps {
@@ -10,6 +12,8 @@ interface JobTimelineProps {
   // when one is being viewed the timeline must follow it, not the parent job.
   status?: string
   finishedAt?: string | null
+  /** A revision is on screen: it has no stages of its own, so the plain pipeline is shown. */
+  isRevision?: boolean
 }
 
 /**
@@ -20,8 +24,9 @@ interface JobTimelineProps {
  * Stage order comes from the user's own pipeline (Seaded → Töövoog), so a custom
  * or reordered pipeline is reflected here without changes.
  */
-export function JobTimeline({ job, status, finishedAt: finishedAtProp }: JobTimelineProps) {
+export function JobTimeline({ job, status, finishedAt: finishedAtProp, isRevision = false }: JobTimelineProps) {
   const { stages, doneStageKey } = usePipeline()
+  const { data: jobStages = [] } = useJobStages(job.id)
 
   const active = status ?? job.status
   const currentIndex = stages.findIndex(s => s.key === active)
@@ -32,6 +37,16 @@ export function JobTimeline({ job, status, finishedAt: finishedAtProp }: JobTime
 
   const raw = finishedAtProp !== undefined ? finishedAtProp : job.valmis_aeg
   const finishedAt = raw ? parseISO(raw) : null
+
+  // A job with its own stages (plan 3): the bar shows them, with the people
+  // and the buttons. An old job, or a revision, keeps the plain pipeline.
+  if (jobStages.length > 0 && !isRevision) {
+    return (
+      <div className="mx-5 mt-4 px-5 py-4 bg-bg-card rounded-xl flex-shrink-0">
+        <JobStageBar job={job} />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-5 mt-4 px-5 py-4 bg-bg-card rounded-xl flex-shrink-0">

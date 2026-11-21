@@ -929,6 +929,7 @@ export function JobDetailPanel({ job, onClose, onSave, onDelete, saving, positio
               <JobTimeline
                 job={job}
                 status={activeRev?.status ?? job.status}
+                isRevision={!!activeRev}
                 finishedAt={activeRev ? (activeRev.deadline ?? null) : undefined}
               />
               <JobReadView

@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { Users } from 'lucide-react'
+import { useMemo } from 'react'
 import { materialiseTemplate, type OnlyIfRule } from '@shared/workflow/workflow'
 import type { WizardStepProps } from '../types'
 import { useWorkflowTemplates, useStageDefaults } from '@/hooks/useWorkflowTemplates'
@@ -9,9 +8,7 @@ import { usePipeline } from '@/context/PipelineContext'
 import { wizardWorkItems } from '../state/workItems'
 import { useWorkTypes } from '@/stores/useSettings'
 import { hasPrintedModel, implantsOnJob, jobFactsOf, switchesToSend } from '../state/workflowFields'
-import { PeoplePicker } from '@/components/JobDetail/JobStagesPanel'
-import { QuickAssign } from '@/components/JobDetail/QuickAssign'
-import { assignPerson } from '@/lib/stageAssign'
+import { StageBar, type StageBarItem } from '@/components/JobDetail/StageBar'
 import { WizardField } from '../ui/WizardField'
 import { WizardSelect } from '../ui/WizardSelect'
 import { WIZARD_HELP, FOCUS_RING } from '../wizardTheme'
@@ -30,14 +27,13 @@ export function rulesUsed(stages: readonly { onlyIf: readonly OnlyIfRule[] }[]):
  * with nothing optional and no rules: the section then says only what the
  * stages are, or is absent when the database has no templates.
  */
-export function WorkflowSection({ state, patch }: Pick<WizardStepProps, 'state' | 'patch'>) {
+export function WorkflowSection({ state, patch, isPhone = false }: Pick<WizardStepProps, 'state' | 'patch'> & { isPhone?: boolean }) {
   const { data: templates = [] } = useWorkflowTemplates()
   const { data: clinicDefaults = {} } = useStageDefaults()
   const { data: profiles = [] } = useClinicProfiles()
   const { user } = useAuth()
   const { stageMap } = usePipeline()
   const { types } = useWorkTypes()
-  const [editing, setEditing] = useState<string | null>(null)
 
   const active = templates.find(x => x.id === state.templateId) ?? templates.find(x => x.isDefault) ?? templates[0] ?? null
   const items = useMemo(() => wizardWorkItems(state, types), [state, types])
@@ -56,13 +52,18 @@ export function WorkflowSection({ state, patch }: Pick<WizardStepProps, 'state' 
 
   const label = (key: string) => stageMap[key]?.label ?? key
   const name = (id: string) => profiles.find(p => p.id === id)?.full_name || t('wizard.unnamed')
-  const effective = plan.map(p => ({
-    ...p,
-    people: state.stagePeople[p.stageKey] ?? p.people,
-    skipped: state.stageSkipped.includes(p.stageKey),
-  }))
   const everyone = profiles.map(p => ({ id: p.id, name: p.full_name || t('wizard.unnamed') }))
-  const setPeople = (key: string, people: string[]) => patch({ stagePeople: { ...state.stagePeople, [key]: people } })
+  // The first stage is where the job starts: the database does not let it be skipped.
+  const barItems: StageBarItem[] = plan.map((p, i) => ({
+    key: p.stageKey,
+    label: label(p.stageKey),
+    hex: stageMap[p.stageKey]?.hex ?? '#94A3B8',
+    state: state.stageSkipped.includes(p.stageKey) ? 'skipped' : i === 0 ? 'current' : 'upcoming',
+    started: false,
+    startedBy: null,
+    people: state.stagePeople[p.stageKey] ?? p.people,
+    canSkip: i > 0,
+  }))
   const asks = used.has('digital') || used.has('conventional')
   const asksMethod = used.has('print') || used.has('mill')
 
@@ -154,49 +155,14 @@ export function WorkflowSection({ state, patch }: Pick<WizardStepProps, 'state' 
         ) : (
           <>
             <p className={WIZARD_HELP}>{t('workflow.planNote')}</p>
-            <ol className="space-y-2">
-              {effective.map((p, i) => (
-                <li key={p.stageKey} className="rounded-lg border border-ink-faint/15 px-3 py-2 text-base">
-                  <div className="flex items-center gap-2">
-                    <span className={`font-medium ${p.skipped ? 'text-ink-faint line-through' : 'text-ink'}`}>{i + 1}. {label(p.stageKey)}</span>
-                    {p.skipped && <span className="text-sm text-ink-muted">{t('workflow.skipped')}</span>}
-                    <span className="ml-auto flex items-center gap-3 text-sm text-ink-muted">
-                      <button type="button" className="inline-flex min-h-[32px] items-center gap-1 hover:text-ink"
-                        onClick={() => setEditing(editing === p.stageKey ? null : p.stageKey)}>
-                        <Users size={14} aria-hidden="true" /> {t('workflow.changePeople')}
-                      </button>
-                      {i > 0 && (
-                        <button type="button" className="min-h-[32px] hover:text-ink"
-                          onClick={() => patch({ stageSkipped: p.skipped ? state.stageSkipped.filter(k => k !== p.stageKey) : [...state.stageSkipped, p.stageKey] })}>
-                          {p.skipped ? t('workflow.unskip') : t('workflow.skip')}
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-sm text-ink-muted">
-                    {p.people.length === 0 ? t('workflow.nobody') : p.people.map(id => id === user?.id ? t('workflow.you') : name(id)).join(', ')}
-                    {p.task && <> · {p.task}</>}
-                  </p>
-                  {editing === p.stageKey && (
-                    <PeoplePicker
-                      key={p.stageKey}
-                      everyone={everyone}
-                      chosen={p.people}
-                      busy={false}
-                      onSave={people => { setPeople(p.stageKey, people); setEditing(null) }}
-                    />
-                  )}
-                </li>
-              ))}
-            </ol>
-            <QuickAssign
-              stages={effective.map(p => ({ stageKey: p.stageKey, label: label(p.stageKey), people: p.people, skipped: p.skipped }))}
+            <StageBar
+              items={barItems}
               everyone={everyone}
-              onApply={(person, ticked) => patch({
-                stagePeople: {
-                  ...state.stagePeople,
-                  ...Object.fromEntries(assignPerson(effective.filter(p => !p.skipped), person, ticked).map(c => [c.stageKey, c.people])),
-                },
+              editable
+              size={isPhone ? 'lg' : 'md'}
+              onPeople={(key, people) => patch({ stagePeople: { ...state.stagePeople, [key]: people } })}
+              onSkip={(key, skipped) => patch({
+                stageSkipped: skipped ? [...state.stageSkipped, key] : state.stageSkipped.filter(k => k !== key),
               })}
             />
           </>

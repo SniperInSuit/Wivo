@@ -16,7 +16,7 @@ import { enqueueUpload } from '../lib/uploadQueue'
 import { confirmSharedUpload } from '../lib/sharedUpload'
 import { StatusPill } from '../components/ui/StatusPill'
 import { JobFiles } from '../components/Files/JobFiles'
-import { JobStagesPanel } from '../components/JobDetail/JobStagesPanel'
+import { JobStageBar } from '../components/JobDetail/JobStageBar'
 import { JobThread } from '../components/Partners/JobThread'
 import { PartnerJobPanel } from '../components/Partners/PartnerJobsView'
 import { PhoneCamera } from './PhoneCamera'
@@ -84,9 +84,11 @@ function OwnJob({ job }: { job: Job }) {
         {job.kirjeldus && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.kirjeldus}</span>} />}
       </section>
 
-      {/* Stages, "I started", forward and back: as on the desk. Changing people (with quick assign) is
-          here too; adding and skipping stages is for the desk (docs/WORKFLOW-STAGES.md §13). */}
-      <JobStagesPanel job={job} compact />
+      {/* The stage bar: people on each stage, "I started", forward and back, as on the
+          desk, with thumb-sized circles (docs/WORKFLOW-STAGES.md §13). */}
+      <section className="rounded-xl border border-ink-faint/20 bg-bg-card p-3">
+        <JobStageBar job={job} size="lg" canAddStage={false} />
+      </section>
 
       {canEdit && (
         <button type="button"

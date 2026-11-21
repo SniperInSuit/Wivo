@@ -1,23 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { assignPerson, stagesOf } from './stageAssign'
+import { initials, visiblePeople, withPerson } from './stageAssign'
 
-const stages = [
-  { stageKey: 'disain', people: ['a'] },
-  { stageKey: 'print', people: [] },
-  { stageKey: 'puhastus', people: ['b', 'a'] },
-]
-
-describe('quick assignment', () => {
-  it('finds the stages a person is on', () => {
-    expect(stagesOf(stages, 'a')).toEqual(['disain', 'puhastus'])
+describe('stage people helpers', () => {
+  it('initials: first and last name, or the first two letters of one name', () => {
+    expect(initials('Anna Maria Tamm')).toBe('AT')
+    expect(initials('kristjan')).toBe('KR')
+    expect(initials('  ')).toBe('?')
+    expect(initials(null)).toBe('?')
+    expect(initials('Õie Šmidt')).toBe('ÕŠ')
   })
-  it('adds where ticked and removes where unticked, leaving others alone', () => {
-    expect(assignPerson(stages, 'a', ['print', 'puhastus'])).toEqual([
-      { stageKey: 'disain', people: [] },
-      { stageKey: 'print', people: ['a'] },
-    ])
+  it('adds and removes a person without duplicates', () => {
+    expect(withPerson(['a'], 'b', true)).toEqual(['a', 'b'])
+    expect(withPerson(['a', 'b'], 'a', true)).toEqual(['b', 'a'])
+    expect(withPerson(['a', 'b'], 'a', false)).toEqual(['b'])
   })
-  it('lists nothing when nothing changes', () => {
-    expect(assignPerson(stages, 'a', ['disain', 'puhastus'])).toEqual([])
+  it('shows two circles and a count for the rest', () => {
+    expect(visiblePeople(['a', 'b'])).toEqual({ shown: ['a', 'b'], more: 0 })
+    expect(visiblePeople(['a', 'b', 'c', 'd'])).toEqual({ shown: ['a', 'b'], more: 2 })
   })
 })
