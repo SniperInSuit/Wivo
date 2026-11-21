@@ -93,8 +93,8 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     valmis_aeg: valmisAeg,
     // The job has not been made yet. Filled when it reaches the done stage.
     valmis_kuupaev: null,
-    kiirtoo: state.priority === 'kiirtoo',
-    mudel: state.priority === 'mudel',
+    kiirtoo: state.rush,
+    mudel: state.model,
     // The same answer for the workflow's `printed_model` rule, plus the rule
     // fields and the template (state/workflowFields.ts). `mudel` above is what
     // the model pay line reads; the two never differ.
@@ -102,7 +102,7 @@ export function toJobInput(state: NewJobState, ctx: ToJobInputContext): JobInput
     // Tied to the flag, not merely to what was typed: the field is only shown
     // for a Mudel job, so a number left behind by a changed mind must not ride
     // along on a standard job that has no model at all.
-    mudel_id: state.priority === 'mudel' ? orNull(state.modelId) : null,
+    mudel_id: state.model ? orNull(state.modelId) : null,
     // A job being created is at the lab — there is no other answer, so the
     // wizard does not ask. Handover is set on the job page once it is done.
     delivery_status: 'labor',

@@ -6,7 +6,7 @@ import {
   JOBS_WITH_PAY_STAGES, PAY_STAGE_FILTER, payStagesUnavailable, withPayStages,
   payStagesKnownUnavailable, markPayStagesUnavailable,
 } from '../lib/jobPayStages'
-import { jobStagesUnavailable } from '../lib/jobStages'
+import { applyStageEdits, jobStagesUnavailable } from '../lib/jobStages'
 
 const QUERY_KEY = ['jobs']
 
@@ -110,11 +110,23 @@ export function withoutWorkflowColumns<T extends object>(row: T): T {
 export function useCreateWorkflowJob() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ input, switches }: { input: JobInput; switches: Record<string, boolean> }) => {
+    mutationFn: async ({ input, switches, stageEdits, onStageEditsFailed }: {
+      input: JobInput
+      switches: Record<string, boolean>
+      /** People and skips chosen in the form: applied once the job exists. */
+      stageEdits?: { people: Record<string, string[]>; skipped: string[] }
+      onStageEditsFailed?: (e: unknown) => void
+    }) => {
       const row = { ...withoutDbOwned(input), clinic_id: getActiveClinicId() }
       const { status: _status, ...withoutStatus } = row
       const { data, error } = await supabase.rpc('create_job', { p_job: withoutStatus, p_switches: switches })
-      if (!error) return data as unknown as Job
+      if (!error) {
+        const created = data as unknown as Job
+        if (stageEdits) {
+          try { await applyStageEdits(created.id, stageEdits) } catch (e) { onStageEditsFailed?.(e) }
+        }
+        return created
+      }
       if (!jobStagesUnavailable(error)) throw error
       const { data: plain, error: insertError } = await supabase
         .from('jobs').insert(withoutWorkflowColumns(row)).select().single()

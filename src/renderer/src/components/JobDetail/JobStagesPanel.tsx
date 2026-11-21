@@ -21,13 +21,15 @@ import {
   setJobStageSkipped, startJobStage, stageLines, useCanMove, useJobStages, useRefreshJobStages,
   type StageLine,
 } from '../../lib/jobStages'
+import { assignPerson } from '../../lib/stageAssign'
+import { QuickAssign } from './QuickAssign'
 import { t, dateLocale } from '@/lib/i18n'
 
 export interface JobStagesPanelProps {
   job: { id: string; status: string }
   /** Room for something under a stage's row (ratings, later). */
   renderExtra?: (line: StageLine) => ReactNode
-  /** The phone: shows and moves the stages, but does not add, skip or change people. */
+  /** The phone: shows and moves the stages and changes people (with quick assign), but does not add or skip. */
   compact?: boolean
 }
 
@@ -50,7 +52,7 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
   const canPrevious = useCanMove(job.id, job.status, previous?.stageKey)
   const { data: mayEditStages = false } = useQuery<boolean>({
     queryKey: ['may_edit_job_stages', job.id],
-    enabled: stages.length > 0 && !compact,
+    enabled: stages.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error: err } = await supabase.rpc('may_edit_job_stages', { p_job: job.id })
@@ -62,7 +64,8 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
     },
   })
 
-  const mayEdit = mayEditStages && !compact
+  const mayEdit = mayEditStages
+  const mayAddOrSkip = mayEditStages && !compact
 
   if (stages.length === 0) return null
 
@@ -89,7 +92,7 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
     <section className="card p-4 space-y-3" aria-label={t('workflow.stagesTitle')}>
       <div className="flex items-center gap-2">
         <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">{t('workflow.stagesTitle')}</h3>
-        {mayEdit && (
+        {mayAddOrSkip && (
           <button type="button" onClick={() => setAdding(a => !a)} className="btn-ghost ml-auto text-xs flex items-center gap-1">
             <Plus size={12} aria-hidden="true" /> {t('workflow.addStage')}
           </button>
@@ -119,7 +122,7 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
                       title={t('workflow.changePeople')} aria-label={t('workflow.changePeople')} className="hover:text-ink">
                       <Users size={12} />
                     </button>
-                    {l.state !== 'done' && l.state !== 'current' && (
+                    {mayAddOrSkip && l.state !== 'done' && l.state !== 'current' && (
                       <button type="button" disabled={busy} onClick={() => void run(() => setJobStageSkipped(job.id, l.stageKey, l.state !== 'skipped'))}
                         className="hover:text-ink">
                         {l.state === 'skipped' ? t('workflow.unskip') : t('workflow.skip')}
@@ -152,7 +155,19 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
         ))}
       </ol>
 
-      {adding && mayEdit && (
+      {mayEdit && (
+        <QuickAssign
+          stages={lines.map(l => ({ stageKey: l.stageKey, label: label(l.stageKey), people: l.people, skipped: l.state === 'skipped' || l.state === 'done' }))}
+          everyone={profiles.map(p => ({ id: p.id, name: p.full_name || t('wizard.unnamed') }))}
+          busy={busy}
+          onApply={(person, ticked) => run(async () => {
+            const changes = assignPerson(lines.filter(l => l.state !== 'skipped' && l.state !== 'done'), person, ticked)
+            for (const c of changes) await setJobStagePeople(job.id, c.stageKey, c.people)
+          })}
+        />
+      )}
+
+      {adding && mayAddOrSkip && (
         <AddStage
           options={clinicStages.filter(s => !lines.some(l => l.stageKey === s.key)).map(s => ({ key: s.key, label: s.label }))}
           after={lines.map(l => ({ key: l.stageKey, label: label(l.stageKey) }))}
@@ -186,7 +201,7 @@ export function JobStagesPanel({ job, renderExtra, compact = false }: JobStagesP
   )
 }
 
-function PeoplePicker({ everyone, chosen, busy, onSave }: {
+export function PeoplePicker({ everyone, chosen, busy, onSave }: {
   everyone: { id: string; name: string }[]
   chosen: string[]
   busy: boolean

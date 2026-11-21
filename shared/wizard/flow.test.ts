@@ -82,7 +82,7 @@ describe('a job can always be finished', () => {
 
   it('a rush job warns but is never blocked by the warning', () => {
     const state = filled({
-      jobTypes: ['Kroon'], selectedTeeth: { Kroon: [16] }, priority: 'kiirtoo',
+      jobTypes: ['Kroon'], selectedTeeth: { Kroon: [16] }, rush: true,
     })
     const step4 = validateStep(4, state, TYPES)
     expect(step4.some(e => e.severity === 'warning')).toBe(true)

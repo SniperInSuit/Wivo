@@ -7,7 +7,7 @@
  *  1. THE MODEL FLAG. `jobs.mudel` is what the pay engine reads for the model
  *     line (docs/WORKFLOW-STAGES.md §10, "2c"), `jobs.printed_model` is what the
  *     `printed_model` rule reads. The form has ONE question about the model (the
- *     "Model" priority), so both columns follow it: they can never disagree,
+ *     "Model" switch), so both columns follow it: they can never disagree,
  *     and a "model" stage never appears on a job that pays no model.
  *  2. THE IMPLANT COUNT is counted from the teeth marked as implants, once per
  *     tooth over the whole job, never asked twice. Nothing marked: 0.
@@ -30,10 +30,10 @@ export function implantsOnJob(items: readonly Pick<WorkItem, 'implantaadid' | 'h
 }
 
 /** `jobs.mudel` and `jobs.printed_model` for this state: one answer, two columns. */
-export const hasPrintedModel = (state: Pick<NewJobState, 'priority'>): boolean => state.priority === 'mudel'
+export const hasPrintedModel = (state: Pick<NewJobState, 'model'>): boolean => state.model
 
 export function workflowJobFields(
-  state: Pick<NewJobState, 'templateId' | 'impressionType' | 'productionMethod' | 'priority'>,
+  state: Pick<NewJobState, 'templateId' | 'impressionType' | 'productionMethod' | 'model'>,
   items: readonly Pick<WorkItem, 'implantaadid' | 'hambad'>[],
 ): WorkflowJobFields {
   return {
@@ -47,7 +47,7 @@ export function workflowJobFields(
 
 /** The facts the §2.5 rules read, from the same answers (for the preview of the job's stages). */
 export function jobFactsOf(
-  state: Pick<NewJobState, 'impressionType' | 'productionMethod' | 'priority'>,
+  state: Pick<NewJobState, 'impressionType' | 'productionMethod' | 'model'>,
   items: readonly Pick<WorkItem, 'implantaadid' | 'hambad'>[],
 ): JobFacts {
   return {

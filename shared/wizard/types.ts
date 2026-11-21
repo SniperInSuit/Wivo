@@ -15,9 +15,6 @@
 /** Step numbers are stable and never renumber, even when a step is skipped. */
 export type StepId = 1 | 2 | 3 | 4 | 5 | 6
 
-/** Priority is exclusive — a job is standard, OR rush, OR a model. */
-export type WizardPriority = 'standard' | 'kiirtoo' | 'mudel'
-
 /** Mirrors the renderer's DeliveryStatus exactly. Redeclared because shared/
  *  may not import from src/. toJobInput() assigns it into a DeliveryStatus
  *  slot, so TS structurally proves the two stay identical. */
@@ -145,9 +142,20 @@ export interface NewJobState {
   time: string | null
   printId: string
   designId: string
-  /** The printed model's own job number. Only reaches the row when priority is 'mudel'. */
+  /** The printed model's own job number. Only reaches the row when `model` is on. */
   modelId: string
-  priority: WizardPriority
+  /** Rush job → jobs.kiirtoo. Independent of `model`: a job can be both. */
+  rush: boolean
+  /** Printed model → jobs.mudel and jobs.printed_model together. */
+  model: boolean
+  /**
+   * People the user put on a stage in the form, by stage key, replacing what
+   * the template gave. Only stages the user touched are here. Applied after
+   * the job is made (hooks/useJobs, lib/stageAssign).
+   */
+  stagePeople: Record<string, string[]>
+  /** Stage keys the user skipped in the form. */
+  stageSkipped: string[]
   /**
    * The workflow template this job is made from (workflow_template.id), or
    * null for the clinic's default one. docs/WORKFLOW-STAGES.md §2.4.
@@ -269,7 +277,10 @@ export function createEmptyNewJobState(init: NewJobStateInit = {}): NewJobState 
     printId: '',
     designId: '',
     modelId: '',
-    priority: 'standard',
+    rush: false,
+    model: false,
+    stagePeople: {},
+    stageSkipped: [],
     templateId: null,
     impressionType: null,
     productionMethod: null,

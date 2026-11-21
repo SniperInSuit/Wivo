@@ -133,6 +133,8 @@ export function NewJobWizard({
           types,
         }),
         switches: template ? switchesToSend(template.stages, wizard.state.switches) : {},
+        stageEdits: { people: wizard.state.stagePeople, skipped: wizard.state.stageSkipped },
+        onStageEditsFailed: e => setShareWarning(t('workflow.couldNotApplyStages', { e: describeError(e) })),
       })
       wizard.patch({ status: 'created' })
       // The draft has served its purpose. Leaving it behind means the next

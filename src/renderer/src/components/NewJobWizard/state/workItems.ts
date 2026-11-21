@@ -143,8 +143,8 @@ export function wizardQuoteInput(state: NewJobState, types: readonly WorkType[])
       too: i.too, hambad: i.hambad, materjal: i.materjal ?? null,
     })),
     materjal: materialsOf(state)[0] ?? null,
-    kiirtoo: state.priority === 'kiirtoo',
-    mudel: state.priority === 'mudel',
+    kiirtoo: state.rush,
+    mudel: state.model,
     useDiscount: state.pricing.useDiscount,
   }
 }

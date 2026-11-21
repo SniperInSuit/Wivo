@@ -84,8 +84,8 @@ function OwnJob({ job }: { job: Job }) {
         {job.kirjeldus && <Field label={t('partners.description')} value={<span className="whitespace-pre-wrap">{job.kirjeldus}</span>} />}
       </section>
 
-      {/* Stages, "I started", forward and back: as on the desk. Adding, skipping and
-          changing people is for the desk (docs/WORKFLOW-STAGES.md §13). */}
+      {/* Stages, "I started", forward and back: as on the desk. Changing people (with quick assign) is
+          here too; adding and skipping stages is for the desk (docs/WORKFLOW-STAGES.md §13). */}
       <JobStagesPanel job={job} compact />
 
       {canEdit && (

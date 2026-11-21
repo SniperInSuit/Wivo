@@ -136,15 +136,16 @@ export const StepProduction: WizardStepComponent = ({ state, patch, rules, error
           {t('wizard.chooseWhetherThisIsAStandard')}
         </p>
         <PriorityPicker
-          value={state.priority}
-          onChange={priority => patch({ priority })}
+          rush={state.rush}
+          model={state.model}
+          onChange={patch}
         />
 
         {/* The model is a separate print with its own number, so it gets its own
             field — and only once Mudel is chosen. Not left in the two-column
             grid above with Print ID: there it would sit on every job as a
             question that has no answer. */}
-        {state.priority === 'mudel' && (
+        {state.model && (
           <div className="mt-4 max-w-sm">
             <WizardField
               label={t('wizard.modelID')}

@@ -71,6 +71,11 @@ pealkiri), testisessioonid, Riia kontod (Supabase Pro, Resend, DNS Iljaga).
 Enne 124-t töötab testingu rakendus edasi: tööd loetakse ilma etappideta ja
 palk käib tänase reegli järgi.
 
+### Tehtud 21.11 (testisessiooni parandused, testing, commititud, pushimata)
+
+- Kiirtöö ja Mudel on kaks eraldi lülitit (`NewJobState.rush` / `.model`, kumbki või mõlemad); mudel paneb `mudel` ja `printed_model` koos. Töölaua wizard, telefon; JobDetailPanelil olid lülitid juba eraldi. Mustandi versioon 4 (vanad mustandid visatakse ära).
+- Wizardi „Workflow“ osa (jagatud telefoniga): etapid iga etapi „Change people“ ja Skip'iga, malli vaikeinimesed eeltäidetud; **kiirmääramine** (`QuickAssign`: inimene + linnukesed etappidel) ka töö vaates ja telefonis. Valikud rakenduvad pärast `create_job`-i (`applyStageEdits`, olemasolevad RPC-d, migratsiooni pole); õigused samad (`may_edit_job_stages`).
+
 ### Tehtud 20.11 (hiljem)
 
 - **Ülesanne 4: ajutine installer ja Riia telefoni Cloudflare'i projekt** (testing, commititud, pushimata). Kevini sammud: **`docs/RIGA-TEMPORARY.md`**.

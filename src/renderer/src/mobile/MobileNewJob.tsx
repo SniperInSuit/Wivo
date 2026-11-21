@@ -52,6 +52,8 @@ export function MobileNewJob({ onCreated }: { onCreated: (jobId: string) => void
       const job = await createJob.mutateAsync({
         input: toJobInput(state, { defaultStatus: (stages[0]?.key ?? 'disain') as StageKey, quote, types }),
         switches: template ? switchesToSend(template.stages, state.switches) : {},
+        stageEdits: { people: state.stagePeople, skipped: state.stageSkipped },
+        onStageEditsFailed: e => window.alert(t('workflow.couldNotApplyStages', { e: describeError(e) })),
       })
       onCreated(job.id)
     } catch (e) {
@@ -117,15 +119,19 @@ export function MobileNewJob({ onCreated }: { onCreated: (jobId: string) => void
           onChange={e => patch({ deadline: e.target.value || null })} />
       </div>
 
-      <div>
-        <label htmlFor="m-priority" className={LABEL}>{t('wizard.jobPriority')}</label>
-        <select id="m-priority" className={FIELD} value={state.priority}
-          onChange={e => patch({ priority: e.target.value as NewJobState['priority'] })}>
-          <option value="standard">{t('wizard.standard')}</option>
-          <option value="kiirtoo">{t('wizard.rushJob')}</option>
-          <option value="mudel">{t('wizard.model')}</option>
-        </select>
-      </div>
+      <fieldset>
+        <legend className={LABEL}>{t('wizard.jobPriority')}</legend>
+        <label className="flex items-center gap-3 py-2 text-base">
+          <input type="checkbox" className="h-5 w-5" checked={state.rush}
+            onChange={e => patch({ rush: e.target.checked })} />
+          {t('wizard.rushJob')}
+        </label>
+        <label className="flex items-center gap-3 py-2 text-base">
+          <input type="checkbox" className="h-5 w-5" checked={state.model}
+            onChange={e => patch({ model: e.target.checked })} />
+          {t('wizard.model')}
+        </label>
+      </fieldset>
 
       <WorkflowSection state={state} patch={patch} />
 

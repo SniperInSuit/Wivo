@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { format, parseISO, isValid } from 'date-fns'
 import { AlertCircle } from 'lucide-react'
 import type {
-  ArchSelection, WizardPriority, WizardField as WizardFieldKey,
+  ArchSelection, WizardField as WizardFieldKey,
 } from '@shared/wizard'
 import { baseTypeName, typeKeyIndex, materialsOf, machinesOf } from '@shared/wizard'
 import { quoteJob } from '@shared/pricing/quote'
@@ -30,8 +30,13 @@ const ARCH_LABEL: Record<ArchSelection, string> = {
 
 // The rush multiplier is configurable (Seaded → Hinnad). Writing "×2" here
 // would tell a lab that charges 1.5× a number its own invoice contradicts.
-const priorityLabel = (p: WizardPriority, kordaja: number): string =>
-  p === 'kiirtoo' ? t('wizard.rushJobPrice', { kordaja }) : p === 'mudel' ? t('wizard.model') : t('wizard.standard')
+const priorityLabel = (rush: boolean, model: boolean, kordaja: number): string => {
+  const parts = [
+    ...(rush ? [t('wizard.rushJobPrice', { kordaja })] : []),
+    ...(model ? [t('wizard.model')] : []),
+  ]
+  return parts.length ? parts.join(' + ') : t('wizard.standard')
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
@@ -376,10 +381,10 @@ export const StepReview: WizardStepComponent = ({ state, patch, rules, errors, s
           <WizardSummaryRow label={t('wizard.designID')} value={state.designId} empty={!state.designId.trim()} />
           <WizardSummaryRow
             label={t('wizard.priority')}
-            value={priorityLabel(state.priority, settings.kiirtooKordaja)}
+            value={priorityLabel(state.rush, state.model, settings.kiirtooKordaja)}
           />
           {/* Only for a Mudel job — the row is not stored on any other. */}
-          {state.priority === 'mudel' && (
+          {state.model && (
             <WizardSummaryRow label={t('wizard.modelID')} value={state.modelId} empty={!state.modelId.trim()} />
           )}
         </ReviewSection>

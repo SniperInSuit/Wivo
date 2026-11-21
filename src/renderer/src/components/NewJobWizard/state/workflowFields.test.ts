@@ -10,14 +10,23 @@ describe('the new job form and the workflow', () => {
   it('the Model priority sets mudel AND printed_model together; nothing else does', () => {
     const quote = { production: 0, unpriced: [] } as never
     const ctx = { defaultStatus: 'disain', quote, types: [] }
-    const model = toJobInput({ ...createEmptyNewJobState(), priority: 'mudel' }, ctx)
+    const model = toJobInput({ ...createEmptyNewJobState(), model: true }, ctx)
     expect(model.mudel).toBe(true)
     expect(model.printed_model).toBe(true)
-    for (const priority of ['standard', 'kiirtoo'] as const) {
-      const j = toJobInput({ ...createEmptyNewJobState(), priority }, ctx)
-      expect(j.mudel).toBe(false)
-      expect(j.printed_model).toBe(false)
-    }
+    const rush = toJobInput({ ...createEmptyNewJobState(), rush: true }, ctx)
+    expect(rush.kiirtoo).toBe(true)
+    expect(rush.mudel).toBe(false)
+    expect(rush.printed_model).toBe(false)
+    const plain = toJobInput(createEmptyNewJobState(), ctx)
+    expect(plain.kiirtoo).toBe(false)
+    expect(plain.mudel).toBe(false)
+    expect(plain.printed_model).toBe(false)
+  })
+
+  it('rush and model can be on together', () => {
+    const quote = { production: 0, unpriced: [] } as never
+    const j = toJobInput({ ...createEmptyNewJobState(), rush: true, model: true }, { defaultStatus: 'disain', quote, types: [] })
+    expect([j.kiirtoo, j.mudel, j.printed_model]).toEqual([true, true, true])
   })
 
   it('carries the template and the rule fields to the row', () => {
@@ -33,7 +42,7 @@ describe('the new job form and the workflow', () => {
   })
 
   it('the facts the rules read agree with what is written', () => {
-    const s = { ...createEmptyNewJobState(), priority: 'mudel' as const, impressionType: 'digital' as const }
+    const s = { ...createEmptyNewJobState(), model: true, impressionType: 'digital' as const }
     const facts = jobFactsOf(s, [item('11,12', '11,12')])
     expect(ruleHolds('implants_gt_1', facts)).toBe(true)
     expect(ruleHolds('printed_model', facts)).toBe(hasPrintedModel(s))

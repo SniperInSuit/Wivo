@@ -148,7 +148,7 @@ export function validateStep(
     if (state.deadline && state.date && state.deadline < state.date) {
       out.push(err('deadline', t('wizardRules.theDueDateCannotBeBefore')))
     }
-    if (state.priority === 'kiirtoo') {
+    if (state.rush) {
       out.push(warn('priority', t('wizardRules.rushDoublesTheProductionPrice')))
     }
     return out

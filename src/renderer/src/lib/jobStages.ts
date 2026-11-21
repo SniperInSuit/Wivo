@@ -185,3 +185,27 @@ export async function fetchNotifyEveryStage(userId: string): Promise<boolean | n
   return (data as { notify_every_stage: boolean | null }).notify_every_stage ?? false
 }
 export const setNotifyEveryStage = (on: boolean) => call('set_notify_every_stage', { p_on: on })
+
+/**
+ * The people and skips chosen in the new-job form, applied to the job once it
+ * exists. Only stages the job really has (an optional one switched off has
+ * none). Every change is tried; the first failure is thrown at the end, so one
+ * refused change does not hide the others.
+ */
+export async function applyStageEdits(
+  jobId: string,
+  edits: { people: Readonly<Record<string, readonly string[]>>; skipped: readonly string[] },
+): Promise<void> {
+  const { data, error } = await supabase.from('job_stage').select('stage_key').eq('job_id', jobId)
+  if (error) throw error
+  const have = new Set((data ?? []).map(r => (r as { stage_key: string }).stage_key))
+  let failure: unknown = null
+  const attempt = async (f: () => Promise<void>) => { try { await f() } catch (e) { failure ??= e } }
+  for (const [stage, people] of Object.entries(edits.people)) {
+    if (have.has(stage)) await attempt(() => setJobStagePeople(jobId, stage, people))
+  }
+  for (const stage of edits.skipped) {
+    if (have.has(stage)) await attempt(() => setJobStageSkipped(jobId, stage, true))
+  }
+  if (failure) throw failure
+}

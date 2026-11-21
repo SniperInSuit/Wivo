@@ -132,7 +132,7 @@ describe('step 4 — tootmine', () => {
   })
 
   it('warns about kiirtöö without blocking', () => {
-    const s = state({ priority: 'kiirtoo' })
+    const s = state({ rush: true })
     expect(messages(validateStep(4, s, TYPES))).toEqual(['Kiirtöö kahekordistab tootmishinna.'])
     expect(canContinue(4, s, TYPES)).toBe(true)
   })
@@ -167,7 +167,7 @@ describe('step 6 — kontroll', () => {
   })
 
   it('a kiirtöö warning never stops creation', () => {
-    expect(canCreate(valid({ priority: 'kiirtoo' }), TYPES)).toBe(true)
+    expect(canCreate(valid({ rush: true }), TYPES)).toBe(true)
   })
 })
 
