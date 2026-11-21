@@ -50,7 +50,7 @@ commit `testing`-usse. Kevin pushib.
 | 3 | Telefon §13: töö lisamise vorm, liigutamine, „alustasin", fotod (samad RPC-d kui 2c) | Sonnet | medium | **tehtud 20.11** (vt „Tehtud 20.11") |
 | 4 | Ajutine installer Riia aadressiga + Cloudflare'i projekt; Resendi päevapiir logisse ja omanikule | Sonnet | medium | **installer ja Cloudflare tehtud 20.11** (`docs/RIGA-TEMPORARY.md`); **Resendi päevapiir tegemata** (vajab andmebaasi ja Edge Function'i tööd; Kevin ei küsinud seda 20.11) |
 | 5 | `docs/RIGA-SETUP.md`: Windowsis üks käsk korraga — Pro projekt Riia kontol, baseline psql-iga, kopa piir, etapid ja mallid (Kroon labor, Kroon kabinetis; palgaliigid etappidel), 10 kontot, litsents YubiKey C-ga, Edge Functions, Resend (DNS Iljale, saladus, Auth SMTP), installer, telefon | Opus | medium | |
-| — | Pühapäeva turvakontroll (vt ülal) | Opus | high | |
+| — | Pühapäeva turvakontroll (vt ülal) | Opus | high | **tehtud 21.11** (kriitilist viga ei leitud; leidud `docs/BACKLOG.md`, „After Riga's start“ p 2; uus leak-test: teise kliiniku omanik ei saa etappide funktsioone kutsuda) |
 | 6 | Vene keel — pärast esmaspäeva | Sonnet | low | |
 
 **Kevini osa:** migratsioonid 122, 123 ja 124 testkoopias, järjekorras (siis

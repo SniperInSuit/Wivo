@@ -382,6 +382,20 @@ describe('editing a job\'s stages', () => {
     expect(await errorAs(db, { id: doctor2 }, `select public.set_job_stage_people($1, 'disain', $2)`, [j, [doctor2]])).toMatch(/Not allowed/)
   })
 
+  it('another clinic\'s owner (owner and organisation admin there) changes nothing and is told nothing', async () => {
+    const before = await stagesOf(j)
+    const b = { id: B.ownerId }
+    expect(await errorAs(db, b, `select public.set_job_stage_people($1, 'disain', $2)`, [j, [B.ownerId]])).toMatch(/Not allowed/)
+    expect(await errorAs(db, b, `select public.set_job_stage_skipped($1, 'vahamudel', true)`, [j])).toMatch(/Not allowed/)
+    expect(await errorAs(db, b, `select public.add_job_stage($1, 'vahamudel', null)`, [j])).toMatch(/Not allowed/)
+    expect(await errorAs(db, b, `select public.move_job_stage($1, 'disain')`, [j])).toMatch(/not found/i)
+    expect((await rowsAs<{ ok: boolean }>(db, b, `select public.may_edit_job_stages($1) as ok`, [j]))[0].ok).toBe(false)
+    expect(await canMove(b, j, 'vastuvott')).toBe(false)
+    expect(await rowsAs(db, b, `select public.job_first_stage($1::jsonb, '{}'::jsonb) as s`, [JSON.stringify({ template_id: crown })]))
+      .toEqual([{ s: null }])
+    expect(await stagesOf(j)).toEqual(before)
+  })
+
   it('a stage is added after another, and the rest move down', async () => {
     expect(await errorAs(db, { id: A.ownerId }, `select public.add_job_stage($1, 'vahamudel', 'disain')`, [j])).toBeNull()
     expect(await keys(j)).toEqual(['skaneering', 'vastuvott', 'disain', 'vahamudel', 'freesimine', 'viimistlus', 'valmis'])
